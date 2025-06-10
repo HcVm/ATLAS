@@ -69,14 +69,13 @@ export default function ScanQRPage() {
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([])
   const [isVideoMounted, setIsVideoMounted] = useState(false)
-  // Remover estas líneas del estado:
-  // const [initAttempts, setInitAttempts] = useState(0)
-  // const initTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [autoRetryCount, setAutoRetryCount] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const autoRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   // Verificar que el video element esté montado
@@ -118,6 +117,9 @@ export default function ScanQRPage() {
       }
       if (scanIntervalRef.current) {
         clearInterval(scanIntervalRef.current)
+      }
+      if (autoRetryTimeoutRef.current) {
+        clearTimeout(autoRetryTimeoutRef.current)
       }
     }
   }, [stream])
@@ -198,17 +200,8 @@ export default function ScanQRPage() {
     const canvas = canvasRef.current
     const ctx = canvas.getContext("2d")
 
-    // Validación estricta antes de procesar
-    if (
-      !ctx ||
-      video.readyState < 2 ||
-      video.videoWidth === 0 ||
-      video.videoHeight === 0 ||
-      video.paused ||
-      video.ended ||
-      video.currentTime === 0
-    ) {
-      console.log("Video not ready for scanning, skipping frame")
+    // Validación básica - más tolerante que antes
+    if (!ctx || video.videoWidth === 0 || video.videoHeight === 0) {
       return
     }
 
@@ -216,12 +209,6 @@ export default function ScanQRPage() {
       // Configurar el canvas con las dimensiones del video
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-
-      // Verificar que las dimensiones sean válidas
-      if (canvas.width === 0 || canvas.height === 0) {
-        console.log("Invalid video dimensions, skipping frame")
-        return
-      }
 
       // Dibujar el frame actual del video en el canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -235,6 +222,33 @@ export default function ScanQRPage() {
       console.error("Error scanning frame:", error)
     }
   }, [scanning, videoReady])
+
+  // Función para reintentar automáticamente si falla la primera vez
+  const autoRetry = useCallback(() => {
+    if (autoRetryCount < 3) {
+      console.log(`Auto-retrying camera initialization (attempt ${autoRetryCount + 1}/3)...`)
+      setDebugInfo(`Reintentando automáticamente (${autoRetryCount + 1}/3)...`)
+      setAutoRetryCount((prev) => prev + 1)
+
+      // Detener todo primero
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop())
+      }
+
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current)
+        scanIntervalRef.current = null
+      }
+
+      // Esperar un momento y reintentar
+      setTimeout(() => {
+        startScanning(cameraFacing)
+      }, 1000)
+    } else {
+      setCameraError("No se pudo inicializar la cámara después de varios intentos. Intenta cambiar de cámara.")
+      setDebugInfo("❌ Demasiados intentos fallidos")
+    }
+  }, [autoRetryCount, cameraFacing, stream])
 
   const startScanning = async (facingMode: "user" | "environment" = cameraFacing) => {
     console.log("Starting camera with facing mode:", facingMode)
@@ -259,7 +273,7 @@ export default function ScanQRPage() {
     setCameraError(null)
     setError(null)
     setVideoReady(false)
-    setScanning(false) // Importante: NO iniciar scanning hasta validar completamente
+    setScanning(false) // NO iniciar scanning hasta validar completamente
     setDebugInfo("Solicitando acceso a la cámara...")
 
     // Detener stream anterior si existe
@@ -274,14 +288,18 @@ export default function ScanQRPage() {
       scanIntervalRef.current = null
     }
 
+    // Limpiar timeout de auto-retry
+    if (autoRetryTimeoutRef.current) {
+      clearTimeout(autoRetryTimeoutRef.current)
+    }
+
     try {
-      // Configuración más específica para el primer intento
+      // Configuración más flexible para el primer intento
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: facingMode === "environment" ? { exact: "environment" } : { exact: "user" },
-          width: { ideal: 1280, min: 640, max: 1920 },
-          height: { ideal: 720, min: 480, max: 1080 },
-          frameRate: { ideal: 30, min: 20, max: 60 },
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280, min: 320 },
+          height: { ideal: 720, min: 240 },
         },
         audio: false,
       }
@@ -289,26 +307,7 @@ export default function ScanQRPage() {
       console.log("Requesting camera with constraints:", constraints)
       setDebugInfo(`Obteniendo stream de cámara (${facingMode})...`)
 
-      let mediaStream: MediaStream
-
-      try {
-        // Primer intento con configuración exacta
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-      } catch (exactError) {
-        console.log("Exact constraints failed, trying ideal constraints")
-        // Si falla, intentar con configuración más flexible
-        const fallbackConstraints: MediaStreamConstraints = {
-          video: {
-            facingMode: { ideal: facingMode },
-            width: { ideal: 1280, min: 320, max: 1920 },
-            height: { ideal: 720, min: 240, max: 1080 },
-            frameRate: { ideal: 30, min: 15, max: 60 },
-          },
-          audio: false,
-        }
-        mediaStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints)
-      }
-
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
       console.log("Camera stream obtained:", mediaStream)
 
       setStream(mediaStream)
@@ -341,24 +340,37 @@ export default function ScanQRPage() {
 
       setDebugInfo("Configurando video element...")
 
-      // Función para validar completamente que el video está listo
+      // Función para validar que el video está listo - más tolerante ahora
       const validateVideoReady = (): boolean => {
         if (!video) return false
 
+        // En los primeros intentos, ser más tolerante
+        if (autoRetryCount === 0) {
+          const isReady = video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0
+
+          console.log("Initial video validation:", {
+            readyState: video.readyState,
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            isReady,
+          })
+
+          return isReady
+        }
+
+        // En reintentos, ser más estricto
         const isReady =
-          video.readyState >= 2 && // HAVE_CURRENT_DATA o superior
+          video.readyState >= 2 &&
           video.videoWidth > 0 &&
           video.videoHeight > 0 &&
           !video.paused &&
-          !video.ended &&
           video.currentTime > 0
 
-        console.log("Video validation:", {
+        console.log("Strict video validation:", {
           readyState: video.readyState,
           videoWidth: video.videoWidth,
           videoHeight: video.videoHeight,
           paused: video.paused,
-          ended: video.ended,
           currentTime: video.currentTime,
           isReady,
         })
@@ -366,7 +378,7 @@ export default function ScanQRPage() {
         return isReady
       }
 
-      // Manejar eventos del video con validación estricta
+      // Manejar eventos del video con validación más tolerante
       video.onloadedmetadata = () => {
         console.log("Video metadata loaded")
         setDebugInfo(`Metadata cargada: ${video.videoWidth}x${video.videoHeight}`)
@@ -375,46 +387,36 @@ export default function ScanQRPage() {
           .play()
           .then(() => {
             console.log("Video play() called successfully")
-            setDebugInfo("Video iniciado, validando estabilidad...")
+            setDebugInfo("Video iniciado, esperando estabilización...")
 
-            // Esperar y validar múltiples veces antes de iniciar escaneo
-            let validationAttempts = 0
-            const maxValidationAttempts = 10
-
-            const validateAndStart = () => {
-              validationAttempts++
-              console.log(`Validation attempt ${validationAttempts}/${maxValidationAttempts}`)
-
+            // Esperar más tiempo antes de validar (3 segundos)
+            setTimeout(() => {
+              // Validar solo una vez después de esperar
               if (validateVideoReady()) {
-                console.log("✅ Video completamente validado y listo")
+                console.log("✅ Video estabilizado y listo")
                 setVideoReady(true)
                 setScanning(true)
-                setDebugInfo("✅ Video validado - Iniciando escaneo...")
+                setDebugInfo("✅ Video estabilizado - Iniciando escaneo...")
 
-                // Esperar un poco más antes de iniciar el escaneo para máxima estabilidad
+                // Iniciar escaneo con un intervalo más largo al principio
+                scanIntervalRef.current = setInterval(scanFrame, 500)
+
+                // Después de 5 segundos, acelerar el escaneo si sigue activo
                 setTimeout(() => {
-                  if (validateVideoReady() && scanning) {
-                    console.log("🎯 Iniciando intervalo de escaneo")
+                  if (scanIntervalRef.current) {
+                    clearInterval(scanIntervalRef.current)
                     scanIntervalRef.current = setInterval(scanFrame, 300)
-                    setDebugInfo("🎯 Escaneo activo y funcionando")
-                  } else {
-                    console.log("❌ Video no válido al iniciar escaneo")
-                    setDebugInfo("❌ Error: Video no estable para escaneo")
+                    setDebugInfo("🎯 Escaneo optimizado")
                   }
-                }, 1000)
-              } else if (validationAttempts < maxValidationAttempts) {
-                console.log(`⏳ Video no listo, reintentando en 500ms (${validationAttempts}/${maxValidationAttempts})`)
-                setDebugInfo(`⏳ Validando video... (${validationAttempts}/${maxValidationAttempts})`)
-                setTimeout(validateAndStart, 500)
+                }, 5000)
               } else {
-                console.log("❌ Video no se estabilizó después de múltiples intentos")
-                setCameraError("El video no se estabilizó correctamente. Intenta cambiar de cámara.")
-                setDebugInfo("❌ Timeout: Video no se estabilizó")
-              }
-            }
+                console.log("❌ Video no estabilizado después de esperar")
+                setDebugInfo("❌ Video no estable - reintentando...")
 
-            // Iniciar validación después de un breve delay
-            setTimeout(validateAndStart, 1000)
+                // Configurar auto-retry
+                autoRetryTimeoutRef.current = setTimeout(autoRetry, 1000)
+              }
+            }, 3000) // Esperar 3 segundos completos para estabilización
           })
           .catch((playError) => {
             console.error("Error playing video:", playError)
@@ -464,6 +466,12 @@ export default function ScanQRPage() {
     setVideoReady(false)
     setCameraError(null)
     setDebugInfo("Deteniendo cámara...")
+    setAutoRetryCount(0)
+
+    // Limpiar timeout de auto-retry
+    if (autoRetryTimeoutRef.current) {
+      clearTimeout(autoRetryTimeoutRef.current)
+    }
 
     // Detener el stream de video
     if (stream) {
@@ -492,6 +500,7 @@ export default function ScanQRPage() {
   const switchCamera = () => {
     const newFacing = cameraFacing === "environment" ? "user" : "environment"
     console.log("Switching camera to:", newFacing)
+    setAutoRetryCount(0) // Reset retry count when manually switching
     stopScanning()
     setTimeout(() => startScanning(newFacing), 500)
   }
@@ -556,6 +565,7 @@ export default function ScanQRPage() {
     setCameraError(null)
     setUploadedImage(null)
     setDebugInfo("")
+    setAutoRetryCount(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -565,6 +575,15 @@ export default function ScanQRPage() {
     if (documentData) {
       router.push(`/documents/${documentData.id}`)
     }
+  }
+
+  // Función para reiniciar manualmente
+  const restartCamera = () => {
+    setAutoRetryCount(0)
+    stopScanning()
+    setTimeout(() => {
+      startScanning(cameraFacing)
+    }, 1000)
   }
 
   return (
@@ -673,7 +692,7 @@ export default function ScanQRPage() {
                       {scanning && !videoReady && (
                         <div className="flex items-center gap-2">
                           <RefreshCw className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Cargando...</span>
+                          <span className="text-sm">Cargando... (espera 3 segundos)</span>
                         </div>
                       )}
                     </div>
@@ -690,27 +709,40 @@ export default function ScanQRPage() {
                 {/* Información de estado del video */}
                 <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
                   <strong>Estado:</strong> Video element {isVideoMounted ? "montado" : "no montado"} | Cámaras:{" "}
-                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"}
+                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"} |
+                  Reintentos: {autoRetryCount}
                 </div>
 
                 {/* Controles fuera del contenedor de video */}
-                {scanning && videoReady && (
-                  <div className="text-center space-y-2">
-                    <p className="text-sm text-muted-foreground">Apunta la cámara hacia el código QR</p>
-                    <div className="flex gap-2 justify-center">
-                      <Button onClick={stopScanning} variant="outline" size="sm">
-                        <CameraOff className="h-4 w-4 mr-2" />
-                        Detener Escáner
-                      </Button>
-                      {availableCameras.length > 1 && (
-                        <Button onClick={switchCamera} variant="outline" size="sm">
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Cambiar Cámara
+                <div className="text-center space-y-2">
+                  {scanning && videoReady ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">Apunta la cámara hacia el código QR</p>
+                      <div className="flex gap-2 justify-center">
+                        <Button onClick={stopScanning} variant="outline" size="sm">
+                          <CameraOff className="h-4 w-4 mr-2" />
+                          Detener Escáner
                         </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
+                        {availableCameras.length > 1 && (
+                          <Button onClick={switchCamera} variant="outline" size="sm">
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Cambiar Cámara
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  ) : scanning ? (
+                    <Button onClick={stopScanning} variant="outline" size="sm">
+                      <CameraOff className="h-4 w-4 mr-2" />
+                      Cancelar
+                    </Button>
+                  ) : (
+                    <Button onClick={restartCamera} variant="outline" size="sm">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Reiniciar Cámara
+                    </Button>
+                  )}
+                </div>
 
                 {cameraError && (
                   <Alert variant="destructive">
