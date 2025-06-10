@@ -2,14 +2,25 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { QrCode, FileText, Building2, User, Calendar, Camera, CameraOff, Upload, AlertCircle } from "lucide-react"
+import {
+  QrCode,
+  FileText,
+  Building2,
+  User,
+  Calendar,
+  Camera,
+  CameraOff,
+  Upload,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
@@ -53,6 +64,10 @@ export default function ScanQRPage() {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [videoReady, setVideoReady] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<string>("")
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([])
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -60,7 +75,36 @@ export default function ScanQRPage() {
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
+  // Obtener cámaras disponibles
+  useEffect(() => {
+    const getCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const cameras = devices.filter((device) => device.kind === "videoinput")
+        setAvailableCameras(cameras)
+        console.log("Available cameras:", cameras)
+      } catch (error) {
+        console.error("Error getting cameras:", error)
+      }
+    }
+
+    getCameras()
+  }, [])
+
+  // Limpiar recursos al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop())
+      }
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current)
+      }
+    }
+  }, [stream])
+
   const processQRData = async (data: string) => {
+    console.log("QR detected:", data)
     setScanning(false)
     setScannedData(data)
     setLoading(true)
@@ -127,7 +171,7 @@ export default function ScanQRPage() {
   }
 
   const scanFrame = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || !scanning) return
+    if (!videoRef.current || !canvasRef.current || !scanning || !videoReady) return
 
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -135,15 +179,15 @@ export default function ScanQRPage() {
 
     if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return
 
-    // Configurar el canvas con las dimensiones del video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    // Dibujar el frame actual del video en el canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Intentar detectar QR
     try {
+      // Configurar el canvas con las dimensiones del video
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+
+      // Dibujar el frame actual del video en el canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      // Intentar detectar QR
       const qrData = await detectQRFromCanvas(canvas)
       if (qrData) {
         await processQRData(qrData)
@@ -151,69 +195,143 @@ export default function ScanQRPage() {
     } catch (error) {
       console.error("Error scanning frame:", error)
     }
-  }, [scanning])
+  }, [scanning, videoReady])
 
-  const startScanning = async () => {
+  const startScanning = async (facingMode: "user" | "environment" = cameraFacing) => {
+    console.log("Starting camera with facing mode:", facingMode)
     setCameraError(null)
     setError(null)
+    setVideoReady(false)
+    setDebugInfo("Solicitando acceso a la cámara...")
+
+    // Detener stream anterior si existe
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+      setStream(null)
+    }
 
     try {
-      // Solicitar acceso a la cámara con configuración optimizada para móviles
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      // Configuración más específica para móviles
+      const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: "environment", // Usar cámara trasera si está disponible
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280, min: 320, max: 1920 },
+          height: { ideal: 720, min: 240, max: 1080 },
+          frameRate: { ideal: 30, min: 15, max: 60 },
         },
-      })
+        audio: false,
+      }
+
+      console.log("Requesting camera with constraints:", constraints)
+      setDebugInfo(`Obteniendo stream de cámara (${facingMode})...`)
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log("Camera stream obtained:", mediaStream)
 
       setStream(mediaStream)
+      setCameraFacing(facingMode)
+      setDebugInfo(`Stream obtenido. Tracks: ${mediaStream.getTracks().length}`)
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
+        const video = videoRef.current
 
-        // Configurar el video para móviles
-        videoRef.current.setAttribute("playsinline", "true")
-        videoRef.current.setAttribute("webkit-playsinline", "true")
+        // Limpiar eventos anteriores
+        video.onloadedmetadata = null
+        video.onerror = null
+        video.oncanplay = null
 
-        try {
-          await videoRef.current.play()
-          setScanning(true)
+        // Configurar el video element
+        video.srcObject = mediaStream
+        video.playsInline = true
+        video.muted = true
+        video.autoplay = true
 
-          // Esperar a que el video esté completamente cargado
-          videoRef.current.onloadedmetadata = () => {
-            console.log("Video loaded, starting scan interval")
-            // Iniciar el escaneo continuo
-            scanIntervalRef.current = setInterval(scanFrame, 200) // Reducir frecuencia para móviles
-          }
-        } catch (playError) {
-          console.error("Error playing video:", playError)
-          setCameraError("Error al reproducir el video de la cámara")
+        // Configurar atributos adicionales para móviles
+        video.setAttribute("playsinline", "true")
+        video.setAttribute("webkit-playsinline", "true")
+        video.setAttribute("muted", "true")
+
+        setDebugInfo("Configurando video element...")
+
+        // Manejar eventos del video
+        video.onloadedmetadata = () => {
+          console.log("Video metadata loaded")
+          setDebugInfo(`Video cargado: ${video.videoWidth}x${video.videoHeight}`)
+
+          video
+            .play()
+            .then(() => {
+              console.log("Video playing successfully")
+              setVideoReady(true)
+              setScanning(true)
+              setDebugInfo("¡Video reproduciéndose! Iniciando escaneo...")
+
+              // Iniciar el escaneo continuo
+              scanIntervalRef.current = setInterval(scanFrame, 300)
+            })
+            .catch((playError) => {
+              console.error("Error playing video:", playError)
+              setCameraError(`Error al reproducir video: ${playError.message}`)
+              setDebugInfo(`Error reproduciendo: ${playError.message}`)
+            })
         }
+
+        video.onerror = (e) => {
+          console.error("Video error:", e)
+          setCameraError("Error en el elemento de video")
+          setDebugInfo("Error en el elemento de video")
+        }
+
+        video.oncanplay = () => {
+          console.log("Video can play")
+          setDebugInfo("Video listo para reproducir")
+        }
+
+        // Forzar la carga del video
+        video.load()
+      } else {
+        throw new Error("Video element not found")
       }
     } catch (error: any) {
-      console.error("Camera permission error:", error)
+      console.error("Camera error:", error)
+      let errorMessage = "Error desconocido al acceder a la cámara"
+
       if (error.name === "NotAllowedError") {
-        setCameraError("Permisos de cámara denegados. Por favor, permite el acceso a la cámara y recarga la página.")
+        errorMessage = "Permisos de cámara denegados. Por favor, permite el acceso a la cámara."
       } else if (error.name === "NotFoundError") {
-        setCameraError("No se encontró ninguna cámara en este dispositivo.")
+        errorMessage = "No se encontró ninguna cámara en este dispositivo."
       } else if (error.name === "NotReadableError") {
-        setCameraError("La cámara está siendo usada por otra aplicación.")
+        errorMessage = "La cámara está siendo usada por otra aplicación."
+      } else if (error.name === "OverconstrainedError") {
+        errorMessage = "Las configuraciones de cámara solicitadas no son compatibles."
       } else {
-        setCameraError(
-          "Error al acceder a la cámara. Verifica que tu dispositivo tenga cámara y que el navegador tenga permisos.",
-        )
+        errorMessage = `Error de cámara: ${error.message}`
+      }
+
+      setCameraError(errorMessage)
+      setDebugInfo(`Error: ${errorMessage}`)
+
+      // Si falla con la cámara trasera, intentar con la frontal
+      if (facingMode === "environment" && error.name === "OverconstrainedError") {
+        console.log("Trying front camera as fallback...")
+        setTimeout(() => startScanning("user"), 1000)
       }
     }
   }
 
   const stopScanning = () => {
+    console.log("Stopping camera...")
     setScanning(false)
+    setVideoReady(false)
     setCameraError(null)
+    setDebugInfo("Deteniendo cámara...")
 
     // Detener el stream de video
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop())
+      stream.getTracks().forEach((track) => {
+        console.log("Stopping track:", track.kind)
+        track.stop()
+      })
       setStream(null)
     }
 
@@ -226,7 +344,17 @@ export default function ScanQRPage() {
     // Limpiar el video
     if (videoRef.current) {
       videoRef.current.srcObject = null
+      videoRef.current.load()
     }
+
+    setDebugInfo("Cámara detenida")
+  }
+
+  const switchCamera = () => {
+    const newFacing = cameraFacing === "environment" ? "user" : "environment"
+    console.log("Switching camera to:", newFacing)
+    stopScanning()
+    setTimeout(() => startScanning(newFacing), 500)
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -288,6 +416,7 @@ export default function ScanQRPage() {
     setError(null)
     setCameraError(null)
     setUploadedImage(null)
+    setDebugInfo("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -323,51 +452,137 @@ export default function ScanQRPage() {
 
               <TabsContent value="camera" className="space-y-4">
                 <div className="aspect-square max-w-md mx-auto overflow-hidden rounded-lg border bg-black relative">
-                  {scanning ? (
+                  {scanning && videoReady ? (
                     <>
-                      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
+                      <video
+                        ref={videoRef}
+                        className="w-full h-full object-cover"
+                        playsInline
+                        muted
+                        autoPlay
+                        style={{
+                          transform: cameraFacing === "user" ? "scaleX(-1)" : "none",
+                        }}
+                      />
                       <canvas ref={canvasRef} className="hidden" />
                       {/* Overlay para mostrar el área de escaneo */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-70 animate-pulse"></div>
                       </div>
                       {/* Indicador de escaneo activo */}
-                      <div className="absolute top-4 left-4 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <div className="absolute top-4 left-4 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                         Escaneando...
                       </div>
+                      {/* Botón para cambiar cámara */}
+                      {availableCameras.length > 1 && (
+                        <button
+                          onClick={switchCamera}
+                          className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                          title="Cambiar cámara"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
                       <Camera className="h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="text-lg font-medium mb-2">
-                        {cameraError ? "Error con la cámara" : "Cámara Detenida"}
+                        {cameraError ? "Error con la cámara" : scanning ? "Iniciando cámara..." : "Cámara Detenida"}
                       </h3>
                       <p className="text-muted-foreground text-sm mb-4">
-                        {cameraError ? "Verifica los permisos de cámara" : "Haz clic para iniciar el escáner"}
+                        {cameraError
+                          ? "Verifica los permisos de cámara"
+                          : scanning
+                            ? "Configurando video..."
+                            : "Haz clic para iniciar el escáner"}
                       </p>
-                      <Button onClick={startScanning} disabled={!!cameraError} size="sm">
-                        <Camera className="h-4 w-4 mr-2" />
-                        Iniciar Escáner
-                      </Button>
+                      {!scanning && (
+                        <div className="space-y-2">
+                          <Button onClick={() => startScanning()} disabled={!!cameraError} size="sm">
+                            <Camera className="h-4 w-4 mr-2" />
+                            Iniciar Escáner
+                          </Button>
+                          {availableCameras.length > 1 && (
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => startScanning("environment")}
+                                disabled={!!cameraError}
+                                size="sm"
+                                variant="outline"
+                              >
+                                Cámara Trasera
+                              </Button>
+                              <Button
+                                onClick={() => startScanning("user")}
+                                disabled={!!cameraError}
+                                size="sm"
+                                variant="outline"
+                              >
+                                Cámara Frontal
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {scanning && !videoReady && (
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">Cargando...</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
+                {/* Información de debug */}
+                {debugInfo && (
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                    <strong>Debug:</strong> {debugInfo}
+                  </div>
+                )}
+
+                {/* Información de cámaras disponibles */}
+                {availableCameras.length > 0 && (
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                    <strong>Cámaras disponibles:</strong> {availableCameras.length} (
+                    {cameraFacing === "environment" ? "Trasera" : "Frontal"} activa)
+                  </div>
+                )}
+
                 {/* Controles fuera del contenedor de video */}
-                {scanning && (
+                {scanning && videoReady && (
                   <div className="text-center space-y-2">
                     <p className="text-sm text-muted-foreground">Apunta la cámara hacia el código QR</p>
-                    <Button onClick={stopScanning} variant="outline" size="sm">
-                      <CameraOff className="h-4 w-4 mr-2" />
-                      Detener Escáner
-                    </Button>
+                    <div className="flex gap-2 justify-center">
+                      <Button onClick={stopScanning} variant="outline" size="sm">
+                        <CameraOff className="h-4 w-4 mr-2" />
+                        Detener Escáner
+                      </Button>
+                      {availableCameras.length > 1 && (
+                        <Button onClick={switchCamera} variant="outline" size="sm">
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Cambiar Cámara
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {cameraError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{cameraError}</AlertDescription>
+                    <AlertDescription>
+                      {cameraError}
+                      {cameraError.includes("OverconstrainedError") && (
+                        <div className="mt-2">
+                          <Button onClick={() => startScanning("user")} size="sm" variant="outline">
+                            Probar Cámara Frontal
+                          </Button>
+                        </div>
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
               </TabsContent>
