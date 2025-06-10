@@ -22,15 +22,29 @@ BEGIN
             RAISE NOTICE '⚠️ Política de subida ya existe';
     END;
     
-    -- Política para leer documentos (usuarios autenticados)
+    -- Política para leer documentos (público y autenticados)
     BEGIN
-        CREATE POLICY "Allow authenticated users to read documents" ON storage.objects
-        FOR SELECT TO authenticated
+        -- Primero eliminamos la política anterior si existe, para evitar errores al cambiarla
+        DROP POLICY IF EXISTS "Allow authenticated users to read documents" ON storage.objects;
+        DROP POLICY IF EXISTS "Allow public and authenticated read access to documents" ON storage.objects; -- En caso de que ya exista con el nuevo nombre
+
+        CREATE POLICY "Allow public and authenticated read access to documents" ON storage.objects
+        FOR SELECT TO anon, authenticated
         USING (bucket_id IN ('documents', 'files', 'attachments'));
-        RAISE NOTICE '✅ Política de lectura creada';
+        RAISE NOTICE '✅ Política de lectura pública y autenticada creada/actualizada';
     EXCEPTION
-        WHEN duplicate_object THEN
-            RAISE NOTICE '⚠️ Política de lectura ya existe';
+        WHEN OTHERS THEN -- Captura genérica por si DROP POLICY falla porque no existe, etc.
+            RAISE NOTICE '⚠️ Error al crear/actualizar política de lectura: %', SQLERRM;
+            -- Intentar crearla de todas formas por si el error fue por el DROP
+            BEGIN
+                CREATE POLICY "Allow public and authenticated read access to documents" ON storage.objects
+                FOR SELECT TO anon, authenticated
+                USING (bucket_id IN ('documents', 'files', 'attachments'));
+                RAISE NOTICE '✅ Política de lectura pública y autenticada creada (segundo intento)';
+            EXCEPTION
+                WHEN duplicate_object THEN
+                    RAISE NOTICE '⚠️ Política de lectura pública y autenticada ya existe (segundo intento)';
+            END;
     END;
     
     -- Política para actualizar documentos (propietarios)

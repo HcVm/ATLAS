@@ -57,6 +57,18 @@ CREATE POLICY "Enable all access for authenticated users" ON news
 CREATE POLICY "Enable all access for authenticated users" ON notifications
   FOR ALL USING (auth.role() = 'authenticated');
 
+-- Política para permitir lectura pública de documentos
+CREATE POLICY "Allow public read access to documents" ON documents
+  FOR SELECT TO anon, authenticated USING (true);
+
+-- Política para permitir lectura pública de perfiles
+CREATE POLICY "Allow public read access to profiles" ON profiles
+  FOR SELECT TO anon, authenticated USING (true);
+
+-- Política para permitir lectura pública de departamentos
+CREATE POLICY "Allow public read access to departments" ON departments
+  FOR SELECT TO anon, authenticated USING (true);
+
 -- Habilitar RLS nuevamente
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
