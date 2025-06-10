@@ -193,12 +193,22 @@ export default function ScanQRPage() {
     const canvas = canvasRef.current
     const ctx = canvas.getContext("2d")
 
-    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return
+    // Verificar que el video esté completamente cargado y tenga datos
+    if (!ctx || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log("Video not fully ready for scanning, skipping frame")
+      return
+    }
 
     try {
       // Configurar el canvas con las dimensiones del video
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      // Verificar que las dimensiones sean válidas
+      if (canvas.width === 0 || canvas.height === 0) {
+        console.log("Invalid video dimensions, skipping frame")
+        return
+      }
 
       // Dibujar el frame actual del video en el canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -246,13 +256,13 @@ export default function ScanQRPage() {
     }
 
     try {
-      // Configuración más específica para móviles
+      // Configuración más específica para el primer intento
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 1280, min: 320, max: 1920 },
-          height: { ideal: 720, min: 240, max: 1080 },
-          frameRate: { ideal: 30, min: 15, max: 60 },
+          facingMode: facingMode === "environment" ? { exact: "environment" } : { exact: "user" },
+          width: { ideal: 1280, min: 640, max: 1920 },
+          height: { ideal: 720, min: 480, max: 1080 },
+          frameRate: { ideal: 30, min: 20, max: 60 },
         },
         audio: false,
       }
@@ -260,7 +270,26 @@ export default function ScanQRPage() {
       console.log("Requesting camera with constraints:", constraints)
       setDebugInfo(`Obteniendo stream de cámara (${facingMode})...`)
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      let mediaStream: MediaStream
+
+      try {
+        // Primer intento con configuración exacta
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      } catch (exactError) {
+        console.log("Exact constraints failed, trying ideal constraints")
+        // Si falla, intentar con configuración más flexible
+        const fallbackConstraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280, min: 320, max: 1920 },
+            height: { ideal: 720, min: 240, max: 1080 },
+            frameRate: { ideal: 30, min: 15, max: 60 },
+          },
+          audio: false,
+        }
+        mediaStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints)
+      }
+
       console.log("Camera stream obtained:", mediaStream)
 
       setStream(mediaStream)
@@ -305,8 +334,22 @@ export default function ScanQRPage() {
             setScanning(true)
             setDebugInfo("¡Video reproduciéndose! Iniciando escaneo...")
 
-            // Iniciar el escaneo continuo
-            scanIntervalRef.current = setInterval(scanFrame, 300)
+            // Esperar un poco más antes de iniciar el escaneo para asegurar estabilidad
+            setTimeout(() => {
+              if (videoRef.current && videoRef.current.readyState >= 2) {
+                console.log("Video fully ready, starting scan interval")
+                scanIntervalRef.current = setInterval(scanFrame, 300)
+                setDebugInfo("Escaneo activo - Video estabilizado")
+              } else {
+                console.log("Video not ready yet, waiting more...")
+                setTimeout(() => {
+                  if (videoRef.current && videoRef.current.readyState >= 2) {
+                    scanIntervalRef.current = setInterval(scanFrame, 300)
+                    setDebugInfo("Escaneo activo - Video estabilizado (segundo intento)")
+                  }
+                }, 1000)
+              }
+            }, 1500) // Esperar 1.5 segundos para que el video se estabilice
           })
           .catch((playError) => {
             console.error("Error playing video:", playError)
