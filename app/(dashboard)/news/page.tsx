@@ -6,10 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 export default function NewsPage() {
@@ -17,6 +25,15 @@ export default function NewsPage() {
   const [news, setNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    newsItem: any | null
+    isDeleting: boolean
+  }>({
+    open: false,
+    newsItem: null,
+    isDeleting: false,
+  })
 
   useEffect(() => {
     if (user && (user.role === "admin" || user.role === "supervisor")) {
@@ -50,8 +67,59 @@ export default function NewsPage() {
       if (error) throw error
 
       setNews(news.map((item) => (item.id === id ? { ...item, published: !published } : item)))
+
+      toast({
+        title: published ? "Noticia despublicada" : "Noticia publicada",
+        description: `La noticia ha sido ${published ? "despublicada" : "publicada"} correctamente.`,
+      })
     } catch (error) {
       console.error("Error updating news:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la noticia.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteClick = (newsItem: any) => {
+    setDeleteDialog({
+      open: true,
+      newsItem,
+      isDeleting: false,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.newsItem) return
+
+    try {
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
+
+      const { error } = await supabase.from("news").delete().eq("id", deleteDialog.newsItem.id)
+
+      if (error) throw error
+
+      setNews(news.filter((item) => item.id !== deleteDialog.newsItem.id))
+
+      toast({
+        title: "Noticia eliminada",
+        description: "La noticia ha sido eliminada correctamente.",
+      })
+
+      setDeleteDialog({
+        open: false,
+        newsItem: null,
+        isDeleting: false,
+      })
+    } catch (error: any) {
+      console.error("Error deleting news:", error)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar la noticia: " + error.message,
+        variant: "destructive",
+      })
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
     }
   }
 
@@ -182,10 +250,18 @@ export default function NewsPage() {
                             <DropdownMenuItem onClick={() => togglePublished(item.id, item.published)}>
                               <span>{item.published ? "Despublicar" : "Publicar"}</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Eliminar</span>
-                            </DropdownMenuItem>
+                            {user?.role === "admin" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(item)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Eliminar</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -197,6 +273,16 @@ export default function NewsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Noticia"
+        description="¿Estás seguro de que deseas eliminar esta noticia? Esta acción eliminará permanentemente la noticia y no se podrá recuperar."
+        itemName={deleteDialog.newsItem?.title}
+        isDeleting={deleteDialog.isDeleting}
+      />
     </div>
   )
 }

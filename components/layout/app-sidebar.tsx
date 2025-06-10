@@ -72,12 +72,6 @@ const menuItems = [
     roles: ["admin", "supervisor", "user"],
   },
   {
-    title: "Escanear QR",
-    url: "/scan-qr",
-    icon: QrCode,
-    roles: ["admin", "supervisor", "user"],
-  },
-  {
     title: "Estadísticas",
     url: "/statistics",
     icon: BarChart3,

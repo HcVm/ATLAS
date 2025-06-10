@@ -6,16 +6,33 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
 export default function DepartmentsPage() {
   const { user } = useAuth()
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    department: any | null
+    isDeleting: boolean
+  }>({
+    open: false,
+    department: null,
+    isDeleting: false,
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -40,6 +57,82 @@ export default function DepartmentsPage() {
       console.error("Error fetching departments:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteClick = (department: any) => {
+    setDeleteDialog({
+      open: true,
+      department,
+      isDeleting: false,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.department) return
+
+    try {
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
+
+      // Check if department has users
+      const { data: users } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("department_id", deleteDialog.department.id)
+        .limit(1)
+
+      if (users && users.length > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: "Este departamento tiene usuarios asignados. Reasigna o elimina los usuarios primero.",
+          variant: "destructive",
+        })
+        setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+        return
+      }
+
+      // Check if department has documents
+      const { data: documents } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("department_id", deleteDialog.department.id)
+        .limit(1)
+
+      if (documents && documents.length > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: "Este departamento tiene documentos asociados. Reasigna o elimina los documentos primero.",
+          variant: "destructive",
+        })
+        setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+        return
+      }
+
+      // Delete the department
+      const { error } = await supabase.from("departments").delete().eq("id", deleteDialog.department.id)
+
+      if (error) throw error
+
+      setDepartments(departments.filter((dept) => dept.id !== deleteDialog.department.id))
+
+      toast({
+        title: "Departamento eliminado",
+        description: "El departamento ha sido eliminado correctamente.",
+      })
+
+      setDeleteDialog({
+        open: false,
+        department: null,
+        isDeleting: false,
+      })
+    } catch (error: any) {
+      console.error("Error deleting department:", error)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el departamento: " + error.message,
+        variant: "destructive",
+      })
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
     }
   }
 
@@ -162,7 +255,11 @@ export default function DepartmentsPage() {
                               <Edit className="mr-2 h-4 w-4" />
                               <span>Editar</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(dept)}
+                              className="text-red-600 focus:text-red-600"
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Eliminar</span>
                             </DropdownMenuItem>
@@ -177,6 +274,16 @@ export default function DepartmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Departamento"
+        description="¿Estás seguro de que deseas eliminar este departamento? Se verificará que no tenga usuarios o documentos asociados antes de proceder."
+        itemName={deleteDialog.department?.name}
+        isDeleting={deleteDialog.isDeleting}
+      />
     </div>
   )
 }

@@ -21,8 +21,10 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "@/hooks/use-toast"
 
 export default function DocumentsPage() {
   const router = useRouter()
@@ -35,7 +37,15 @@ export default function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    document: any | null
+    isDeleting: boolean
+  }>({
+    open: false,
+    document: null,
+    isDeleting: false,
+  })
 
   useEffect(() => {
     if (user) {
@@ -165,22 +175,44 @@ export default function DocumentsPage() {
     return matchesSearch && matchesDepartment && matchesStatus
   })
 
-  const handleDeleteDocument = async (documentId: string) => {
-    if (!confirm("¿Está seguro de que desea eliminar este documento?")) return
+  const handleDeleteClick = (document: any) => {
+    setDeleteDialog({
+      open: true,
+      document,
+      isDeleting: false,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.document) return
 
     try {
-      setDeletingId(documentId)
-      const { error } = await supabase.from("documents").delete().eq("id", documentId)
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
+
+      const { error } = await supabase.from("documents").delete().eq("id", deleteDialog.document.id)
 
       if (error) throw error
 
-      setDocuments(documents.filter((doc) => doc.id !== documentId))
-      alert("Documento eliminado correctamente")
+      setDocuments(documents.filter((doc) => doc.id !== deleteDialog.document.id))
+
+      toast({
+        title: "Documento eliminado",
+        description: "El documento ha sido eliminado correctamente.",
+      })
+
+      setDeleteDialog({
+        open: false,
+        document: null,
+        isDeleting: false,
+      })
     } catch (error: any) {
       console.error("Error deleting document:", error)
-      alert("Error al eliminar el documento: " + error.message)
-    } finally {
-      setDeletingId(null)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el documento: " + error.message,
+        variant: "destructive",
+      })
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
     }
   }
 
@@ -334,13 +366,9 @@ export default function DocumentsPage() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={deletingId === document.id}>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Abrir menú de acciones</span>
-                              {deletingId === document.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MoreHorizontal className="h-4 w-4" />
-                              )}
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
@@ -358,9 +386,8 @@ export default function DocumentsPage() {
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => handleDeleteDocument(document.id)}
+                                  onClick={() => handleDeleteClick(document)}
                                   className="text-red-600 focus:text-red-600"
-                                  disabled={deletingId === document.id}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Eliminar
@@ -378,6 +405,16 @@ export default function DocumentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Documento"
+        description="¿Estás seguro de que deseas eliminar este documento? Se eliminarán también todos sus movimientos y archivos adjuntos."
+        itemName={deleteDialog.document?.title || deleteDialog.document?.document_number}
+        isDeleting={deleteDialog.isDeleting}
+      />
     </div>
   )
 }

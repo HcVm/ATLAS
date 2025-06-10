@@ -6,18 +6,35 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
 export default function UsersPage() {
   const { user } = useAuth()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    user: any | null
+    isDeleting: boolean
+  }>({
+    open: false,
+    user: null,
+    isDeleting: false,
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -55,6 +72,81 @@ export default function UsersPage() {
         return <Badge variant="secondary">Usuario</Badge>
       default:
         return <Badge variant="outline">{role}</Badge>
+    }
+  }
+
+  const handleDeleteClick = (userToDelete: any) => {
+    setDeleteDialog({
+      open: true,
+      user: userToDelete,
+      isDeleting: false,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.user) return
+
+    try {
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
+
+      // First, check if user has any documents or movements
+      const { data: documents } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("created_by", deleteDialog.user.id)
+        .limit(1)
+
+      const { data: movements } = await supabase
+        .from("document_movements")
+        .select("id")
+        .eq("moved_by", deleteDialog.user.id)
+        .limit(1)
+
+      if (documents && documents.length > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: "Este usuario tiene documentos asociados. Transfiere o elimina los documentos primero.",
+          variant: "destructive",
+        })
+        setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+        return
+      }
+
+      if (movements && movements.length > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: "Este usuario tiene movimientos de documentos asociados.",
+          variant: "destructive",
+        })
+        setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+        return
+      }
+
+      // Delete the user profile
+      const { error } = await supabase.from("profiles").delete().eq("id", deleteDialog.user.id)
+
+      if (error) throw error
+
+      setUsers(users.filter((u) => u.id !== deleteDialog.user.id))
+
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado correctamente.",
+      })
+
+      setDeleteDialog({
+        open: false,
+        user: null,
+        isDeleting: false,
+      })
+    } catch (error: any) {
+      console.error("Error deleting user:", error)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el usuario: " + error.message,
+        variant: "destructive",
+      })
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
     }
   }
 
@@ -129,14 +221,14 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
+                  {filteredUsers.map((userItem) => (
+                    <TableRow key={userItem.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.avatar_url || ""} />
+                            <AvatarImage src={userItem.avatar_url || ""} />
                             <AvatarFallback>
-                              {user.full_name
+                              {userItem.full_name
                                 .split(" ")
                                 .map((n: string) => n[0])
                                 .join("")
@@ -144,14 +236,14 @@ export default function UsersPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium">{user.full_name}</div>
+                            <div className="font-medium">{userItem.full_name}</div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.departments?.name || "Sin departamento"}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>{new Date(user.created_at).toLocaleDateString("es-ES")}</TableCell>
+                      <TableCell>{userItem.email}</TableCell>
+                      <TableCell>{userItem.departments?.name || "Sin departamento"}</TableCell>
+                      <TableCell>{getRoleBadge(userItem.role)}</TableCell>
+                      <TableCell>{new Date(userItem.created_at).toLocaleDateString("es-ES")}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -175,14 +267,22 @@ export default function UsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/users/edit/${user.id}`)}>
+                            <DropdownMenuItem onClick={() => router.push(`/users/edit/${userItem.id}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               <span>Editar</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Eliminar</span>
-                            </DropdownMenuItem>
+                            {userItem.id !== user?.id && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(userItem)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Eliminar</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -194,6 +294,16 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Usuario"
+        description="¿Estás seguro de que deseas eliminar este usuario? Se verificará que no tenga documentos o movimientos asociados antes de proceder."
+        itemName={deleteDialog.user?.full_name}
+        isDeleting={deleteDialog.isDeleting}
+      />
     </div>
   )
 }

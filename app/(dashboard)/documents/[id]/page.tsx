@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, MoveDown, MoveDownIcon, AxeIcon, FileIcon, FileBoxIcon, FileBadgeIcon } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -41,6 +41,8 @@ export default function DocumentDetailsPage() {
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<any[]>([])
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
 
   useEffect(() => {
     // Validate UUID before making requests
@@ -105,8 +107,8 @@ export default function DocumentDetailsPage() {
         .from("document_movements")
         .select(`
           *,
-          from_departments:from_department_id(id, name),
-          to_departments:to_department_id(id, name),
+          from_departments:from_department_id(id, name, color),
+          to_departments:to_department_id(id, name, color),
           profiles!document_movements_moved_by_fkey(id, full_name, email)
         `)
         .eq("document_id", params.id)
@@ -141,6 +143,7 @@ export default function DocumentDetailsPage() {
     setMovementDialogOpen(false)
     fetchDocument()
     fetchMovements()
+    fetchAttachments()
   }
 
   const getStatusBadge = (status: string) => {
@@ -174,32 +177,17 @@ export default function DocumentDetailsPage() {
     }
   }
 
-  const downloadFile = async () => {
-    if (!document?.file_url) {
-      toast({
-        title: "Error",
-        description: "No hay archivo adjunto a este documento.",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const viewFile = async (fileUrl: string) => {
     try {
-      setDownloadLoading(true)
+      let filePath = fileUrl
 
-      // Extract the file path - handle both full URLs and relative paths
-      let filePath = document.file_url
-
-      // If it's a full URL, extract just the path part
       if (filePath.startsWith("http")) {
         try {
           const url = new URL(filePath)
-          // Extract the path after /storage/v1/object/public/documents/
           const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/)
           if (pathMatch && pathMatch[1]) {
             filePath = pathMatch[1]
           } else {
-            // If we can't extract the path, try using the full path without the domain
             filePath = url.pathname.replace("/storage/v1/object/public/", "")
           }
         } catch (e) {
@@ -207,28 +195,62 @@ export default function DocumentDetailsPage() {
         }
       }
 
-      console.log("Attempting to download file:", filePath)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from("documents")
+        .createSignedUrl(filePath, 3600) // 1 hora
 
-      // First try to get a signed URL (works better for private buckets)
+      if (signedUrlData?.signedUrl) {
+        setViewerUrl(signedUrlData.signedUrl)
+        setViewerOpen(true)
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar la vista previa del archivo",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("Error viewing file:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la vista previa del archivo",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const downloadFile = async (fileUrl: string, fileName?: string) => {
+    try {
+      setDownloadLoading(true)
+
+      let filePath = fileUrl
+
+      if (filePath.startsWith("http")) {
+        try {
+          const url = new URL(filePath)
+          const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/)
+          if (pathMatch && pathMatch[1]) {
+            filePath = pathMatch[1]
+          } else {
+            filePath = url.pathname.replace("/storage/v1/object/public/", "")
+          }
+        } catch (e) {
+          console.error("Error parsing URL:", e)
+        }
+      }
+
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("documents")
         .createSignedUrl(filePath, 60)
 
       if (signedUrlData?.signedUrl) {
-        // Open the signed URL in a new tab
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
 
-      if (signedUrlError) {
-        console.warn("Error creating signed URL:", signedUrlError)
-      }
-
-      // Fall back to direct download
       const { data, error } = await supabase.storage.from("documents").download(filePath)
 
       if (error) {
-        console.error("Download error:", error)
         throw new Error(error.message || "Error al descargar el archivo")
       }
 
@@ -236,11 +258,10 @@ export default function DocumentDetailsPage() {
         throw new Error("No se pudo obtener el archivo")
       }
 
-      // Create a download link
       const url = URL.createObjectURL(data)
       const a = document.createElement("a")
       a.href = url
-      a.download = filePath.split("/").pop() || "documento"
+      a.download = fileName || filePath.split("/").pop() || "documento"
       document.body.appendChild(a)
       a.click()
       URL.revokeObjectURL(url)
@@ -286,8 +307,6 @@ export default function DocumentDetailsPage() {
         }
       }
 
-      console.log("Attempting to download attachment:", filePath)
-
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("document_attachments")
         .createSignedUrl(filePath, 60)
@@ -297,14 +316,9 @@ export default function DocumentDetailsPage() {
         return
       }
 
-      if (signedUrlError) {
-        console.warn("Error creating signed URL:", signedUrlError)
-      }
-
       const { data, error } = await supabase.storage.from("document_attachments").download(filePath)
 
       if (error) {
-        console.error("Download error:", error)
         throw new Error(error.message || "Error al descargar el archivo adjunto")
       }
 
@@ -330,6 +344,17 @@ export default function DocumentDetailsPage() {
     } finally {
       setDownloadLoading(false)
     }
+  }
+
+  // Función para obtener el color de texto basado en el color de fondo
+  const getTextColor = (backgroundColor: string) => {
+    if (!backgroundColor) return "#000000"
+    const hex = backgroundColor.replace("#", "")
+    const r = Number.parseInt(hex.substr(0, 2), 16)
+    const g = Number.parseInt(hex.substr(2, 2), 16)
+    const b = Number.parseInt(hex.substr(4, 2), 16)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return luminance > 0.5 ? "#000000" : "#FFFFFF"
   }
 
   if (loading) {
@@ -426,10 +451,20 @@ export default function DocumentDetailsPage() {
 
                 <div className="flex flex-wrap gap-3">
                   {document.file_url && (
-                    <Button variant="outline" onClick={downloadFile} disabled={downloadLoading}>
-                      <Download className="h-4 w-4 mr-2" />
-                      {downloadLoading ? "Descargando..." : "Descargar Archivo"}
-                    </Button>
+                    <>
+                      <Button variant="outline" onClick={() => viewFile(document.file_url)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Archivo
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => downloadFile(document.file_url)}
+                        disabled={downloadLoading}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {downloadLoading ? "Descargando..." : "Descargar"}
+                      </Button>
+                    </>
                   )}
                   <Button variant="outline" asChild>
                     <Link href={`/documents/edit/${document.id}`}>
@@ -444,11 +479,12 @@ export default function DocumentDetailsPage() {
                         Mover Documento
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-2xl">
                       <DialogHeader>
                         <DialogTitle>Mover Documento</DialogTitle>
                         <DialogDescription>
-                          Seleccione el departamento al que desea mover este documento.
+                          Seleccione el departamento al que desea mover este documento y agregue archivos adjuntos si es
+                          necesario.
                         </DialogDescription>
                       </DialogHeader>
                       <MovementForm
@@ -466,44 +502,136 @@ export default function DocumentDetailsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Historial de Movimientos</CardTitle>
-              <CardDescription>Seguimiento de todos los movimientos del documento</CardDescription>
+              <CardDescription>Seguimiento completo de todos los movimientos del documento</CardDescription>
             </CardHeader>
             <CardContent>
               {movements.length === 0 ? (
-                <div className="text-center py-6">
+                <div className="text-center py-8">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
                   <h3 className="mt-4 text-lg font-medium">Sin movimientos</h3>
                   <p className="text-muted-foreground">Este documento no ha sido movido aún.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {movements.map((movement, index) => (
-                    <div key={movement.id} className="relative pl-6 pb-6">
-                      {/* Timeline connector */}
+                    <div key={movement.id} className="relative">
+                      {/* Línea de conexión */}
                       {index < movements.length - 1 && (
-                        <div className="absolute left-2.5 top-2.5 bottom-0 w-0.5 bg-gray-200"></div>
+                        <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-border"></div>
                       )}
-                      {/* Timeline dot */}
-                      <div className="absolute left-0 top-2.5 h-5 w-5 rounded-full border-2 border-primary bg-background"></div>
 
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {format(new Date(movement.created_at), "PPpp", { locale: es })}
-                          </span>
-                        </div>
-                        <p className="font-medium">
-                          Movido de{" "}
-                          <span className="font-bold text-primary">{movement.from_departments?.name || "Origen"}</span>{" "}
-                          a <span className="font-bold text-primary">{movement.to_departments?.name || "Destino"}</span>
-                        </p>
-                        <p className="text-sm text-muted-foreground">Por {movement.profiles?.full_name}</p>
-                        {movement.notes && (
-                          <div className="mt-2 text-sm bg-muted p-3 rounded-md">
-                            <p className="font-medium">Notas:</p>
-                            <p className="whitespace-pre-line">{movement.notes}</p>
+                      <div className="flex gap-4">
+                        {/* Indicador circular */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
+                            <FileBadgeIcon className="h-5 w-5 text-primary" />
                           </div>
-                        )}
+                          {index === 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background"></div>
+                          )}
+                        </div>
+
+                        {/* Contenido del movimiento */}
+                        <div className="flex-1 min-w-0 pb-8">
+                          <div className="bg-card border rounded-lg p-4 shadow-sm">
+                            {/* Header del movimiento */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                {/* Departamento origen */}
+                                {movement.from_departments && (
+                                  <div
+                                    className="px-3 py-1 rounded-full text-sm font-medium"
+                                    style={{
+                                      backgroundColor: movement.from_departments.color || "#6B7280",
+                                      color: getTextColor(movement.from_departments.color || "#6B7280"),
+                                    }}
+                                  >
+                                    {movement.from_departments.name}
+                                  </div>
+                                )}
+
+                                <MoveRight className="h-4 w-4 text-muted-foreground" />
+
+                                {/* Departamento destino */}
+                                {movement.to_departments && (
+                                  <div
+                                    className="px-3 py-1 rounded-full text-sm font-medium ring-2 ring-offset-1"
+                                    style={{
+                                      backgroundColor: movement.to_departments.color || "#6B7280",
+                                      color: getTextColor(movement.to_departments.color || "#6B7280"),
+                                      ringColor: movement.to_departments.color || "#6B7280",
+                                    }}
+                                  >
+                                    {movement.to_departments.name}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="text-right">
+                                <div className="text-sm font-medium">
+                                  {format(new Date(movement.created_at), "dd/MM/yyyy", { locale: es })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {format(new Date(movement.created_at), "HH:mm", { locale: es })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Información del usuario */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-xs font-medium">
+                                  {movement.profiles?.full_name?.charAt(0) || "?"}
+                                </span>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                Movido por {movement.profiles?.full_name || "Usuario desconocido"}
+                              </span>
+                            </div>
+
+                            {/* Notas del movimiento */}
+                            {movement.notes && (
+                              <div className="bg-muted/50 rounded-md p-3 mb-3">
+                                <p className="text-sm font-medium mb-1">Notas:</p>
+                                <p className="text-sm whitespace-pre-line">{movement.notes}</p>
+                              </div>
+                            )}
+
+                            {/* Archivos adjuntos del movimiento */}
+                            {attachments.filter((att) => att.movement_id === movement.id).length > 0 && (
+                              <div className="border-t pt-3">
+                                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                                  <Paperclip className="h-4 w-4" />
+                                  Archivos adjuntos
+                                </p>
+                                <div className="space-y-2">
+                                  {attachments
+                                    .filter((att) => att.movement_id === movement.id)
+                                    .map((attachment) => (
+                                      <div
+                                        key={attachment.id}
+                                        className="flex items-center justify-between p-2 bg-muted/30 rounded"
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium truncate">{attachment.file_name}</div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Subido por {attachment.profiles?.full_name}
+                                          </div>
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => downloadAttachment(attachment)}
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -514,11 +642,11 @@ export default function DocumentDetailsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Archivos Adjuntos</CardTitle>
+              <CardTitle>Archivos Adjuntos Generales</CardTitle>
               <CardDescription>Archivos secundarios del documento</CardDescription>
             </CardHeader>
             <CardContent>
-              {attachments.length === 0 ? (
+              {attachments.filter((att) => !att.movement_id).length === 0 ? (
                 <div className="text-center py-6">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
                   <h3 className="mt-4 text-lg font-medium">Sin archivos adjuntos</h3>
@@ -526,20 +654,22 @@ export default function DocumentDetailsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {attachments.map((attachment) => (
-                    <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{attachment.file_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Subido por {attachment.profiles?.full_name} •
-                          {format(new Date(attachment.created_at), "dd/MM/yyyy", { locale: es })}
+                  {attachments
+                    .filter((att) => !att.movement_id)
+                    .map((attachment) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{attachment.file_name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Subido por {attachment.profiles?.full_name} •
+                            {format(new Date(attachment.created_at), "dd/MM/yyyy", { locale: es })}
+                          </div>
                         </div>
+                        <Button variant="outline" size="sm" onClick={() => downloadAttachment(attachment)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => downloadAttachment(attachment)}>
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </CardContent>
@@ -582,15 +712,25 @@ export default function DocumentDetailsPage() {
                 </Link>
               </Button>
               {document.file_url && (
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  onClick={downloadFile}
-                  disabled={downloadLoading}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {downloadLoading ? "Descargando..." : "Descargar Archivo"}
-                </Button>
+                <>
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => viewFile(document.file_url)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver Archivo
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => downloadFile(document.file_url)}
+                    disabled={downloadLoading}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {downloadLoading ? "Descargando..." : "Descargar Archivo"}
+                  </Button>
+                </>
               )}
               <Button className="w-full justify-start" variant="default" onClick={() => setMovementDialogOpen(true)}>
                 <MoveRight className="h-4 w-4 mr-2" />
@@ -600,6 +740,27 @@ export default function DocumentDetailsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Visor de archivos */}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Vista previa del documento</DialogTitle>
+            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {viewerUrl && (
+              <iframe
+                src={viewerUrl}
+                className="w-full h-[70vh] border rounded-md"
+                title="Vista previa del documento"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
