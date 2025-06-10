@@ -68,12 +68,28 @@ export default function ScanQRPage() {
   const [debugInfo, setDebugInfo] = useState<string>("")
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([])
+  const [isVideoMounted, setIsVideoMounted] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
+
+  // Verificar que el video element esté montado
+  useEffect(() => {
+    const checkVideoElement = () => {
+      if (videoRef.current) {
+        setIsVideoMounted(true)
+        console.log("Video element mounted successfully")
+      } else {
+        console.log("Video element not yet mounted")
+        setTimeout(checkVideoElement, 100)
+      }
+    }
+
+    checkVideoElement()
+  }, [])
 
   // Obtener cámaras disponibles
   useEffect(() => {
@@ -199,6 +215,25 @@ export default function ScanQRPage() {
 
   const startScanning = async (facingMode: "user" | "environment" = cameraFacing) => {
     console.log("Starting camera with facing mode:", facingMode)
+
+    // Verificar que el video element esté disponible
+    if (!videoRef.current) {
+      console.error("Video element not found, waiting...")
+      setDebugInfo("Esperando elemento de video...")
+
+      // Esperar un poco y reintentar
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Video element found after waiting, retrying...")
+          startScanning(facingMode)
+        } else {
+          setCameraError("No se pudo encontrar el elemento de video. Intenta recargar la página.")
+          setDebugInfo("Error: Elemento de video no encontrado")
+        }
+      }, 500)
+      return
+    }
+
     setCameraError(null)
     setError(null)
     setVideoReady(false)
@@ -232,66 +267,67 @@ export default function ScanQRPage() {
       setCameraFacing(facingMode)
       setDebugInfo(`Stream obtenido. Tracks: ${mediaStream.getTracks().length}`)
 
-      if (videoRef.current) {
-        const video = videoRef.current
-
-        // Limpiar eventos anteriores
-        video.onloadedmetadata = null
-        video.onerror = null
-        video.oncanplay = null
-
-        // Configurar el video element
-        video.srcObject = mediaStream
-        video.playsInline = true
-        video.muted = true
-        video.autoplay = true
-
-        // Configurar atributos adicionales para móviles
-        video.setAttribute("playsinline", "true")
-        video.setAttribute("webkit-playsinline", "true")
-        video.setAttribute("muted", "true")
-
-        setDebugInfo("Configurando video element...")
-
-        // Manejar eventos del video
-        video.onloadedmetadata = () => {
-          console.log("Video metadata loaded")
-          setDebugInfo(`Video cargado: ${video.videoWidth}x${video.videoHeight}`)
-
-          video
-            .play()
-            .then(() => {
-              console.log("Video playing successfully")
-              setVideoReady(true)
-              setScanning(true)
-              setDebugInfo("¡Video reproduciéndose! Iniciando escaneo...")
-
-              // Iniciar el escaneo continuo
-              scanIntervalRef.current = setInterval(scanFrame, 300)
-            })
-            .catch((playError) => {
-              console.error("Error playing video:", playError)
-              setCameraError(`Error al reproducir video: ${playError.message}`)
-              setDebugInfo(`Error reproduciendo: ${playError.message}`)
-            })
-        }
-
-        video.onerror = (e) => {
-          console.error("Video error:", e)
-          setCameraError("Error en el elemento de video")
-          setDebugInfo("Error en el elemento de video")
-        }
-
-        video.oncanplay = () => {
-          console.log("Video can play")
-          setDebugInfo("Video listo para reproducir")
-        }
-
-        // Forzar la carga del video
-        video.load()
-      } else {
-        throw new Error("Video element not found")
+      // Verificar nuevamente que el video element esté disponible
+      if (!videoRef.current) {
+        throw new Error("Video element disappeared during setup")
       }
+
+      const video = videoRef.current
+
+      // Limpiar eventos anteriores
+      video.onloadedmetadata = null
+      video.onerror = null
+      video.oncanplay = null
+
+      // Configurar el video element
+      video.srcObject = mediaStream
+      video.playsInline = true
+      video.muted = true
+      video.autoplay = true
+
+      // Configurar atributos adicionales para móviles
+      video.setAttribute("playsinline", "true")
+      video.setAttribute("webkit-playsinline", "true")
+      video.setAttribute("muted", "true")
+
+      setDebugInfo("Configurando video element...")
+
+      // Manejar eventos del video
+      video.onloadedmetadata = () => {
+        console.log("Video metadata loaded")
+        setDebugInfo(`Video cargado: ${video.videoWidth}x${video.videoHeight}`)
+
+        video
+          .play()
+          .then(() => {
+            console.log("Video playing successfully")
+            setVideoReady(true)
+            setScanning(true)
+            setDebugInfo("¡Video reproduciéndose! Iniciando escaneo...")
+
+            // Iniciar el escaneo continuo
+            scanIntervalRef.current = setInterval(scanFrame, 300)
+          })
+          .catch((playError) => {
+            console.error("Error playing video:", playError)
+            setCameraError(`Error al reproducir video: ${playError.message}`)
+            setDebugInfo(`Error reproduciendo: ${playError.message}`)
+          })
+      }
+
+      video.onerror = (e) => {
+        console.error("Video error:", e)
+        setCameraError("Error en el elemento de video")
+        setDebugInfo("Error en el elemento de video")
+      }
+
+      video.oncanplay = () => {
+        console.log("Video can play")
+        setDebugInfo("Video listo para reproducir")
+      }
+
+      // Forzar la carga del video
+      video.load()
     } catch (error: any) {
       console.error("Camera error:", error)
       let errorMessage = "Error desconocido al acceder a la cámara"
@@ -452,20 +488,22 @@ export default function ScanQRPage() {
 
               <TabsContent value="camera" className="space-y-4">
                 <div className="aspect-square max-w-md mx-auto overflow-hidden rounded-lg border bg-black relative">
-                  {scanning && videoReady ? (
+                  {/* Video element siempre presente */}
+                  <video
+                    ref={videoRef}
+                    className={`w-full h-full object-cover ${scanning && videoReady ? "block" : "hidden"}`}
+                    playsInline
+                    muted
+                    autoPlay
+                    style={{
+                      transform: cameraFacing === "user" ? "scaleX(-1)" : "none",
+                    }}
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+
+                  {/* Overlay para mostrar el área de escaneo */}
+                  {scanning && videoReady && (
                     <>
-                      <video
-                        ref={videoRef}
-                        className="w-full h-full object-cover"
-                        playsInline
-                        muted
-                        autoPlay
-                        style={{
-                          transform: cameraFacing === "user" ? "scaleX(-1)" : "none",
-                        }}
-                      />
-                      <canvas ref={canvasRef} className="hidden" />
-                      {/* Overlay para mostrar el área de escaneo */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-70 animate-pulse"></div>
                       </div>
@@ -485,8 +523,11 @@ export default function ScanQRPage() {
                         </button>
                       )}
                     </>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
+                  )}
+
+                  {/* Estado cuando no está escaneando */}
+                  {(!scanning || !videoReady) && (
+                    <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-center p-6">
                       <Camera className="h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="text-lg font-medium mb-2">
                         {cameraError ? "Error con la cámara" : scanning ? "Iniciando cámara..." : "Cámara Detenida"}
@@ -500,11 +541,11 @@ export default function ScanQRPage() {
                       </p>
                       {!scanning && (
                         <div className="space-y-2">
-                          <Button onClick={() => startScanning()} disabled={!!cameraError} size="sm">
+                          <Button onClick={() => startScanning()} disabled={!!cameraError || !isVideoMounted} size="sm">
                             <Camera className="h-4 w-4 mr-2" />
                             Iniciar Escáner
                           </Button>
-                          {availableCameras.length > 1 && (
+                          {availableCameras.length > 1 && isVideoMounted && (
                             <div className="flex gap-2">
                               <Button
                                 onClick={() => startScanning("environment")}
@@ -543,13 +584,11 @@ export default function ScanQRPage() {
                   </div>
                 )}
 
-                {/* Información de cámaras disponibles */}
-                {availableCameras.length > 0 && (
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                    <strong>Cámaras disponibles:</strong> {availableCameras.length} (
-                    {cameraFacing === "environment" ? "Trasera" : "Frontal"} activa)
-                  </div>
-                )}
+                {/* Información de estado del video */}
+                <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                  <strong>Estado:</strong> Video element {isVideoMounted ? "montado" : "no montado"} | Cámaras:{" "}
+                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"}
+                </div>
 
                 {/* Controles fuera del contenedor de video */}
                 {scanning && videoReady && (
@@ -579,6 +618,13 @@ export default function ScanQRPage() {
                         <div className="mt-2">
                           <Button onClick={() => startScanning("user")} size="sm" variant="outline">
                             Probar Cámara Frontal
+                          </Button>
+                        </div>
+                      )}
+                      {cameraError.includes("elemento de video") && (
+                        <div className="mt-2">
+                          <Button onClick={() => window.location.reload()} size="sm" variant="outline">
+                            Recargar Página
                           </Button>
                         </div>
                       )}
