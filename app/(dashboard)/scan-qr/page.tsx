@@ -69,11 +69,13 @@ export default function ScanQRPage() {
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([])
   const [isVideoMounted, setIsVideoMounted] = useState(false)
+  const [initAttempts, setInitAttempts] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   // Verificar que el video element esté montado
@@ -115,6 +117,9 @@ export default function ScanQRPage() {
       }
       if (scanIntervalRef.current) {
         clearInterval(scanIntervalRef.current)
+      }
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current)
       }
     }
   }, [stream])
@@ -195,7 +200,6 @@ export default function ScanQRPage() {
 
     // Verificar que el video esté completamente cargado y tenga datos
     if (!ctx || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-      console.log("Video not fully ready for scanning, skipping frame")
       return
     }
 
@@ -206,7 +210,6 @@ export default function ScanQRPage() {
 
       // Verificar que las dimensiones sean válidas
       if (canvas.width === 0 || canvas.height === 0) {
-        console.log("Invalid video dimensions, skipping frame")
         return
       }
 
@@ -223,18 +226,42 @@ export default function ScanQRPage() {
     }
   }, [scanning, videoReady])
 
+  // Función para forzar reinicialización si no funciona
+  const forceReinitialize = useCallback(async () => {
+    console.log("Force reinitializing camera...")
+    setDebugInfo("Forzando reinicialización...")
+
+    // Detener todo
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+      setStream(null)
+    }
+
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+
+    setVideoReady(false)
+    setScanning(false)
+
+    // Esperar un momento y reiniciar
+    setTimeout(() => {
+      startScanning(cameraFacing)
+    }, 1000)
+  }, [stream, cameraFacing])
+
   const startScanning = async (facingMode: "user" | "environment" = cameraFacing) => {
-    console.log("Starting camera with facing mode:", facingMode)
+    console.log("Starting camera with facing mode:", facingMode, "Attempt:", initAttempts + 1)
+    setInitAttempts((prev) => prev + 1)
 
     // Verificar que el video element esté disponible
     if (!videoRef.current) {
       console.error("Video element not found, waiting...")
       setDebugInfo("Esperando elemento de video...")
 
-      // Esperar un poco y reintentar
       setTimeout(() => {
         if (videoRef.current) {
-          console.log("Video element found after waiting, retrying...")
           startScanning(facingMode)
         } else {
           setCameraError("No se pudo encontrar el elemento de video. Intenta recargar la página.")
@@ -247,7 +274,7 @@ export default function ScanQRPage() {
     setCameraError(null)
     setError(null)
     setVideoReady(false)
-    setDebugInfo("Solicitando acceso a la cámara...")
+    setDebugInfo(`Iniciando cámara (intento ${initAttempts + 1})...`)
 
     // Detener stream anterior si existe
     if (stream) {
@@ -255,11 +282,23 @@ export default function ScanQRPage() {
       setStream(null)
     }
 
+    // Limpiar timeouts anteriores
+    if (initTimeoutRef.current) {
+      clearTimeout(initTimeoutRef.current)
+    }
+
     try {
-      // Configuración más específica para el primer intento
+      // Estrategia: Intentar primero con la cámara frontal para "calentar" el sistema
+      let actualFacingMode = facingMode
+      if (initAttempts === 0 && facingMode === "environment") {
+        console.log("First attempt: warming up with front camera first")
+        actualFacingMode = "user"
+        setDebugInfo("Calentando sistema con cámara frontal...")
+      }
+
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: facingMode === "environment" ? { exact: "environment" } : { exact: "user" },
+          facingMode: { ideal: actualFacingMode },
           width: { ideal: 1280, min: 640, max: 1920 },
           height: { ideal: 720, min: 480, max: 1080 },
           frameRate: { ideal: 30, min: 20, max: 60 },
@@ -268,109 +307,34 @@ export default function ScanQRPage() {
       }
 
       console.log("Requesting camera with constraints:", constraints)
-      setDebugInfo(`Obteniendo stream de cámara (${facingMode})...`)
 
-      let mediaStream: MediaStream
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log("Camera stream obtained:", mediaStream)
 
-      try {
-        // Primer intento con configuración exacta
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-      } catch (exactError) {
-        console.log("Exact constraints failed, trying ideal constraints")
-        // Si falla, intentar con configuración más flexible
-        const fallbackConstraints: MediaStreamConstraints = {
+      // Si estamos calentando con la frontal, cambiar inmediatamente a la trasera
+      if (initAttempts === 0 && facingMode === "environment" && actualFacingMode === "user") {
+        console.log("Warming up complete, switching to back camera")
+        mediaStream.getTracks().forEach((track) => track.stop())
+
+        const backConstraints: MediaStreamConstraints = {
           video: {
-            facingMode: { ideal: facingMode },
-            width: { ideal: 1280, min: 320, max: 1920 },
-            height: { ideal: 720, min: 240, max: 1080 },
-            frameRate: { ideal: 30, min: 15, max: 60 },
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280, min: 640, max: 1920 },
+            height: { ideal: 720, min: 480, max: 1080 },
+            frameRate: { ideal: 30, min: 20, max: 60 },
           },
           audio: false,
         }
-        mediaStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints)
-      }
 
-      console.log("Camera stream obtained:", mediaStream)
+        const backStream = await navigator.mediaDevices.getUserMedia(backConstraints)
+        setStream(backStream)
+        setDebugInfo("Cambiando a cámara trasera...")
+        await setupVideo(backStream, facingMode)
+        return
+      }
 
       setStream(mediaStream)
-      setCameraFacing(facingMode)
-      setDebugInfo(`Stream obtenido. Tracks: ${mediaStream.getTracks().length}`)
-
-      // Verificar nuevamente que el video element esté disponible
-      if (!videoRef.current) {
-        throw new Error("Video element disappeared during setup")
-      }
-
-      const video = videoRef.current
-
-      // Limpiar eventos anteriores
-      video.onloadedmetadata = null
-      video.onerror = null
-      video.oncanplay = null
-
-      // Configurar el video element
-      video.srcObject = mediaStream
-      video.playsInline = true
-      video.muted = true
-      video.autoplay = true
-
-      // Configurar atributos adicionales para móviles
-      video.setAttribute("playsinline", "true")
-      video.setAttribute("webkit-playsinline", "true")
-      video.setAttribute("muted", "true")
-
-      setDebugInfo("Configurando video element...")
-
-      // Manejar eventos del video
-      video.onloadedmetadata = () => {
-        console.log("Video metadata loaded")
-        setDebugInfo(`Video cargado: ${video.videoWidth}x${video.videoHeight}`)
-
-        video
-          .play()
-          .then(() => {
-            console.log("Video playing successfully")
-            setVideoReady(true)
-            setScanning(true)
-            setDebugInfo("¡Video reproduciéndose! Iniciando escaneo...")
-
-            // Esperar un poco más antes de iniciar el escaneo para asegurar estabilidad
-            setTimeout(() => {
-              if (videoRef.current && videoRef.current.readyState >= 2) {
-                console.log("Video fully ready, starting scan interval")
-                scanIntervalRef.current = setInterval(scanFrame, 300)
-                setDebugInfo("Escaneo activo - Video estabilizado")
-              } else {
-                console.log("Video not ready yet, waiting more...")
-                setTimeout(() => {
-                  if (videoRef.current && videoRef.current.readyState >= 2) {
-                    scanIntervalRef.current = setInterval(scanFrame, 300)
-                    setDebugInfo("Escaneo activo - Video estabilizado (segundo intento)")
-                  }
-                }, 1000)
-              }
-            }, 1500) // Esperar 1.5 segundos para que el video se estabilice
-          })
-          .catch((playError) => {
-            console.error("Error playing video:", playError)
-            setCameraError(`Error al reproducir video: ${playError.message}`)
-            setDebugInfo(`Error reproduciendo: ${playError.message}`)
-          })
-      }
-
-      video.onerror = (e) => {
-        console.error("Video error:", e)
-        setCameraError("Error en el elemento de video")
-        setDebugInfo("Error en el elemento de video")
-      }
-
-      video.oncanplay = () => {
-        console.log("Video can play")
-        setDebugInfo("Video listo para reproducir")
-      }
-
-      // Forzar la carga del video
-      video.load()
+      await setupVideo(mediaStream, actualFacingMode)
     } catch (error: any) {
       console.error("Camera error:", error)
       let errorMessage = "Error desconocido al acceder a la cámara"
@@ -390,12 +354,120 @@ export default function ScanQRPage() {
       setCameraError(errorMessage)
       setDebugInfo(`Error: ${errorMessage}`)
 
-      // Si falla con la cámara trasera, intentar con la frontal
-      if (facingMode === "environment" && error.name === "OverconstrainedError") {
+      // Si falla, intentar con la otra cámara
+      if (facingMode === "environment" && initAttempts < 2) {
         console.log("Trying front camera as fallback...")
         setTimeout(() => startScanning("user"), 1000)
       }
     }
+  }
+
+  const setupVideo = async (mediaStream: MediaStream, facingMode: "user" | "environment") => {
+    if (!videoRef.current) {
+      throw new Error("Video element disappeared during setup")
+    }
+
+    const video = videoRef.current
+    setCameraFacing(facingMode)
+    setDebugInfo(`Configurando video (${facingMode})...`)
+
+    // Limpiar eventos anteriores
+    video.onloadedmetadata = null
+    video.onerror = null
+    video.oncanplay = null
+    video.onloadeddata = null
+
+    // Configurar el video element
+    video.srcObject = mediaStream
+    video.playsInline = true
+    video.muted = true
+    video.autoplay = true
+
+    // Configurar atributos adicionales para móviles
+    video.setAttribute("playsinline", "true")
+    video.setAttribute("webkit-playsinline", "true")
+    video.setAttribute("muted", "true")
+
+    return new Promise<void>((resolve, reject) => {
+      let resolved = false
+
+      const resolveOnce = () => {
+        if (!resolved) {
+          resolved = true
+          resolve()
+        }
+      }
+
+      const rejectOnce = (error: string) => {
+        if (!resolved) {
+          resolved = true
+          reject(new Error(error))
+        }
+      }
+
+      // Timeout de seguridad
+      const timeout = setTimeout(() => {
+        rejectOnce("Timeout waiting for video to load")
+      }, 10000)
+
+      video.onloadedmetadata = () => {
+        console.log("Video metadata loaded")
+        setDebugInfo(`Video cargado: ${video.videoWidth}x${video.videoHeight}`)
+
+        video
+          .play()
+          .then(() => {
+            console.log("Video playing successfully")
+            setDebugInfo("Video reproduciéndose...")
+
+            // Esperar a que el video tenga datos reales
+            const checkVideoData = () => {
+              if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+                console.log("Video has valid data, starting scan")
+                setVideoReady(true)
+                setScanning(true)
+                setDebugInfo("¡Escaneo iniciado!")
+
+                // Iniciar escaneo inmediatamente
+                scanIntervalRef.current = setInterval(scanFrame, 200)
+
+                // Configurar timeout para reinicializar si no funciona
+                initTimeoutRef.current = setTimeout(() => {
+                  if (initAttempts < 2) {
+                    console.log("Scanner not working, forcing reinitialize")
+                    forceReinitialize()
+                  }
+                }, 5000) // Si no funciona en 5 segundos, reinicializar
+
+                clearTimeout(timeout)
+                resolveOnce()
+              } else {
+                console.log("Video data not ready yet, waiting...")
+                setTimeout(checkVideoData, 500)
+              }
+            }
+
+            checkVideoData()
+          })
+          .catch((playError) => {
+            console.error("Error playing video:", playError)
+            clearTimeout(timeout)
+            rejectOnce(`Error al reproducir video: ${playError.message}`)
+          })
+      }
+
+      video.onerror = (e) => {
+        console.error("Video error:", e)
+        clearTimeout(timeout)
+        rejectOnce("Error en el elemento de video")
+      }
+
+      // Forzar la carga del video
+      video.load()
+    }).catch((error) => {
+      setCameraError(error.message)
+      setDebugInfo(`Error: ${error.message}`)
+    })
   }
 
   const stopScanning = () => {
@@ -404,6 +476,12 @@ export default function ScanQRPage() {
     setVideoReady(false)
     setCameraError(null)
     setDebugInfo("Deteniendo cámara...")
+    setInitAttempts(0)
+
+    // Limpiar timeouts
+    if (initTimeoutRef.current) {
+      clearTimeout(initTimeoutRef.current)
+    }
 
     // Detener el stream de video
     if (stream) {
@@ -432,6 +510,7 @@ export default function ScanQRPage() {
   const switchCamera = () => {
     const newFacing = cameraFacing === "environment" ? "user" : "environment"
     console.log("Switching camera to:", newFacing)
+    setInitAttempts(0) // Reset attempts when manually switching
     stopScanning()
     setTimeout(() => startScanning(newFacing), 500)
   }
@@ -496,6 +575,7 @@ export default function ScanQRPage() {
     setCameraError(null)
     setUploadedImage(null)
     setDebugInfo("")
+    setInitAttempts(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -630,7 +710,8 @@ export default function ScanQRPage() {
                 {/* Información de estado del video */}
                 <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
                   <strong>Estado:</strong> Video element {isVideoMounted ? "montado" : "no montado"} | Cámaras:{" "}
-                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"}
+                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"} |
+                  Intentos: {initAttempts}
                 </div>
 
                 {/* Controles fuera del contenedor de video */}
@@ -648,6 +729,10 @@ export default function ScanQRPage() {
                           Cambiar Cámara
                         </Button>
                       )}
+                      <Button onClick={forceReinitialize} variant="outline" size="sm">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reinicializar
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -824,7 +909,7 @@ export default function ScanQRPage() {
             ) : scannedData ? (
               <div className="text-center py-10">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h3 className="mt-4 text-lg font-medium">Código QR Escaneado</h3>
+                <h3 className="mt-4 text-lg-medium">Código QR Escaneado</h3>
                 <p className="text-muted-foreground mb-4">
                   Se escaneó un código QR pero no se encontró información del documento.
                 </p>
