@@ -20,6 +20,8 @@ import {
   Upload,
   AlertCircle,
   RefreshCw,
+  Play,
+  Pause,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -56,26 +58,30 @@ const detectQRFromCanvas = async (canvas: HTMLCanvasElement): Promise<string | n
 }
 
 export default function ScanQRPage() {
-  const [scanning, setScanning] = useState(false)
-  const [scannedData, setScannedData] = useState<string | null>(null)
-  const [documentData, setDocumentData] = useState<any | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Estados para la cámara
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
-  const [videoReady, setVideoReady] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<string>("")
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([])
+
+  // Estados para el escaneo
+  const [scanningActive, setScanningActive] = useState(false)
+  const [scannedData, setScannedData] = useState<string | null>(null)
+  const [documentData, setDocumentData] = useState<any | null>(null)
+
+  // Estados generales
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string>("")
   const [isVideoMounted, setIsVideoMounted] = useState(false)
-  const [autoRetryCount, setAutoRetryCount] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const autoRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   // Verificar que el video element esté montado
@@ -118,26 +124,17 @@ export default function ScanQRPage() {
       if (scanIntervalRef.current) {
         clearInterval(scanIntervalRef.current)
       }
-      if (autoRetryTimeoutRef.current) {
-        clearTimeout(autoRetryTimeoutRef.current)
-      }
     }
   }, [stream])
 
   const processQRData = async (data: string) => {
     console.log("QR detected:", data)
-    setScanning(false)
+    setScanningActive(false)
     setScannedData(data)
     setLoading(true)
     setError(null)
 
-    // Detener el stream de video
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop())
-      setStream(null)
-    }
-
-    // Limpiar el intervalo de escaneo
+    // Limpiar el intervalo de escaneo pero mantener la cámara activa
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current)
       scanIntervalRef.current = null
@@ -192,7 +189,7 @@ export default function ScanQRPage() {
   }
 
   const scanFrame = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || !scanning || !videoReady) {
+    if (!videoRef.current || !canvasRef.current || !scanningActive || !cameraReady) {
       return
     }
 
@@ -200,7 +197,7 @@ export default function ScanQRPage() {
     const canvas = canvasRef.current
     const ctx = canvas.getContext("2d")
 
-    // Validación básica - más tolerante que antes
+    // Validación básica
     if (!ctx || video.videoWidth === 0 || video.videoHeight === 0) {
       return
     }
@@ -221,60 +218,23 @@ export default function ScanQRPage() {
     } catch (error) {
       console.error("Error scanning frame:", error)
     }
-  }, [scanning, videoReady])
+  }, [scanningActive, cameraReady])
 
-  // Función para reintentar automáticamente si falla la primera vez
-  const autoRetry = useCallback(() => {
-    if (autoRetryCount < 3) {
-      console.log(`Auto-retrying camera initialization (attempt ${autoRetryCount + 1}/3)...`)
-      setDebugInfo(`Reintentando automáticamente (${autoRetryCount + 1}/3)...`)
-      setAutoRetryCount((prev) => prev + 1)
-
-      // Detener todo primero
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop())
-      }
-
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current)
-        scanIntervalRef.current = null
-      }
-
-      // Esperar un momento y reintentar
-      setTimeout(() => {
-        startScanning(cameraFacing)
-      }, 1000)
-    } else {
-      setCameraError("No se pudo inicializar la cámara después de varios intentos. Intenta cambiar de cámara.")
-      setDebugInfo("❌ Demasiados intentos fallidos")
-    }
-  }, [autoRetryCount, cameraFacing, stream])
-
-  const startScanning = async (facingMode: "user" | "environment" = cameraFacing) => {
-    console.log("Starting camera with facing mode:", facingMode)
+  // FUNCIÓN 1: INICIALIZAR CÁMARA (separada del escaneo)
+  const initializeCamera = async (facingMode: "user" | "environment" = cameraFacing) => {
+    console.log("🎥 Initializing camera with facing mode:", facingMode)
+    setDebugInfo("🎥 Inicializando cámara...")
 
     // Verificar que el video element esté disponible
     if (!videoRef.current) {
-      console.error("Video element not found, waiting...")
-      setDebugInfo("Esperando elemento de video...")
-
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Video element found after waiting, retrying...")
-          startScanning(facingMode)
-        } else {
-          setCameraError("No se pudo encontrar el elemento de video. Intenta recargar la página.")
-          setDebugInfo("Error: Elemento de video no encontrado")
-        }
-      }, 500)
+      setCameraError("Elemento de video no encontrado")
+      setDebugInfo("❌ Elemento de video no encontrado")
       return
     }
 
     setCameraError(null)
-    setError(null)
-    setVideoReady(false)
-    setScanning(false) // NO iniciar scanning hasta validar completamente
-    setDebugInfo("Solicitando acceso a la cámara...")
+    setCameraActive(true)
+    setCameraReady(false)
 
     // Detener stream anterior si existe
     if (stream) {
@@ -282,19 +242,7 @@ export default function ScanQRPage() {
       setStream(null)
     }
 
-    // Limpiar intervalo anterior
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-      scanIntervalRef.current = null
-    }
-
-    // Limpiar timeout de auto-retry
-    if (autoRetryTimeoutRef.current) {
-      clearTimeout(autoRetryTimeoutRef.current)
-    }
-
     try {
-      // Configuración más flexible para el primer intento
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: facingMode },
@@ -304,28 +252,20 @@ export default function ScanQRPage() {
         audio: false,
       }
 
-      console.log("Requesting camera with constraints:", constraints)
-      setDebugInfo(`Obteniendo stream de cámara (${facingMode})...`)
+      console.log("📡 Requesting camera access...")
+      setDebugInfo("📡 Solicitando acceso a la cámara...")
 
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-      console.log("Camera stream obtained:", mediaStream)
+      console.log("✅ Camera stream obtained")
 
       setStream(mediaStream)
       setCameraFacing(facingMode)
-      setDebugInfo(`Stream obtenido. Configurando video...`)
-
-      // Verificar nuevamente que el video element esté disponible
-      if (!videoRef.current) {
-        throw new Error("Video element disappeared during setup")
-      }
+      setDebugInfo("✅ Stream obtenido, configurando video...")
 
       const video = videoRef.current
-
-      // Limpiar eventos anteriores
-      video.onloadedmetadata = null
-      video.onerror = null
-      video.oncanplay = null
-      video.onloadeddata = null
+      if (!video) {
+        throw new Error("Video element disappeared")
+      }
 
       // Configurar el video element
       video.srcObject = mediaStream
@@ -333,108 +273,59 @@ export default function ScanQRPage() {
       video.muted = true
       video.autoplay = true
 
-      // Configurar atributos adicionales para móviles
+      // Configurar atributos para móviles
       video.setAttribute("playsinline", "true")
       video.setAttribute("webkit-playsinline", "true")
       video.setAttribute("muted", "true")
 
-      setDebugInfo("Configurando video element...")
-
-      // Función para validar que el video está listo - más tolerante ahora
-      const validateVideoReady = (): boolean => {
-        if (!video) return false
-
-        // En los primeros intentos, ser más tolerante
-        if (autoRetryCount === 0) {
-          const isReady = video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0
-
-          console.log("Initial video validation:", {
-            readyState: video.readyState,
-            videoWidth: video.videoWidth,
-            videoHeight: video.videoHeight,
-            isReady,
-          })
-
-          return isReady
-        }
-
-        // En reintentos, ser más estricto
-        const isReady =
-          video.readyState >= 2 &&
-          video.videoWidth > 0 &&
-          video.videoHeight > 0 &&
-          !video.paused &&
-          video.currentTime > 0
-
-        console.log("Strict video validation:", {
-          readyState: video.readyState,
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          paused: video.paused,
-          currentTime: video.currentTime,
-          isReady,
-        })
-
-        return isReady
-      }
-
-      // Manejar eventos del video con validación más tolerante
+      // Manejar eventos del video
       video.onloadedmetadata = () => {
-        console.log("Video metadata loaded")
-        setDebugInfo(`Metadata cargada: ${video.videoWidth}x${video.videoHeight}`)
+        console.log("📹 Video metadata loaded:", video.videoWidth, "x", video.videoHeight)
+        setDebugInfo(`📹 Video cargado: ${video.videoWidth}x${video.videoHeight}`)
 
         video
           .play()
           .then(() => {
-            console.log("Video play() called successfully")
-            setDebugInfo("Video iniciado, esperando estabilización...")
+            console.log("▶️ Video playing successfully")
+            setDebugInfo("▶️ Video reproduciéndose...")
 
-            // Esperar más tiempo antes de validar (3 segundos)
+            // Esperar un momento para que se estabilice
             setTimeout(() => {
-              // Validar solo una vez después de esperar
-              if (validateVideoReady()) {
-                console.log("✅ Video estabilizado y listo")
-                setVideoReady(true)
-                setScanning(true)
-                setDebugInfo("✅ Video estabilizado - Iniciando escaneo...")
-
-                // Iniciar escaneo con un intervalo más largo al principio
-                scanIntervalRef.current = setInterval(scanFrame, 500)
-
-                // Después de 5 segundos, acelerar el escaneo si sigue activo
-                setTimeout(() => {
-                  if (scanIntervalRef.current) {
-                    clearInterval(scanIntervalRef.current)
-                    scanIntervalRef.current = setInterval(scanFrame, 300)
-                    setDebugInfo("🎯 Escaneo optimizado")
-                  }
-                }, 5000)
+              if (video.readyState >= 2 && video.videoWidth > 0) {
+                console.log("🎯 Camera ready for use")
+                setCameraReady(true)
+                setDebugInfo("🎯 Cámara lista para usar")
               } else {
-                console.log("❌ Video no estabilizado después de esperar")
-                setDebugInfo("❌ Video no estable - reintentando...")
-
-                // Configurar auto-retry
-                autoRetryTimeoutRef.current = setTimeout(autoRetry, 1000)
+                console.log("⚠️ Video not fully ready, retrying...")
+                setTimeout(() => {
+                  if (video.readyState >= 2 && video.videoWidth > 0) {
+                    setCameraReady(true)
+                    setDebugInfo("🎯 Cámara lista para usar")
+                  } else {
+                    setCameraError("La cámara no se inicializó correctamente")
+                    setDebugInfo("❌ Error: Cámara no inicializada")
+                  }
+                }, 1000)
               }
-            }, 3000) // Esperar 3 segundos completos para estabilización
+            }, 1500)
           })
           .catch((playError) => {
-            console.error("Error playing video:", playError)
+            console.error("❌ Error playing video:", playError)
             setCameraError(`Error al reproducir video: ${playError.message}`)
-            setDebugInfo(`Error reproduciendo: ${playError.message}`)
+            setDebugInfo(`❌ Error reproduciendo: ${playError.message}`)
           })
       }
 
       video.onerror = (e) => {
-        console.error("Video error:", e)
+        console.error("❌ Video error:", e)
         setCameraError("Error en el elemento de video")
-        setDebugInfo("Error en el elemento de video")
+        setDebugInfo("❌ Error en el elemento de video")
       }
 
       // Forzar la carga del video
       video.load()
     } catch (error: any) {
-      console.error("Camera error:", error)
+      console.error("❌ Camera initialization error:", error)
       let errorMessage = "Error desconocido al acceder a la cámara"
 
       if (error.name === "NotAllowedError") {
@@ -450,28 +341,53 @@ export default function ScanQRPage() {
       }
 
       setCameraError(errorMessage)
-      setDebugInfo(`Error: ${errorMessage}`)
+      setDebugInfo(`❌ Error: ${errorMessage}`)
+      setCameraActive(false)
 
-      // Si falla con la cámara trasera, intentar con la frontal
+      // Si falla con la cámara trasera, sugerir la frontal
       if (facingMode === "environment" && error.name === "OverconstrainedError") {
-        console.log("Trying front camera as fallback...")
-        setTimeout(() => startScanning("user"), 1000)
+        setDebugInfo("💡 Intenta con la cámara frontal")
       }
     }
   }
 
-  const stopScanning = () => {
-    console.log("Stopping camera...")
-    setScanning(false)
-    setVideoReady(false)
-    setCameraError(null)
-    setDebugInfo("Deteniendo cámara...")
-    setAutoRetryCount(0)
-
-    // Limpiar timeout de auto-retry
-    if (autoRetryTimeoutRef.current) {
-      clearTimeout(autoRetryTimeoutRef.current)
+  // FUNCIÓN 2: INICIAR ESCANEO (separada de la inicialización)
+  const startScanning = () => {
+    if (!cameraReady) {
+      setError("La cámara no está lista. Espera a que se inicialice completamente.")
+      return
     }
+
+    console.log("🔍 Starting QR scanning...")
+    setScanningActive(true)
+    setError(null)
+    setDebugInfo("🔍 Escaneo de QR activado")
+
+    // Iniciar el intervalo de escaneo
+    scanIntervalRef.current = setInterval(scanFrame, 300)
+  }
+
+  // FUNCIÓN 3: DETENER ESCANEO (mantener cámara activa)
+  const stopScanning = () => {
+    console.log("⏸️ Stopping QR scanning...")
+    setScanningActive(false)
+    setDebugInfo("⏸️ Escaneo pausado - Cámara sigue activa")
+
+    // Limpiar el intervalo de escaneo
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+  }
+
+  // FUNCIÓN 4: DETENER CÁMARA COMPLETAMENTE
+  const stopCamera = () => {
+    console.log("📴 Stopping camera...")
+    setScanningActive(false)
+    setCameraActive(false)
+    setCameraReady(false)
+    setCameraError(null)
+    setDebugInfo("📴 Cámara detenida")
 
     // Detener el stream de video
     if (stream) {
@@ -493,16 +409,25 @@ export default function ScanQRPage() {
       videoRef.current.srcObject = null
       videoRef.current.load()
     }
-
-    setDebugInfo("Cámara detenida")
   }
 
+  // FUNCIÓN 5: CAMBIAR CÁMARA
   const switchCamera = () => {
     const newFacing = cameraFacing === "environment" ? "user" : "environment"
-    console.log("Switching camera to:", newFacing)
-    setAutoRetryCount(0) // Reset retry count when manually switching
-    stopScanning()
-    setTimeout(() => startScanning(newFacing), 500)
+    console.log("🔄 Switching camera to:", newFacing)
+
+    // Detener escaneo si está activo
+    if (scanningActive) {
+      stopScanning()
+    }
+
+    // Detener cámara actual
+    stopCamera()
+
+    // Inicializar nueva cámara
+    setTimeout(() => {
+      initializeCamera(newFacing)
+    }, 500)
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -562,10 +487,7 @@ export default function ScanQRPage() {
     setScannedData(null)
     setDocumentData(null)
     setError(null)
-    setCameraError(null)
     setUploadedImage(null)
-    setDebugInfo("")
-    setAutoRetryCount(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -575,15 +497,6 @@ export default function ScanQRPage() {
     if (documentData) {
       router.push(`/documents/${documentData.id}`)
     }
-  }
-
-  // Función para reiniciar manualmente
-  const restartCamera = () => {
-    setAutoRetryCount(0)
-    stopScanning()
-    setTimeout(() => {
-      startScanning(cameraFacing)
-    }, 1000)
   }
 
   return (
@@ -599,7 +512,7 @@ export default function ScanQRPage() {
         <Card>
           <CardHeader>
             <CardTitle>Escáner de Código QR</CardTitle>
-            <CardDescription>Usa la cámara o sube una imagen para escanear códigos QR</CardDescription>
+            <CardDescription>Primero inicia la cámara, luego activa el escaneo cuando esté listo</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="camera" className="w-full">
@@ -613,7 +526,7 @@ export default function ScanQRPage() {
                   {/* Video element siempre presente */}
                   <video
                     ref={videoRef}
-                    className={`w-full h-full object-cover ${scanning && videoReady ? "block" : "hidden"}`}
+                    className={`w-full h-full object-cover ${cameraActive && cameraReady ? "block" : "hidden"}`}
                     playsInline
                     muted
                     autoPlay
@@ -623,124 +536,142 @@ export default function ScanQRPage() {
                   />
                   <canvas ref={canvasRef} className="hidden" />
 
-                  {/* Overlay para mostrar el área de escaneo */}
-                  {scanning && videoReady && (
+                  {/* Overlay para mostrar el área de escaneo cuando está escaneando */}
+                  {scanningActive && cameraReady && (
                     <>
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-70 animate-pulse"></div>
+                        <div className="w-48 h-48 border-2 border-green-400 border-dashed rounded-lg opacity-80 animate-pulse"></div>
                       </div>
                       {/* Indicador de escaneo activo */}
-                      <div className="absolute top-4 left-4 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                      <div className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        Escaneando...
+                        Escaneando QR...
                       </div>
-                      {/* Botón para cambiar cámara */}
-                      {availableCameras.length > 1 && (
-                        <button
-                          onClick={switchCamera}
-                          className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                          title="Cambiar cámara"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </button>
-                      )}
                     </>
                   )}
 
-                  {/* Estado cuando no está escaneando */}
-                  {(!scanning || !videoReady) && (
+                  {/* Indicador de cámara lista pero sin escanear */}
+                  {cameraReady && !scanningActive && (
+                    <div className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                      <Camera className="w-4 h-4" />
+                      Cámara Lista
+                    </div>
+                  )}
+
+                  {/* Botón para cambiar cámara */}
+                  {availableCameras.length > 1 && cameraActive && (
+                    <button
+                      onClick={switchCamera}
+                      className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                      title="Cambiar cámara"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  )}
+
+                  {/* Estado cuando la cámara no está activa */}
+                  {!cameraActive && (
                     <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-center p-6">
-                      <Camera className="h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">
-                        {cameraError ? "Error con la cámara" : scanning ? "Iniciando cámara..." : "Cámara Detenida"}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-4">
-                        {cameraError
-                          ? "Verifica los permisos de cámara"
-                          : scanning
-                            ? "Configurando video..."
-                            : "Haz clic para iniciar el escáner"}
-                      </p>
-                      {!scanning && (
-                        <div className="space-y-2">
-                          <Button onClick={() => startScanning()} disabled={!!cameraError || !isVideoMounted} size="sm">
-                            <Camera className="h-4 w-4 mr-2" />
-                            Iniciar Escáner
-                          </Button>
-                          {availableCameras.length > 1 && isVideoMounted && (
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => startScanning("environment")}
-                                disabled={!!cameraError}
-                                size="sm"
-                                variant="outline"
-                              >
-                                Cámara Trasera
-                              </Button>
-                              <Button
-                                onClick={() => startScanning("user")}
-                                disabled={!!cameraError}
-                                size="sm"
-                                variant="outline"
-                              >
-                                Cámara Frontal
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {scanning && !videoReady && (
-                        <div className="flex items-center gap-2">
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Cargando... (espera 3 segundos)</span>
-                        </div>
-                      )}
+                      <Camera className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="text-xl font-medium mb-2">Cámara Inactiva</h3>
+                      <p className="text-muted-foreground text-sm mb-6">Haz clic para inicializar la cámara</p>
+                    </div>
+                  )}
+
+                  {/* Estado cuando la cámara está inicializándose */}
+                  {cameraActive && !cameraReady && !cameraError && (
+                    <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-center p-6">
+                      <RefreshCw className="h-16 w-16 text-blue-500 mb-4 animate-spin" />
+                      <h3 className="text-xl font-medium mb-2">Inicializando Cámara</h3>
+                      <p className="text-muted-foreground text-sm">Configurando video, espera un momento...</p>
+                    </div>
+                  )}
+
+                  {/* Estado de error */}
+                  {cameraError && (
+                    <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-center p-6">
+                      <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+                      <h3 className="text-xl font-medium mb-2">Error de Cámara</h3>
+                      <p className="text-muted-foreground text-sm mb-4">{cameraError}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Información de debug */}
                 {debugInfo && (
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                    <strong>Debug:</strong> {debugInfo}
+                  <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+                    <strong>Estado:</strong> {debugInfo}
                   </div>
                 )}
 
-                {/* Información de estado del video */}
-                <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                  <strong>Estado:</strong> Video element {isVideoMounted ? "montado" : "no montado"} | Cámaras:{" "}
-                  {availableCameras.length} | Activa: {cameraFacing === "environment" ? "Trasera" : "Frontal"} |
-                  Reintentos: {autoRetryCount}
+                {/* Información de estado */}
+                <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+                  <strong>Info:</strong> Cámaras disponibles: {availableCameras.length} | Activa:{" "}
+                  {cameraFacing === "environment" ? "Trasera" : "Frontal"} | Estado:{" "}
+                  {cameraActive ? (cameraReady ? "Lista" : "Inicializando") : "Inactiva"}
                 </div>
 
-                {/* Controles fuera del contenedor de video */}
-                <div className="text-center space-y-2">
-                  {scanning && videoReady ? (
-                    <>
-                      <p className="text-sm text-muted-foreground">Apunta la cámara hacia el código QR</p>
-                      <div className="flex gap-2 justify-center">
-                        <Button onClick={stopScanning} variant="outline" size="sm">
-                          <CameraOff className="h-4 w-4 mr-2" />
-                          Detener Escáner
+                {/* Controles principales */}
+                <div className="space-y-3">
+                  {/* Paso 1: Controles de cámara */}
+                  <div className="flex gap-2 justify-center">
+                    {!cameraActive ? (
+                      <div className="space-y-2 w-full">
+                        <Button onClick={() => initializeCamera()} disabled={!isVideoMounted} className="w-full">
+                          <Camera className="h-4 w-4 mr-2" />
+                          Inicializar Cámara
                         </Button>
-                        {availableCameras.length > 1 && (
-                          <Button onClick={switchCamera} variant="outline" size="sm">
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Cambiar Cámara
+                        {availableCameras.length > 1 && isVideoMounted && (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => initializeCamera("environment")}
+                              disabled={!isVideoMounted}
+                              variant="outline"
+                              className="flex-1"
+                            >
+                              Cámara Trasera
+                            </Button>
+                            <Button
+                              onClick={() => initializeCamera("user")}
+                              disabled={!isVideoMounted}
+                              variant="outline"
+                              className="flex-1"
+                            >
+                              Cámara Frontal
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Button onClick={stopCamera} variant="outline">
+                        <CameraOff className="h-4 w-4 mr-2" />
+                        Detener Cámara
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Paso 2: Controles de escaneo (solo si la cámara está lista) */}
+                  {cameraReady && (
+                    <div className="border-t pt-3">
+                      <div className="flex gap-2 justify-center">
+                        {!scanningActive ? (
+                          <Button onClick={startScanning} className="w-full">
+                            <Play className="h-4 w-4 mr-2" />
+                            Iniciar Escaneo QR
+                          </Button>
+                        ) : (
+                          <Button onClick={stopScanning} variant="outline" className="w-full">
+                            <Pause className="h-4 w-4 mr-2" />
+                            Pausar Escaneo
                           </Button>
                         )}
                       </div>
-                    </>
-                  ) : scanning ? (
-                    <Button onClick={stopScanning} variant="outline" size="sm">
-                      <CameraOff className="h-4 w-4 mr-2" />
-                      Cancelar
-                    </Button>
-                  ) : (
-                    <Button onClick={restartCamera} variant="outline" size="sm">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Reiniciar Cámara
-                    </Button>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        {scanningActive
+                          ? "Apunta la cámara hacia el código QR"
+                          : "Haz clic para activar el escaneo de códigos QR"}
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -751,15 +682,8 @@ export default function ScanQRPage() {
                       {cameraError}
                       {cameraError.includes("OverconstrainedError") && (
                         <div className="mt-2">
-                          <Button onClick={() => startScanning("user")} size="sm" variant="outline">
+                          <Button onClick={() => initializeCamera("user")} size="sm" variant="outline">
                             Probar Cámara Frontal
-                          </Button>
-                        </div>
-                      )}
-                      {cameraError.includes("elemento de video") && (
-                        <div className="mt-2">
-                          <Button onClick={() => window.location.reload()} size="sm" variant="outline">
-                            Recargar Página
                           </Button>
                         </div>
                       )}
@@ -916,7 +840,7 @@ export default function ScanQRPage() {
             ) : scannedData ? (
               <div className="text-center py-10">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h3 className="mt-4 text-lg-medium">Código QR Escaneado</h3>
+                <h3 className="mt-4 text-lg font-medium">Código QR Escaneado</h3>
                 <p className="text-muted-foreground mb-4">
                   Se escaneó un código QR pero no se encontró información del documento.
                 </p>
