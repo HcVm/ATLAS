@@ -158,12 +158,12 @@ export default function ScanQRPage() {
     setError(null)
 
     try {
-      // Solicitar acceso a la cámara
+      // Solicitar acceso a la cámara con configuración optimizada para móviles
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment", // Usar cámara trasera si está disponible
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
         },
       })
 
@@ -171,14 +171,24 @@ export default function ScanQRPage() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
-        videoRef.current.play()
 
-        // Esperar a que el video esté listo
-        videoRef.current.onloadedmetadata = () => {
+        // Configurar el video para móviles
+        videoRef.current.setAttribute("playsinline", "true")
+        videoRef.current.setAttribute("webkit-playsinline", "true")
+
+        try {
+          await videoRef.current.play()
           setScanning(true)
 
-          // Iniciar el escaneo continuo
-          scanIntervalRef.current = setInterval(scanFrame, 100) // Escanear cada 100ms
+          // Esperar a que el video esté completamente cargado
+          videoRef.current.onloadedmetadata = () => {
+            console.log("Video loaded, starting scan interval")
+            // Iniciar el escaneo continuo
+            scanIntervalRef.current = setInterval(scanFrame, 200) // Reducir frecuencia para móviles
+          }
+        } catch (playError) {
+          console.error("Error playing video:", playError)
+          setCameraError("Error al reproducir el video de la cámara")
         }
       }
     } catch (error: any) {
@@ -187,6 +197,8 @@ export default function ScanQRPage() {
         setCameraError("Permisos de cámara denegados. Por favor, permite el acceso a la cámara y recarga la página.")
       } else if (error.name === "NotFoundError") {
         setCameraError("No se encontró ninguna cámara en este dispositivo.")
+      } else if (error.name === "NotReadableError") {
+        setCameraError("La cámara está siendo usada por otra aplicación.")
       } else {
         setCameraError(
           "Error al acceder a la cámara. Verifica que tu dispositivo tenga cámara y que el navegador tenga permisos.",
@@ -310,34 +322,44 @@ export default function ScanQRPage() {
               </TabsList>
 
               <TabsContent value="camera" className="space-y-4">
-                {scanning ? (
-                  <div className="space-y-4">
-                    <div className="aspect-square max-w-md mx-auto overflow-hidden rounded-lg border bg-black relative">
-                      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                <div className="aspect-square max-w-md mx-auto overflow-hidden rounded-lg border bg-black relative">
+                  {scanning ? (
+                    <>
+                      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
                       <canvas ref={canvasRef} className="hidden" />
                       {/* Overlay para mostrar el área de escaneo */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-50"></div>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-70 animate-pulse"></div>
                       </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-2">Apunta la cámara hacia el código QR</p>
-                      <Button onClick={stopScanning} variant="outline">
-                        <CameraOff className="h-4 w-4 mr-2" />
-                        Detener Escáner
+                      {/* Indicador de escaneo activo */}
+                      <div className="absolute top-4 left-4 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        Escaneando...
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
+                      <Camera className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">
+                        {cameraError ? "Error con la cámara" : "Cámara Detenida"}
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        {cameraError ? "Verifica los permisos de cámara" : "Haz clic para iniciar el escáner"}
+                      </p>
+                      <Button onClick={startScanning} disabled={!!cameraError} size="sm">
+                        <Camera className="h-4 w-4 mr-2" />
+                        Iniciar Escáner
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-10">
-                    <Camera className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <h3 className="mt-4 text-lg font-medium">Cámara Detenida</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {cameraError ? "Error con la cámara" : "Haz clic para iniciar el escáner"}
-                    </p>
-                    <Button onClick={startScanning} disabled={!!cameraError}>
-                      <Camera className="h-4 w-4 mr-2" />
-                      Iniciar Escáner
+                  )}
+                </div>
+
+                {/* Controles fuera del contenedor de video */}
+                {scanning && (
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">Apunta la cámara hacia el código QR</p>
+                    <Button onClick={stopScanning} variant="outline" size="sm">
+                      <CameraOff className="h-4 w-4 mr-2" />
+                      Detener Escáner
                     </Button>
                   </div>
                 )}
