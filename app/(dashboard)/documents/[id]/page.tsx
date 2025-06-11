@@ -1007,7 +1007,7 @@ export default function DocumentDetailsPage() {
 
       {/* Dialog para estadísticas de descarga */}
       <Dialog open={downloadStatsOpen} onOpenChange={setDownloadStatsOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Estadísticas de Descarga</DialogTitle>
             <DialogDescription>Historial completo de descargas de este documento</DialogDescription>
