@@ -49,7 +49,7 @@ const statusOptions = [
 
 export default function PublicDocumentPage() {
   const params = useParams()
-  const [document, setDocument] = useState<any>(null)
+  const [documentData, setDocumentData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [downloadLoading, setDownloadLoading] = useState(false)
@@ -66,6 +66,8 @@ export default function PublicDocumentPage() {
 
   // Efecto para prevenir descargas desde el iframe
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     const preventContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       return false
@@ -86,14 +88,16 @@ export default function PublicDocumentPage() {
 
     // Aplicar a la ventana principal cuando el visor esté abierto
     if (viewerOpen) {
-      document.addEventListener("contextmenu", preventContextMenu)
-      document.addEventListener("keydown", preventKeyboardShortcuts)
+      window.document.addEventListener("contextmenu", preventContextMenu)
+      window.document.addEventListener("keydown", preventKeyboardShortcuts)
     }
 
     return () => {
       // Limpiar event listeners
-      document.removeEventListener("contextmenu", preventContextMenu)
-      document.removeEventListener("keydown", preventKeyboardShortcuts)
+      if (typeof window !== "undefined") {
+        window.document.removeEventListener("contextmenu", preventContextMenu)
+        window.document.removeEventListener("keydown", preventKeyboardShortcuts)
+      }
     }
   }, [viewerOpen])
 
@@ -129,7 +133,7 @@ export default function PublicDocumentPage() {
         return
       }
 
-      setDocument(data)
+      setDocumentData(data)
     } catch (error: any) {
       console.error("Error fetching document:", error)
       setError("Error al cargar el documento")
@@ -151,8 +155,8 @@ export default function PublicDocumentPage() {
   }
 
   const isDocumentExpired = () => {
-    if (!document?.expiry_date) return false
-    const expiryDate = new Date(document.expiry_date)
+    if (!documentData?.expiry_date) return false
+    const expiryDate = new Date(documentData.expiry_date)
     return expiryDate < new Date()
   }
 
@@ -172,7 +176,7 @@ export default function PublicDocumentPage() {
 
       // Obtener información básica
       const userAgent = navigator.userAgent
-      const referrer = document.referrer || window.location.href
+      const referrer = window.document.referrer || window.location.href
 
       // Intentar obtener IP y geolocalización
       let ipInfo = { ip: null, country: null, city: null }
@@ -192,7 +196,7 @@ export default function PublicDocumentPage() {
 
       // Registrar la descarga con información del usuario anónimo
       const { error } = await supabasePublic.from("document_downloads").insert({
-        document_id: document.id,
+        document_id: documentData.id,
         user_id: null,
         download_type: "main_file",
         session_id: sessionId,
@@ -201,7 +205,7 @@ export default function PublicDocumentPage() {
         referrer: referrer,
         country: ipInfo.country,
         city: ipInfo.city,
-        file_name: document.title,
+        file_name: documentData.title,
         is_public_access: true,
         anonymous_name: anonymousData.name,
         anonymous_organization: anonymousData.organization,
@@ -287,16 +291,16 @@ export default function PublicDocumentPage() {
 
       // Crear opciones para la información de descarga
       const watermarkOptions = {
-        documentTitle: document.title,
+        documentTitle: documentData.title,
         downloadedBy: anonymousData.name,
         organization: anonymousData.organization,
         downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
         downloadToken: downloadToken,
-        documentId: document.id,
+        documentId: documentData.id,
       }
 
       // Obtener el archivo original
-      let filePath = document.file_url
+      let filePath = documentData.file_url
 
       if (filePath.startsWith("http")) {
         try {
@@ -337,7 +341,7 @@ export default function PublicDocumentPage() {
         const watermarkedBlob = await applyWatermarkToPdf(originalBlob, watermarkOptions)
 
         // Descargar el archivo con marca de agua
-        const originalFileName = document.file_name || document.title || "documento"
+        const originalFileName = documentData.file_name || documentData.title || "documento"
         downloadBlob(watermarkedBlob, `${originalFileName}`)
 
         setDownloadFormOpen(false)
@@ -375,7 +379,7 @@ export default function PublicDocumentPage() {
     )
   }
 
-  if (error || !document) {
+  if (error || !documentData) {
     return (
       <div className="container mx-auto p-4 max-w-3xl">
         <Card className="border-destructive">
@@ -400,16 +404,18 @@ export default function PublicDocumentPage() {
     <div className="container mx-auto p-4 max-w-3xl">
       <Card className="shadow-lg">
         <CardHeader
-          className={`${document.is_certified ? "bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900" : ""}`}
+          className={`${documentData.is_certified ? "bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900" : ""}`}
         >
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl font-bold">{document.title}</CardTitle>
+              <CardTitle className="text-2xl font-bold">{documentData.title}</CardTitle>
               <CardDescription className="text-base mt-1">
-                {document.document_number && <span className="font-medium">No. {document.document_number}</span>}
+                {documentData.document_number && (
+                  <span className="font-medium">No. {documentData.document_number}</span>
+                )}
               </CardDescription>
             </div>
-            {document.is_certified && (
+            {documentData.is_certified && (
               <Badge
                 variant="outline"
                 className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700 flex items-center gap-1 px-3 py-1.5"
@@ -423,7 +429,7 @@ export default function PublicDocumentPage() {
 
         <CardContent className="space-y-6 pt-6">
           {/* Certificación */}
-          {document.is_certified && (
+          {documentData.is_certified && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold flex items-center">
@@ -449,25 +455,25 @@ export default function PublicDocumentPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg">
                 <div>
                   <p className="text-sm text-muted-foreground">Tipo de Certificación</p>
-                  <p className="font-medium">{document.certification_type || "Certificado General"}</p>
+                  <p className="font-medium">{documentData.certification_type || "Certificado General"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Número de Certificado</p>
-                  <p className="font-medium">{document.certificate_number || "No especificado"}</p>
+                  <p className="font-medium">{documentData.certificate_number || "No especificado"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground flex items-center">
                     <Calendar className="mr-1 h-4 w-4 text-muted-foreground" />
                     Fecha de Emisión
                   </p>
-                  <p className="font-medium">{formatDate(document.issued_date)}</p>
+                  <p className="font-medium">{formatDate(documentData.issued_date)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground flex items-center">
                     <Calendar className="mr-1 h-4 w-4 text-muted-foreground" />
                     Fecha de Expiración
                   </p>
-                  <p className="font-medium">{formatDate(document.expiry_date)}</p>
+                  <p className="font-medium">{formatDate(documentData.expiry_date)}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground flex items-center">
@@ -475,9 +481,9 @@ export default function PublicDocumentPage() {
                     Emitido por
                   </p>
                   <p className="font-medium">
-                    {document.issuer_name || "No especificado"}
-                    {document.issuer_position && (
-                      <span className="text-muted-foreground ml-1">({document.issuer_position})</span>
+                    {documentData.issuer_name || "No especificado"}
+                    {documentData.issuer_position && (
+                      <span className="text-muted-foreground ml-1">({documentData.issuer_position})</span>
                     )}
                   </p>
                 </div>
@@ -492,9 +498,9 @@ export default function PublicDocumentPage() {
                   Este documento ha sido verificado como auténtico. El código QR y el hash de verificación garantizan la
                   integridad del documento.
                 </p>
-                {document.verification_hash && (
+                {documentData.verification_hash && (
                   <div className="mt-2 text-xs text-amber-600 dark:text-amber-500 font-mono overflow-hidden text-ellipsis">
-                    Hash: {document.verification_hash}
+                    Hash: {documentData.verification_hash}
                   </div>
                 )}
               </div>
@@ -510,32 +516,32 @@ export default function PublicDocumentPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Estado</p>
-                <div className="mt-1">{getStatusBadge(document.status)}</div>
+                <div className="mt-1">{getStatusBadge(documentData.status)}</div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Departamento Actual</p>
                 <div className="flex items-center mt-1">
                   <div
                     className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: document.departments?.color || "#888888" }}
+                    style={{ backgroundColor: documentData.departments?.color || "#888888" }}
                   ></div>
-                  <p className="font-medium">{document.departments?.name || "No asignado"}</p>
+                  <p className="font-medium">{documentData.departments?.name || "No asignado"}</p>
                 </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Fecha de Creación</p>
-                <p className="font-medium">{formatDate(document.created_at)}</p>
+                <p className="font-medium">{formatDate(documentData.created_at)}</p>
               </div>
-              {document.profiles && (
+              {documentData.profiles && (
                 <div>
                   <p className="text-sm text-muted-foreground">Creado por</p>
-                  <p className="font-medium">{document.profiles.full_name}</p>
+                  <p className="font-medium">{documentData.profiles.full_name}</p>
                 </div>
               )}
-              {document.description && (
+              {documentData.description && (
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Descripción</p>
-                  <p className="mt-1 whitespace-pre-line">{document.description}</p>
+                  <p className="mt-1 whitespace-pre-line">{documentData.description}</p>
                 </div>
               )}
             </div>
@@ -546,9 +552,9 @@ export default function PublicDocumentPage() {
           <Separator />
 
           <div className="w-full flex flex-col sm:flex-row gap-3 justify-between">
-            {document.file_url ? (
+            {documentData.file_url ? (
               <>
-                <Button variant="outline" className="flex-1" onClick={() => viewFile(document.file_url)}>
+                <Button variant="outline" className="flex-1" onClick={() => viewFile(documentData.file_url)}>
                   <Eye className="mr-2 h-4 w-4" />
                   Ver Documento
                 </Button>
@@ -580,7 +586,7 @@ export default function PublicDocumentPage() {
         isOpen={downloadFormOpen}
         onClose={() => setDownloadFormOpen(false)}
         onSubmit={handleAnonymousDownload}
-        documentTitle={document.title}
+        documentTitle={documentData.title}
         loading={downloadLoading}
       />
 
@@ -590,7 +596,7 @@ export default function PublicDocumentPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Lock className="h-4 w-4 mr-2 text-amber-600" />
-              Vista previa protegida: {document.title}
+              Vista previa protegida: {documentData.title}
             </DialogTitle>
             <DialogDescription>
               Esta es una vista previa de solo lectura. Para descargar el documento con marca de agua, utilice el botón
