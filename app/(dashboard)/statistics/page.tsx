@@ -81,13 +81,14 @@ export default function StatisticsPage() {
 
       // Obtener documentos con información completa
       let documentsQuery = supabase.from("documents").select(`
-        id, department_id, status, created_at,
-        departments (name, color)
-      `)
+  id, current_department_id, status, created_at
+`)
 
       // Filtrar por permisos de usuario
       if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
+        documentsQuery = documentsQuery.or(
+          `created_by.eq.${user.id},current_department_id.eq.${user.current_department_id}`,
+        )
       }
 
       const { data: documents, error: docsError } = await documentsQuery
@@ -124,7 +125,7 @@ export default function StatisticsPage() {
     // Documentos por departamento
     const documentsByDepartment = departments
       .map((dept) => {
-        const count = documents.filter((doc) => doc.department_id === dept.id).length
+        const count = documents.filter((doc) => doc.current_department_id === dept.id).length
         return {
           name: dept.name,
           value: count,

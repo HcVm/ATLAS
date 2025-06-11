@@ -164,7 +164,7 @@ export default function NewDocumentPage() {
           document_number: values.document_number,
           status: "pending",
           created_by: user.id,
-          department_id: values.department_id,
+          current_department_id: values.department_id,
           file_url: fileUrl,
         })
         .select()
