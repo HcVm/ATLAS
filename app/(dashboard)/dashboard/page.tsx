@@ -33,7 +33,7 @@ export default function DashboardPage() {
       let documentsQuery = supabase.from("documents").select("*")
 
       if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
       }
 
       const { data: documents } = await documentsQuery
@@ -60,7 +60,7 @@ export default function DashboardPage() {
         .limit(5)
 
       if (user?.role === "user") {
-        recentDocsQuery = recentDocsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+        recentDocsQuery = recentDocsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
       }
 
       const { data: recentDocs } = await recentDocsQuery

@@ -39,7 +39,7 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
       .from("profiles")
       .select(`
         *,
-        departments (
+        departments!profiles_department_id_fkey (
           id,
           name
         )
@@ -67,11 +67,11 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
         email: authUser.email || "",
         full_name: authUser.user_metadata?.full_name || "Usuario",
         role: "user",
-        current_department_id: defaultDept?.id || null,
+        department_id: defaultDept?.id || null,
       })
       .select(`
         *,
-        departments (
+        departments!profiles_department_id_fkey (
           id,
           name
         )
@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             full_name: fullName,
-            current_department_id: departmentId,
+            department_id: departmentId,
           },
         },
       })
