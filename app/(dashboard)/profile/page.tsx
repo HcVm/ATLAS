@@ -40,7 +40,10 @@ export default function ProfilePage() {
         .from("profiles")
         .select(`
           *,
-          departments (name)
+          departments!profiles_department_id_fkey (
+            id,
+            name
+          )
         `)
         .eq("id", user?.id)
         .single()
@@ -212,9 +215,9 @@ export default function ProfilePage() {
             <CardDescription>Actualiza tu foto de perfil</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center space-y-4">
-            <Avatar className="h-32 w-32">
-              <AvatarImage src={avatarPreview || user.avatar_url || ""} />
-              <AvatarFallback className="text-2xl">
+            <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+              <AvatarImage src={avatarPreview || user.avatar_url || ""} className="object-cover" />
+              <AvatarFallback className="text-2xl bg-primary/10">
                 {user.full_name
                   ?.split(" ")
                   .map((n) => n[0])
