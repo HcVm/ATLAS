@@ -20,7 +20,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
-import { trackDownload, getDocumentDownloadStats } from "@/lib/download-tracker"
+import { trackDownload } from "@/lib/download-tracker"
+import { getCombinedDownloadStats } from "@/lib/public-download-tracker"
 
 // Helper function to validate UUID
 const isValidUUID = (str: string) => {
@@ -55,6 +56,7 @@ export default function DocumentDetailsPage() {
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
+  const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
     // Validate UUID before making requests
@@ -202,10 +204,14 @@ export default function DocumentDetailsPage() {
     if (user?.role !== "admin") return
 
     try {
-      const stats = await getDocumentDownloadStats(params.id as string)
+      setStatsLoading(true)
+      // Usar la nueva función que combina descargas autenticadas y públicas
+      const stats = await getCombinedDownloadStats(params.id as string)
       setDownloadStats(stats)
     } catch (error) {
       console.error("Error fetching download stats:", error)
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -1007,7 +1013,52 @@ export default function DocumentDetailsPage() {
             <DialogDescription>Historial completo de descargas de este documento</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {downloadStats.length === 0 ? (
+            {statsLoading ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="h-8 bg-gray-200 animate-pulse rounded"></div>
+                        <div className="h-4 bg-gray-200 animate-pulse rounded mt-2 w-3/4"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Archivo</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>IP</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded w-20"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded w-24"></div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : downloadStats.length === 0 ? (
               <div className="text-center py-8">
                 <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
                 <h3 className="mt-4 text-lg font-medium">Sin descargas registradas</h3>
@@ -1015,25 +1066,36 @@ export default function DocumentDetailsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold">{downloadStats.length}</div>
+                      <div className="text-2xl font-bold text-blue-600">{downloadStats.length}</div>
                       <p className="text-xs text-muted-foreground">Total de descargas</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold">{new Set(downloadStats.map((d) => d.user_id)).size}</div>
-                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
+                      <div className="text-2xl font-bold text-green-600">
+                        {downloadStats.filter((s) => s.profiles).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Usuarios registrados</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold">
-                        {downloadStats.filter((d) => d.download_type === "main_file").length}
+                      <div className="text-2xl font-bold text-orange-600">
+                        {downloadStats.filter((s) => !s.profiles && s.is_public_access).length}
                       </div>
-                      <p className="text-xs text-muted-foreground">Archivo principal</p>
+                      <p className="text-xs text-muted-foreground">Acceso público</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {new Set(downloadStats.filter((s) => s.profiles).map((s) => s.user_id)).size +
+                          new Set(downloadStats.filter((s) => s.session_id).map((s) => s.session_id)).size}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -1052,10 +1114,28 @@ export default function DocumentDetailsPage() {
                     {downloadStats.map((download) => (
                       <TableRow key={download.id}>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{download.profiles?.full_name}</div>
-                            <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
-                          </div>
+                          {download.profiles ? (
+                            <div>
+                              <div className="font-medium">{download.profiles?.full_name}</div>
+                              <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-medium text-muted-foreground">Usuario Anónimo</div>
+                              <div className="text-xs text-muted-foreground">
+                                {download.country && download.city
+                                  ? `${download.city}, ${download.country}`
+                                  : download.country
+                                    ? download.country
+                                    : "Ubicación no disponible"}
+                              </div>
+                              {download.session_id && (
+                                <div className="text-xs font-mono text-muted-foreground">
+                                  Sesión: {download.session_id.substring(0, 8)}...
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={download.download_type === "main_file" ? "default" : "secondary"}>
@@ -1067,7 +1147,9 @@ export default function DocumentDetailsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {format(new Date(download.downloaded_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                            {format(new Date(download.downloaded_at || download.created_at), "dd/MM/yyyy HH:mm", {
+                              locale: es,
+                            })}
                           </div>
                         </TableCell>
                         <TableCell>

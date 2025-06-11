@@ -19,6 +19,7 @@ import {
 import { CheckCircle, XCircle, Download, Calendar, User, Shield, Clock, Eye, AlertTriangle } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { trackPublicDownload } from "@/lib/public-download-tracker"
 
 export default function PublicDocumentPage() {
   const params = useParams()
@@ -386,7 +387,19 @@ export default function PublicDocumentPage() {
               <>
                 <Dialog open={showPreview} onOpenChange={setShowPreview}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="flex-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={async () => {
+                        // Track preview as a view (optional)
+                        await trackPublicDownload({
+                          documentId: document.id,
+                          downloadType: "main_file",
+                          fileName: `${document.title} (Preview)`,
+                          fileSize: null,
+                        })
+                      }}
+                    >
                       <Eye className="mr-2 h-4 w-4" />
                       Ver Documento Original
                     </Button>
@@ -406,7 +419,23 @@ export default function PublicDocumentPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Button className="flex-1" onClick={() => window.open(fileUrl, "_blank")}>
+                <Button
+                  className="flex-1"
+                  onClick={async () => {
+                    if (fileUrl) {
+                      // Track the download before opening
+                      await trackPublicDownload({
+                        documentId: document.id,
+                        downloadType: "main_file",
+                        fileName: document.title,
+                        fileSize: null, // We don't have file size info here
+                      })
+
+                      // Open the file
+                      window.open(fileUrl, "_blank")
+                    }
+                  }}
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Descargar Documento Original
                 </Button>
