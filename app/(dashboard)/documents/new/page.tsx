@@ -155,7 +155,17 @@ export default function NewDocumentPage() {
         setUploading(false)
       }
 
-      // Crear documento
+      console.log("Creating document with data:", {
+        title: values.title,
+        description: values.description || null,
+        document_number: values.document_number,
+        status: "pending",
+        created_by: user.id,
+        current_department_id: values.department_id,
+        file_url: fileUrl,
+      })
+
+      // Crear documento - USANDO SOLO current_department_id
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
@@ -164,13 +174,18 @@ export default function NewDocumentPage() {
           document_number: values.document_number,
           status: "pending",
           created_by: user.id,
-          current_department_id: values.department_id,
+          current_department_id: values.department_id, // SOLO este campo
           file_url: fileUrl,
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase error:", error)
+        throw error
+      }
+
+      console.log("Document created successfully:", document)
 
       // Upload attachments if any
       if (attachments.length > 0) {
