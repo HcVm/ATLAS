@@ -626,52 +626,7 @@ export default function DocumentDetailsPage() {
 
                 <Separator />
 
-                <div className="flex flex-wrap gap-3">
-                  {document.file_url && (
-                    <>
-                      <Button variant="outline" onClick={() => viewFile(document.file_url)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Archivo
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => downloadFile(document.file_url)}
-                        disabled={downloadLoading}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        {downloadLoading ? "Descargando..." : "Descargar"}
-                      </Button>
-                    </>
-                  )}
-                  <Button variant="outline" asChild>
-                    <Link href={`/documents/edit/${document.id}`}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar Documento
-                    </Link>
-                  </Button>
-                  <Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <MoveRight className="h-4 w-4 mr-2" />
-                        Mover Documento
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Mover Documento</DialogTitle>
-                        <DialogDescription>
-                          Seleccione el departamento al que desea mover este documento y agregue archivos adjuntos si es
-                          necesario.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <MovementForm
-                        documentId={document.id}
-                        currentDepartmentId={document.current_department_id || document.departments?.id}
-                        onComplete={handleMovementComplete}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                
               </div>
             </CardContent>
           </Card>
