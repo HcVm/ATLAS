@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, FileIcon } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -647,7 +647,7 @@ export default function DocumentDetailsPage() {
                                   </div>
                                 )}
 
-                                <MoveRight className="h-4 w-4 text-muted-foreground" />
+                                <FileIcon className="h-4 w-4 text-muted-foreground" />
 
                                 {/* Departamento destino */}
                                 {movement.to_departments && (
