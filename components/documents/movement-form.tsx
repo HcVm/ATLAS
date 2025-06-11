@@ -48,11 +48,16 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
+        console.log("Current department ID:", currentDepartmentId) // Debug log
+
         const { data, error } = await supabase
           .from("departments")
           .select("*")
-          .neq("id", currentDepartmentId) // Exclude current department
+          .neq("id", currentDepartmentId || "") // Handle undefined case
           .order("name")
+
+        console.log("Departments data:", data) // Debug log
+        console.log("Departments error:", error) // Debug log
 
         if (error) throw error
         setDepartments(data || [])
