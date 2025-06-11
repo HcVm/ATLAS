@@ -29,6 +29,40 @@ export default function PublicDocumentPage() {
   const [verificationLogged, setVerificationLogged] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
+  // Helper function to extract file path from URL
+  const extractFilePathFromUrl = (url: string): string | null => {
+    if (!url) return null
+
+    try {
+      // If it's already a relative path, return as is
+      if (!url.startsWith("http")) {
+        return url
+      }
+
+      // Parse the URL to extract the path
+      const urlObj = new URL(url)
+      const pathname = urlObj.pathname
+
+      // Extract path after /storage/v1/object/public/documents/
+      const match = pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/)
+      if (match && match[1]) {
+        return match[1]
+      }
+
+      // Fallback: try to extract just the filename
+      const segments = pathname.split("/")
+      const filename = segments[segments.length - 1]
+      if (filename && filename.includes(".")) {
+        return filename
+      }
+
+      return null
+    } catch (e) {
+      console.error("Error extracting file path:", e)
+      return null
+    }
+  }
+
   useEffect(() => {
     const fetchDocument = async () => {
       try {
@@ -81,17 +115,38 @@ export default function PublicDocumentPage() {
         // Get file URL if available
         if (document.file_url) {
           try {
-            const { data: fileData, error: fileError } = await supabase.storage
-              .from("documents")
-              .createSignedUrl(document.file_url, 3600) // 1 hour expiry
+            // Extract the correct file path
+            const filePath = extractFilePathFromUrl(document.file_url)
 
-            if (fileError) {
-              console.error("Error creating signed URL:", fileError)
-            } else if (fileData?.signedUrl) {
-              setFileUrl(fileData.signedUrl)
+            if (filePath) {
+              console.log("Extracted file path:", filePath)
+
+              const { data: fileData, error: fileError } = await supabase.storage
+                .from("documents")
+                .createSignedUrl(filePath, 3600) // 1 hour expiry
+
+              if (fileError) {
+                console.error("Error creating signed URL:", fileError)
+                // If signed URL fails, try to use the original URL directly
+                if (document.file_url.startsWith("http")) {
+                  setFileUrl(document.file_url)
+                }
+              } else if (fileData?.signedUrl) {
+                setFileUrl(fileData.signedUrl)
+              }
+            } else {
+              console.error("Could not extract file path from:", document.file_url)
+              // Try to use the original URL directly if it's a full URL
+              if (document.file_url.startsWith("http")) {
+                setFileUrl(document.file_url)
+              }
             }
           } catch (fileErr) {
             console.error("Error with file URL:", fileErr)
+            // Fallback to original URL if available
+            if (document.file_url.startsWith("http")) {
+              setFileUrl(document.file_url)
+            }
           }
         }
 
@@ -359,6 +414,7 @@ export default function PublicDocumentPage() {
             ) : (
               <div className="flex-1 text-center text-muted-foreground">
                 <p>Documento original no disponible</p>
+                {document.file_url && <p className="text-xs mt-1">URL: {document.file_url}</p>}
               </div>
             )}
           </div>
