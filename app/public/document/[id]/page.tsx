@@ -644,7 +644,7 @@ export default function PublicDocumentPage() {
       {/* Visor de archivos con protección completa */}
       <Dialog open={viewerOpen} onOpenChange={closeViewer}>
         <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh]">
-          <DialogHeader>
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center">
               <Lock className="h-4 w-4 mr-2 text-amber-600" />
               Vista previa protegida: {documentData.title}
@@ -657,7 +657,7 @@ export default function PublicDocumentPage() {
               <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden relative">
+          <div className="flex-1 overflow-hidden px-6 pb-6">
             {viewerUrl && (
               <div className="relative w-full h-[calc(100%-2rem)]">
                 {/* Iframe con el PDF - completamente bloqueado */}
