@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import { createClient } from "@supabase/supabase-js"
+import { AnonymousDownloadForm, type AnonymousUserData } from "@/components/public/anonymous-download-form"
+import { generateDownloadToken, addWatermarkToPDF, createWatermarkInfoFile } from "@/lib/watermark-generator"
 
 // Crear cliente Supabase sin autenticación para acceso público
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -28,60 +30,6 @@ const statusOptions = [
   { value: "cancelled", label: "Cancelado", color: "bg-red-50 text-red-700 border-red-200" },
 ]
 
-// Función para rastrear descargas públicas
-const trackPublicDownload = async (documentId: string, fileName?: string) => {
-  try {
-    // Generar session ID único
-    let sessionId = localStorage.getItem("public_session_id")
-    if (!sessionId) {
-      sessionId = `pub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
-      localStorage.setItem("public_session_id", sessionId)
-    }
-
-    // Obtener información básica
-    const userAgent = navigator.userAgent
-    const referrer = document.referrer || window.location.href
-
-    // Intentar obtener IP y geolocalización
-    let ipInfo = { ip: null, country: null, city: null }
-    try {
-      const ipResponse = await fetch("https://ipapi.co/json/")
-      if (ipResponse.ok) {
-        const ipData = await ipResponse.json()
-        ipInfo = {
-          ip: ipData.ip || null,
-          country: ipData.country_name || null,
-          city: ipData.city || null,
-        }
-      }
-    } catch (e) {
-      console.log("Could not get IP info")
-    }
-
-    // Registrar la descarga
-    const { error } = await supabasePublic.from("document_downloads").insert({
-      document_id: documentId,
-      user_id: null,
-      download_type: "main_file",
-      session_id: sessionId,
-      ip_address: ipInfo.ip,
-      user_agent: userAgent,
-      referrer: referrer,
-      country: ipInfo.country,
-      city: ipInfo.city,
-      file_name: fileName,
-      is_public_access: true,
-      downloaded_at: new Date().toISOString(),
-    })
-
-    if (error) {
-      console.error("Error tracking download:", error)
-    }
-  } catch (error) {
-    console.error("Error in trackPublicDownload:", error)
-  }
-}
-
 export default function PublicDocumentPage() {
   const params = useParams()
   const [document, setDocument] = useState<any>(null)
@@ -89,6 +37,7 @@ export default function PublicDocumentPage() {
   const [error, setError] = useState<string | null>(null)
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [viewerOpen, setViewerOpen] = useState(false)
+  const [downloadFormOpen, setDownloadFormOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -161,6 +110,66 @@ export default function PublicDocumentPage() {
     return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: es })
   }
 
+  const trackPublicDownload = async (anonymousData: AnonymousUserData, downloadToken: string) => {
+    try {
+      // Generar session ID único
+      let sessionId = localStorage.getItem("public_session_id")
+      if (!sessionId) {
+        sessionId = `pub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+        localStorage.setItem("public_session_id", sessionId)
+      }
+
+      // Obtener información básica
+      const userAgent = navigator.userAgent
+      const referrer = document.referrer || window.location.href
+
+      // Intentar obtener IP y geolocalización
+      let ipInfo = { ip: null, country: null, city: null }
+      try {
+        const ipResponse = await fetch("https://ipapi.co/json/")
+        if (ipResponse.ok) {
+          const ipData = await ipResponse.json()
+          ipInfo = {
+            ip: ipData.ip || null,
+            country: ipData.country_name || null,
+            city: ipData.city || null,
+          }
+        }
+      } catch (e) {
+        console.log("Could not get IP info")
+      }
+
+      // Registrar la descarga con información del usuario anónimo
+      const { error } = await supabasePublic.from("document_downloads").insert({
+        document_id: document.id,
+        user_id: null,
+        download_type: "main_file",
+        session_id: sessionId,
+        ip_address: ipInfo.ip,
+        user_agent: userAgent,
+        referrer: referrer,
+        country: ipInfo.country,
+        city: ipInfo.city,
+        file_name: document.title,
+        is_public_access: true,
+        anonymous_name: anonymousData.name,
+        anonymous_organization: anonymousData.organization,
+        anonymous_contact: anonymousData.contact,
+        anonymous_purpose: anonymousData.purpose,
+        download_token: downloadToken,
+        downloaded_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        console.error("Error tracking download:", error)
+        throw error
+      }
+    } catch (error) {
+      console.error("Error in trackPublicDownload:", error)
+      throw error
+    }
+  }
+
   const viewFile = async (fileUrl: string) => {
     try {
       let filePath = fileUrl
@@ -204,11 +213,18 @@ export default function PublicDocumentPage() {
     }
   }
 
-  const downloadFile = async (fileUrl: string, fileName?: string) => {
+  const handleAnonymousDownload = async (anonymousData: AnonymousUserData) => {
     try {
       setDownloadLoading(true)
 
-      let filePath = fileUrl
+      // Generar token único para esta descarga
+      const downloadToken = generateDownloadToken()
+
+      // Registrar la descarga primero
+      await trackPublicDownload(anonymousData, downloadToken)
+
+      // Obtener el archivo
+      let filePath = document.file_url
 
       if (filePath.startsWith("http")) {
         try {
@@ -229,47 +245,113 @@ export default function PublicDocumentPage() {
         .createSignedUrl(filePath, 60)
 
       if (signedUrlData?.signedUrl) {
-        // Rastrear la descarga
-        await trackPublicDownload(document.id, fileName || document.file_name || document.title)
+        // Descargar el archivo original
+        const response = await fetch(signedUrlData.signedUrl)
+        const originalBlob = await response.blob()
 
-        // Abrir el archivo
-        window.open(signedUrlData.signedUrl, "_blank")
+        // Determinar el tipo de archivo
+        const isPdf =
+          document.file_name?.toLowerCase().endsWith(".pdf") ||
+          document.file_url?.toLowerCase().endsWith(".pdf") ||
+          originalBlob.type === "application/pdf"
+
+        if (isPdf) {
+          try {
+            // Crear opciones para la marca de agua
+            const watermarkOptions = {
+              documentTitle: document.title,
+              downloadedBy: anonymousData.name,
+              organization: anonymousData.organization,
+              downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
+              downloadToken: downloadToken,
+              documentId: document.id,
+            }
+
+            // Agregar marca de agua al PDF
+            const watermarkedBlob = await addWatermarkToPDF(originalBlob, watermarkOptions)
+
+            // Descargar el archivo con marca de agua
+            const url = URL.createObjectURL(watermarkedBlob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `${document.title}_${downloadToken}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+
+            // También crear un archivo de información
+            const infoBlob = createWatermarkInfoFile(watermarkOptions)
+            const infoUrl = URL.createObjectURL(infoBlob)
+            const infoLink = document.createElement("a")
+            infoLink.href = infoUrl
+            infoLink.download = `${document.title}_info.txt`
+            document.body.appendChild(infoLink)
+
+            // Esperar un poco antes de descargar el segundo archivo
+            setTimeout(() => {
+              infoLink.click()
+              URL.revokeObjectURL(infoUrl)
+              document.body.removeChild(infoLink)
+            }, 1000)
+          } catch (watermarkError) {
+            console.error("Error adding watermark:", watermarkError)
+            // Si falla la marca de agua, descargar el original
+            const url = URL.createObjectURL(originalBlob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = document.title || "documento.pdf"
+            document.body.appendChild(a)
+            a.click()
+            URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          }
+        } else {
+          // Para archivos que no son PDF, descarga directa
+          const url = URL.createObjectURL(originalBlob)
+          const a = document.createElement("a")
+          a.href = url
+          a.download = document.title || "documento"
+          document.body.appendChild(a)
+          a.click()
+          URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+
+          // Crear archivo de información separado
+          const watermarkOptions = {
+            documentTitle: document.title,
+            downloadedBy: anonymousData.name,
+            organization: anonymousData.organization,
+            downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
+            downloadToken: downloadToken,
+            documentId: document.id,
+          }
+
+          const infoBlob = createWatermarkInfoFile(watermarkOptions)
+          const infoUrl = URL.createObjectURL(infoBlob)
+          const infoLink = document.createElement("a")
+          infoLink.href = infoUrl
+          infoLink.download = `${document.title}_info.txt`
+          document.body.appendChild(infoLink)
+
+          // Esperar un poco antes de descargar el segundo archivo
+          setTimeout(() => {
+            infoLink.click()
+            URL.revokeObjectURL(infoUrl)
+            document.body.removeChild(infoLink)
+          }, 1000)
+        }
 
         toast({
           title: "Descarga iniciada",
-          description: "El archivo se está descargando",
+          description: `Documento descargado por ${anonymousData.name}`,
         })
+
+        setDownloadFormOpen(false)
         return
       }
 
-      // Fallback: intentar descarga directa
-      const { data, error } = await supabasePublic.storage.from("documents").download(filePath)
-
-      if (error) {
-        throw new Error(error.message || "Error al descargar el archivo")
-      }
-
-      if (!data) {
-        throw new Error("No se pudo obtener el archivo")
-      }
-
-      // Rastrear la descarga
-      await trackPublicDownload(document.id, fileName || document.file_name || document.title)
-
-      // Crear blob y descargar
-      const url = URL.createObjectURL(data)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = fileName || filePath.split("/").pop() || "documento"
-      document.body.appendChild(a)
-      a.click()
-      URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      toast({
-        title: "Descarga completada",
-        description: "El archivo se ha descargado correctamente",
-      })
+      throw new Error("No se pudo obtener el archivo")
     } catch (error: any) {
       console.error("Error downloading file:", error)
       toast({
@@ -478,13 +560,9 @@ export default function PublicDocumentPage() {
                   Ver Documento
                 </Button>
 
-                <Button
-                  className="flex-1"
-                  onClick={() => downloadFile(document.file_url, document.title)}
-                  disabled={downloadLoading}
-                >
+                <Button className="flex-1" onClick={() => setDownloadFormOpen(true)} disabled={downloadLoading}>
                   <Download className="mr-2 h-4 w-4" />
-                  {downloadLoading ? "Descargando..." : "Descargar Documento"}
+                  {downloadLoading ? "Procesando..." : "Descargar Documento"}
                 </Button>
               </>
             ) : (
@@ -503,6 +581,15 @@ export default function PublicDocumentPage() {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Formulario de descarga anónima */}
+      <AnonymousDownloadForm
+        isOpen={downloadFormOpen}
+        onClose={() => setDownloadFormOpen(false)}
+        onSubmit={handleAnonymousDownload}
+        documentTitle={document.title}
+        loading={downloadLoading}
+      />
 
       {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
