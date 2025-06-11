@@ -63,12 +63,13 @@ export default function DocumentsPage() {
       }
       setError(null)
 
+      // Primero intentar con la relación específica
       let query = supabase
         .from("documents")
         .select(`
           *,
           profiles!documents_created_by_fkey (id, full_name, email),
-          departments!documents_department_id_fkey (id, name)
+          departments!documents_current_department_id_fkey (id, name)
         `)
         .order("created_at", { ascending: false })
 
@@ -79,7 +80,7 @@ export default function DocumentsPage() {
       if (user && user.role !== "admin") {
         if (user.department_id) {
           // Documents from their department OR documents they created
-          query = query.or(`department_id.eq.${user.department_id},created_by.eq.${user.id}`)
+          query = query.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
         } else {
           // Only documents they created if they don't have a department
           query = query.eq("created_by", user.id)
@@ -88,8 +89,47 @@ export default function DocumentsPage() {
 
       const { data, error } = await query
 
-      if (error) throw error
-      setDocuments(data || [])
+      if (error) {
+        console.error("Error with specific relationship, trying fallback:", error)
+
+        // Fallback: intentar sin la relación específica
+        let fallbackQuery = supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (id, full_name, email)
+          `)
+          .order("created_at", { ascending: false })
+
+        if (user && user.role !== "admin") {
+          if (user.department_id) {
+            fallbackQuery = fallbackQuery.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
+          } else {
+            fallbackQuery = fallbackQuery.eq("created_by", user.id)
+          }
+        }
+
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery
+
+        if (fallbackError) {
+          throw fallbackError
+        }
+
+        // Obtener departamentos por separado
+        const { data: deptData } = await supabase.from("departments").select("id, name")
+        const deptMap = new Map(deptData?.map((d) => [d.id, d]) || [])
+
+        // Combinar datos manualmente
+        const combinedData =
+          fallbackData?.map((doc) => ({
+            ...doc,
+            departments: doc.current_department_id ? deptMap.get(doc.current_department_id) : null,
+          })) || []
+
+        setDocuments(combinedData)
+      } else {
+        setDocuments(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching documents:", error)
       setError("Error al cargar los documentos: " + error.message)
@@ -153,7 +193,7 @@ export default function DocumentsPage() {
         </Badge>
       )
     }
-    if (user?.department_id && document.department_id === user.department_id) {
+    if (user?.department_id && document.current_department_id === user.department_id) {
       return (
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-2">
           Mi departamento
@@ -169,7 +209,7 @@ export default function DocumentsPage() {
       doc.document_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.description?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesDepartment = selectedDepartment === "all" || doc.department_id === selectedDepartment
+    const matchesDepartment = selectedDepartment === "all" || doc.current_department_id === selectedDepartment
     const matchesStatus = selectedStatus === "all" || doc.status === selectedStatus
 
     return matchesSearch && matchesDepartment && matchesStatus
