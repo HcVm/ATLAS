@@ -79,12 +79,19 @@ export interface Database {
           id: string
           title: string
           description: string | null
+          document_number: string
           status: string
           priority: string
           current_department_id: string | null
           created_by: string
           file_url: string | null
           file_name: string | null
+          qr_code: string | null
+          is_certified: boolean | null
+          certified_by: string | null
+          certified_at: string | null
+          verification_hash: string | null
+          certification_notes: string | null
           created_at: string
           updated_at: string
         }
@@ -92,12 +99,19 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
+          document_number?: string
           status?: string
           priority?: string
           current_department_id?: string | null
           created_by: string
           file_url?: string | null
           file_name?: string | null
+          qr_code?: string | null
+          is_certified?: boolean | null
+          certified_by?: string | null
+          certified_at?: string | null
+          verification_hash?: string | null
+          certification_notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -105,12 +119,19 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
+          document_number?: string
           status?: string
           priority?: string
           current_department_id?: string | null
           created_by?: string
           file_url?: string | null
           file_name?: string | null
+          qr_code?: string | null
+          is_certified?: boolean | null
+          certified_by?: string | null
+          certified_at?: string | null
+          verification_hash?: string | null
+          certification_notes?: string | null
           created_at?: string
           updated_at?: string
         }
