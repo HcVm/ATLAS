@@ -17,9 +17,9 @@ import { createClient } from "@supabase/supabase-js"
 import { AnonymousDownloadForm, type AnonymousUserData } from "@/components/public/anonymous-download-form"
 import {
   generateDownloadToken,
-  createWatermarkCoverPDF,
-  createWatermarkInfoFile,
   downloadBlob,
+  applyWatermarkToPdf,
+  createDownloadSummary,
 } from "@/lib/watermark-generator"
 
 // Crear cliente Supabase sin autenticación para acceso público
@@ -218,6 +218,7 @@ export default function PublicDocumentPage() {
     }
   }
 
+  // Modificar la función handleAnonymousDownload para usar la nueva funcionalidad de marca de agua
   const handleAnonymousDownload = async (anonymousData: AnonymousUserData) => {
     try {
       setDownloadLoading(true)
@@ -264,29 +265,19 @@ export default function PublicDocumentPage() {
         const response = await fetch(signedUrlData.signedUrl)
         const originalBlob = await response.blob()
 
-        // Descargar el archivo original
-        const originalFileName = document.file_name || document.title || "documento"
-        downloadBlob(originalBlob, `${originalFileName}_${downloadToken}`)
-
-        // Crear y descargar el PDF de información
-        try {
-          const infoPdfBlob = await createWatermarkCoverPDF(watermarkOptions)
-          setTimeout(() => {
-            downloadBlob(infoPdfBlob, `${document.title}_informacion_descarga.pdf`)
-          }, 1000)
-        } catch (pdfError) {
-          console.error("Error creating info PDF:", pdfError)
-          // Si falla el PDF, crear archivo de texto
-          const infoTextBlob = createWatermarkInfoFile(watermarkOptions)
-          setTimeout(() => {
-            downloadBlob(infoTextBlob, `${document.title}_informacion_descarga.txt`)
-          }, 1000)
-        }
-
+        // Mostrar el popup con la información de descarga
         toast({
-          title: "Descarga iniciada",
-          description: `Documento descargado por ${anonymousData.name}. Se incluye archivo de información.`,
+          title: "Información de Descarga Controlada",
+          description: <div dangerouslySetInnerHTML={{ __html: createDownloadSummary(watermarkOptions) }} />,
+          duration: 10000, // 10 segundos
         })
+
+        // Aplicar marca de agua al PDF original
+        const watermarkedBlob = await applyWatermarkToPdf(originalBlob, watermarkOptions)
+
+        // Descargar el archivo con marca de agua
+        const originalFileName = document.file_name || document.title || "documento"
+        downloadBlob(watermarkedBlob, `${originalFileName}`)
 
         setDownloadFormOpen(false)
         return

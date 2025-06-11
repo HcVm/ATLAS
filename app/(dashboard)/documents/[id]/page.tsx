@@ -1028,7 +1028,7 @@ export default function DocumentDetailsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Usuario</TableHead>
+                    <TableHead className="min-w-[200px]">Usuario</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Archivo</TableHead>
                       <TableHead>Fecha</TableHead>
@@ -1036,26 +1036,73 @@ export default function DocumentDetailsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 animate-pulse rounded w-20"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 animate-pulse rounded w-24"></div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                      {downloadStats.map((download) => (
+                        <TableRow key={download.id}>
+                          <TableCell className="align-top">
+                            {download.profiles ? (
+                              <div>
+                                <div className="font-medium">{download.profiles?.full_name}</div>
+                                <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="font-medium text-muted-foreground">Usuario Anónimo</div>
+                                {download.anonymous_name && (
+                                  <div className="text-sm">
+                                    <span className="font-medium">Nombre:</span> {download.anonymous_name}
+                                  </div>
+                                )}
+                                {download.anonymous_organization && (
+                                  <div className="text-sm">
+                                    <span className="font-medium">Organización:</span> {download.anonymous_organization}
+                                  </div>
+                                )}
+                                {download.anonymous_contact && (
+                                  <div className="text-sm">
+                                    <span className="font-medium">Contacto:</span> {download.anonymous_contact}
+                                  </div>
+                                )}
+                                {download.anonymous_purpose && (
+                                  <div className="text-sm">
+                                    <span className="font-medium">Propósito:</span> {download.anonymous_purpose}
+                                  </div>
+                                )}
+                                <div className="text-xs text-muted-foreground">
+                                  {download.country && download.city
+                                    ? `${download.city}, ${download.country}`
+                                    : download.country
+                                      ? download.country
+                                      : "Ubicación no disponible"}
+                                </div>
+                                {download.session_id && (
+                                  <div className="text-xs font-mono text-muted-foreground">
+                                    Sesión: {download.session_id.substring(0, 8)}...
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={download.download_type === "main_file" ? "default" : "secondary"}>
+                              {download.download_type === "main_file" ? "Principal" : "Adjunto"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{download.file_name || "N/A"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {format(new Date(download.downloaded_at || download.created_at), "dd/MM/yyyy HH:mm", {
+                                locale: es,
+                              })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-mono">{download.ip_address || "N/A"}</div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
                 </Table>
               </div>
             ) : downloadStats.length === 0 ? (

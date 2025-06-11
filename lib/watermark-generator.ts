@@ -14,133 +14,113 @@ export function generateDownloadToken(): string {
   return `DL-${timestamp}-${randomStr}`.toUpperCase()
 }
 
-// Función simplificada para crear un PDF de portada con información de descarga
-export async function createWatermarkCoverPDF(options: WatermarkOptions): Promise<Blob> {
+// Función para aplicar marca de agua directamente al PDF original
+export async function applyWatermarkToPdf(pdfBlob: Blob, options: WatermarkOptions): Promise<Blob> {
   try {
-    // Importar jsPDF dinámicamente para evitar problemas de SSR
-    const { jsPDF } = await import("jspdf")
+    // Importar PDFLib dinámicamente para evitar problemas de SSR
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import("pdf-lib")
 
-    const pdf = new jsPDF()
+    // Cargar el PDF original
+    const pdfBytes = await pdfBlob.arrayBuffer()
+    const pdfDoc = await PDFDocument.load(pdfBytes)
 
-    // Configurar la página de portada con información de descarga
-    pdf.setFontSize(20)
-    pdf.setTextColor(0, 0, 0)
-    pdf.text("DOCUMENTO CON CONTROL DE DESCARGA", 20, 30)
+    // Obtener fuentes
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-    // Línea separadora
-    pdf.setLineWidth(0.5)
-    pdf.line(20, 35, 190, 35)
+    // Aplicar marca de agua diagonal en cada página
+    const pages = pdfDoc.getPages()
 
-    pdf.setFontSize(14)
-    pdf.text(`Título: ${options.documentTitle}`, 20, 50)
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i]
+      const { width, height } = page.getSize()
 
-    pdf.setFontSize(12)
-    pdf.text("INFORMACIÓN DE DESCARGA:", 20, 70)
+      // Marca de agua diagonal
+      page.drawText("COPIA CONTROLADA", {
+        x: width / 2 - 150,
+        y: height / 2,
+        size: 50,
+        font: helveticaFont,
+        color: rgb(0.9, 0.9, 0.9),
+        rotate: degrees(45),
+        opacity: 0.3,
+      })
 
-    // Información del usuario
-    const lines = [
-      `• Descargado por: ${options.downloadedBy}`,
-      `• Organización: ${options.organization}`,
-      `• Fecha de descarga: ${options.downloadDate}`,
-      `• Token de verificación: ${options.downloadToken}`,
-      `• ID del documento: ${options.documentId}`,
-    ]
+      // Información de control en la parte inferior
+      const footerY = 20 // Posición Y desde el borde inferior
+      const footerText = `Documento: ${options.documentTitle} | Descargado por: ${options.downloadedBy} | Fecha: ${options.downloadDate} | Token: ${options.downloadToken}`
 
-    let yPosition = 85
-    lines.forEach((line) => {
-      pdf.text(line, 25, yPosition)
-      yPosition += 10
-    })
+      // Dibujar un rectángulo para el fondo del footer
+      page.drawRectangle({
+        x: 0,
+        y: 0,
+        width: width,
+        height: footerY + 15,
+        color: rgb(0.95, 0.95, 0.95),
+        opacity: 0.8,
+        borderWidth: 0,
+      })
 
-    // Agregar advertencia legal
-    pdf.setFontSize(11)
-    pdf.setTextColor(200, 0, 0)
-    pdf.text("ADVERTENCIA LEGAL:", 20, yPosition + 15)
+      // Dibujar el texto del footer
+      page.drawText(footerText, {
+        x: 20,
+        y: footerY,
+        size: 8,
+        font: helveticaFont,
+        color: rgb(0.3, 0.3, 0.3),
+      })
+    }
 
-    pdf.setTextColor(0, 0, 0)
-    pdf.setFontSize(10)
-    const warningLines = [
-      "• Este documento está protegido y su descarga ha sido registrada.",
-      "• Cualquier uso indebido será investigado y puede tener consecuencias legales.",
-      "• La información de descarga se mantiene en nuestros registros de seguridad.",
-      "• Este documento no debe ser modificado, alterado o redistribuido sin autorización.",
-    ]
-
-    yPosition += 25
-    warningLines.forEach((line) => {
-      pdf.text(line, 25, yPosition)
-      yPosition += 8
-    })
-
-    // Agregar marca de agua diagonal
-    pdf.setTextColor(220, 220, 220)
-    pdf.setFontSize(50)
-
-    // Guardar el estado gráfico
-    pdf.saveGraphicsState()
-
-    // Rotar y agregar texto
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-
-    pdf.text("COPIA CONTROLADA", pageWidth / 4, pageHeight / 4, {
-      align: "center",
-      angle: 45,
-    })
-
-    // Restaurar el estado gráfico
-    pdf.restoreGraphicsState()
-
-    // Agregar pie de página
-    pdf.setFontSize(8)
-    pdf.setTextColor(100, 100, 100)
-    pdf.text(
-      "Este documento ha sido generado automáticamente por el sistema de gestión documental.",
-      20,
-      pageHeight - 20,
-    )
-    pdf.text(`Generado el: ${new Date().toLocaleString("es-ES")}`, 20, pageHeight - 15)
-
-    // Convertir a blob
-    const pdfBlob = pdf.output("blob")
-    return pdfBlob
+    // Guardar el PDF modificado
+    const modifiedPdfBytes = await pdfDoc.save()
+    return new Blob([modifiedPdfBytes], { type: "application/pdf" })
   } catch (error) {
-    console.error("Error creating watermark PDF:", error)
-    throw new Error("No se pudo crear el documento de información")
+    console.error("Error applying watermark to PDF:", error)
+    // Si falla, devolver el PDF original
+    return pdfBlob
   }
 }
 
-// Función para crear un archivo de texto con información de la descarga
-export function createWatermarkInfoFile(options: WatermarkOptions): Blob {
-  const infoText = `
-INFORMACIÓN DE DESCARGA CONTROLADA
-==================================
-
-Documento: ${options.documentTitle}
-Descargado por: ${options.downloadedBy}
-Organización: ${options.organization}
-Fecha: ${options.downloadDate}
-Token: ${options.downloadToken}
-ID Documento: ${options.documentId}
-
-ADVERTENCIA: 
-Este archivo ha sido descargado de forma rastreada.
-El uso indebido de este documento será investigado.
-La información de descarga se mantiene en nuestros registros.
-
-TÉRMINOS DE USO:
-- No modificar el contenido del documento
-- No redistribuir sin autorización
-- Usar únicamente para los fines declarados
-- Respetar los derechos de autor y propiedad intelectual
-
-Generado automáticamente el: ${new Date().toLocaleString("es-ES")}
-  `.trim()
-
-  return new Blob([infoText], { type: "text/plain" })
+// Función para crear un resumen de información de descarga para mostrar en el popup
+export function createDownloadSummary(options: WatermarkOptions): string {
+  return `
+    <div class="space-y-4">
+      <div class="flex items-center gap-2 text-green-600">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <h3 class="text-lg font-semibold">Descarga Controlada</h3>
+      </div>
+      
+      <div class="grid grid-cols-1 gap-2">
+        <div>
+          <p class="text-sm text-muted-foreground">Documento</p>
+          <p class="font-medium">${options.documentTitle}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Descargado por</p>
+          <p class="font-medium">${options.downloadedBy}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Organización</p>
+          <p class="font-medium">${options.organization}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Fecha de descarga</p>
+          <p class="font-medium">${options.downloadDate}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Token de verificación</p>
+          <p class="font-mono text-xs bg-muted p-1 rounded">${options.downloadToken}</p>
+        </div>
+      </div>
+      
+      <div class="bg-amber-50 p-3 rounded-md border border-amber-200 text-sm text-amber-800">
+        <p>Este documento ha sido marcado con información de descarga y un token único para su trazabilidad.</p>
+      </div>
+    </div>
+  `
 }
 
-// Función simplificada para descargar archivos sin usar createElement
+// Función simplificada para descargar archivos
 export function downloadBlob(blob: Blob, filename: string): void {
   try {
     // Crear URL del blob
