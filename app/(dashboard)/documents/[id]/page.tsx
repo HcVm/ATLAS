@@ -1028,7 +1028,7 @@ export default function DocumentDetailsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                    <TableHead className="min-w-[400px]">Usuario</TableHead>
+                      <TableHead>Usuario</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Archivo</TableHead>
                       <TableHead>Fecha</TableHead>
@@ -1036,6 +1036,82 @@ export default function DocumentDetailsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded w-20"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 animate-pulse rounded w-24"></div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : downloadStats.length === 0 ? (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
+                <h3 className="mt-4 text-lg font-medium">Sin descargas registradas</h3>
+                <p className="text-muted-foreground">Este documento no ha sido descargado aún.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-blue-600">{downloadStats.length}</div>
+                      <p className="text-xs text-muted-foreground">Total de descargas</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-green-600">
+                        {downloadStats.filter((s) => s.profiles).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Usuarios registrados</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {downloadStats.filter((s) => !s.profiles && s.is_public_access).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Acceso público</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {new Set(downloadStats.filter((s) => s.profiles).map((s) => s.user_id)).size +
+                          new Set(downloadStats.filter((s) => s.session_id).map((s) => s.session_id)).size}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">Usuario</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Archivo</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>IP</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {downloadStats.map((download) => (
                         <TableRow key={download.id}>
                           <TableCell className="align-top">
@@ -1103,109 +1179,8 @@ export default function DocumentDetailsPage() {
                         </TableRow>
                       ))}
                     </TableBody>
-                </Table>
-              </div>
-            ) : downloadStats.length === 0 ? (
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h3 className="mt-4 text-lg font-medium">Sin descargas registradas</h3>
-                <p className="text-muted-foreground">Este documento no ha sido descargado aún.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-blue-600">{downloadStats.length}</div>
-                      <p className="text-xs text-muted-foreground">Total de descargas</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-green-600">
-                        {downloadStats.filter((s) => s.profiles).length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Usuarios registrados</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {downloadStats.filter((s) => !s.profiles && s.is_public_access).length}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Acceso público</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {new Set(downloadStats.filter((s) => s.profiles).map((s) => s.user_id)).size +
-                          new Set(downloadStats.filter((s) => s.session_id).map((s) => s.session_id)).size}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
-                    </CardContent>
-                  </Card>
+                  </Table>
                 </div>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Archivo</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>IP</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {downloadStats.map((download) => (
-                      <TableRow key={download.id}>
-                        <TableCell>
-                          {download.profiles ? (
-                            <div>
-                              <div className="font-medium">{download.profiles?.full_name}</div>
-                              <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="font-medium text-muted-foreground">Usuario Anónimo</div>
-                              <div className="text-xs text-muted-foreground">
-                                {download.country && download.city
-                                  ? `${download.city}, ${download.country}`
-                                  : download.country
-                                    ? download.country
-                                    : "Ubicación no disponible"}
-                              </div>
-                              {download.session_id && (
-                                <div className="text-xs font-mono text-muted-foreground">
-                                  Sesión: {download.session_id.substring(0, 8)}...
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={download.download_type === "main_file" ? "default" : "secondary"}>
-                            {download.download_type === "main_file" ? "Principal" : "Adjunto"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{download.file_name || "N/A"}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {format(new Date(download.downloaded_at || download.created_at), "dd/MM/yyyy HH:mm", {
-                              locale: es,
-                            })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-mono">{download.ip_address || "N/A"}</div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
             )}
           </div>
