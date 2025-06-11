@@ -539,7 +539,7 @@ export default function DocumentDetailsPage() {
                       </DialogHeader>
                       <MovementForm
                         documentId={document.id}
-                        currentDepartmentId={document.department_id}
+                        currentDepartmentId={document.department_id || document.departments?.id}
                         onComplete={handleMovementComplete}
                       />
                     </DialogContent>
