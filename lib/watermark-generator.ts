@@ -48,7 +48,7 @@ export async function applyWatermarkToPdf(pdfBlob: Blob, options: WatermarkOptio
 
       // Información de control en la parte inferior
       const footerY = 20 // Posición Y desde el borde inferior
-      const footerText = `Documento: ${options.documentTitle} | Descargado por: ${options.downloadedBy} | Fecha: ${options.downloadDate} | Token: ${options.downloadToken}`
+      const footerText = `Descargado por: ${options.downloadedBy} | Token: ${options.downloadToken}`
 
       // Dibujar un rectángulo para el fondo del footer
       page.drawRectangle({
