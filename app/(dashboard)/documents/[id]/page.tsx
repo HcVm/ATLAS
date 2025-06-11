@@ -1108,6 +1108,7 @@ export default function DocumentDetailsPage() {
                         <TableHead>Tipo</TableHead>
                         <TableHead>Archivo</TableHead>
                         <TableHead>Fecha</TableHead>
+                        <TableHead>Token</TableHead>
                         <TableHead>IP</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1172,6 +1173,18 @@ export default function DocumentDetailsPage() {
                                 locale: es,
                               })}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {download.download_token ? (
+                              <div
+                                className="text-sm font-mono bg-muted p-1 rounded overflow-x-auto max-w-[150px]"
+                                title={download.download_token}
+                              >
+                                {download.download_token}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">No disponible</div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="text-sm font-mono">{download.ip_address || "N/A"}</div>

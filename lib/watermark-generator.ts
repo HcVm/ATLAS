@@ -35,39 +35,78 @@ export async function applyWatermarkToPdf(pdfBlob: Blob, options: WatermarkOptio
       const page = pages[i]
       const { width, height } = page.getSize()
 
-      // Marca de agua diagonal
+      // Marca de agua diagonal más visible
       page.drawText("COPIA CONTROLADA", {
-        x: width / 2 - 150,
+        x: width / 2 - 200,
         y: height / 2,
-        size: 50,
-        font: helveticaFont,
-        color: rgb(0.9, 0.9, 0.9),
+        size: 60,
+        font: helveticaBold,
+        color: rgb(0.85, 0.85, 0.85),
         rotate: degrees(45),
-        opacity: 0.3,
+        opacity: 0.4,
       })
 
       // Información de control en la parte inferior
       const footerY = 20 // Posición Y desde el borde inferior
-      const footerText = `Descargado por: ${options.downloadedBy} | Token: ${options.downloadToken}`
 
       // Dibujar un rectángulo para el fondo del footer
       page.drawRectangle({
         x: 0,
         y: 0,
         width: width,
-        height: footerY + 15,
-        color: rgb(0.95, 0.95, 0.95),
-        opacity: 0.8,
+        height: footerY + 25,
+        color: rgb(0.9, 0.9, 0.95),
+        opacity: 0.9,
         borderWidth: 0,
       })
 
-      // Dibujar el texto del footer
-      page.drawText(footerText, {
+      // Línea superior del footer
+      page.drawLine({
+        start: { x: 0, y: footerY + 25 },
+        end: { x: width, y: footerY + 25 },
+        thickness: 1,
+        color: rgb(0.7, 0.7, 0.8),
+      })
+
+      // Información del documento en el footer
+      page.drawText(`Documento: ${options.documentTitle}`, {
         x: 20,
-        y: footerY,
+        y: footerY + 15,
+        size: 8,
+        font: helveticaBold,
+        color: rgb(0.2, 0.2, 0.2),
+      })
+
+      // Información de descarga en el footer
+      page.drawText(`Descargado por: ${options.downloadedBy} | Fecha: ${options.downloadDate}`, {
+        x: 20,
+        y: footerY + 5,
         size: 8,
         font: helveticaFont,
         color: rgb(0.3, 0.3, 0.3),
+      })
+
+      // Token de verificación destacado
+      const tokenText = `TOKEN DE VERIFICACIÓN: ${options.downloadToken}`
+      const tokenWidth = helveticaBold.widthOfTextAtSize(tokenText, 9)
+
+      page.drawRectangle({
+        x: width - tokenWidth - 30,
+        y: footerY + 2,
+        width: tokenWidth + 20,
+        height: 18,
+        color: rgb(0.95, 0.95, 1),
+        borderColor: rgb(0.7, 0.7, 0.9),
+        borderWidth: 1,
+        borderRadius: 4,
+      })
+
+      page.drawText(tokenText, {
+        x: width - tokenWidth - 20,
+        y: footerY + 8,
+        size: 9,
+        font: helveticaBold,
+        color: rgb(0.1, 0.1, 0.5),
       })
     }
 
@@ -90,31 +129,33 @@ export function createDownloadSummary(options: WatermarkOptions): string {
         <h3 class="text-lg font-semibold">Descarga Controlada</h3>
       </div>
       
-      <div class="grid grid-cols-1 gap-2">
-        <div>
-          <p class="text-sm text-muted-foreground">Documento</p>
-          <p class="font-medium">${options.documentTitle}</p>
-        </div>
-        <div>
-          <p class="text-sm text-muted-foreground">Descargado por</p>
-          <p class="font-medium">${options.downloadedBy}</p>
-        </div>
-        <div>
-          <p class="text-sm text-muted-foreground">Organización</p>
-          <p class="font-medium">${options.organization}</p>
-        </div>
-        <div>
-          <p class="text-sm text-muted-foreground">Fecha de descarga</p>
-          <p class="font-medium">${options.downloadDate}</p>
-        </div>
-        <div>
-          <p class="text-sm text-muted-foreground">Token de verificación</p>
-          <p class="font-mono text-xs bg-muted p-1 rounded">${options.downloadToken}</p>
+      <div class="bg-green-50 border border-green-200 p-3 rounded-md">
+        <div class="grid grid-cols-1 gap-2">
+          <div>
+            <p class="text-sm text-muted-foreground">Documento</p>
+            <p class="font-medium">${options.documentTitle}</p>
+          </div>
+          <div>
+            <p class="text-sm text-muted-foreground">Descargado por</p>
+            <p class="font-medium">${options.downloadedBy}</p>
+          </div>
+          <div>
+            <p class="text-sm text-muted-foreground">Organización</p>
+            <p class="font-medium">${options.organization}</p>
+          </div>
+          <div>
+            <p class="text-sm text-muted-foreground">Fecha de descarga</p>
+            <p class="font-medium">${options.downloadDate}</p>
+          </div>
+          <div>
+            <p class="text-sm text-muted-foreground">Token de verificación</p>
+            <p class="font-mono text-xs bg-white p-2 rounded border border-green-300 text-green-800 font-bold">${options.downloadToken}</p>
+          </div>
         </div>
       </div>
       
       <div class="bg-amber-50 p-3 rounded-md border border-amber-200 text-sm text-amber-800">
-        <p>Este documento ha sido marcado con información de descarga y un token único para su trazabilidad.</p>
+        <p><strong>IMPORTANTE:</strong> Este documento ha sido marcado con información de descarga y un token único para su trazabilidad. El token aparece en el pie de página del documento descargado.</p>
       </div>
     </div>
   `

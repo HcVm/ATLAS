@@ -265,12 +265,18 @@ export default function PublicDocumentPage() {
         const response = await fetch(signedUrlData.signedUrl)
         const originalBlob = await response.blob()
 
-        // Mostrar el popup con la información de descarga
+        // Mostrar el popup con la información de descarga (con mayor duración y prioridad)
         toast({
           title: "Información de Descarga Controlada",
           description: <div dangerouslySetInnerHTML={{ __html: createDownloadSummary(watermarkOptions) }} />,
-          duration: 10000, // 10 segundos
+          duration: 20000, // 20 segundos
+          important: true, // Marcar como importante para asegurar que se muestre
         })
+
+        // Mostrar también una alerta para asegurar que el usuario vea la información
+        alert(
+          `Documento descargado con éxito.\nToken de verificación: ${watermarkOptions.downloadToken}\nEste token aparece en el documento descargado y permite su trazabilidad.`,
+        )
 
         // Aplicar marca de agua al PDF original
         const watermarkedBlob = await applyWatermarkToPdf(originalBlob, watermarkOptions)
