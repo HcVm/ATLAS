@@ -1,5 +1,3 @@
-import { jsPDF } from "jspdf"
-
 export interface WatermarkOptions {
   documentTitle: string
   downloadedBy: string
@@ -16,71 +14,99 @@ export function generateDownloadToken(): string {
   return `DL-${timestamp}-${randomStr}`.toUpperCase()
 }
 
-// Función simplificada para agregar marca de agua a un PDF
-// Esta versión no intenta modificar el PDF existente, sino que crea un nuevo PDF con la información
-export async function addWatermarkToPDF(originalPdfBlob: Blob, options: WatermarkOptions): Promise<Blob> {
+// Función simplificada para crear un PDF de portada con información de descarga
+export async function createWatermarkCoverPDF(options: WatermarkOptions): Promise<Blob> {
   try {
-    // Crear un nuevo PDF con marca de agua
+    // Importar jsPDF dinámicamente para evitar problemas de SSR
+    const { jsPDF } = await import("jspdf")
+
     const pdf = new jsPDF()
 
     // Configurar la página de portada con información de descarga
-    pdf.setFontSize(24)
+    pdf.setFontSize(20)
     pdf.setTextColor(0, 0, 0)
-    pdf.text("DOCUMENTO CON MARCA DE SEGURIDAD", 20, 30)
+    pdf.text("DOCUMENTO CON CONTROL DE DESCARGA", 20, 30)
 
-    pdf.setFontSize(16)
+    // Línea separadora
+    pdf.setLineWidth(0.5)
+    pdf.line(20, 35, 190, 35)
+
+    pdf.setFontSize(14)
     pdf.text(`Título: ${options.documentTitle}`, 20, 50)
 
     pdf.setFontSize(12)
-    pdf.text("INFORMACIÓN DE DESCARGA", 20, 70)
-    pdf.text(`Descargado por: ${options.downloadedBy}`, 20, 80)
-    pdf.text(`Organización: ${options.organization}`, 20, 90)
-    pdf.text(`Fecha de descarga: ${options.downloadDate}`, 20, 100)
-    pdf.text(`Token de verificación: ${options.downloadToken}`, 20, 110)
-    pdf.text(`ID del documento: ${options.documentId}`, 20, 120)
+    pdf.text("INFORMACIÓN DE DESCARGA:", 20, 70)
+
+    // Información del usuario
+    const lines = [
+      `• Descargado por: ${options.downloadedBy}`,
+      `• Organización: ${options.organization}`,
+      `• Fecha de descarga: ${options.downloadDate}`,
+      `• Token de verificación: ${options.downloadToken}`,
+      `• ID del documento: ${options.documentId}`,
+    ]
+
+    let yPosition = 85
+    lines.forEach((line) => {
+      pdf.text(line, 25, yPosition)
+      yPosition += 10
+    })
 
     // Agregar advertencia legal
-    pdf.setTextColor(255, 0, 0)
-    pdf.text("ADVERTENCIA:", 20, 140)
+    pdf.setFontSize(11)
+    pdf.setTextColor(200, 0, 0)
+    pdf.text("ADVERTENCIA LEGAL:", 20, yPosition + 15)
+
     pdf.setTextColor(0, 0, 0)
-    pdf.text("Este documento está protegido y su descarga ha sido registrada.", 20, 150)
-    pdf.text("Cualquier uso indebido será investigado y puede tener consecuencias legales.", 20, 160)
+    pdf.setFontSize(10)
+    const warningLines = [
+      "• Este documento está protegido y su descarga ha sido registrada.",
+      "• Cualquier uso indebido será investigado y puede tener consecuencias legales.",
+      "• La información de descarga se mantiene en nuestros registros de seguridad.",
+      "• Este documento no debe ser modificado, alterado o redistribuido sin autorización.",
+    ]
+
+    yPosition += 25
+    warningLines.forEach((line) => {
+      pdf.text(line, 25, yPosition)
+      yPosition += 8
+    })
 
     // Agregar marca de agua diagonal
-    pdf.setTextColor(200, 200, 200)
-    pdf.setFontSize(60)
-    pdf.text("COPIA CONTROLADA", 105, 150, {
+    pdf.setTextColor(220, 220, 220)
+    pdf.setFontSize(50)
+
+    // Guardar el estado gráfico
+    pdf.saveGraphicsState()
+
+    // Rotar y agregar texto
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+
+    pdf.text("COPIA CONTROLADA", pageWidth / 2, pageHeight / 2, {
       align: "center",
       angle: 45,
     })
 
-    // Agregar el PDF original como anexo
-    try {
-      const originalPdfUrl = URL.createObjectURL(originalPdfBlob)
-      pdf.addPage()
-      pdf.text("DOCUMENTO ORIGINAL A CONTINUACIÓN", 20, 20)
-      pdf.addPage()
+    // Restaurar el estado gráfico
+    pdf.restoreGraphicsState()
 
-      // Intentar agregar el PDF original como anexo
-      // Nota: esto es una simplificación, no estamos realmente incrustando el PDF original
-      // Solo estamos agregando una referencia a él
-      pdf.setTextColor(0, 0, 255)
-      pdf.textWithLink("Ver documento original", 20, 30, { url: originalPdfUrl })
-
-      // Liberar el URL
-      URL.revokeObjectURL(originalPdfUrl)
-    } catch (error) {
-      console.error("Error al anexar el PDF original:", error)
-      // Si falla, simplemente continuamos con la portada
-    }
+    // Agregar pie de página
+    pdf.setFontSize(8)
+    pdf.setTextColor(100, 100, 100)
+    pdf.text(
+      "Este documento ha sido generado automáticamente por el sistema de gestión documental.",
+      20,
+      pageHeight - 20,
+    )
+    pdf.text(`Generado el: ${new Date().toLocaleString("es-ES")}`, 20, pageHeight - 15)
 
     // Convertir a blob
-    const watermarkedPdfBlob = pdf.output("blob")
-    return watermarkedPdfBlob
+    const pdfBlob = pdf.output("blob")
+    return pdfBlob
   } catch (error) {
-    console.error("Error adding watermark:", error)
-    // Si falla la marca de agua, devolver el original
-    return originalPdfBlob
+    console.error("Error creating watermark PDF:", error)
+    throw new Error("No se pudo crear el documento de información")
   }
 }
 
@@ -97,8 +123,18 @@ Fecha: ${options.downloadDate}
 Token: ${options.downloadToken}
 ID Documento: ${options.documentId}
 
-ADVERTENCIA: Este archivo ha sido descargado de forma rastreada.
+ADVERTENCIA: 
+Este archivo ha sido descargado de forma rastreada.
 El uso indebido de este documento será investigado.
+La información de descarga se mantiene en nuestros registros.
+
+TÉRMINOS DE USO:
+- No modificar el contenido del documento
+- No redistribuir sin autorización
+- Usar únicamente para los fines declarados
+- Respetar los derechos de autor y propiedad intelectual
+
+Generado automáticamente el: ${new Date().toLocaleString("es-ES")}
   `.trim()
 
   return new Blob([infoText], { type: "text/plain" })

@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import { createClient } from "@supabase/supabase-js"
 import { AnonymousDownloadForm, type AnonymousUserData } from "@/components/public/anonymous-download-form"
-import { generateDownloadToken, addWatermarkToPDF, createWatermarkInfoFile } from "@/lib/watermark-generator"
+import { generateDownloadToken, createWatermarkCoverPDF, createWatermarkInfoFile } from "@/lib/watermark-generator"
 
 // Crear cliente Supabase sin autenticación para acceso público
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -213,6 +213,22 @@ export default function PublicDocumentPage() {
     }
   }
 
+  const downloadFile = (blob: Blob, filename: string) => {
+    try {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error("Error downloading file:", error)
+      throw new Error("Error al descargar el archivo")
+    }
+  }
+
   const handleAnonymousDownload = async (anonymousData: AnonymousUserData) => {
     try {
       setDownloadLoading(true)
@@ -223,7 +239,17 @@ export default function PublicDocumentPage() {
       // Registrar la descarga primero
       await trackPublicDownload(anonymousData, downloadToken)
 
-      // Obtener el archivo
+      // Crear opciones para la información de descarga
+      const watermarkOptions = {
+        documentTitle: document.title,
+        downloadedBy: anonymousData.name,
+        organization: anonymousData.organization,
+        downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
+        downloadToken: downloadToken,
+        documentId: document.id,
+      }
+
+      // Obtener el archivo original
       let filePath = document.file_url
 
       if (filePath.startsWith("http")) {
@@ -249,102 +275,28 @@ export default function PublicDocumentPage() {
         const response = await fetch(signedUrlData.signedUrl)
         const originalBlob = await response.blob()
 
-        // Determinar el tipo de archivo
-        const isPdf =
-          document.file_name?.toLowerCase().endsWith(".pdf") ||
-          document.file_url?.toLowerCase().endsWith(".pdf") ||
-          originalBlob.type === "application/pdf"
+        // Descargar el archivo original
+        const originalFileName = document.file_name || document.title || "documento"
+        downloadFile(originalBlob, `${originalFileName}_${downloadToken}`)
 
-        if (isPdf) {
-          try {
-            // Crear opciones para la marca de agua
-            const watermarkOptions = {
-              documentTitle: document.title,
-              downloadedBy: anonymousData.name,
-              organization: anonymousData.organization,
-              downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
-              downloadToken: downloadToken,
-              documentId: document.id,
-            }
-
-            // Agregar marca de agua al PDF
-            const watermarkedBlob = await addWatermarkToPDF(originalBlob, watermarkOptions)
-
-            // Descargar el archivo con marca de agua
-            const url = URL.createObjectURL(watermarkedBlob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `${document.title}_${downloadToken}.pdf`
-            document.body.appendChild(a)
-            a.click()
-            URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-
-            // También crear un archivo de información
-            const infoBlob = createWatermarkInfoFile(watermarkOptions)
-            const infoUrl = URL.createObjectURL(infoBlob)
-            const infoLink = document.createElement("a")
-            infoLink.href = infoUrl
-            infoLink.download = `${document.title}_info.txt`
-            document.body.appendChild(infoLink)
-
-            // Esperar un poco antes de descargar el segundo archivo
-            setTimeout(() => {
-              infoLink.click()
-              URL.revokeObjectURL(infoUrl)
-              document.body.removeChild(infoLink)
-            }, 1000)
-          } catch (watermarkError) {
-            console.error("Error adding watermark:", watermarkError)
-            // Si falla la marca de agua, descargar el original
-            const url = URL.createObjectURL(originalBlob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = document.title || "documento.pdf"
-            document.body.appendChild(a)
-            a.click()
-            URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-          }
-        } else {
-          // Para archivos que no son PDF, descarga directa
-          const url = URL.createObjectURL(originalBlob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = document.title || "documento"
-          document.body.appendChild(a)
-          a.click()
-          URL.revokeObjectURL(url)
-          document.body.removeChild(a)
-
-          // Crear archivo de información separado
-          const watermarkOptions = {
-            documentTitle: document.title,
-            downloadedBy: anonymousData.name,
-            organization: anonymousData.organization,
-            downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
-            downloadToken: downloadToken,
-            documentId: document.id,
-          }
-
-          const infoBlob = createWatermarkInfoFile(watermarkOptions)
-          const infoUrl = URL.createObjectURL(infoBlob)
-          const infoLink = document.createElement("a")
-          infoLink.href = infoUrl
-          infoLink.download = `${document.title}_info.txt`
-          document.body.appendChild(infoLink)
-
-          // Esperar un poco antes de descargar el segundo archivo
+        // Crear y descargar el PDF de información
+        try {
+          const infoPdfBlob = await createWatermarkCoverPDF(watermarkOptions)
           setTimeout(() => {
-            infoLink.click()
-            URL.revokeObjectURL(infoUrl)
-            document.body.removeChild(infoLink)
+            downloadFile(infoPdfBlob, `${document.title}_informacion_descarga.pdf`)
+          }, 1000)
+        } catch (pdfError) {
+          console.error("Error creating info PDF:", pdfError)
+          // Si falla el PDF, crear archivo de texto
+          const infoTextBlob = createWatermarkInfoFile(watermarkOptions)
+          setTimeout(() => {
+            downloadFile(infoTextBlob, `${document.title}_informacion_descarga.txt`)
           }, 1000)
         }
 
         toast({
           title: "Descarga iniciada",
-          description: `Documento descargado por ${anonymousData.name}`,
+          description: `Documento descargado por ${anonymousData.name}. Se incluye archivo de información.`,
         })
 
         setDownloadFormOpen(false)
