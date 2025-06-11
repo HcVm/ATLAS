@@ -531,12 +531,9 @@ export default function PublicDocumentPage() {
 
       {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh]">
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[50vh]">
           <DialogHeader>
             <DialogTitle>Vista previa: {document.title}</DialogTitle>
-            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {viewerUrl && (
