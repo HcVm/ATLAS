@@ -47,13 +47,18 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
 
   useEffect(() => {
     const fetchDepartments = async () => {
+      if (!currentDepartmentId) {
+        console.log("Current department ID is not available, skipping fetchDepartments.") // Debug log
+        setDepartments([]) // Set to empty array if no valid currentDepartmentId
+        return
+      }
       try {
         console.log("Current department ID:", currentDepartmentId) // Debug log
 
         const { data, error } = await supabase
           .from("departments")
           .select("*")
-          .neq("id", currentDepartmentId || "") // Handle undefined case
+          .neq("id", currentDepartmentId)
           .order("name")
 
         console.log("Departments data:", data) // Debug log
