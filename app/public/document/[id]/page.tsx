@@ -15,7 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import { createClient } from "@supabase/supabase-js"
 import { AnonymousDownloadForm, type AnonymousUserData } from "@/components/public/anonymous-download-form"
-import { generateDownloadToken, createWatermarkCoverPDF, createWatermarkInfoFile } from "@/lib/watermark-generator"
+import {
+  generateDownloadToken,
+  createWatermarkCoverPDF,
+  createWatermarkInfoFile,
+  downloadBlob,
+} from "@/lib/watermark-generator"
 
 // Crear cliente Supabase sin autenticación para acceso público
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -213,22 +218,6 @@ export default function PublicDocumentPage() {
     }
   }
 
-  const downloadFile = (blob: Blob, filename: string) => {
-    try {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error("Error downloading file:", error)
-      throw new Error("Error al descargar el archivo")
-    }
-  }
-
   const handleAnonymousDownload = async (anonymousData: AnonymousUserData) => {
     try {
       setDownloadLoading(true)
@@ -277,20 +266,20 @@ export default function PublicDocumentPage() {
 
         // Descargar el archivo original
         const originalFileName = document.file_name || document.title || "documento"
-        downloadFile(originalBlob, `${originalFileName}_${downloadToken}`)
+        downloadBlob(originalBlob, `${originalFileName}_${downloadToken}`)
 
         // Crear y descargar el PDF de información
         try {
           const infoPdfBlob = await createWatermarkCoverPDF(watermarkOptions)
           setTimeout(() => {
-            downloadFile(infoPdfBlob, `${document.title}_informacion_descarga.pdf`)
+            downloadBlob(infoPdfBlob, `${document.title}_informacion_descarga.pdf`)
           }, 1000)
         } catch (pdfError) {
           console.error("Error creating info PDF:", pdfError)
           // Si falla el PDF, crear archivo de texto
           const infoTextBlob = createWatermarkInfoFile(watermarkOptions)
           setTimeout(() => {
-            downloadFile(infoTextBlob, `${document.title}_informacion_descarga.txt`)
+            downloadBlob(infoTextBlob, `${document.title}_informacion_descarga.txt`)
           }, 1000)
         }
 

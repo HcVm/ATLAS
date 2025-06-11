@@ -140,6 +140,31 @@ Generado automáticamente el: ${new Date().toLocaleString("es-ES")}
   return new Blob([infoText], { type: "text/plain" })
 }
 
+// Función simplificada para descargar archivos sin usar createElement
+export function downloadBlob(blob: Blob, filename: string): void {
+  try {
+    // Crear URL del blob
+    const url = URL.createObjectURL(blob)
+
+    // Crear enlace temporal
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    link.style.display = "none"
+
+    // Agregar al DOM, hacer clic y limpiar
+    document.body.appendChild(link)
+    link.click()
+
+    // Limpiar
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error("Error downloading file:", error)
+    throw new Error("Error al descargar el archivo")
+  }
+}
+
 export async function createVerificationRecord(documentId: string, token: string, anonymousData: any) {
   return {
     document_id: documentId,
