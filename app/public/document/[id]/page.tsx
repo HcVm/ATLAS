@@ -32,19 +32,49 @@ export default function PublicDocumentPage() {
   useEffect(() => {
     const fetchDocument = async () => {
       try {
-        // Fetch document details
+        // Fetch document details with fallback for department relationship
         const { data: document, error } = await supabase
           .from("documents")
           .select(`
             *,
-            departments!documents_department_id_fkey(id, name, color),
-            profiles!documents_created_by_fkey(id, full_name, email)
+            current_department:departments!documents_current_department_id_fkey(id, name, color),
+            created_by_profile:profiles!documents_created_by_fkey(id, full_name, email)
           `)
           .eq("id", params.id)
           .single()
 
         if (error) {
-          throw error
+          console.error("Error fetching with relationships:", error)
+          // Fallback: fetch without relationships
+          const { data: simpleDocument, error: simpleError } = await supabase
+            .from("documents")
+            .select("*")
+            .eq("id", params.id)
+            .single()
+
+          if (simpleError) {
+            throw simpleError
+          }
+
+          // Fetch department separately if document has department_id
+          let departmentData = null
+          if (simpleDocument.current_department_id || simpleDocument.department_id) {
+            const deptId = simpleDocument.current_department_id || simpleDocument.department_id
+            const { data: dept } = await supabase
+              .from("departments")
+              .select("id, name, color")
+              .eq("id", deptId)
+              .single()
+            departmentData = dept
+          }
+
+          setDocument({
+            ...simpleDocument,
+            current_department: departmentData,
+            departments: departmentData, // Fallback for both naming conventions
+          })
+        } else {
+          setDocument(document)
         }
 
         if (!document) {
@@ -53,8 +83,6 @@ export default function PublicDocumentPage() {
           return
         }
 
-        setDocument(document)
-
         // Log verification if document is certified
         if (document.is_certified && !verificationLogged) {
           await logVerification(document.id)
@@ -62,10 +90,18 @@ export default function PublicDocumentPage() {
 
         // Get file URL if available
         if (document.file_path) {
-          const { data: fileData } = await supabase.storage.from("documents").createSignedUrl(document.file_path, 3600) // 1 hour expiry
+          try {
+            const { data: fileData, error: fileError } = await supabase.storage
+              .from("documents")
+              .createSignedUrl(document.file_path, 3600) // 1 hour expiry
 
-          if (fileData?.signedUrl) {
-            setFileUrl(fileData.signedUrl)
+            if (fileError) {
+              console.error("Error creating signed URL:", fileError)
+            } else if (fileData?.signedUrl) {
+              setFileUrl(fileData.signedUrl)
+            }
+          } catch (fileErr) {
+            console.error("Error with file URL:", fileErr)
           }
         }
 
@@ -86,7 +122,9 @@ export default function PublicDocumentPage() {
       let locationData = {}
       try {
         const response = await fetch("https://ipapi.co/json/")
-        locationData = await response.json()
+        if (response.ok) {
+          locationData = await response.json()
+        }
       } catch (e) {
         console.log("Could not get location data")
       }
@@ -156,6 +194,8 @@ export default function PublicDocumentPage() {
       </div>
     )
   }
+
+  const departmentInfo = document.current_department || document.departments
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
@@ -272,9 +312,9 @@ export default function PublicDocumentPage() {
                 <div className="flex items-center mt-1">
                   <div
                     className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: document.departments?.color || "#888888" }}
+                    style={{ backgroundColor: departmentInfo?.color || "#888888" }}
                   ></div>
-                  <p className="font-medium">{document.departments?.name || "No asignado"}</p>
+                  <p className="font-medium">{departmentInfo?.name || "No asignado"}</p>
                 </div>
               </div>
               <div>
@@ -295,7 +335,7 @@ export default function PublicDocumentPage() {
           <Separator />
 
           <div className="w-full flex flex-col sm:flex-row gap-3 justify-between">
-            {fileUrl && (
+            {fileUrl ? (
               <>
                 <Dialog open={showPreview} onOpenChange={setShowPreview}>
                   <DialogTrigger asChild>
@@ -324,6 +364,10 @@ export default function PublicDocumentPage() {
                   Descargar Documento Original
                 </Button>
               </>
+            ) : (
+              <div className="flex-1 text-center text-muted-foreground">
+                <p>Documento original no disponible</p>
+              </div>
             )}
           </div>
 

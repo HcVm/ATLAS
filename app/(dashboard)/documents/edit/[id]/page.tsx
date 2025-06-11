@@ -67,7 +67,7 @@ export default function EditDocumentPage() {
         setTitle(document.title || "")
         setDocumentNumber(document.document_number || "")
         setDescription(document.description || "")
-        setDepartmentId(document.current_department_id || "")
+        setDepartmentId(document.current_department_id || document.department_id || "")
 
         // Set certification data
         setIsCertified(document.is_certified || false)
@@ -101,25 +101,54 @@ export default function EditDocumentPage() {
     try {
       setSaving(true)
 
-      const updates = {
+      // Prepare the update object with only the fields that exist in the schema
+      const updates: any = {
         title,
-        document_number: documentNumber,
         description,
-        current_department_id: departmentId || null,
-        is_certified: isCertified,
-        certification_type: isCertified ? certificationType : null,
-        certificate_number: isCertified ? certificateNumber : null,
-        issued_date: isCertified && issuedDate ? issuedDate.toISOString().split("T")[0] : null,
-        expiry_date: isCertified && expiryDate ? expiryDate.toISOString().split("T")[0] : null,
-        issuer_name: isCertified ? issuerName : null,
-        issuer_position: isCertified ? issuerPosition : null,
-        verification_enabled: isCertified ? verificationEnabled : false,
         updated_at: new Date().toISOString(),
       }
 
+      // Add optional fields only if they have values or are being cleared
+      if (documentNumber !== undefined) {
+        updates.document_number = documentNumber || null
+      }
+
+      if (departmentId !== undefined) {
+        // Try both field names to be safe
+        updates.current_department_id = departmentId || null
+        updates.department_id = departmentId || null
+      }
+
+      // Certification fields
+      updates.is_certified = isCertified
+
+      if (isCertified) {
+        updates.certification_type = certificationType || null
+        updates.certificate_number = certificateNumber || null
+        updates.issued_date = issuedDate ? issuedDate.toISOString().split("T")[0] : null
+        updates.expiry_date = expiryDate ? expiryDate.toISOString().split("T")[0] : null
+        updates.issuer_name = issuerName || null
+        updates.issuer_position = issuerPosition || null
+        updates.verification_enabled = verificationEnabled
+      } else {
+        // Clear certification fields when not certified
+        updates.certification_type = null
+        updates.certificate_number = null
+        updates.issued_date = null
+        updates.expiry_date = null
+        updates.issuer_name = null
+        updates.issuer_position = null
+        updates.verification_enabled = false
+      }
+
+      console.log("Updating document with:", updates)
+
       const { error } = await supabase.from("documents").update(updates).eq("id", params.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase error:", error)
+        throw error
+      }
 
       toast({
         title: "Documento actualizado",
@@ -131,7 +160,7 @@ export default function EditDocumentPage() {
       console.error("Error updating document:", error)
       toast({
         title: "Error",
-        description: "No se pudo actualizar el documento",
+        description: error.message || "No se pudo actualizar el documento",
         variant: "destructive",
       })
     } finally {

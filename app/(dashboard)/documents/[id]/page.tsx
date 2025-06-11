@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, MoveDown, MoveDownIcon, AxeIcon, FileIcon, FileBoxIcon, FileBadgeIcon } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -72,7 +72,7 @@ export default function DocumentDetailsPage() {
         .select(`
           *,
           profiles!documents_created_by_fkey (id, full_name, email),
-          departments!documents_department_id_fkey (id, name)
+          departments!documents_department_id_fkey (id, name, color)
         `)
         .eq("id", params.id)
         .single()
@@ -447,6 +447,56 @@ export default function DocumentDetailsPage() {
                   </div>
                 )}
 
+                {/* Información de Certificación */}
+                {document.is_certified && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3">Información de Certificación</h3>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="font-medium text-green-800">Documento Certificado</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          {document.certified_by && (
+                            <div>
+                              <span className="text-muted-foreground">Certificado por:</span>
+                              <p className="font-medium">{document.certified_by}</p>
+                            </div>
+                          )}
+
+                          {document.certified_at && (
+                            <div>
+                              <span className="text-muted-foreground">Fecha de certificación:</span>
+                              <p className="font-medium">
+                                {format(new Date(document.certified_at), "PPP 'a las' HH:mm", { locale: es })}
+                              </p>
+                            </div>
+                          )}
+
+                          {document.verification_hash && (
+                            <div className="md:col-span-2">
+                              <span className="text-muted-foreground">Hash de verificación:</span>
+                              <p className="font-mono text-xs bg-gray-100 p-2 rounded mt-1 break-all">
+                                {document.verification_hash}
+                              </p>
+                            </div>
+                          )}
+
+                          {document.certification_notes && (
+                            <div className="md:col-span-2">
+                              <span className="text-muted-foreground">Notas de certificación:</span>
+                              <p className="mt-1 whitespace-pre-line">{document.certification_notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <Separator />
 
                 <div className="flex flex-wrap gap-3">
@@ -523,8 +573,8 @@ export default function DocumentDetailsPage() {
                       <div className="flex gap-4">
                         {/* Indicador circular */}
                         <div className="relative flex-shrink-0">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                            <FileBadgeIcon className="h-5 w-5 text-primary" />
+                          <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
+                            <MoveRight className="h-5 w-5 text-primary" />
                           </div>
                           {index === 0 && (
                             <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background"></div>
