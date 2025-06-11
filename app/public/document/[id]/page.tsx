@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
@@ -57,6 +59,7 @@ export default function PublicDocumentPage() {
   const [downloadFormOpen, setDownloadFormOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (params.id) {
@@ -64,39 +67,70 @@ export default function PublicDocumentPage() {
     }
   }, [params.id])
 
-  // Efecto para prevenir descargas desde el iframe
+  // Efecto para prevenir todas las interacciones no deseadas
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const preventContextMenu = (e: MouseEvent) => {
+    const preventAllInteractions = (e: Event) => {
       e.preventDefault()
+      e.stopPropagation()
+
+      // Mostrar mensaje informativo solo para clic derecho
+      if (e.type === "contextmenu") {
+        toast({
+          title: "Acción no permitida",
+          description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
+          variant: "destructive",
+          duration: 3000,
+        })
+      }
+
       return false
     }
 
     const preventKeyboardShortcuts = (e: KeyboardEvent) => {
-      // Prevenir Ctrl+S, Ctrl+P, etc.
-      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "p" || e.key === "P")) {
+      // Prevenir Ctrl+S, Ctrl+P, F12, etc.
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "s" || e.key === "p" || e.key === "P" || e.key === "u" || e.key === "U")
+      ) {
         e.preventDefault()
         toast({
           title: "Acción no permitida",
           description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
           variant: "destructive",
+          duration: 3000,
         })
+        return false
+      }
+
+      // Prevenir F12, Ctrl+Shift+I, etc.
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+        e.preventDefault()
         return false
       }
     }
 
-    // Aplicar a la ventana principal cuando el visor esté abierto
+    // Aplicar event listeners cuando el visor esté abierto
     if (viewerOpen) {
-      window.document.addEventListener("contextmenu", preventContextMenu)
-      window.document.addEventListener("keydown", preventKeyboardShortcuts)
+      // Eventos en la ventana principal
+      window.document.addEventListener("contextmenu", preventAllInteractions, true)
+      window.document.addEventListener("keydown", preventKeyboardShortcuts, true)
+      window.document.addEventListener("selectstart", preventAllInteractions, true)
+      window.document.addEventListener("dragstart", preventAllInteractions, true)
+
+      // Prevenir impresión
+      window.addEventListener("beforeprint", preventAllInteractions, true)
     }
 
     return () => {
       // Limpiar event listeners
       if (typeof window !== "undefined") {
-        window.document.removeEventListener("contextmenu", preventContextMenu)
-        window.document.removeEventListener("keydown", preventKeyboardShortcuts)
+        window.document.removeEventListener("contextmenu", preventAllInteractions, true)
+        window.document.removeEventListener("keydown", preventKeyboardShortcuts, true)
+        window.document.removeEventListener("selectstart", preventAllInteractions, true)
+        window.document.removeEventListener("dragstart", preventAllInteractions, true)
+        window.removeEventListener("beforeprint", preventAllInteractions, true)
       }
     }
   }, [viewerOpen])
@@ -276,6 +310,23 @@ export default function PublicDocumentPage() {
   const closeViewer = () => {
     setViewerOpen(false)
     setViewerUrl(null)
+  }
+
+  // Función para manejar eventos en la capa de protección
+  const handleOverlayInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (e.type === "contextmenu") {
+      toast({
+        title: "Vista previa protegida",
+        description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
+        variant: "destructive",
+        duration: 3000,
+      })
+    }
+
+    return false
   }
 
   // Modificar la función handleAnonymousDownload para usar la nueva funcionalidad de marca de agua
@@ -590,7 +641,7 @@ export default function PublicDocumentPage() {
         loading={downloadLoading}
       />
 
-      {/* Visor de archivos compatible con Edge */}
+      {/* Visor de archivos con protección completa */}
       <Dialog open={viewerOpen} onOpenChange={closeViewer}>
         <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh]">
           <DialogHeader>
@@ -609,26 +660,52 @@ export default function PublicDocumentPage() {
           <div className="flex-1 overflow-hidden relative">
             {viewerUrl && (
               <div className="relative w-full h-[calc(100%-2rem)]">
+                {/* Iframe con el PDF - completamente bloqueado */}
+                <iframe
+                  ref={iframeRef}
+                  src={viewerUrl}
+                  className="w-full h-full border rounded pointer-events-none select-none"
+                  title="Vista previa del documento"
+                  style={{
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    MozUserSelect: "none",
+                    msUserSelect: "none",
+                  }}
+                />
+
+                {/* Capa de protección transparente que captura todos los eventos */}
+                <div
+                  ref={overlayRef}
+                  className="absolute inset-0 z-20 cursor-default"
+                  onContextMenu={handleOverlayInteraction}
+                  onMouseDown={handleOverlayInteraction}
+                  onTouchStart={handleOverlayInteraction}
+                  onDragStart={handleOverlayInteraction}
+                  onSelectStart={handleOverlayInteraction}
+                  style={{
+                    background: "transparent",
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    MozUserSelect: "none",
+                    msUserSelect: "none",
+                    WebkitTouchCallout: "none",
+                    WebkitUserDrag: "none",
+                    KhtmlUserSelect: "none",
+                  }}
+                />
+
                 {/* Marca de agua superpuesta */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                   <div className="text-gray-300 text-4xl md:text-6xl font-bold transform rotate-[-45deg] opacity-20 select-none">
                     VISTA PREVIA
                   </div>
                 </div>
-
-                {/* Iframe con el PDF */}
-                <iframe
-                  ref={iframeRef}
-                  src={viewerUrl}
-                  className="w-full h-full border rounded"
-                  title="Vista previa del documento"
-                  onContextMenu={(e) => e.preventDefault()}
-                />
               </div>
             )}
 
             {/* Aviso de seguridad fijo en la parte inferior */}
-            <div className="absolute bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 p-3 text-center text-sm text-amber-800">
+            <div className="absolute bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 p-3 text-center text-sm text-amber-800 z-30">
               <div className="flex items-center justify-center gap-2">
                 <Lock className="h-4 w-4 flex-shrink-0" />
                 <span className="font-medium">
