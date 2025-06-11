@@ -67,17 +67,60 @@ export default function DocumentDetailsPage() {
 
   const fetchDocument = async () => {
     try {
-      const { data, error } = await supabase
+      // Intentar con la relación específica primero
+      let { data, error } = await supabase
         .from("documents")
         .select(`
           *,
           profiles!documents_created_by_fkey (id, full_name, email),
-          departments (id, name, color)
+          departments!documents_current_department_id_fkey (id, name, color)
         `)
         .eq("id", params.id)
         .single()
 
-      if (error) {
+      // Si falla, intentar sin la relación específica y hacer JOIN manual
+      if (error && error.code === "PGRST201") {
+        console.log("Fallback: Obteniendo datos por separado...")
+
+        // Obtener documento básico
+        const { data: docData, error: docError } = await supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (id, full_name, email)
+          `)
+          .eq("id", params.id)
+          .single()
+
+        if (docError) {
+          if (docError.code === "PGRST116") {
+            setError("Documento no encontrado")
+          } else {
+            throw docError
+          }
+          return
+        }
+
+        // Obtener departamento por separado si existe current_department_id
+        let departmentData = null
+        if (docData.current_department_id) {
+          const { data: deptData, error: deptError } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", docData.current_department_id)
+            .single()
+
+          if (!deptError) {
+            departmentData = deptData
+          }
+        }
+
+        // Combinar los datos
+        data = {
+          ...docData,
+          departments: departmentData,
+        }
+      } else if (error) {
         if (error.code === "PGRST116") {
           setError("Documento no encontrado")
         } else {
@@ -432,7 +475,7 @@ export default function DocumentDetailsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Departamento</h3>
-                    <p className="mt-1">{document.departments?.name}</p>
+                    <p className="mt-1">{document.departments?.name || "Sin departamento"}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Creado por</h3>
@@ -613,7 +656,7 @@ export default function DocumentDetailsPage() {
                                     style={{
                                       backgroundColor: movement.to_departments.color || "#6B7280",
                                       color: getTextColor(movement.to_departments.color || "#6B7280"),
-                                      ringColor: movement.to_departments.color || "#6B7280",
+                                      borderColor: movement.to_departments.color || "#6B7280",
                                     }}
                                   >
                                     {movement.to_departments.name}
