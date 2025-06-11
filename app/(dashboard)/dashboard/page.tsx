@@ -33,7 +33,7 @@ export default function DashboardPage() {
       let documentsQuery = supabase.from("documents").select("*")
 
       if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
+        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
       }
 
       const { data: documents } = await documentsQuery
@@ -48,43 +48,105 @@ export default function DashboardPage() {
         .from("document_movements")
         .select("*", { count: "exact", head: true })
 
-      // Fetch recent documents
-      let recentDocsQuery = supabase
-        .from("documents")
-        .select(`
-          *,
-          profiles!documents_created_by_fkey (full_name),
-          departments (name)
-        `)
-        .order("created_at", { ascending: false })
-        .limit(5)
+      // Fetch recent documents - try with specific relationship first
+      try {
+        let recentDocsQuery = supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (full_name),
+            departments!documents_current_department_id_fkey (name)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
 
-      if (user?.role === "user") {
-        recentDocsQuery = recentDocsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
+        if (user?.role === "user") {
+          recentDocsQuery = recentDocsQuery.or(
+            `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
+          )
+        }
+
+        const { data: recentDocs, error } = await recentDocsQuery
+
+        if (error) {
+          throw error
+        }
+
+        // Fetch recent activity
+        const { data: recentActivity } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents (title, document_number),
+            profiles!document_movements_moved_by_fkey (full_name),
+            departments!document_movements_to_department_id_fkey (name)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        setStats({
+          totalDocuments,
+          totalMovements: movementsCount || 0,
+          pendingDocuments,
+          completedDocuments,
+          recentDocuments: recentDocs || [],
+          recentActivity: recentActivity || [],
+        })
+      } catch (error) {
+        console.error("Error with specific relationship, trying fallback:", error)
+
+        // Fallback: fetch documents and departments separately
+        let recentDocsQuery = supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (full_name)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (user?.role === "user") {
+          recentDocsQuery = recentDocsQuery.or(
+            `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
+          )
+        }
+
+        const { data: recentDocs } = await recentDocsQuery
+
+        // Fetch departments separately
+        const { data: departments } = await supabase.from("departments").select("id, name")
+        const departmentsMap = new Map(departments?.map((d) => [d.id, d]) || [])
+
+        // Combine data manually
+        const combinedDocs =
+          recentDocs?.map((doc) => ({
+            ...doc,
+            departments: doc.current_department_id
+              ? { name: departmentsMap.get(doc.current_department_id)?.name }
+              : null,
+          })) || []
+
+        // Fetch recent activity
+        const { data: recentActivity } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents (title, document_number),
+            profiles!document_movements_moved_by_fkey (full_name),
+            departments!document_movements_to_department_id_fkey (name)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        setStats({
+          totalDocuments,
+          totalMovements: movementsCount || 0,
+          pendingDocuments,
+          completedDocuments,
+          recentDocuments: combinedDocs || [],
+          recentActivity: recentActivity || [],
+        })
       }
-
-      const { data: recentDocs } = await recentDocsQuery
-
-      // Fetch recent activity
-      const { data: recentActivity } = await supabase
-        .from("document_movements")
-        .select(`
-          *,
-          documents (title, document_number),
-          profiles!document_movements_moved_by_fkey (full_name),
-          departments!document_movements_to_department_id_fkey (name)
-        `)
-        .order("created_at", { ascending: false })
-        .limit(5)
-
-      setStats({
-        totalDocuments,
-        totalMovements: movementsCount || 0,
-        pendingDocuments,
-        completedDocuments,
-        recentDocuments: recentDocs || [],
-        recentActivity: recentActivity || [],
-      })
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
     } finally {
@@ -200,7 +262,7 @@ export default function DashboardPage() {
                     <div className="space-y-1 flex-1">
                       <p className="text-sm font-medium leading-none">{doc.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {doc.document_number} • {doc.departments?.name}
+                        {doc.document_number} • {doc.departments?.name || "Sin departamento"}
                       </p>
                     </div>
                     <div className="text-right">
