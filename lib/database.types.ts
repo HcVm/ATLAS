@@ -92,6 +92,7 @@ export interface Database {
           certified_at: string | null
           verification_hash: string | null
           certification_notes: string | null
+          is_public: boolean | null
           created_at: string
           updated_at: string
         }
@@ -112,6 +113,7 @@ export interface Database {
           certified_at?: string | null
           verification_hash?: string | null
           certification_notes?: string | null
+          is_public?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -132,6 +134,7 @@ export interface Database {
           certified_at?: string | null
           verification_hash?: string | null
           certification_notes?: string | null
+          is_public?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -184,6 +187,70 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_downloads: {
+        Row: {
+          id: string
+          document_id: string
+          user_id: string | null
+          download_type: string
+          file_name: string | null
+          file_size: number | null
+          ip_address: string | null
+          user_agent: string | null
+          is_public_access: boolean
+          session_id: string | null
+          referrer: string | null
+          country: string | null
+          city: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          document_id: string
+          user_id?: string | null
+          download_type: string
+          file_name?: string | null
+          file_size?: number | null
+          ip_address?: string | null
+          user_agent?: string | null
+          is_public_access?: boolean
+          session_id?: string | null
+          referrer?: string | null
+          country?: string | null
+          city?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          document_id?: string
+          user_id?: string | null
+          download_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          ip_address?: string | null
+          user_agent?: string | null
+          is_public_access?: boolean
+          session_id?: string | null
+          referrer?: string | null
+          country?: string | null
+          city?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_downloads_document_id_fkey"
+            columns: ["document_id"]
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_downloads_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "profiles"
             referencedColumns: ["id"]
