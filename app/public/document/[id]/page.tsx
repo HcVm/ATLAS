@@ -67,24 +67,19 @@ export default function PublicDocumentPage() {
     }
   }, [params.id])
 
-  // Efecto para prevenir todas las interacciones no deseadas
+  // Efecto para prevenir interacciones específicas pero permitir scroll
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const preventAllInteractions = (e: Event) => {
+    const preventContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-
-      // Mostrar mensaje informativo solo para clic derecho
-      if (e.type === "contextmenu") {
-        toast({
-          title: "Acción no permitida",
-          description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
-          variant: "destructive",
-          duration: 3000,
-        })
-      }
-
+      toast({
+        title: "Vista previa protegida",
+        description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
+        variant: "destructive",
+        duration: 3000,
+      })
       return false
     }
 
@@ -111,26 +106,36 @@ export default function PublicDocumentPage() {
       }
     }
 
+    const preventSelection = (e: Event) => {
+      e.preventDefault()
+      return false
+    }
+
+    const preventDrag = (e: DragEvent) => {
+      e.preventDefault()
+      return false
+    }
+
     // Aplicar event listeners cuando el visor esté abierto
     if (viewerOpen) {
       // Eventos en la ventana principal
-      window.document.addEventListener("contextmenu", preventAllInteractions, true)
+      window.document.addEventListener("contextmenu", preventContextMenu, true)
       window.document.addEventListener("keydown", preventKeyboardShortcuts, true)
-      window.document.addEventListener("selectstart", preventAllInteractions, true)
-      window.document.addEventListener("dragstart", preventAllInteractions, true)
+      window.document.addEventListener("selectstart", preventSelection, true)
+      window.document.addEventListener("dragstart", preventDrag, true)
 
       // Prevenir impresión
-      window.addEventListener("beforeprint", preventAllInteractions, true)
+      window.addEventListener("beforeprint", preventContextMenu, true)
     }
 
     return () => {
       // Limpiar event listeners
       if (typeof window !== "undefined") {
-        window.document.removeEventListener("contextmenu", preventAllInteractions, true)
+        window.document.removeEventListener("contextmenu", preventContextMenu, true)
         window.document.removeEventListener("keydown", preventKeyboardShortcuts, true)
-        window.document.removeEventListener("selectstart", preventAllInteractions, true)
-        window.document.removeEventListener("dragstart", preventAllInteractions, true)
-        window.removeEventListener("beforeprint", preventAllInteractions, true)
+        window.document.removeEventListener("selectstart", preventSelection, true)
+        window.document.removeEventListener("dragstart", preventDrag, true)
+        window.removeEventListener("beforeprint", preventContextMenu, true)
       }
     }
   }, [viewerOpen])
@@ -312,20 +317,31 @@ export default function PublicDocumentPage() {
     setViewerUrl(null)
   }
 
-  // Función para manejar eventos en la capa de protección
-  const handleOverlayInteraction = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (e.type === "contextmenu") {
+  // Función para manejar eventos específicos en la capa de protección
+  const handleOverlayInteraction = (e: React.MouseEvent) => {
+    // Solo bloquear clic derecho y clic medio
+    if (e.button === 2 || e.button === 1) {
+      e.preventDefault()
+      e.stopPropagation()
       toast({
         title: "Vista previa protegida",
         description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
         variant: "destructive",
         duration: 3000,
       })
+      return false
     }
+  }
 
+  const handleOverlayContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toast({
+      title: "Vista previa protegida",
+      description: "Para descargar el documento, utilice el botón 'Descargar Documento'",
+      variant: "destructive",
+      duration: 3000,
+    })
     return false
   }
 
@@ -641,10 +657,10 @@ export default function PublicDocumentPage() {
         loading={downloadLoading}
       />
 
-      {/* Visor de archivos con protección completa */}
+      {/* Visor de archivos con protección selectiva */}
       <Dialog open={viewerOpen} onOpenChange={closeViewer}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh]">
-          <DialogHeader className="px-6 pt-6 pb-2">
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center">
               <Lock className="h-4 w-4 mr-2 text-amber-600" />
               Vista previa protegida: {documentData.title}
@@ -657,14 +673,14 @@ export default function PublicDocumentPage() {
               <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden px-6 pb-6">
+          <div className="flex-1 overflow-hidden relative">
             {viewerUrl && (
               <div className="relative w-full h-[calc(100%-2rem)]">
-                {/* Iframe con el PDF - completamente bloqueado */}
+                {/* Iframe con el PDF - permitir scroll pero bloquear selección */}
                 <iframe
                   ref={iframeRef}
                   src={viewerUrl}
-                  className="w-full h-full border rounded pointer-events-none select-none"
+                  className="w-full h-full border rounded select-none"
                   title="Vista previa del documento"
                   style={{
                     userSelect: "none",
@@ -674,24 +690,19 @@ export default function PublicDocumentPage() {
                   }}
                 />
 
-                {/* Capa de protección transparente que captura todos los eventos */}
+                {/* Capa de protección selectiva que solo bloquea clic derecho */}
                 <div
                   ref={overlayRef}
-                  className="absolute inset-0 z-20 cursor-default"
-                  onContextMenu={handleOverlayInteraction}
+                  className="absolute inset-0 z-20"
+                  onContextMenu={handleOverlayContextMenu}
                   onMouseDown={handleOverlayInteraction}
-                  onTouchStart={handleOverlayInteraction}
-                  onDragStart={handleOverlayInteraction}
-                  onSelectStart={handleOverlayInteraction}
                   style={{
                     background: "transparent",
+                    pointerEvents: "none", // Permitir que los eventos pasen al iframe
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     MozUserSelect: "none",
                     msUserSelect: "none",
-                    WebkitTouchCallout: "none",
-                    WebkitUserDrag: "none",
-                    KhtmlUserSelect: "none",
                   }}
                 />
 
@@ -716,6 +727,16 @@ export default function PublicDocumentPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CSS adicional para bloquear interacciones específicas */}
+      <style jsx>{`
+        iframe {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+      `}</style>
     </div>
   )
 }
