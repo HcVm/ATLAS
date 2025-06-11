@@ -201,7 +201,7 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
       const { error: documentError } = await supabase
         .from("documents")
         .update({
-          department_id: values.to_department_id,
+          current_department_id: values.to_department_id,
           updated_at: new Date().toISOString(),
         })
         .eq("id", documentId)

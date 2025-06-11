@@ -72,7 +72,7 @@ export default function DocumentDetailsPage() {
         .select(`
           *,
           profiles!documents_created_by_fkey (id, full_name, email),
-          departments!documents_department_id_fkey (id, name, color)
+          departments!documents_current_department_id_fkey (id, name, color)
         `)
         .eq("id", params.id)
         .single()
@@ -87,7 +87,7 @@ export default function DocumentDetailsPage() {
       }
 
       // Check if user has permission to view this document
-      if (user?.role !== "admin" && user?.department_id !== data.department_id && user?.id !== data.created_by) {
+      if (user?.role !== "admin" && user?.current_department_id !== data.current_department_id && user?.id !== data.created_by) {
         setError("No tienes permisos para ver este documento")
         return
       }
@@ -539,7 +539,7 @@ export default function DocumentDetailsPage() {
                       </DialogHeader>
                       <MovementForm
                         documentId={document.id}
-                        currentDepartmentId={document.department_id || document.departments?.id}
+                        currentDepartmentId={document.current_department_id || document.departments?.id}
                         onComplete={handleMovementComplete}
                       />
                     </DialogContent>
