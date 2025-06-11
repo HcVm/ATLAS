@@ -37,8 +37,8 @@ export default function PublicDocumentPage() {
           .from("documents")
           .select(`
             *,
-            current_department:departments!documents_current_department_id_fkey(id, name, color),
-            created_by:profiles!documents_created_by_fkey(id, full_name, email)
+            departments!documents_department_id_fkey(id, name, color),
+            profiles!documents_created_by_fkey(id, full_name, email)
           `)
           .eq("id", params.id)
           .single()
@@ -272,9 +272,9 @@ export default function PublicDocumentPage() {
                 <div className="flex items-center mt-1">
                   <div
                     className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: document.current_department?.color || "#888888" }}
+                    style={{ backgroundColor: document.departments?.color || "#888888" }}
                   ></div>
-                  <p className="font-medium">{document.current_department?.name || "No asignado"}</p>
+                  <p className="font-medium">{document.departments?.name || "No asignado"}</p>
                 </div>
               </div>
               <div>
