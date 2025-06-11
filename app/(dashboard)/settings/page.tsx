@@ -73,10 +73,8 @@ export default function SettingsPage() {
           privacy_profile_visibility: data.privacy_profile_visibility,
           privacy_activity_tracking: data.privacy_activity_tracking,
         })
-      } else {
-        // Crear configuraciones por defecto si no existen
-        await createDefaultSettings()
       }
+      // Si no hay datos, usar los valores por defecto ya establecidos
     } catch (error: any) {
       console.error("Error loading settings:", error)
       toast({
@@ -89,19 +87,6 @@ export default function SettingsPage() {
     }
   }
 
-  const createDefaultSettings = async () => {
-    try {
-      const { error } = await supabase.from("user_settings").insert({
-        user_id: user?.id,
-        ...settings,
-      })
-
-      if (error) throw error
-    } catch (error: any) {
-      console.error("Error creating default settings:", error)
-    }
-  }
-
   const handleSave = async () => {
     if (!user) return
 
@@ -109,12 +94,33 @@ export default function SettingsPage() {
     setMessage("")
 
     try {
-      const { error } = await supabase.from("user_settings").upsert({
-        user_id: user.id,
-        ...settings,
-      })
+      // Primero verificar si ya existe un registro
+      const { data: existingSettings } = await supabase
+        .from("user_settings")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle()
 
-      if (error) throw error
+      if (existingSettings) {
+        // Actualizar registro existente
+        const { error } = await supabase
+          .from("user_settings")
+          .update({
+            ...settings,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id)
+
+        if (error) throw error
+      } else {
+        // Crear nuevo registro
+        const { error } = await supabase.from("user_settings").insert({
+          user_id: user.id,
+          ...settings,
+        })
+
+        if (error) throw error
+      }
 
       setMessage("Configuraciones guardadas exitosamente")
       toast({
@@ -141,7 +147,14 @@ export default function SettingsPage() {
   }
 
   if (initialLoading) {
-    return <div>Cargando configuraciones...</div>
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Cargando configuraciones...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

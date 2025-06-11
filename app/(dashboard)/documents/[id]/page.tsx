@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle, BarChart3 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -16,9 +16,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
+import { trackDownload, getDocumentDownloadStats } from "@/lib/download-tracker"
 
 // Helper function to validate UUID
 const isValidUUID = (str: string) => {
@@ -43,10 +45,12 @@ export default function DocumentDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [movementDialogOpen, setMovementDialogOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [downloadStatsOpen, setDownloadStatsOpen] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [statusLoading, setStatusLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<any[]>([])
+  const [downloadStats, setDownloadStats] = useState<any[]>([])
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const [newStatus, setNewStatus] = useState("")
@@ -191,6 +195,17 @@ export default function DocumentDetailsPage() {
       setAttachments(data || [])
     } catch (error) {
       console.error("Error fetching attachments:", error)
+    }
+  }
+
+  const fetchDownloadStats = async () => {
+    if (user?.role !== "admin") return
+
+    try {
+      const stats = await getDocumentDownloadStats(params.id as string)
+      setDownloadStats(stats)
+    } catch (error) {
+      console.error("Error fetching download stats:", error)
     }
   }
 
@@ -352,6 +367,16 @@ export default function DocumentDetailsPage() {
         .createSignedUrl(filePath, 60)
 
       if (signedUrlData?.signedUrl) {
+        // Rastrear la descarga
+        if (user) {
+          await trackDownload({
+            documentId: document.id,
+            userId: user.id,
+            downloadType: "main_file",
+            fileName: fileName || document.file_name || "documento",
+          })
+        }
+
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
@@ -364,6 +389,17 @@ export default function DocumentDetailsPage() {
 
       if (!data) {
         throw new Error("No se pudo obtener el archivo")
+      }
+
+      // Rastrear la descarga
+      if (user) {
+        await trackDownload({
+          documentId: document.id,
+          userId: user.id,
+          downloadType: "main_file",
+          fileName: fileName || document.file_name || "documento",
+          fileSize: data.size,
+        })
       }
 
       const url = URL.createObjectURL(data)
@@ -420,6 +456,17 @@ export default function DocumentDetailsPage() {
         .createSignedUrl(filePath, 60)
 
       if (signedUrlData?.signedUrl) {
+        // Rastrear la descarga del adjunto
+        if (user) {
+          await trackDownload({
+            documentId: document.id,
+            userId: user.id,
+            downloadType: "attachment",
+            attachmentId: attachment.id,
+            fileName: attachment.file_name,
+          })
+        }
+
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
@@ -432,6 +479,18 @@ export default function DocumentDetailsPage() {
 
       if (!data) {
         throw new Error("No se pudo obtener el archivo adjunto")
+      }
+
+      // Rastrear la descarga del adjunto
+      if (user) {
+        await trackDownload({
+          documentId: document.id,
+          userId: user.id,
+          downloadType: "attachment",
+          attachmentId: attachment.id,
+          fileName: attachment.file_name,
+          fileSize: data.size,
+        })
       }
 
       const url = URL.createObjectURL(data)
@@ -452,6 +511,11 @@ export default function DocumentDetailsPage() {
     } finally {
       setDownloadLoading(false)
     }
+  }
+
+  const handleViewDownloadStats = async () => {
+    await fetchDownloadStats()
+    setDownloadStatsOpen(true)
   }
 
   // Función para obtener el color de texto basado en el color de fondo
@@ -860,6 +924,12 @@ export default function DocumentDetailsPage() {
                 <MoveRight className="h-4 w-4 mr-2" />
                 Mover Documento
               </Button>
+              {user?.role === "admin" && (
+                <Button className="w-full justify-start" variant="outline" onClick={handleViewDownloadStats}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Ver Estadísticas
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -926,6 +996,90 @@ export default function DocumentDetailsPage() {
             currentDepartmentId={document.current_department_id || document.departments?.id}
             onComplete={handleMovementComplete}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para estadísticas de descarga */}
+      <Dialog open={downloadStatsOpen} onOpenChange={setDownloadStatsOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Estadísticas de Descarga</DialogTitle>
+            <DialogDescription>Historial completo de descargas de este documento</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {downloadStats.length === 0 ? (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
+                <h3 className="mt-4 text-lg font-medium">Sin descargas registradas</h3>
+                <p className="text-muted-foreground">Este documento no ha sido descargado aún.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{downloadStats.length}</div>
+                      <p className="text-xs text-muted-foreground">Total de descargas</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{new Set(downloadStats.map((d) => d.user_id)).size}</div>
+                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">
+                        {downloadStats.filter((d) => d.download_type === "main_file").length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Archivo principal</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Archivo</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>IP</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {downloadStats.map((download) => (
+                      <TableRow key={download.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{download.profiles?.full_name}</div>
+                            <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={download.download_type === "main_file" ? "default" : "secondary"}>
+                            {download.download_type === "main_file" ? "Principal" : "Adjunto"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{download.file_name || "N/A"}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {format(new Date(download.downloaded_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-mono">{download.ip_address || "N/A"}</div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
