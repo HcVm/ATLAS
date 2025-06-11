@@ -531,15 +531,15 @@ export default function PublicDocumentPage() {
 
       {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[50vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle>Vista previa: {document.title}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden px-6 pb-6">
             {viewerUrl && (
               <iframe
                 src={viewerUrl}
-                className="w-full h-[calc(100%-2rem)] border rounded"
+                className="w-full h-full border rounded"
                 title="Vista previa del documento"
               />
             )}
