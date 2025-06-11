@@ -1028,7 +1028,7 @@ export default function DocumentDetailsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                    <TableHead className="min-w-[200px]">Usuario</TableHead>
+                    <TableHead className="min-w-[400px]">Usuario</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Archivo</TableHead>
                       <TableHead>Fecha</TableHead>
