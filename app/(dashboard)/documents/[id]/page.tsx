@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle, FileJsonIcon } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -12,14 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -539,19 +532,7 @@ export default function DocumentDetailsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
-                    <div className="mt-1 flex items-center gap-2">
-                      {getStatusBadge(document.status)}
-                      {canChangeStatus() && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStatusDialogOpen(true)}
-                          className="h-6 px-2 text-xs"
-                        >
-                          Cambiar
-                        </Button>
-                      )}
-                    </div>
+                    <div className="mt-1">{getStatusBadge(document.status)}</div>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Departamento</h3>
@@ -623,10 +604,6 @@ export default function DocumentDetailsPage() {
                     </div>
                   </>
                 )}
-
-                <Separator />
-
-                
               </div>
             </CardContent>
           </Card>
@@ -687,7 +664,7 @@ export default function DocumentDetailsPage() {
                                 )}
 
                                 {movement.from_department_id !== movement.to_department_id && (
-                                  <FileJsonIcon className="h-4 w-4 text-muted-foreground" />
+                                  <MoveRight className="h-4 w-4 text-muted-foreground" />
                                 )}
 
                                 {/* Departamento destino */}
@@ -698,7 +675,7 @@ export default function DocumentDetailsPage() {
                                       style={{
                                         backgroundColor: movement.to_departments.color || "#6B7280",
                                         color: getTextColor(movement.to_departments.color || "#6B7280"),
-                                        borderColor: movement.to_departments.color || "#6B7280",
+                                        ringColor: movement.to_departments.color || "#6B7280",
                                       }}
                                     >
                                       {movement.to_departments.name}
@@ -932,6 +909,23 @@ export default function DocumentDetailsPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para mover documento */}
+      <Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Mover Documento</DialogTitle>
+            <DialogDescription>
+              Seleccione el departamento al que desea mover este documento y agregue archivos adjuntos si es necesario.
+            </DialogDescription>
+          </DialogHeader>
+          <MovementForm
+            documentId={document.id}
+            currentDepartmentId={document.current_department_id || document.departments?.id}
+            onComplete={handleMovementComplete}
+          />
         </DialogContent>
       </Dialog>
 
