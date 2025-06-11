@@ -49,7 +49,7 @@ export default function UsersPage() {
         .from("profiles")
         .select(`
           *,
-          departments (name)
+          departments!profiles_department_id_fkey (name)
         `)
         .order("created_at", { ascending: false })
 

@@ -47,7 +47,7 @@ export default function DepartmentsPage() {
         .from("departments")
         .select(`
           *,
-          profiles (count)
+          profiles!profiles_department_id_fkey (count)
         `)
         .order("name")
 
