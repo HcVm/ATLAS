@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, FileIcon } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle, FileJsonIcon } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -20,6 +20,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
@@ -30,6 +33,14 @@ const isValidUUID = (str: string) => {
   return uuidRegex.test(str)
 }
 
+// Status options
+const statusOptions = [
+  { value: "pending", label: "Pendiente", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+  { value: "in_progress", label: "En Progreso", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "completed", label: "Completado", color: "bg-green-50 text-green-700 border-green-200" },
+  { value: "cancelled", label: "Cancelado", color: "bg-red-50 text-red-700 border-red-200" },
+]
+
 export default function DocumentDetailsPage() {
   const params = useParams()
   const router = useRouter()
@@ -38,11 +49,15 @@ export default function DocumentDetailsPage() {
   const [movements, setMovements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [movementDialogOpen, setMovementDialogOpen] = useState(false)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<any[]>([])
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
+  const [newStatus, setNewStatus] = useState("")
+  const [statusNotes, setStatusNotes] = useState("")
 
   useEffect(() => {
     // Validate UUID before making requests
@@ -193,35 +208,88 @@ export default function DocumentDetailsPage() {
     fetchAttachments()
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            Pendiente
-          </Badge>
-        )
-      case "in_progress":
-        return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            En Progreso
-          </Badge>
-        )
-      case "completed":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Completado
-          </Badge>
-        )
-      case "cancelled":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Cancelado
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
+  const handleStatusChange = async () => {
+    if (!newStatus || !document) return
+
+    try {
+      setStatusLoading(true)
+
+      // Actualizar el estado del documento
+      const { error: updateError } = await supabase
+        .from("documents")
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", document.id)
+
+      if (updateError) throw updateError
+
+      // Crear una entrada en el historial de cambios (usando document_movements para tracking)
+      if (statusNotes.trim()) {
+        const { error: historyError } = await supabase.from("document_movements").insert({
+          document_id: document.id,
+          from_department_id: document.current_department_id,
+          to_department_id: document.current_department_id,
+          moved_by: user?.id,
+          notes: `Cambio de estado: ${getStatusLabel(document.status)} → ${getStatusLabel(newStatus)}\n\nNotas: ${statusNotes}`,
+          created_at: new Date().toISOString(),
+        })
+
+        if (historyError) {
+          console.error("Error creating status change history:", historyError)
+          // No lanzamos error aquí porque el cambio de estado ya se guardó
+        }
+      }
+
+      // Actualizar el documento local
+      setDocument((prev) => ({ ...prev, status: newStatus }))
+
+      // Refrescar datos
+      fetchDocument()
+      fetchMovements()
+
+      toast({
+        title: "Estado actualizado",
+        description: `El estado del documento se cambió a "${getStatusLabel(newStatus)}"`,
+      })
+
+      // Cerrar dialog y limpiar form
+      setStatusDialogOpen(false)
+      setNewStatus("")
+      setStatusNotes("")
+    } catch (error: any) {
+      console.error("Error updating status:", error)
+      toast({
+        title: "Error al actualizar estado",
+        description: error.message || "No se pudo actualizar el estado del documento",
+        variant: "destructive",
+      })
+    } finally {
+      setStatusLoading(false)
     }
+  }
+
+  const getStatusLabel = (status: string) => {
+    const option = statusOptions.find((opt) => opt.value === status)
+    return option?.label || status
+  }
+
+  const getStatusBadge = (status: string) => {
+    const option = statusOptions.find((opt) => opt.value === status)
+    if (option) {
+      return (
+        <Badge variant="outline" className={option.color}>
+          {option.label}
+        </Badge>
+      )
+    }
+    return <Badge variant="outline">{status}</Badge>
+  }
+
+  const canChangeStatus = () => {
+    // Solo admins o el creador del documento pueden cambiar el estado
+    return user?.role === "admin" || user?.id === document?.created_by
   }
 
   const viewFile = async (fileUrl: string) => {
@@ -471,7 +539,19 @@ export default function DocumentDetailsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
-                    <div className="mt-1">{getStatusBadge(document.status)}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      {getStatusBadge(document.status)}
+                      {canChangeStatus() && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setStatusDialogOpen(true)}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Cambiar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Departamento</h3>
@@ -621,7 +701,11 @@ export default function DocumentDetailsPage() {
                         {/* Indicador circular */}
                         <div className="relative flex-shrink-0">
                           <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                            <MoveRight className="h-5 w-5 text-primary" />
+                            {movement.from_department_id === movement.to_department_id ? (
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                            ) : (
+                              <MoveRight className="h-5 w-5 text-primary" />
+                            )}
                           </div>
                           {index === 0 && (
                             <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background"></div>
@@ -647,21 +731,24 @@ export default function DocumentDetailsPage() {
                                   </div>
                                 )}
 
-                                <FileIcon className="h-4 w-4 text-muted-foreground" />
+                                {movement.from_department_id !== movement.to_department_id && (
+                                  <FileJsonIcon className="h-4 w-4 text-muted-foreground" />
+                                )}
 
                                 {/* Departamento destino */}
-                                {movement.to_departments && (
-                                  <div
-                                    className="px-3 py-1 rounded-full text-sm font-medium ring-2 ring-offset-1"
-                                    style={{
-                                      backgroundColor: movement.to_departments.color || "#6B7280",
-                                      color: getTextColor(movement.to_departments.color || "#6B7280"),
-                                      borderColor: movement.to_departments.color || "#6B7280",
-                                    }}
-                                  >
-                                    {movement.to_departments.name}
-                                  </div>
-                                )}
+                                {movement.to_departments &&
+                                  movement.from_department_id !== movement.to_department_id && (
+                                    <div
+                                      className="px-3 py-1 rounded-full text-sm font-medium ring-2 ring-offset-1"
+                                      style={{
+                                        backgroundColor: movement.to_departments.color || "#6B7280",
+                                        color: getTextColor(movement.to_departments.color || "#6B7280"),
+                                        borderColor: movement.to_departments.color || "#6B7280",
+                                      }}
+                                    >
+                                      {movement.to_departments.name}
+                                    </div>
+                                  )}
                               </div>
 
                               <div className="text-right">
@@ -682,7 +769,9 @@ export default function DocumentDetailsPage() {
                                 </span>
                               </div>
                               <span className="text-sm text-muted-foreground">
-                                Movido por {movement.profiles?.full_name || "Usuario desconocido"}
+                                {movement.from_department_id === movement.to_department_id
+                                  ? `Actualizado por ${movement.profiles?.full_name || "Usuario desconocido"}`
+                                  : `Movido por ${movement.profiles?.full_name || "Usuario desconocido"}`}
                               </span>
                             </div>
 
@@ -802,6 +891,12 @@ export default function DocumentDetailsPage() {
               <CardTitle>Acciones Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+              {canChangeStatus() && (
+                <Button className="w-full justify-start" variant="outline" onClick={() => setStatusDialogOpen(true)}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Cambiar Estado
+                </Button>
+              )}
               <Button className="w-full justify-start" variant="outline" asChild>
                 <Link href={`/documents/edit/${document.id}`}>
                   <Edit className="h-4 w-4 mr-2" />
@@ -838,11 +933,61 @@ export default function DocumentDetailsPage() {
         </div>
       </div>
 
+      {/* Dialog para cambiar estado */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar Estado del Documento</DialogTitle>
+            <DialogDescription>
+              Seleccione el nuevo estado para este documento. Opcionalmente puede agregar notas sobre el cambio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="status">Nuevo Estado</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Agregar notas sobre el cambio de estado..."
+                value={statusNotes}
+                onChange={(e) => setStatusNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleStatusChange} disabled={!newStatus || statusLoading}>
+                {statusLoading ? "Actualizando..." : "Actualizar Estado"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Vista previa del documento</DialogTitle>
+            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {viewerUrl && (
