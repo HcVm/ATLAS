@@ -83,7 +83,7 @@ export async function createWatermarkCoverPDF(options: WatermarkOptions): Promis
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
 
-    pdf.text("COPIA CONTROLADA", pageWidth / 2, pageHeight / 2, {
+    pdf.text("COPIA CONTROLADA", pageWidth / 4, pageHeight / 4, {
       align: "center",
       angle: 45,
     })
