@@ -60,7 +60,7 @@ export default function DashboardPage() {
         .limit(5)
 
       if (user?.role === "user") {
-        recentDocsQuery = recentDocsQuery.or(`created_by.eq.${user.id},department_id.eq.${user.department_id}`)
+        recentDocsQuery = recentDocsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
       }
 
       const { data: recentDocs } = await recentDocsQuery

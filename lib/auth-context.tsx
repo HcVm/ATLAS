@@ -67,7 +67,7 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
         email: authUser.email || "",
         full_name: authUser.user_metadata?.full_name || "Usuario",
         role: "user",
-        department_id: defaultDept?.id || null,
+        current_department_id: defaultDept?.id || null,
       })
       .select(`
         *,
@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             full_name: fullName,
-            department_id: departmentId,
+            current_department_id: departmentId,
           },
         },
       })
