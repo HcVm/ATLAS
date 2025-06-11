@@ -1,10 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Download, FileText, Eye, X, Shield, CheckCircle, AlertTriangle, Calendar, User, Clock } from "lucide-react"
+import {
+  Download,
+  FileText,
+  Eye,
+  X,
+  Shield,
+  CheckCircle,
+  AlertTriangle,
+  Calendar,
+  User,
+  Clock,
+  Lock,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -44,12 +56,56 @@ export default function PublicDocumentPage() {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [downloadFormOpen, setDownloadFormOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
+  const [viewerContent, setViewerContent] = useState<string | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     if (params.id) {
       fetchDocument()
     }
   }, [params.id])
+
+  // Efecto para prevenir descargas desde el iframe
+  useEffect(() => {
+    const preventContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      return false
+    }
+
+    const preventKeyboardShortcuts = (e: KeyboardEvent) => {
+      // Prevenir Ctrl+S, Ctrl+P, etc.
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "p" || e.key === "P")) {
+        e.preventDefault()
+        return false
+      }
+    }
+
+    // Aplicar a la ventana principal
+    window.addEventListener("contextmenu", preventContextMenu)
+    window.addEventListener("keydown", preventKeyboardShortcuts)
+
+    // Aplicar al iframe cuando esté disponible
+    if (viewerOpen && iframeRef.current) {
+      try {
+        const iframeDoc =
+          iframeRef.current.contentDocument ||
+          (iframeRef.current.contentWindow && iframeRef.current.contentWindow.document)
+
+        if (iframeDoc) {
+          iframeDoc.addEventListener("contextmenu", preventContextMenu)
+          iframeDoc.addEventListener("keydown", preventKeyboardShortcuts)
+        }
+      } catch (e) {
+        console.log("No se pudo acceder al contenido del iframe debido a políticas de seguridad")
+      }
+    }
+
+    return () => {
+      // Limpiar event listeners
+      window.removeEventListener("contextmenu", preventContextMenu)
+      window.removeEventListener("keydown", preventKeyboardShortcuts)
+    }
+  }, [viewerOpen])
 
   const fetchDocument = async () => {
     try {
@@ -175,6 +231,7 @@ export default function PublicDocumentPage() {
     }
   }
 
+  // Función modificada para usar un visor seguro
   const viewFile = async (fileUrl: string) => {
     try {
       let filePath = fileUrl
@@ -195,11 +252,119 @@ export default function PublicDocumentPage() {
 
       const { data: signedUrlData, error: signedUrlError } = await supabasePublic.storage
         .from("documents")
-        .createSignedUrl(filePath, 3600)
+        .createSignedUrl(filePath, 300) // URL válida por 5 minutos
 
       if (signedUrlData?.signedUrl) {
-        setViewerUrl(signedUrlData.signedUrl)
-        setViewerOpen(true)
+        try {
+          // Obtener el contenido del PDF
+          const response = await fetch(signedUrlData.signedUrl)
+          const pdfBlob = await response.blob()
+
+          // Crear una URL segura para el visor
+          const secureUrl = URL.createObjectURL(pdfBlob)
+
+          // Crear un visor personalizado con protección
+          const viewerHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Visor Seguro - ${document.title}</title>
+              <style>
+                body, html {
+                  margin: 0;
+                  padding: 0;
+                  height: 100%;
+                  overflow: hidden;
+                }
+                #pdf-container {
+                  width: 100%;
+                  height: 100%;
+                  position: relative;
+                }
+                #pdf-viewer {
+                  width: 100%;
+                  height: 100%;
+                  border: none;
+                }
+                .watermark {
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+                  height: 100%;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  pointer-events: none;
+                  z-index: 1000;
+                  opacity: 0.15;
+                  font-family: Arial, sans-serif;
+                  font-size: 5vw;
+                  font-weight: bold;
+                  color: #333;
+                  transform: rotate(-45deg);
+                }
+                .security-notice {
+                  position: absolute;
+                  bottom: 0;
+                  left: 0;
+                  right: 0;
+                  background: rgba(255,255,255,0.9);
+                  padding: 10px;
+                  text-align: center;
+                  font-family: Arial, sans-serif;
+                  font-size: 12px;
+                  border-top: 1px solid #ddd;
+                  z-index: 1001;
+                }
+              </style>
+            </head>
+            <body>
+              <div id="pdf-container">
+                <div class="watermark">VISTA PREVIA</div>
+                <iframe id="pdf-viewer" src="${secureUrl}#toolbar=0&navpanes=0&scrollbar=0" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="security-notice">
+                  <strong>VISTA PREVIA PROTEGIDA</strong> - Para descargar este documento, utilice el botón "Descargar Documento"
+                </div>
+              </div>
+              <script>
+                // Prevenir descargas
+                document.addEventListener('contextmenu', e => e.preventDefault());
+                document.addEventListener('keydown', e => {
+                  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'p' || e.key === 'P')) {
+                    e.preventDefault();
+                  }
+                });
+                
+                // Limpiar recursos al cerrar
+                window.addEventListener('unload', () => {
+                  URL.revokeObjectURL('${secureUrl}');
+                });
+              </script>
+            </body>
+            </html>
+          `
+
+          // Guardar el HTML como blob
+          const htmlBlob = new Blob([viewerHtml], { type: "text/html" })
+          const viewerBlobUrl = URL.createObjectURL(htmlBlob)
+
+          setViewerUrl(viewerBlobUrl)
+          setViewerOpen(true)
+
+          // Limpiar URL cuando se cierre el visor
+          return () => {
+            URL.revokeObjectURL(secureUrl)
+            URL.revokeObjectURL(viewerBlobUrl)
+          }
+        } catch (error) {
+          console.error("Error creating secure viewer:", error)
+          toast({
+            title: "Error",
+            description: "No se pudo cargar la vista previa del archivo",
+            variant: "destructive",
+          })
+        }
       } else {
         console.error("Error creating signed URL:", signedUrlError)
         toast({
@@ -529,20 +694,36 @@ export default function PublicDocumentPage() {
         loading={downloadLoading}
       />
 
-      {/* Visor de archivos */}
+      {/* Visor de archivos seguro */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh] p-0 flex flex-col">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle>Vista previa: {document.title}</DialogTitle>
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Lock className="h-4 w-4 mr-2 text-amber-600" />
+              Vista previa protegida: {document.title}
+            </DialogTitle>
+            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden px-6 pb-6">
+          <div className="flex-1 overflow-hidden relative">
             {viewerUrl && (
               <iframe
+                ref={iframeRef}
                 src={viewerUrl}
-                className="w-full h-full border rounded"
+                className="w-full h-[calc(100%-2rem)] border rounded"
                 title="Vista previa del documento"
+                sandbox="allow-scripts allow-same-origin"
               />
             )}
+            <div className="absolute bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 p-2 text-center text-sm text-amber-800">
+              <div className="flex items-center justify-center gap-2">
+                <Lock className="h-4 w-4" />
+                <span>
+                  Para descargar este documento con marca de agua y seguimiento, utilice el botón "Descargar Documento"
+                </span>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
