@@ -32,49 +32,11 @@ export default function PublicDocumentPage() {
   useEffect(() => {
     const fetchDocument = async () => {
       try {
-        // Fetch document details with fallback for department relationship
-        const { data: document, error } = await supabase
-          .from("documents")
-          .select(`
-            *,
-            current_department:departments!documents_current_department_id_fkey(id, name, color),
-            created_by_profile:profiles!documents_created_by_fkey(id, full_name, email)
-          `)
-          .eq("id", params.id)
-          .single()
+        // Fetch document details - simplified approach
+        const { data: document, error } = await supabase.from("documents").select("*").eq("id", params.id).single()
 
         if (error) {
-          console.error("Error fetching with relationships:", error)
-          // Fallback: fetch without relationships
-          const { data: simpleDocument, error: simpleError } = await supabase
-            .from("documents")
-            .select("*")
-            .eq("id", params.id)
-            .single()
-
-          if (simpleError) {
-            throw simpleError
-          }
-
-          // Fetch department separately if document has department_id
-          let departmentData = null
-          if (simpleDocument.current_department_id || simpleDocument.department_id) {
-            const deptId = simpleDocument.current_department_id || simpleDocument.department_id
-            const { data: dept } = await supabase
-              .from("departments")
-              .select("id, name, color")
-              .eq("id", deptId)
-              .single()
-            departmentData = dept
-          }
-
-          setDocument({
-            ...simpleDocument,
-            current_department: departmentData,
-            departments: departmentData, // Fallback for both naming conventions
-          })
-        } else {
-          setDocument(document)
+          throw error
         }
 
         if (!document) {
@@ -83,17 +45,45 @@ export default function PublicDocumentPage() {
           return
         }
 
+        // Fetch department separately if document has current_department_id
+        let departmentData = null
+        if (document.current_department_id) {
+          const { data: dept } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", document.current_department_id)
+            .single()
+          departmentData = dept
+        }
+
+        // Fetch creator profile separately
+        let creatorData = null
+        if (document.created_by) {
+          const { data: creator } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("id", document.created_by)
+            .single()
+          creatorData = creator
+        }
+
+        setDocument({
+          ...document,
+          current_department: departmentData,
+          created_by_profile: creatorData,
+        })
+
         // Log verification if document is certified
         if (document.is_certified && !verificationLogged) {
           await logVerification(document.id)
         }
 
         // Get file URL if available
-        if (document.file_path) {
+        if (document.file_url) {
           try {
             const { data: fileData, error: fileError } = await supabase.storage
               .from("documents")
-              .createSignedUrl(document.file_path, 3600) // 1 hour expiry
+              .createSignedUrl(document.file_url, 3600) // 1 hour expiry
 
             if (fileError) {
               console.error("Error creating signed URL:", fileError)
@@ -129,19 +119,23 @@ export default function PublicDocumentPage() {
         console.log("Could not get location data")
       }
 
-      // Log the verification
-      const { error } = await supabase.from("document_verifications").insert({
-        document_id: documentId,
-        verifier_ip: null, // IP is captured server-side
-        verifier_user_agent: navigator.userAgent,
-        verification_method: "qr_scan",
-        location_data: locationData,
-      })
+      // Log the verification - only if table exists
+      try {
+        const { error } = await supabase.from("document_verifications").insert({
+          document_id: documentId,
+          verifier_ip: null, // IP is captured server-side
+          verifier_user_agent: navigator.userAgent,
+          verification_method: "qr_scan",
+          location_data: locationData,
+        })
 
-      if (error) {
-        console.error("Error logging verification:", error)
-      } else {
-        setVerificationLogged(true)
+        if (error) {
+          console.error("Error logging verification:", error)
+        } else {
+          setVerificationLogged(true)
+        }
+      } catch (e) {
+        console.error("Error in verification logging:", e)
       }
     } catch (e) {
       console.error("Error in verification logging:", e)
@@ -194,8 +188,6 @@ export default function PublicDocumentPage() {
       </div>
     )
   }
-
-  const departmentInfo = document.current_department || document.departments
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
@@ -312,9 +304,9 @@ export default function PublicDocumentPage() {
                 <div className="flex items-center mt-1">
                   <div
                     className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: departmentInfo?.color || "#888888" }}
+                    style={{ backgroundColor: document.current_department?.color || "#888888" }}
                   ></div>
-                  <p className="font-medium">{departmentInfo?.name || "No asignado"}</p>
+                  <p className="font-medium">{document.current_department?.name || "No asignado"}</p>
                 </div>
               </div>
               <div>
