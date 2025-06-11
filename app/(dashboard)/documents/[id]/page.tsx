@@ -844,7 +844,6 @@ export default function DocumentDetailsPage() {
           <DialogHeader>
             <DialogTitle>Vista previa del documento</DialogTitle>
             <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
-              <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
