@@ -67,7 +67,7 @@ export default function EditDocumentPage() {
         setTitle(document.title || "")
         setDocumentNumber(document.document_number || "")
         setDescription(document.description || "")
-        setDepartmentId(document.current_department_id || document.department_id || "")
+        setDepartmentId(document.current_department_id || "")
 
         // Set certification data
         setIsCertified(document.is_certified || false)
@@ -116,7 +116,6 @@ export default function EditDocumentPage() {
       if (departmentId !== undefined) {
         // Try both field names to be safe
         updates.current_department_id = departmentId || null
-        updates.department_id = departmentId || null
       }
 
       // Certification fields
