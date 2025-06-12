@@ -267,22 +267,6 @@ export default function ProfilePage() {
                 <span className="sm:hidden">Perfil</span>
                 <span className="hidden sm:inline">Información Personal</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="security"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                <span className="sm:hidden">Seguridad</span>
-                <span className="hidden sm:inline">Seguridad</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="preferences"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm col-span-2 sm:col-span-1"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                <span className="sm:hidden">Preferencias</span>
-                <span className="hidden sm:inline">Preferencias</span>
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="space-y-6">
@@ -340,77 +324,6 @@ export default function ProfilePage() {
                   <Save className="h-4 w-4 mr-2" />
                   {loading ? "Guardando..." : "Guardar Cambios"}
                 </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="security" className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Configuración de Seguridad</h3>
-                <div className="space-y-4">
-                  <Card className="border border-gray-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">Cambiar Contraseña</h4>
-                          <p className="text-sm text-muted-foreground">Actualiza tu contraseña regularmente</p>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Cambiar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border border-gray-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">Autenticación de Dos Factores</h4>
-                          <p className="text-sm text-muted-foreground">Añade una capa extra de seguridad</p>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Configurar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="preferences" className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Preferencias</h3>
-                <div className="space-y-4">
-                  <Card className="border border-gray-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">Notificaciones por Email</h4>
-                          <p className="text-sm text-muted-foreground">Recibe actualizaciones por correo</p>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          <Bell className="h-4 w-4 mr-2" />
-                          Configurar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border border-gray-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">Tema de la Aplicación</h4>
-                          <p className="text-sm text-muted-foreground">Personaliza la apariencia</p>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Cambiar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
               </div>
             </TabsContent>
           </Tabs>
