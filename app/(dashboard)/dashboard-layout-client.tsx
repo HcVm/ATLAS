@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/layout/app-sidebar"
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
-import { Sun, User, RefreshCw, Building2 } from "lucide-react"
+import { Sun, User, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -135,93 +136,87 @@ export default function DashboardLayoutClient({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium">Sistema de Seguimiento de Documentos</span>
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-2 px-4">
-            {user.role === "admin" && (
+      <div className="flex min-h-screen">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="border-b bg-background sticky top-0 z-30">
+            <div className="flex h-16 items-center px-4 md:px-6">
               <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
-                  <CompanySelector />
-                </Suspense>
+                <SidebarTrigger className="-ml-1" />
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium">Sistema de Seguimiento de Documentos</span>
+                </div>
               </div>
-            )}
-            <ThemeToggle />
-            <NotificationBadge />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
-                    <AvatarFallback>
-                      {user.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.full_name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                    <p className="text-xs leading-none text-muted-foreground">Rol: {user.role}</p>
-                    {user.company_id && (
-                      <p className="text-xs leading-none text-muted-foreground">
-                        Empresa: {user.companies?.name || "Sin asignar"}
-                      </p>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Perfil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
-                  <Sun className="mr-2 h-4 w-4" />
-                  <span>Configuración</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleRefresh} disabled={refreshing}>
-                  {refreshing ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      <span>Actualizando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      <span>Actualizar Sesión</span>
-                    </>
-                  )}
-                </DropdownMenuItem>
-                {user.role !== "admin" && (
-                  <DropdownMenuItem onClick={() => router.push("/user-debug")}>
-                    <span>Diagnóstico</span>
-                  </DropdownMenuItem>
+              <div className="ml-auto flex items-center space-x-4">
+                {user.role === "admin" && (
+                  <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
+                    <CompanySelector />
+                  </Suspense>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <span>Cerrar sesión</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <main className="flex-1">{children}</main>
+                <ThemeToggle />
+                <NotificationBadge />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
+                        <AvatarFallback>
+                          {user.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user.full_name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                        <p className="text-xs leading-none text-muted-foreground">Rol: {user.role}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push("/profile")}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Perfil</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push("/settings")}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span>Configuración</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleRefresh} disabled={refreshing}>
+                      {refreshing ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          <span>Actualizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          <span>Actualizar Sesión</span>
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    {user.role !== "admin" && (
+                      <DropdownMenuItem onClick={() => router.push("/user-debug")}>
+                        <span>Diagnóstico</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <span>Cerrar sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 p-6 overflow-auto bg-background">{children}</main>
         </div>
-      </SidebarInset>
+      </div>
     </SidebarProvider>
   )
 }
