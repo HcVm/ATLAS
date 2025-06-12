@@ -21,7 +21,9 @@ export type Database = {
           full_name: string
           role: "admin" | "supervisor" | "user"
           department_id: string | null
+          company_id: string | null
           avatar_url: string | null
+          phone: string | null
           created_at: string
           updated_at: string
         }
@@ -31,14 +33,18 @@ export type Database = {
           full_name: string
           role?: "admin" | "supervisor" | "user"
           department_id?: string | null
+          company_id?: string | null
           avatar_url?: string | null
+          phone?: string | null
         }
         Update: {
           email?: string
           full_name?: string
           role?: "admin" | "supervisor" | "user"
           department_id?: string | null
+          company_id?: string | null
           avatar_url?: string | null
+          phone?: string | null
         }
       }
       documents: {
@@ -52,18 +58,20 @@ export type Database = {
           file_url: string | null
           created_by: string
           department_id: string
+          company_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           title: string
           description?: string | null
-          document_number: string
+          document_number?: string
           status?: "pending" | "in_progress" | "completed" | "cancelled"
           qr_code?: string | null
           file_url?: string | null
           created_by: string
           department_id: string
+          company_id?: string | null
         }
         Update: {
           title?: string
@@ -71,6 +79,7 @@ export type Database = {
           status?: "pending" | "in_progress" | "completed" | "cancelled"
           qr_code?: string | null
           file_url?: string | null
+          company_id?: string | null
         }
       }
       departments: {
@@ -79,8 +88,44 @@ export type Database = {
           name: string
           description: string | null
           color: string | null
+          company_id: string | null
           created_at: string
           updated_at: string
+        }
+        Insert: {
+          name: string
+          description?: string | null
+          color?: string | null
+          company_id?: string | null
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          color?: string | null
+          company_id?: string | null
+        }
+      }
+      companies: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          description: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          code: string
+          description?: string | null
+          color?: string
+        }
+        Update: {
+          name?: string
+          code?: string
+          description?: string | null
+          color?: string
         }
       }
       news: {
@@ -91,6 +136,8 @@ export type Database = {
           image_url: string | null
           published: boolean
           created_by: string
+          company_id: string | null
+          is_global: boolean
           created_at: string
           updated_at: string
         }
@@ -100,12 +147,16 @@ export type Database = {
           image_url?: string | null
           published?: boolean
           created_by: string
+          company_id?: string | null
+          is_global?: boolean
         }
         Update: {
           title?: string
           content?: string
           image_url?: string | null
           published?: boolean
+          company_id?: string | null
+          is_global?: boolean
         }
       }
       document_movements: {
@@ -148,6 +199,24 @@ export type Database = {
         }
         Update: {
           read?: boolean
+        }
+      }
+      document_sequences: {
+        Row: {
+          id: string
+          company_id: string
+          year: number
+          last_number: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          year: number
+          last_number?: number
+        }
+        Update: {
+          last_number?: number
         }
       }
     }

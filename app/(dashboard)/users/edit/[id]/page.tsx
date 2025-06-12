@@ -1,7 +1,11 @@
 "use client"
 
 import type React from "react"
-
+import { Suspense } from "react"
+import { notFound } from "next/navigation"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { UserEditForm } from "@/components/users/user-edit-form"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,7 +18,67 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, Save, Camera } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
-export default function EditUserPage({ params }: { params: { id: string } }) {
+export const dynamic = "force-dynamic"
+
+export default async function UserEditPage({ params }: { params: { id: string } }) {
+  const supabase = createServerComponentClient({ cookies })
+
+  // Verificar si el usuario actual es admin
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const { data: currentUserProfile } = await supabase.from("profiles").select("role").eq("id", user?.id).single()
+
+  const isAdmin = currentUserProfile?.role === "admin"
+
+  if (!isAdmin) {
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Acceso denegado</h1>
+        <p>No tienes permisos para editar usuarios.</p>
+      </div>
+    )
+  }
+
+  // Obtener datos del usuario a editar
+  const { data: userProfile, error } = await supabase
+    .from("profiles")
+    .select(`
+      *,
+      departments!profiles_department_id_fkey (
+        id,
+        name
+      ),
+      companies!profiles_company_id_fkey (
+        id,
+        name,
+        code
+      )
+    `)
+    .eq("id", params.id)
+    .single()
+
+  if (error || !userProfile) {
+    notFound()
+  }
+
+  // Obtener lista de departamentos
+  const { data: departments } = await supabase.from("departments").select("id, name").order("name")
+
+  // Obtener lista de empresas
+  const { data: companies } = await supabase.from("companies").select("id, name, code").order("name")
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Editar Usuario</h1>
+      <Suspense fallback={<div>Cargando...</div>}>
+        <UserEditForm user={userProfile} departments={departments || []} companies={companies || []} />
+      </Suspense>
+    </div>
+  )
+}
+
+function EditUserPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user: currentUser } = useAuth()
   const [user, setUser] = useState<any>(null)

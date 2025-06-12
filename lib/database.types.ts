@@ -3,12 +3,46 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      companies: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          description: string | null
+          logo_url: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          code: string
+          description?: string | null
+          logo_url?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          code?: string
+          description?: string | null
+          logo_url?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           id: string
           name: string
           description: string | null
           color: string | null
+          company_id: string | null
           created_at: string
           updated_at: string
         }
@@ -17,6 +51,7 @@ export interface Database {
           name: string
           description?: string | null
           color?: string | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -25,10 +60,18 @@ export interface Database {
           name?: string
           description?: string | null
           color?: string | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "departments_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -39,11 +82,18 @@ export interface Database {
           department_id: string | null
           avatar_url: string | null
           phone: string | null
+          company_id: string | null
           created_at: string
           updated_at: string
           departments?: {
             id: string
             name: string
+          } | null
+          companies?: {
+            id: string
+            name: string
+            code: string
+            color: string
           } | null
         }
         Insert: {
@@ -54,6 +104,7 @@ export interface Database {
           department_id?: string | null
           avatar_url?: string | null
           phone?: string | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -65,6 +116,7 @@ export interface Database {
           department_id?: string | null
           avatar_url?: string | null
           phone?: string | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -73,6 +125,12 @@ export interface Database {
             foreignKeyName: "profiles_department_id_fkey"
             columns: ["department_id"]
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -96,6 +154,7 @@ export interface Database {
           verification_hash: string | null
           certification_notes: string | null
           is_public: boolean | null
+          company_id: string | null
           created_at: string
           updated_at: string
         }
@@ -117,6 +176,7 @@ export interface Database {
           verification_hash?: string | null
           certification_notes?: string | null
           is_public?: boolean | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -138,6 +198,7 @@ export interface Database {
           verification_hash?: string | null
           certification_notes?: string | null
           is_public?: boolean | null
+          company_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -152,6 +213,95 @@ export interface Database {
             foreignKeyName: "documents_current_department_id_fkey"
             columns: ["current_department_id"]
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news: {
+        Row: {
+          id: string
+          title: string
+          content: string
+          image_url: string | null
+          published: boolean
+          created_by: string
+          company_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          content: string
+          image_url?: string | null
+          published?: boolean
+          created_by: string
+          company_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          content?: string
+          image_url?: string | null
+          published?: boolean
+          created_by?: string
+          company_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_sequences: {
+        Row: {
+          id: string
+          company_id: string
+          year: number
+          last_number: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          year: number
+          last_number?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          year?: number
+          last_number?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_sequences_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -265,7 +415,13 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_document_number: {
+        Args: {
+          p_company_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
