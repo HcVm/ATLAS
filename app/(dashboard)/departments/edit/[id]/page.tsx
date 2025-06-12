@@ -9,23 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
-
-const DEPARTMENT_COLORS = [
-  { value: "bg-red-500", label: "Rojo", textColor: "text-white" },
-  { value: "bg-blue-500", label: "Azul", textColor: "text-white" },
-  { value: "bg-green-500", label: "Verde", textColor: "text-white" },
-  { value: "bg-yellow-500", label: "Amarillo", textColor: "text-black" },
-  { value: "bg-purple-500", label: "Morado", textColor: "text-white" },
-  { value: "bg-pink-500", label: "Rosa", textColor: "text-white" },
-  { value: "bg-indigo-500", label: "Índigo", textColor: "text-white" },
-  { value: "bg-gray-500", label: "Gris", textColor: "text-white" },
-  { value: "bg-orange-500", label: "Naranja", textColor: "text-white" },
-  { value: "bg-teal-500", label: "Verde Azulado", textColor: "text-white" },
-]
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Slider } from "@/components/ui/slider"
 
 interface Department {
   id: string
@@ -36,6 +24,33 @@ interface Department {
   updated_at: string
 }
 
+// Función para convertir RGB a Hexadecimal
+const rgbToHex = (r: number, g: number, b: number): string => {
+  return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)
+}
+
+// Función para convertir Hexadecimal a RGB
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result
+    ? {
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
+      }
+    : null
+}
+
+// Función para determinar si un color es oscuro (para elegir texto blanco o negro)
+const isColorDark = (hex: string): boolean => {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return true
+  const { r, g, b } = rgb
+  // Fórmula para calcular la luminosidad percibida
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance < 0.5
+}
+
 export default function EditDepartmentPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user: currentUser } = useAuth()
@@ -43,10 +58,15 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
   const [department, setDepartment] = useState<Department | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState("basic")
+
+  // Estado para el color
+  const [colorHex, setColorHex] = useState("#3B82F6") // Azul por defecto
+  const [colorRgb, setColorRgb] = useState({ r: 59, g: 130, b: 246 })
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    color: "bg-blue-500",
   })
 
   // Función para verificar si el usuario es administrador
@@ -68,6 +88,20 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
       }
     }
   }, [currentUser, params.id])
+
+  // Actualizar RGB cuando cambia el hex
+  useEffect(() => {
+    const rgb = hexToRgb(colorHex)
+    if (rgb) {
+      setColorRgb(rgb)
+    }
+  }, [colorHex])
+
+  // Actualizar Hex cuando cambia RGB
+  useEffect(() => {
+    const hex = rgbToHex(colorRgb.r, colorRgb.g, colorRgb.b)
+    setColorHex(hex)
+  }, [colorRgb])
 
   const fetchDepartment = async () => {
     try {
@@ -105,8 +139,32 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
       setFormData({
         name: data.name || "",
         description: data.description || "",
-        color: data.color || "bg-blue-500",
       })
+
+      // Si el color está en formato hexadecimal, usarlo directamente
+      if (data.color && data.color.startsWith("#")) {
+        setColorHex(data.color)
+      }
+      // Si el color está en formato clase Tailwind, convertirlo a hex
+      else if (data.color && data.color.startsWith("bg-")) {
+        // Colores predefinidos para conversión
+        const colorMap: Record<string, string> = {
+          "bg-red-500": "#EF4444",
+          "bg-blue-500": "#3B82F6",
+          "bg-green-500": "#10B981",
+          "bg-yellow-500": "#F59E0B",
+          "bg-purple-500": "#8B5CF6",
+          "bg-pink-500": "#EC4899",
+          "bg-indigo-500": "#6366F1",
+          "bg-gray-500": "#6B7280",
+          "bg-orange-500": "#F97316",
+          "bg-teal-500": "#14B8A6",
+        }
+        setColorHex(colorMap[data.color] || "#3B82F6")
+      } else {
+        // Color por defecto si no hay coincidencia
+        setColorHex("#3B82F6")
+      }
     } catch (error: any) {
       console.error("Error fetching department:", error)
       toast({
@@ -136,18 +194,22 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
 
     try {
       console.log(`Updating department: ${params.id}`)
-      console.log("Form data:", formData)
+
+      // Usar el color hexadecimal para guardar en la base de datos
+      const updateData = {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || null,
+        color: colorHex, // Guardar el color en formato hexadecimal
+      }
+
+      console.log("Form data:", updateData)
 
       const response = await fetch(`/api/departments/${params.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          description: formData.description?.trim() || null,
-          color: formData.color,
-        }),
+        body: JSON.stringify(updateData),
       })
 
       console.log(`Update response status: ${response.status}`)
@@ -180,6 +242,13 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleRandomColor = () => {
+    const r = Math.floor(Math.random() * 256)
+    const g = Math.floor(Math.random() * 256)
+    const b = Math.floor(Math.random() * 256)
+    setColorRgb({ r, g, b })
   }
 
   if (!currentUser) {
@@ -223,6 +292,8 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
     )
   }
 
+  const textColor = isColorDark(colorHex) ? "text-white" : "text-black"
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -242,75 +313,149 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
           <CardDescription>Actualiza los detalles del departamento</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Departamento *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  disabled={saving}
-                  required
-                  placeholder="Ingresa el nombre del departamento"
-                />
-              </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-6">
+              <TabsTrigger value="basic">Información Básica</TabsTrigger>
+              <TabsTrigger value="color">Color del Departamento</TabsTrigger>
+            </TabsList>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={saving}
-                  rows={4}
-                  placeholder="Descripción opcional del departamento"
-                />
-              </div>
+            <TabsContent value="basic">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre del Departamento *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={saving}
+                    required
+                    placeholder="Ingresa el nombre del departamento"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label>Color del Departamento *</Label>
-                <RadioGroup
-                  value={formData.color}
-                  onValueChange={(value) => setFormData({ ...formData, color: value })}
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-2"
-                >
-                  {DEPARTMENT_COLORS.map((color) => (
-                    <div key={color.value} className="flex items-center space-x-2">
-                      <RadioGroupItem value={color.value} id={color.value} className="sr-only" />
-                      <Label
-                        htmlFor={color.value}
-                        className={`flex items-center justify-center px-3 py-2 rounded-md cursor-pointer transition-all ${
-                          formData.color === color.value ? "ring-2 ring-offset-2 ring-primary" : ""
-                        } ${color.value} ${color.textColor} hover:opacity-80`}
-                      >
-                        {color.label}
-                      </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descripción</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    disabled={saving}
+                    rows={4}
+                    placeholder="Descripción opcional del departamento"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="color">
+              <div className="space-y-6">
+                {/* Vista previa del color */}
+                <div className="flex flex-col space-y-4">
+                  <Label>Vista previa</Label>
+                  <div
+                    className={`h-24 rounded-lg flex items-center justify-center ${textColor}`}
+                    style={{ backgroundColor: colorHex }}
+                  >
+                    <span className="text-lg font-medium">{formData.name || "Departamento"}</span>
+                  </div>
+                </div>
+
+                {/* Selector de color hexadecimal */}
+                <div className="space-y-2">
+                  <Label htmlFor="colorHex">Código de color</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="colorHex"
+                      type="text"
+                      value={colorHex}
+                      onChange={(e) => setColorHex(e.target.value)}
+                      className="font-mono"
+                      maxLength={7}
+                    />
+                    <input
+                      type="color"
+                      value={colorHex}
+                      onChange={(e) => setColorHex(e.target.value)}
+                      className="w-12 h-10 p-0 border rounded-md cursor-pointer"
+                    />
+                    <Button type="button" variant="outline" onClick={handleRandomColor} title="Generar color aleatorio">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Sliders RGB */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="red">Rojo (R)</Label>
+                      <span className="text-sm font-mono">{colorRgb.r}</span>
                     </div>
-                  ))}
-                </RadioGroup>
-              </div>
-            </div>
+                    <Slider
+                      id="red"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={[colorRgb.r]}
+                      onValueChange={(value) => setColorRgb({ ...colorRgb, r: value[0] })}
+                      className="[&_[role=slider]]:bg-red-500"
+                    />
+                  </div>
 
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => router.push("/departments")} disabled={saving}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Guardar Cambios
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="green">Verde (G)</Label>
+                      <span className="text-sm font-mono">{colorRgb.g}</span>
+                    </div>
+                    <Slider
+                      id="green"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={[colorRgb.g]}
+                      onValueChange={(value) => setColorRgb({ ...colorRgb, g: value[0] })}
+                      className="[&_[role=slider]]:bg-green-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="blue">Azul (B)</Label>
+                      <span className="text-sm font-mono">{colorRgb.b}</span>
+                    </div>
+                    <Slider
+                      id="blue"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={[colorRgb.b]}
+                      onValueChange={(value) => setColorRgb({ ...colorRgb, b: value[0] })}
+                      className="[&_[role=slider]]:bg-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end gap-4 mt-6">
+            <Button type="button" variant="outline" onClick={() => router.push("/departments")} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar Cambios
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

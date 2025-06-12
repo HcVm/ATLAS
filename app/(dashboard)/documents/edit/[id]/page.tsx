@@ -75,8 +75,26 @@ export default function EditDocumentPage() {
         setIsCertified(document.is_certified || false)
         setCertificationType(document.certification_type || "")
         setCertificateNumber(document.certificate_number || "")
-        setIssuedDate(document.issued_date ? new Date(document.issued_date) : undefined)
-        setExpiryDate(document.expiry_date ? new Date(document.expiry_date) : undefined)
+
+        // Manejo mejorado de fechas
+        if (document.issued_date) {
+          try {
+            setIssuedDate(new Date(document.issued_date))
+          } catch (e) {
+            console.error("Error parsing issued date:", e)
+            setIssuedDate(undefined)
+          }
+        }
+
+        if (document.expiry_date) {
+          try {
+            setExpiryDate(new Date(document.expiry_date))
+          } catch (e) {
+            console.error("Error parsing expiry date:", e)
+            setExpiryDate(undefined)
+          }
+        }
+
         setIssuerName(document.issuer_name || "")
         setIssuerPosition(document.issuer_position || "")
         setVerificationEnabled(document.verification_enabled !== false)
@@ -356,13 +374,16 @@ export default function EditDocumentPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Contenedor mejorado para los calendarios */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="issuedDate" className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
                         Fecha de Emisión
                       </Label>
-                      <DatePicker date={issuedDate} setDate={setIssuedDate} className="w-full" />
+                      <div className="relative">
+                        <DatePicker date={issuedDate} setDate={setIssuedDate} placeholder="Fecha de emisión" />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -370,7 +391,9 @@ export default function EditDocumentPage() {
                         <Calendar className="h-4 w-4 mr-1" />
                         Fecha de Expiración
                       </Label>
-                      <DatePicker date={expiryDate} setDate={setExpiryDate} className="w-full" />
+                      <div className="relative">
+                        <DatePicker date={expiryDate} setDate={setExpiryDate} placeholder="Fecha de expiración" />
+                      </div>
                     </div>
                   </div>
 
@@ -398,6 +421,12 @@ export default function EditDocumentPage() {
                   </div>
 
                   <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox
+                      id="verificationEnabled"
+                      checked={verificationEnabled}
+                      onCheckedChange={(checked) => setVerificationEnabled(checked === true)}
+                    />
+                    <Label htmlFor="verificationEnabled">Permitir verificación pública mediante QR</Label>
                   </div>
                 </div>
               )}
