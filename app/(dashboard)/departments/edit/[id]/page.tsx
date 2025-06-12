@@ -295,7 +295,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
   const textColor = isColorDark(colorHex) ? "text-white" : "text-black"
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={() => router.push("/departments")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
