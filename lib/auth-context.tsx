@@ -20,6 +20,7 @@ export interface AuthContextType {
     password: string,
     fullName: string,
     departmentId: string,
+    phone?: string,
   ) => Promise<{ data: any; error: any }>
 }
 
@@ -68,6 +69,7 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
         full_name: authUser.user_metadata?.full_name || "Usuario",
         role: "user",
         department_id: defaultDept?.id || null,
+        phone: authUser.user_metadata?.phone || null,
       })
       .select(`
         *,
@@ -185,9 +187,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUpUser = async (email: string, password: string, fullName: string, departmentId: string) => {
+  const signUpUser = async (
+    email: string,
+    password: string,
+    fullName: string,
+    departmentId: string,
+    phone?: string,
+  ) => {
     try {
       setLoading(true)
+      setError(null)
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -195,12 +205,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
             department_id: departmentId,
+            phone: phone || null,
           },
         },
       })
+
+      if (error) {
+        console.error("SignUp error:", error)
+      }
+
       return { data, error }
+    } catch (err: any) {
+      console.error("Unexpected signup error:", err)
+      return { data: null, error: err }
     } finally {
-      // El loading se actualizará con el evento de auth
+      if (mounted.current) {
+        setLoading(false)
+      }
     }
   }
 

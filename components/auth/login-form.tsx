@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -17,39 +19,107 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const { signInUser } = useAuth()
+  const { signIn } = useAuth()
+  const { toast } = useToast()
+
+  const validateForm = () => {
+    if (!email) {
+      setError("El correo electrónico es requerido")
+      return false
+    }
+    if (!email.includes("@")) {
+      setError("Por favor ingresa un correo electrónico válido")
+      return false
+    }
+    if (!password) {
+      setError("La contraseña es requerida")
+      return false
+    }
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres")
+      return false
+    }
+    return true
+  }
+
+  const getErrorMessage = (error: any) => {
+    if (!error) return "Error desconocido"
+
+    const message = error.message || error.toString()
+
+    if (message.includes("Invalid login credentials")) {
+      return "❌ Credenciales incorrectas. Verifica tu email y contraseña."
+    }
+    if (message.includes("Email not confirmed")) {
+      return "📧 Por favor confirma tu email antes de iniciar sesión."
+    }
+    if (message.includes("Too many requests")) {
+      return "⏰ Demasiados intentos. Espera unos minutos antes de intentar nuevamente."
+    }
+    if (message.includes("User not found")) {
+      return "👤 No existe una cuenta con este email."
+    }
+    if (message.includes("Invalid email")) {
+      return "📧 El formato del email no es válido."
+    }
+    if (message.includes("Network")) {
+      return "🌐 Error de conexión. Verifica tu internet."
+    }
+
+    return `❌ ${message}`
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError("")
 
-    const { data, error } = await signInUser(email, password)
-
-    if (error) {
-      setError(error.message)
-    } else if (data.user) {
-      router.push("/dashboard")
+    if (!validateForm()) {
+      return
     }
 
-    setLoading(false)
-  }
-
-  const handleTestLogin = async () => {
-    setEmail("admin@test.com")
-    setPassword("123456789")
     setLoading(true)
-    setError("")
 
-    const { data, error } = await signInUser("admin@test.com", "123456789")
+    try {
+      const { data, error } = await signIn(email, password)
 
-    if (error) {
-      setError(error.message)
-    } else if (data.user) {
-      router.push("/dashboard")
+      if (error) {
+        const errorMessage = getErrorMessage(error)
+        setError(errorMessage)
+        toast({
+          title: "Error de inicio de sesión",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 5000,
+        })
+      } else if (data.user) {
+        toast({
+          title: "✅ Bienvenido",
+          description: "Has iniciado sesión correctamente",
+          duration: 3000,
+        })
+
+        // Limpiar formulario
+        setEmail("")
+        setPassword("")
+        setError("")
+
+        // Redirigir después de un momento
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1000)
+      }
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      toast({
+        title: "Error inesperado",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      })
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -96,10 +166,13 @@ export function LoginForm() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (error) setError("")
+                  }}
                   required
                   disabled={loading}
-                  placeholder="admin@test.com"
+                  placeholder="tu@email.com"
                   className="h-11"
                 />
               </div>
@@ -110,55 +183,35 @@ export function LoginForm() {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (error) setError("")
+                  }}
                   required
                   disabled={loading}
-                  placeholder="123456789"
+                  placeholder="Tu contraseña"
                   className="h-11"
+                  minLength={6}
                 />
               </div>
 
               <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Iniciando sesión...
+                  </>
+                ) : (
+                  "Iniciar Sesión"
+                )}
               </Button>
 
-              <div className="space-y-3">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">O</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11"
-                  onClick={handleTestLogin}
-                  disabled={loading}
-                >
-                  Usar Cuenta de Prueba
+              <div className="text-center mt-4">
+                <Button variant="link" onClick={() => router.push("/register")} disabled={loading}>
+                  ¿No tienes cuenta? Regístrate
                 </Button>
-
-                <div className="text-center">
-                  <Button variant="link" onClick={() => router.push("/register")} disabled={loading}>
-                    ¿No tienes cuenta? Regístrate
-                  </Button>
-                </div>
               </div>
             </form>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800 text-center">
-                <strong>Cuenta de prueba:</strong>
-                <br />
-                Email: admin@test.com
-                <br />
-                Contraseña: 123456789
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
