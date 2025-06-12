@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, TrendingUp, BarChart3, PieChart, Calendar } from "lucide-react"
+import { RefreshCw, TrendingUp, BarChart3, PieChart, Calendar, Users, FileText, ArrowRightLeft } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -41,6 +41,41 @@ interface StatisticsData {
     movements: number
   }>
 }
+
+// Componente personalizado para tooltips modernos
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-foreground">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {`${entry.name}: ${entry.value}`}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
+// Gradientes para los gráficos
+const renderGradients = () => (
+  <defs>
+    <linearGradient id="colorDocuments" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+      <stop offset="95%" stopColor="#1E40AF" stopOpacity={0.2} />
+    </linearGradient>
+    <linearGradient id="colorMovements" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+      <stop offset="95%" stopColor="#047857" stopOpacity={0.2} />
+    </linearGradient>
+    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.8} />
+      <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.6} />
+    </linearGradient>
+  </defs>
+)
 
 export default function StatisticsPage() {
   const { user } = useAuth()
@@ -87,7 +122,7 @@ export default function StatisticsPage() {
       // Filtrar por permisos de usuario
       if (user?.role === "user") {
         documentsQuery = documentsQuery.or(
-          `created_by.eq.${user.id},current_department_id.eq.${user.current_department_id}`,
+          `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
         )
       }
 
@@ -122,20 +157,22 @@ export default function StatisticsPage() {
     departments: any[],
     totalUsers: number,
   ): StatisticsData => {
-    // Documentos por departamento
+    // Documentos por departamento con colores modernos
+    const modernColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16", "#EF4444"]
+
     const documentsByDepartment = departments
-      .map((dept) => {
+      .map((dept, index) => {
         const count = documents.filter((doc) => doc.current_department_id === dept.id).length
         return {
           name: dept.name,
           value: count,
-          color: dept.color || getDefaultColor(dept.name),
+          color: dept.color || modernColors[index % modernColors.length],
         }
       })
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
 
-    // Documentos por estado
+    // Documentos por estado con gradientes
     const statusColors = {
       pending: "#F59E0B",
       in_progress: "#3B82F6",
@@ -198,12 +235,12 @@ export default function StatisticsPage() {
 
     // Movimientos por departamento
     const movementsByDepartment = departments
-      .map((dept) => {
+      .map((dept, index) => {
         const count = movements.filter((mov) => mov.to_department_id === dept.id).length
         return {
           name: dept.name,
           value: count,
-          color: dept.color || getDefaultColor(dept.name),
+          color: dept.color || modernColors[index % modernColors.length],
         }
       })
       .filter((item) => item.value > 0)
@@ -217,7 +254,6 @@ export default function StatisticsPage() {
       const dateStr = date.toISOString().split("T")[0]
 
       const docsCount = documents.filter((doc) => doc.created_at.startsWith(dateStr)).length
-
       const movCount = movements.filter((mov) => mov.created_at.startsWith(dateStr)).length
 
       recentActivity.push({
@@ -242,15 +278,6 @@ export default function StatisticsPage() {
     }
   }
 
-  const getDefaultColor = (name: string): string => {
-    const colors = ["#EF4444", "#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#06B6D4", "#84CC16", "#EC4899"]
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash)
-    }
-    return colors[Math.abs(hash) % colors.length]
-  }
-
   const handleRefresh = () => {
     fetchStatistics(true)
   }
@@ -272,74 +299,94 @@ export default function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header con gradiente */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-8 w-8" />
+          <h1 className="text-3xl font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <BarChart3 className="h-8 w-8 text-blue-600" />
             Estadísticas
           </h1>
           <p className="text-muted-foreground">Análisis y métricas del sistema de documentos</p>
         </div>
-        <Button onClick={handleRefresh} disabled={refreshing} variant="outline" className="gap-2">
+        <Button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          variant="outline"
+          className="gap-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950 dark:hover:to-purple-950"
+        >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Actualizando..." : "Actualizar"}
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards Mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStats.totalDocuments}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-blue-600">{stats.totalStats.totalDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos en el sistema</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Movimientos</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <ArrowRightLeft className="h-4 w-4 text-green-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStats.totalMovements}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-green-600">{stats.totalStats.totalMovements}</div>
             <p className="text-xs text-muted-foreground">Movimientos registrados</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Departamentos</CardTitle>
-            <PieChart className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <PieChart className="h-4 w-4 text-purple-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStats.totalDepartments}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-purple-600">{stats.totalStats.totalDepartments}</div>
             <p className="text-xs text-muted-foreground">Departamentos activos</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <Users className="h-4 w-4 text-orange-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStats.totalUsers}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-orange-600">{stats.totalStats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">Usuarios registrados</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Grid */}
+      {/* Charts Grid Modernos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos por Departamento */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle>Documentos por Departamento</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-blue-600" />
+              Documentos por Departamento
+            </CardTitle>
             <CardDescription>Distribución de documentos por departamento</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
@@ -351,31 +398,39 @@ export default function StatisticsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={80}
+                    outerRadius={90}
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    stroke="#fff"
+                    strokeWidth={2}
                   >
                     {stats.documentsByDepartment.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No hay datos disponibles
+                <div className="text-center">
+                  <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Documentos por Estado */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle>Documentos por Estado</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-green-600" />
+              Documentos por Estado
+            </CardTitle>
             <CardDescription>Distribución de documentos por estado</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
@@ -387,51 +442,55 @@ export default function StatisticsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={80}
+                    outerRadius={90}
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    stroke="#fff"
+                    strokeWidth={2}
                   >
                     {stats.documentsByStatus.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No hay datos disponibles
+                <div className="text-center">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Documentos por Mes */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle>Documentos por Mes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              Documentos por Mes
+            </CardTitle>
             <CardDescription>Documentos creados en los últimos 6 meses</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.documentsByMonth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip
-                  labelFormatter={(label, payload) => {
-                    const item = stats.documentsByMonth.find((d) => d.name === label)
-                    return item ? item.month : label
-                  }}
-                />
+                {renderGradients()}
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="value"
                   stroke="#3B82F6"
-                  fill="#3B82F6"
-                  fillOpacity={0.3}
+                  strokeWidth={3}
+                  fill="url(#colorDocuments)"
                   name="Documentos"
                 />
               </AreaChart>
@@ -440,20 +499,24 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Movimientos por Departamento */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle>Movimientos por Departamento</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+              Movimientos por Departamento
+            </CardTitle>
             <CardDescription>Distribución de movimientos por departamento destino</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {stats.movementsByDepartment.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.movementsByDepartment} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Movimientos">
+                  {renderGradients()}
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} stroke="#6b7280" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" name="Movimientos" radius={[0, 4, 4, 0]} fill="url(#barGradient)">
                     {stats.movementsByDepartment.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -462,7 +525,10 @@ export default function StatisticsPage() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No hay datos disponibles
+                <div className="text-center">
+                  <ArrowRightLeft className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -470,21 +536,41 @@ export default function StatisticsPage() {
       </div>
 
       {/* Actividad Reciente */}
-      <Card>
+      <Card className="hover:shadow-lg transition-shadow duration-300">
         <CardHeader>
-          <CardTitle>Actividad de los Últimos 7 Días</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            Actividad de los Últimos 7 Días
+          </CardTitle>
           <CardDescription>Documentos creados y movimientos realizados por día</CardDescription>
         </CardHeader>
         <CardContent className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={stats.recentActivity}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              {renderGradients()}
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+              <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+              <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="documents" stroke="#10B981" strokeWidth={2} name="Documentos Creados" />
-              <Line type="monotone" dataKey="movements" stroke="#3B82F6" strokeWidth={2} name="Movimientos" />
+              <Line
+                type="monotone"
+                dataKey="documents"
+                stroke="#10B981"
+                strokeWidth={3}
+                name="Documentos Creados"
+                dot={{ fill: "#10B981", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "#10B981", strokeWidth: 2 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="movements"
+                stroke="#3B82F6"
+                strokeWidth={3}
+                name="Movimientos"
+                dot={{ fill: "#3B82F6", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "#3B82F6", strokeWidth: 2 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
