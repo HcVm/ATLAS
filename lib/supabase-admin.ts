@@ -17,6 +17,7 @@ export interface CreateUserParams {
   full_name: string
   role: string
   department_id: string
+  phone?: string
 }
 
 export interface UpdateUserParams {
@@ -24,6 +25,7 @@ export interface UpdateUserParams {
   full_name?: string
   role?: string
   department_id?: string
+  phone?: string
 }
 
 // Función para crear un usuario como administrador
@@ -36,6 +38,7 @@ export async function createUserAsAdmin(params: CreateUserParams) {
       email_confirm: true,
       user_metadata: {
         full_name: params.full_name,
+        phone: params.phone,
       },
     })
 
@@ -52,6 +55,7 @@ export async function createUserAsAdmin(params: CreateUserParams) {
         full_name: params.full_name,
         role: params.role,
         department_id: params.department_id === "none" ? null : params.department_id,
+        phone: params.phone || null,
       }
 
       const { data: profile, error: profileError } = await supabaseAdmin
@@ -80,40 +84,36 @@ export async function createUserAsAdmin(params: CreateUserParams) {
 // Función para actualizar un usuario como administrador
 export async function updateUserAsAdmin(userId: string, params: UpdateUserParams) {
   try {
-    // 1. Actualizar el usuario en auth.users si se cambió el email
-    if (params.email) {
-      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        email: params.email,
-        user_metadata: params.full_name ? { full_name: params.full_name } : undefined,
-      })
+    // 1. Actualizar el usuario en auth.users si se cambió el email o metadata
+    const updateData: any = {}
+    if (params.email) updateData.email = params.email
+    if (params.full_name || params.phone) {
+      updateData.user_metadata = {}
+      if (params.full_name) updateData.user_metadata.full_name = params.full_name
+      if (params.phone) updateData.user_metadata.phone = params.phone
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, updateData)
 
       if (authError) {
         console.error("Error updating auth user:", authError)
         return { error: authError }
       }
-    } else if (params.full_name) {
-      // Solo actualizar metadata si no se actualizó el email pero sí el nombre
-      const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        user_metadata: { full_name: params.full_name },
-      })
-
-      if (metadataError) {
-        console.error("Error updating user metadata:", metadataError)
-        return { error: metadataError }
-      }
     }
 
     // 2. Actualizar el perfil en la tabla profiles
-    const updateData: any = {}
-    if (params.email) updateData.email = params.email
-    if (params.full_name) updateData.full_name = params.full_name
-    if (params.role) updateData.role = params.role
+    const profileUpdateData: any = {}
+    if (params.email) profileUpdateData.email = params.email
+    if (params.full_name) profileUpdateData.full_name = params.full_name
+    if (params.role) profileUpdateData.role = params.role
     if (params.department_id !== undefined) {
-      updateData.department_id = params.department_id === "none" ? null : params.department_id
+      profileUpdateData.department_id = params.department_id === "none" ? null : params.department_id
     }
+    if (params.phone !== undefined) profileUpdateData.phone = params.phone
 
-    if (Object.keys(updateData).length > 0) {
-      const { error: profileError } = await supabaseAdmin.from("profiles").update(updateData).eq("id", userId)
+    if (Object.keys(profileUpdateData).length > 0) {
+      const { error: profileError } = await supabaseAdmin.from("profiles").update(profileUpdateData).eq("id", userId)
 
       if (profileError) {
         console.error("Error updating profile:", profileError)

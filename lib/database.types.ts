@@ -38,6 +38,7 @@ export interface Database {
           role: string
           department_id: string | null
           avatar_url: string | null
+          phone: string | null
           created_at: string
           updated_at: string
           departments?: {
@@ -52,6 +53,7 @@ export interface Database {
           role?: string
           department_id?: string | null
           avatar_url?: string | null
+          phone?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -62,6 +64,7 @@ export interface Database {
           role?: string
           department_id?: string | null
           avatar_url?: string | null
+          phone?: string | null
           created_at?: string
           updated_at?: string
         }

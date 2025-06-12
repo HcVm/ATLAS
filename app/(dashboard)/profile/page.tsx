@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Building2, Calendar, Shield, Save, Camera, FileText, Activity, Settings, Bell, Lock } from "lucide-react"
+import { User, Building2, Calendar, Shield, Save, Camera, FileText, Activity } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -154,9 +153,7 @@ export default function ProfilePage() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
             Mi Perfil
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Gestiona tu información personal y configuración
-          </p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona tu información personal</p>
         </div>
       </div>
 
@@ -254,79 +251,64 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* Main Content */}
+      {/* Profile Form */}
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 sm:p-6">
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 mb-6 bg-gradient-to-r from-blue-100 to-purple-100">
-              <TabsTrigger
-                value="profile"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 items-center data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
-              >
-                <User className="h-4 w-4 mr-2" />
-                <span className="sm:hidden">Perfil</span>
-                <span className="hidden sm:inline">Información Personal</span>
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <User className="h-5 w-5 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Información Personal</h3>
+            </div>
 
-            <TabsContent value="profile" className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Información Personal</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Nombre Completo</Label>
-                    <Input
-                      id="full_name"
-                      value={profile.full_name}
-                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                      className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      disabled
-                      className="bg-gray-50 text-gray-500"
-                    />
-                    <p className="text-xs text-muted-foreground">El email no se puede cambiar</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input
-                      id="phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="Número de teléfono"
-                      className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rol</Label>
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                      {getRoleBadge(user.role)}
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Nombre Completo</Label>
+                <Input
+                  id="full_name"
+                  value={profile.full_name}
+                  onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={profile.email} disabled className="bg-gray-50 text-gray-500" />
+                <p className="text-xs text-muted-foreground">El email no se puede cambiar</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input
+                  id="phone"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  placeholder="Número de teléfono"
+                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Rol</Label>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  {getRoleBadge(user.role)}
                 </div>
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-end">
-                <Button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {loading ? "Guardando..." : "Guardar Cambios"}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                onClick={handleSave}
+                disabled={loading}
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {loading ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
