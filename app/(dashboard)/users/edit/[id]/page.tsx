@@ -1,125 +1,54 @@
 "use client"
 
-import type React from "react"
-import { Suspense } from "react"
-import { notFound } from "next/navigation"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { UserEditForm } from "@/components/users/user-edit-form"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Save, Camera } from "lucide-react"
+import { ArrowLeft, Camera } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { supabase } from "@/lib/supabase"
+import { UserEditForm } from "../../../../../components/users/user-edit-form"
 
-export const dynamic = "force-dynamic"
-
-export default async function UserEditPage({ params }: { params: { id: string } }) {
-  const supabase = createServerComponentClient({ cookies })
-
-  // Verificar si el usuario actual es admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const { data: currentUserProfile } = await supabase.from("profiles").select("role").eq("id", user?.id).single()
-
-  const isAdmin = currentUserProfile?.role === "admin"
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Acceso denegado</h1>
-        <p>No tienes permisos para editar usuarios.</p>
-      </div>
-    )
-  }
-
-  // Obtener datos del usuario a editar
-  const { data: userProfile, error } = await supabase
-    .from("profiles")
-    .select(`
-      *,
-      departments!profiles_department_id_fkey (
-        id,
-        name
-      ),
-      companies!profiles_company_id_fkey (
-        id,
-        name,
-        code
-      )
-    `)
-    .eq("id", params.id)
-    .single()
-
-  if (error || !userProfile) {
-    notFound()
-  }
-
-  // Obtener lista de departamentos
-  const { data: departments } = await supabase.from("departments").select("id, name").order("name")
-
-  // Obtener lista de empresas
-  const { data: companies } = await supabase.from("companies").select("id, name, code").order("name")
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Editar Usuario</h1>
-      <Suspense fallback={<div>Cargando...</div>}>
-        <UserEditForm user={userProfile} departments={departments || []} companies={companies || []} />
-      </Suspense>
-    </div>
-  )
-}
-
-function EditUserPage({ params }: { params: { id: string } }) {
+export default function EditUserPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user: currentUser } = useAuth()
   const [user, setUser] = useState<any>(null)
   const [departments, setDepartments] = useState<any[]>([])
+  const [companies, setCompanies] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    role: "",
-    department_id: "",
-  })
 
   useEffect(() => {
     if (currentUser?.role === "admin") {
       fetchUser()
       fetchDepartments()
+      fetchCompanies()
     }
   }, [currentUser, params.id])
 
   const fetchUser = async () => {
     try {
-      // Usar la API del servidor para obtener el usuario
-      const response = await fetch(`/api/users/${params.id}`)
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`
+          *,
+          departments!profiles_department_id_fkey (
+            id,
+            name
+          ),
+          companies!profiles_company_id_fkey (
+            id,
+            name,
+            code
+          )
+        `)
+        .eq("id", params.id)
+        .single()
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Error al cargar el usuario")
-      }
-
-      const data = await response.json()
-
+      if (error) throw error
       setUser(data)
-      setFormData({
-        full_name: data.full_name || "",
-        email: data.email || "",
-        role: data.role || "",
-        department_id: data.department_id || "none",
-      })
     } catch (error: any) {
       console.error("Error fetching user:", error)
       setError(error.message)
@@ -130,54 +59,21 @@ function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch("/api/departments")
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Error al cargar departamentos")
-      }
-
-      const data = await response.json()
+      const { data, error } = await supabase.from("departments").select("id, name").order("name")
+      if (error) throw error
       setDepartments(data || [])
     } catch (error: any) {
       console.error("Error fetching departments:", error)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setError("")
-    setMessage("")
-
+  const fetchCompanies = async () => {
     try {
-      const response = await fetch(`/api/users/${params.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          full_name: formData.full_name,
-          email: formData.email,
-          role: formData.role,
-          department_id: formData.department_id === "none" ? null : formData.department_id,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Error al actualizar usuario")
-      }
-
-      setMessage("Usuario actualizado exitosamente")
-      setTimeout(() => {
-        router.push("/users")
-      }, 2000)
+      const { data, error } = await supabase.from("companies").select("id, name, code").order("name")
+      if (error) throw error
+      setCompanies(data || [])
     } catch (error: any) {
-      console.error("Error updating user:", error)
-      setError(error.message)
-    } finally {
-      setSaving(false)
+      console.error("Error fetching companies:", error)
     }
   }
 
@@ -256,99 +152,12 @@ function EditUserPage({ params }: { params: { id: string } }) {
               <CardDescription>Actualiza la información del usuario</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {message && (
-                  <Alert>
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Nombre Completo</Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      disabled={saving}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Correo Electrónico</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      disabled={saving}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rol</Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={(value) => setFormData({ ...formData, role: value })}
-                      disabled={saving}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">Usuario</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Departamento</Label>
-                    <Select
-                      value={formData.department_id}
-                      onValueChange={(value) => setFormData({ ...formData, department_id: value })}
-                      disabled={saving}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar departamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin departamento</SelectItem>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-4">
-                  <Button type="button" variant="outline" onClick={() => router.push("/users")} disabled={saving}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? (
-                      "Guardando..."
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Guardar Cambios
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <UserEditForm user={user} departments={departments} companies={companies} />
             </CardContent>
           </Card>
         </div>
