@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from 'lucide-react'
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -46,7 +46,11 @@ export function LoginForm() {
     if (!error) return "Error desconocido"
 
     const message = error.message || error.toString()
+    console.error("Error detallado:", error)
 
+    if (message.includes("Failed to fetch") || message.includes("NetworkError")) {
+      return "❌ Error de conexión. Verifica tu conexión a internet o la URL de Supabase."
+    }
     if (message.includes("Invalid login credentials")) {
       return "❌ Credenciales incorrectas. Verifica tu email y contraseña."
     }
@@ -61,9 +65,6 @@ export function LoginForm() {
     }
     if (message.includes("Invalid email")) {
       return "📧 El formato del email no es válido."
-    }
-    if (message.includes("Network")) {
-      return "🌐 Error de conexión. Verifica tu internet."
     }
 
     return `❌ ${message}`
@@ -80,9 +81,11 @@ export function LoginForm() {
     setLoading(true)
 
     try {
+      console.log("Intentando iniciar sesión con:", email)
       const { data, error } = await signIn(email, password)
 
       if (error) {
+        console.error("Error de inicio de sesión:", error)
         const errorMessage = getErrorMessage(error)
         setError(errorMessage)
         toast({
@@ -91,7 +94,8 @@ export function LoginForm() {
           variant: "destructive",
           duration: 5000,
         })
-      } else if (data.user) {
+      } else if (data?.user) {
+        console.log("Inicio de sesión exitoso:", data.user.email)
         toast({
           title: "✅ Bienvenido",
           description: "Has iniciado sesión correctamente",
@@ -107,8 +111,12 @@ export function LoginForm() {
         setTimeout(() => {
           router.push("/dashboard")
         }, 1000)
+      } else {
+        console.warn("Respuesta inesperada:", data)
+        setError("Respuesta inesperada del servidor")
       }
     } catch (err: any) {
+      console.error("Error inesperado:", err)
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
       toast({

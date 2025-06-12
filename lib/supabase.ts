@@ -3,13 +3,54 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Verificar que las variables de entorno estén definidas
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    "Error: Variables de entorno NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY no definidas",
+    {
+      url: supabaseUrl ? "Definida" : "No definida",
+      key: supabaseAnonKey ? "Definida" : "No definida",
+    },
+  )
+}
+
+// Crear cliente con opciones mejoradas
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: false, // DESACTIVAR auto refresh para evitar eventos
+    autoRefreshToken: true, // Activar auto refresh para evitar problemas de sesión
     detectSessionInUrl: true,
   },
+  global: {
+    fetch: (...args) => {
+      // Añadir timeout para evitar problemas de red
+      const [resource, config] = args
+      return fetch(resource, {
+        ...config,
+        headers: {
+          ...config?.headers,
+          "Cache-Control": "no-cache",
+        },
+      })
+    },
+  },
 })
+
+// Verificar conexión
+supabase.auth
+  .getSession()
+  .then(({ data, error }) => {
+    if (error) {
+      console.error("Error verificando sesión:", error.message)
+    } else {
+      console.log("Conexión a Supabase establecida correctamente", {
+        session: data.session ? "Activa" : "Inactiva",
+      })
+    }
+  })
+  .catch((err) => {
+    console.error("Error crítico al conectar con Supabase:", err)
+  })
 
 export type Database = {
   public: {
