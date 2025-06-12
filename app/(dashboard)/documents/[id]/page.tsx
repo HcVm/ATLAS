@@ -29,13 +29,70 @@ const isValidUUID = (str: string) => {
   return uuidRegex.test(str)
 }
 
-// Status options
+// Status options con colores modernos
 const statusOptions = [
-  { value: "pending", label: "Pendiente", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-  { value: "in_progress", label: "En Progreso", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { value: "completed", label: "Completado", color: "bg-green-50 text-green-700 border-green-200" },
-  { value: "cancelled", label: "Cancelado", color: "bg-red-50 text-red-700 border-red-200" },
+  {
+    value: "pending",
+    label: "Pendiente",
+    color: "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200",
+  },
+  {
+    value: "in_progress",
+    label: "En Progreso",
+    color: "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200",
+  },
+  {
+    value: "completed",
+    label: "Completado",
+    color: "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-200",
+  },
+  {
+    value: "cancelled",
+    label: "Cancelado",
+    color: "bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border-rose-200",
+  },
 ]
+
+// Función para obtener el color de texto basado en el color de fondo
+const getTextColor = (backgroundColor: string) => {
+  if (!backgroundColor) return "#000000"
+  const hex = backgroundColor.replace("#", "")
+  const r = Number.parseInt(hex.substr(0, 2), 16)
+  const g = Number.parseInt(hex.substr(2, 2), 16)
+  const b = Number.parseInt(hex.substr(4, 2), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5 ? "#000000" : "#FFFFFF"
+}
+
+// Añadir el componente DepartmentBadge moderno
+const DepartmentBadge = ({ department, isDestination = false }: { department: any; isDestination?: boolean }) => {
+  if (!department) {
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+        {isDestination ? "Destino desconocido" : "Origen desconocido"}
+      </span>
+    )
+  }
+
+  const backgroundColor = department.color || "#6B7280"
+  const textColor = getTextColor(backgroundColor)
+
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+        isDestination ? "ring-2 ring-offset-1 shadow-sm" : "shadow-sm hover:shadow-md"
+      }`}
+      style={{
+        backgroundColor,
+        color: textColor,
+        ringColor: isDestination ? backgroundColor : undefined,
+      }}
+    >
+      {department.name}
+      {isDestination && <span className="ml-1 text-xs opacity-75">📍</span>}
+    </span>
+  )
+}
 
 export default function DocumentDetailsPage() {
   const params = useParams()
@@ -293,7 +350,7 @@ export default function DocumentDetailsPage() {
     const option = statusOptions.find((opt) => opt.value === status)
     if (option) {
       return (
-        <Badge variant="outline" className={option.color}>
+        <Badge variant="outline" className={`${option.color} shadow-sm transition-all duration-200 hover:shadow`}>
           {option.label}
         </Badge>
       )
@@ -524,17 +581,6 @@ export default function DocumentDetailsPage() {
     setDownloadStatsOpen(true)
   }
 
-  // Función para obtener el color de texto basado en el color de fondo
-  const getTextColor = (backgroundColor: string) => {
-    if (!backgroundColor) return "#000000"
-    const hex = backgroundColor.replace("#", "")
-    const r = Number.parseInt(hex.substr(0, 2), 16)
-    const g = Number.parseInt(hex.substr(2, 2), 16)
-    const b = Number.parseInt(hex.substr(4, 2), 16)
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    return luminance > 0.5 ? "#000000" : "#FFFFFF"
-  }
-
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -696,13 +742,13 @@ export default function DocumentDetailsPage() {
                     <div key={movement.id} className="relative">
                       {/* Línea de conexión */}
                       {index < movements.length - 1 && (
-                        <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-border"></div>
+                        <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gradient-to-b from-primary/80 to-primary/20"></div>
                       )}
 
                       <div className="flex gap-4">
-                        {/* Indicador circular */}
+                        {/* Indicador circular moderno */}
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/30 flex items-center justify-center shadow-md">
                             {movement.from_department_id === movement.to_department_id ? (
                               <CheckCircle className="h-5 w-5 text-primary" />
                             ) : (
@@ -710,27 +756,19 @@ export default function DocumentDetailsPage() {
                             )}
                           </div>
                           {index === 0 && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background"></div>
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background animate-pulse"></div>
                           )}
                         </div>
 
                         {/* Contenido del movimiento */}
                         <div className="flex-1 min-w-0 pb-8">
-                          <div className="bg-card border rounded-lg p-4 shadow-sm">
+                          <div className="bg-card border rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-300">
                             {/* Header del movimiento */}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-center gap-3">
                                 {/* Departamento origen */}
                                 {movement.from_departments && (
-                                  <div
-                                    className="px-3 py-1 rounded-full text-sm font-medium"
-                                    style={{
-                                      backgroundColor: movement.from_departments.color || "#6B7280",
-                                      color: getTextColor(movement.from_departments.color || "#6B7280"),
-                                    }}
-                                  >
-                                    {movement.from_departments.name}
-                                  </div>
+                                  <DepartmentBadge department={movement.from_departments} />
                                 )}
 
                                 {movement.from_department_id !== movement.to_department_id && (
@@ -740,16 +778,7 @@ export default function DocumentDetailsPage() {
                                 {/* Departamento destino */}
                                 {movement.to_departments &&
                                   movement.from_department_id !== movement.to_department_id && (
-                                    <div
-                                      className="px-3 py-1 rounded-full text-sm font-medium ring-2 ring-offset-1"
-                                      style={{
-                                        backgroundColor: movement.to_departments.color || "#6B7280",
-                                        color: getTextColor(movement.to_departments.color || "#6B7280"),
-                                        ringColor: movement.to_departments.color || "#6B7280",
-                                      }}
-                                    >
-                                      {movement.to_departments.name}
-                                    </div>
+                                    <DepartmentBadge department={movement.to_departments} isDestination={true} />
                                   )}
                               </div>
 
@@ -765,7 +794,7 @@ export default function DocumentDetailsPage() {
 
                             {/* Información del usuario */}
                             <div className="flex items-center gap-2 mb-3">
-                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                                 <span className="text-xs font-medium">
                                   {movement.profiles?.full_name?.charAt(0) || "?"}
                                 </span>
@@ -798,7 +827,7 @@ export default function DocumentDetailsPage() {
                                     .map((attachment) => (
                                       <div
                                         key={attachment.id}
-                                        className="flex items-center justify-between p-2 bg-muted/30 rounded"
+                                        className="flex items-center justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 transition-colors duration-200"
                                       >
                                         <div className="flex-1 min-w-0">
                                           <div className="text-sm font-medium truncate">{attachment.file_name}</div>
