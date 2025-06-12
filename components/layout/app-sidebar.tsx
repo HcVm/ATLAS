@@ -172,7 +172,7 @@ export function AppSidebar() {
                         </span>
                         {item.title === "Notificaciones" && (
                           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                            5
+                            <Bell className="h-4 w-4" />
                           </span>
                         )}
                       </Link>
