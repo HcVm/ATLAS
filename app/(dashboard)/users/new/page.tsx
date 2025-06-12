@@ -86,31 +86,34 @@ export default function NewUserPage() {
 
     setLoading(true)
     try {
-      // Crear usuario en Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: values.email,
-        password: values.password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: values.full_name,
-          role: values.role,
-        },
-      })
-
-      if (authError) throw authError
-
-      if (!authData.user) {
-        throw new Error("No se pudo crear el usuario")
+      // Obtener token de sesión
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error("No hay sesión activa")
       }
 
-      // Actualizar perfil con departamento si es necesario
-      if (values.department_id) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ department_id: values.department_id })
-          .eq("id", authData.user.id)
+      // Crear usuario usando la API
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          full_name: values.full_name,
+          role: values.role,
+          department_id: values.department_id || null,
+        }),
+      })
 
-        if (profileError) throw profileError
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al crear usuario")
       }
 
       // Crear notificación para el administrador
@@ -119,7 +122,7 @@ export default function NewUserPage() {
         title: "Usuario creado con éxito",
         message: `Has creado el usuario ${values.full_name} (${values.email}) con rol ${values.role}`,
         type: "user_created",
-        relatedId: authData.user.id,
+        relatedId: result.user?.id,
       })
 
       toast({
