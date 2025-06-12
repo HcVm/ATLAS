@@ -64,7 +64,7 @@ export function NewsCarousel() {
 
   if (loading) {
     return (
-      <Card className="h-80">
+      <Card className="min-h-80">
         <CardContent className="p-6 h-full flex items-center justify-center">
           <div className="animate-pulse text-center w-full">
             <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
@@ -78,7 +78,7 @@ export function NewsCarousel() {
 
   if (news.length === 0) {
     return (
-      <Card className="h-80">
+      <Card className="min-h-80">
         <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center">
           <FileText className="h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground">No hay noticias disponibles</p>
@@ -91,13 +91,13 @@ export function NewsCarousel() {
 
   return (
     <Card
-      className="h-80 overflow-hidden group"
+      className="min-h-80 overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <CardContent className="p-0 h-full relative">
-        <div className="h-full flex flex-col">
-          {/* Área de imagen - altura aumentada */}
+      <CardContent className="p-0 relative">
+        <div className="flex flex-col">
+          {/* Área de imagen - altura fija */}
           <div className="h-48 relative bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
             {currentNews.image_url ? (
               <Image
@@ -116,17 +116,17 @@ export function NewsCarousel() {
             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
           </div>
 
-          {/* Área de contenido - con degradado superior */}
-          <div className="flex-1 relative">
+          {/* Área de contenido - altura dinámica */}
+          <div className="relative min-h-32">
             {/* Degradado de transición en la parte superior */}
             <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/60 to-transparent pointer-events-none z-10" />
 
-            <div className="p-6 pt-2 h-full flex flex-col justify-center text-center">
-              <h3 className="text-lg font-semibold mb-3 line-clamp-2">{currentNews.title}</h3>
-              <p className="text-muted-foreground text-sm line-clamp-2 mb-4">{currentNews.content}</p>
+            <div className="p-6 pt-2 text-center">
+              <h3 className="text-lg font-semibold mb-3">{currentNews.title}</h3>
+              <div className="text-muted-foreground text-sm mb-6 leading-relaxed">{currentNews.content}</div>
 
               {/* Footer con fecha y estado */}
-              <div className="flex items-center justify-between mt-auto">
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <p className="text-xs text-muted-foreground">
                   {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
                     year: "numeric",
@@ -140,13 +140,13 @@ export function NewsCarousel() {
           </div>
         </div>
 
-        {/* Controles de navegación - solo visibles al hacer hover */}
+        {/* Controles de navegación - posicionados relativos al contenido */}
         {news.length > 1 && (
           <>
             <Button
               variant="outline"
               size="icon"
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute left-2 top-24 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={prevSlide}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -154,7 +154,7 @@ export function NewsCarousel() {
             <Button
               variant="outline"
               size="icon"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute right-2 top-24 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={nextSlide}
             >
               <ChevronRight className="h-4 w-4" />
@@ -172,21 +172,21 @@ export function NewsCarousel() {
           </>
         )}
 
-        {/* Indicadores de puntos con barra de progreso */}
+        {/* Indicadores de puntos - posicionados en la parte inferior del contenido */}
         {news.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
+          <div className="flex justify-center space-x-2 pb-4">
             {news.map((_, index) => (
               <button
                 key={index}
                 className={`relative w-2 h-2 rounded-full transition-all duration-200 ${
-                  index === currentIndex ? "bg-white w-6 shadow-md" : "bg-white/60 hover:bg-white/80"
+                  index === currentIndex ? "bg-primary w-6 shadow-md" : "bg-gray-400 hover:bg-gray-500"
                 }`}
                 onClick={() => setCurrentIndex(index)}
               >
                 {/* Barra de progreso para el slide actual */}
                 {index === currentIndex && !isPaused && (
                   <div
-                    className="absolute top-0 left-0 h-full bg-blue-500 rounded-full animate-pulse"
+                    className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
                     style={{
                       animation: "progress 5s linear infinite",
                     }}
