@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
@@ -63,6 +63,7 @@ export function NewsCarousel() {
     return (
       <Card>
         <CardContent className="p-6 text-center">
+          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No hay noticias disponibles</p>
         </CardContent>
       </Card>
@@ -75,13 +76,14 @@ export function NewsCarousel() {
     <Card>
       <CardContent className="p-0">
         <div className="relative">
+          {/* Solo mostrar contenedor de imagen si existe image_url */}
           {currentNews.image_url && (
             <div className="relative h-48 w-full bg-gray-100 overflow-hidden rounded-t-lg">
               <Image
                 src={currentNews.image_url || "/placeholder.svg"}
                 alt={currentNews.title}
                 fill
-                className="object-contain transition-transform duration-300 hover:scale-105"
+                className="object-cover transition-transform duration-300 hover:scale-105"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 priority
                 onError={(e) => {
@@ -92,10 +94,17 @@ export function NewsCarousel() {
             </div>
           )}
 
+          {/* Si no hay imagen, agregar un icono decorativo */}
+          {!currentNews.image_url && (
+            <div className="flex items-center justify-center h-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+              <FileText className="h-8 w-8 text-blue-500" />
+            </div>
+          )}
+
           <div className="p-6">
-            <h3 className="text-lg font-semibold mb-2 line-clamp-2">{currentNews.title}</h3>
-            <p className="text-muted-foreground text-sm line-clamp-3">{currentNews.content}</p>
-            <div className="flex items-center justify-between mt-4">
+            <h3 className="text-lg font-semibold mb-3 line-clamp-2">{currentNews.title}</h3>
+            <p className="text-muted-foreground text-sm line-clamp-4 mb-4">{currentNews.content}</p>
+            <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
                   year: "numeric",
@@ -103,16 +112,17 @@ export function NewsCarousel() {
                   day: "numeric",
                 })}
               </p>
-              <div className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Publicado</div>
+              <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">Publicado</div>
             </div>
           </div>
 
+          {/* Botones de navegación */}
           {news.length > 1 && (
             <>
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-md"
                 onClick={prevSlide}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -120,7 +130,7 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-md"
                 onClick={nextSlide}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -129,13 +139,14 @@ export function NewsCarousel() {
           )}
         </div>
 
+        {/* Indicadores de puntos */}
         {news.length > 1 && (
           <div className="flex justify-center space-x-2 p-4">
             {news.map((_, index) => (
               <button
                 key={index}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? "bg-primary" : "bg-gray-300"
+                className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                  index === currentIndex ? "bg-primary w-6" : "bg-gray-300 hover:bg-gray-400"
                 }`}
                 onClick={() => setCurrentIndex(index)}
               />

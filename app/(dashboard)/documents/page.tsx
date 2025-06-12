@@ -203,6 +203,16 @@ export default function DocumentsPage() {
     return null
   }
 
+  const getDepartmentBadge = (department: any) => {
+    if (!department) return null
+
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+        {department.name}
+      </span>
+    )
+  }
+
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
       doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -396,7 +406,13 @@ export default function DocumentsPage() {
                       </TableCell>
                       <TableCell>{document.document_number || "Sin número"}</TableCell>
                       <TableCell>{getStatusBadge(document.status)}</TableCell>
-                      <TableCell>{document.departments?.name || "Sin departamento"}</TableCell>
+                      <TableCell>
+                        {document.departments ? (
+                          getDepartmentBadge(document.departments)
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sin departamento</span>
+                        )}
+                      </TableCell>
                       <TableCell>{document.profiles?.full_name || "Usuario desconocido"}</TableCell>
                       <TableCell>
                         {document.created_at

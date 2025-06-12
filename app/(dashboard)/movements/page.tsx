@@ -29,13 +29,13 @@ const getTextColor = (backgroundColor: string) => {
   return luminance > 0.5 ? "#000000" : "#FFFFFF"
 }
 
-// Componente para mostrar departamento con color
+// Componente mejorado para mostrar departamento con badges elegantes
 const DepartmentBadge = ({ department, isDestination = false }: { department: any; isDestination?: boolean }) => {
   if (!department) {
     return (
-      <div className="bg-muted px-3 py-1 rounded-md text-sm">
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
         {isDestination ? "Destino desconocido" : "Origen desconocido"}
-      </div>
+      </span>
     )
   }
 
@@ -43,8 +43,10 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
   const textColor = getTextColor(backgroundColor)
 
   return (
-    <div
-      className={`px-3 py-1 rounded-md text-sm font-medium ${isDestination ? "ring-2 ring-offset-1" : ""}`}
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+        isDestination ? "ring-2 ring-offset-2 shadow-sm" : "shadow-sm hover:shadow-md"
+      }`}
       style={{
         backgroundColor,
         color: textColor,
@@ -52,7 +54,8 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
       }}
     >
       {department.name}
-    </div>
+      {isDestination && <span className="ml-1 text-xs opacity-75">📍</span>}
+    </span>
   )
 }
 
@@ -235,11 +238,14 @@ export default function MovementsPage() {
             <CardTitle className="text-sm">Leyenda de Departamentos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {departments.map((department) => (
                 <DepartmentBadge key={department.id} department={department} />
               ))}
             </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Los badges con 📍 indican el departamento de destino en los movimientos
+            </p>
           </CardContent>
         </Card>
       )}
