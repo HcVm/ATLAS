@@ -43,16 +43,29 @@ export default function DepartmentsPage() {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase
-        .from("departments")
-        .select(`
-          *,
-          profiles!profiles_department_id_fkey (count)
-        `)
-        .order("name")
+      // First get all departments
+      const { data: departmentsData, error: deptError } = await supabase.from("departments").select("*").order("name")
 
-      if (error) throw error
-      setDepartments(data || [])
+      if (deptError) throw deptError
+
+      // Then get user counts for each department
+      const departmentsWithCounts = await Promise.all(
+        (departmentsData || []).map(async (dept) => {
+          const { count, error: countError } = await supabase
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .eq("department_id", dept.id)
+
+          if (countError) {
+            console.error(`Error counting users for department ${dept.id}:`, countError)
+            return { ...dept, userCount: 0 }
+          }
+
+          return { ...dept, userCount: count || 0 }
+        }),
+      )
+
+      setDepartments(departmentsWithCounts)
     } catch (error) {
       console.error("Error fetching departments:", error)
     } finally {
@@ -243,7 +256,7 @@ export default function DepartmentsPage() {
                           <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
                             <Users className="h-4 w-4 text-blue-600" />
                           </div>
-                          <span className="font-medium text-gray-700">{dept.profiles?.length || 0}</span>
+                          <span className="font-medium text-gray-700">{dept.userCount || 0}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-gray-600">
