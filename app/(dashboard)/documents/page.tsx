@@ -1,529 +1,537 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { FileText, ArrowLeft, Loader2, X, File } from "lucide-react"
+import Link from "next/link"
+import { Plus, Search, Eye, Edit, Trash2, FileText, MoreHorizontal, Loader2, RefreshCw, Filter } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/hooks/use-toast"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
-import { createNotification } from "@/lib/notifications"
+import { toast } from "@/hooks/use-toast"
 
-const formSchema = z.object({
-  title: z.string().min(3, {
-    message: "El título debe tener al menos 3 caracteres.",
-  }),
-  description: z.string().optional(),
-  document_number: z.string().min(1, {
-    message: "El número de documento es requerido.",
-  }),
-  department_id: z.string().min(1, {
-    message: "El departamento es requerido.",
-  }),
-  is_public: z.boolean().default(false),
-  file: z.any().optional(),
-})
-
-export default function NewDocumentPage() {
-  const [departments, setDepartments] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loadingDepartments, setLoadingDepartments] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [attachments, setAttachments] = useState<File[]>([])
-  const [uploadingAttachments, setUploadingAttachments] = useState(false)
-  const { toast } = useToast()
+export default function DocumentsPage() {
   const router = useRouter()
   const { user } = useAuth()
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      document_number: "",
-      department_id: "",
-      is_public: false,
-    },
+  const [documents, setDocuments] = useState<any[]>([])
+  const [departments, setDepartments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    document: any | null
+    isDeleting: boolean
+  }>({
+    open: false,
+    document: null,
+    isDeleting: false,
   })
 
-  // Cargar departamentos usando useEffect
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        setLoadingDepartments(true)
-        const { data, error } = await supabase.from("departments").select("*").order("name")
-        if (error) throw error
-        setDepartments(data || [])
-      } catch (error) {
-        console.error("Error fetching departments:", error)
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los departamentos.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoadingDepartments(false)
-      }
+    if (user) {
+      fetchDocuments()
+      fetchDepartments()
     }
+  }, [user])
 
-    fetchDepartments()
-  }, [toast])
-
-  const uploadFile = async (file: File): Promise<string | null> => {
+  const fetchDocuments = async (isRefresh = false) => {
     try {
-      // Generate a unique filename
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `documents/${fileName}`
-
-      const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file)
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError)
-        throw new Error("Error al subir el archivo: " + uploadError.message)
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
       }
+      setError(null)
 
-      // Get the public URL
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(filePath)
-      return urlData.publicUrl
-    } catch (error: any) {
-      console.error("Error uploading file:", error)
-      toast({
-        title: "Error al subir archivo",
-        description: error.message || "No se pudo subir el archivo",
-        variant: "destructive",
-      })
-      return null
-    }
-  }
-
-  const handleAttachmentAdd = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (files) {
-      const newFiles = Array.from(files)
-      setAttachments((prev) => [...prev, ...newFiles])
-      // Clear the input
-      event.target.value = ""
-    }
-  }
-
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Debes iniciar sesión para crear un documento.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setLoading(true)
-    try {
-      let fileUrl = null
-
-      // Upload main file if provided
-      if (values.file && values.file.length > 0) {
-        setUploading(true)
-        const file = values.file[0]
-        fileUrl = await uploadFile(file)
-        if (!fileUrl) {
-          setLoading(false)
-          setUploading(false)
-          return // Error already handled in uploadFile
-        }
-        setUploading(false)
-      }
-
-      console.log("Creating document with data:", {
-        title: values.title,
-        description: values.description || null,
-        document_number: values.document_number,
-        status: "pending",
-        created_by: user.id,
-        current_department_id: values.department_id,
-        file_url: fileUrl,
-        is_public: values.is_public,
-      })
-
-      // Crear documento - USANDO SOLO current_department_id
-      const { data: document, error } = await supabase
+      // Primero intentar con la relación específica
+      let query = supabase
         .from("documents")
-        .insert({
-          title: values.title,
-          description: values.description || null,
-          document_number: values.document_number,
-          status: "pending",
-          created_by: user.id,
-          current_department_id: values.department_id, // SOLO este campo
-          file_url: fileUrl,
-          is_public: values.is_public, // Agregar el campo is_public
-        })
-        .select()
-        .single()
+        .select(`
+          *,
+          profiles!documents_created_by_fkey (id, full_name, email),
+          departments!documents_current_department_id_fkey (id, name)
+        `)
+        .order("created_at", { ascending: false })
+
+      // Users can see:
+      // 1. Documents from their department (if they have one)
+      // 2. Documents they created themselves
+      // Admins can see all documents
+      if (user && user.role !== "admin") {
+        if (user.department_id) {
+          // Documents from their department OR documents they created
+          query = query.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
+        } else {
+          // Only documents they created if they don't have a department
+          query = query.eq("created_by", user.id)
+        }
+      }
+
+      const { data, error } = await query
 
       if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
+        console.error("Error with specific relationship, trying fallback:", error)
 
-      console.log("Document created successfully:", document)
+        // Fallback: intentar sin la relación específica
+        let fallbackQuery = supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (id, full_name, email)
+          `)
+          .order("created_at", { ascending: false })
 
-      // Upload attachments if any
-      if (attachments.length > 0) {
-        setUploadingAttachments(true)
-        for (const attachment of attachments) {
-          try {
-            const attachmentUrl = await uploadFile(attachment)
-            if (attachmentUrl) {
-              await supabase.from("document_attachments").insert({
-                document_id: document.id,
-                file_name: attachment.name,
-                file_url: attachmentUrl,
-                file_size: attachment.size,
-                file_type: attachment.type,
-                uploaded_by: user.id,
-              })
-            }
-          } catch (attachmentError) {
-            console.error("Error uploading attachment:", attachmentError)
-            // Continue with other attachments even if one fails
+        if (user && user.role !== "admin") {
+          if (user.department_id) {
+            fallbackQuery = fallbackQuery.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
+          } else {
+            fallbackQuery = fallbackQuery.eq("created_by", user.id)
           }
         }
-        setUploadingAttachments(false)
+
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery
+
+        if (fallbackError) {
+          throw fallbackError
+        }
+
+        // Obtener departamentos por separado
+        const { data: deptData } = await supabase.from("departments").select("id, name")
+        const deptMap = new Map(deptData?.map((d) => [d.id, d]) || [])
+
+        // Combinar datos manualmente
+        const combinedData =
+          fallbackData?.map((doc) => ({
+            ...doc,
+            departments: doc.current_department_id ? deptMap.get(doc.current_department_id) : null,
+          })) || []
+
+        setDocuments(combinedData)
+      } else {
+        setDocuments(data || [])
       }
-
-      // Crear notificación para el usuario que creó el documento
-      try {
-        await createNotification({
-          userId: user.id,
-          title: "Documento creado con éxito",
-          message: `Has creado el documento "${values.title}" con número ${values.document_number}`,
-          type: "document_created",
-          relatedId: document.id,
-        })
-      } catch (notificationError) {
-        console.error("Error creating notification:", notificationError)
-        // No fallar la creación del documento por un error de notificación
-      }
-
-      // Después de crear el documento y antes del router.push
-      // Generar código QR para el documento
-      try {
-        const { generateDocumentQR } = await import("@/lib/qr-generator")
-        const qrCodeDataUrl = await generateDocumentQR(document.id)
-
-        // Actualizar el documento con el código QR
-        await supabase.from("documents").update({ qr_code: qrCodeDataUrl }).eq("id", document.id)
-      } catch (qrError) {
-        console.error("Error generating QR code:", qrError)
-        // No fallar la creación del documento por un error de QR
-      }
-
-      toast({
-        title: "Documento creado",
-        description: `El documento se ha creado correctamente${values.is_public ? " y está disponible públicamente" : ""}.`,
-      })
-
-      router.push(`/documents/${document.id}`)
     } catch (error: any) {
-      console.error("Error creating document:", error)
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el documento.",
-        variant: "destructive",
-      })
+      console.error("Error fetching documents:", error)
+      setError("Error al cargar los documentos: " + error.message)
     } finally {
       setLoading(false)
-      setUploading(false)
-      setUploadingAttachments(false)
+      setRefreshing(false)
     }
+  }
+
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase.from("departments").select("*").order("name")
+
+      if (error) throw error
+      setDepartments(data || [])
+    } catch (error) {
+      console.error("Error fetching departments:", error)
+    }
+  }
+
+  const handleRefresh = () => {
+    fetchDocuments(true)
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 border-yellow-200 shadow-sm"
+          >
+            Pendiente
+          </Badge>
+        )
+      case "in_progress":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200 shadow-sm"
+          >
+            En Progreso
+          </Badge>
+        )
+      case "completed":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 shadow-sm"
+          >
+            Completado
+          </Badge>
+        )
+      case "cancelled":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 shadow-sm"
+          >
+            Cancelado
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const getDocumentBadge = (document: any) => {
+    if (document.created_by === user?.id) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 ml-2 shadow-sm"
+        >
+          Creado por mí
+        </Badge>
+      )
+    }
+    if (user?.department_id && document.current_department_id === user.department_id) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200 ml-2 shadow-sm"
+        >
+          Mi departamento
+        </Badge>
+      )
+    }
+    return null
+  }
+
+  const getDepartmentBadge = (department: any) => {
+    if (!department) return null
+
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 border border-blue-200 shadow-sm">
+        {department.name}
+      </span>
+    )
+  }
+
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesSearch =
+      doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.document_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.description?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesDepartment = selectedDepartment === "all" || doc.current_department_id === selectedDepartment
+    const matchesStatus = selectedStatus === "all" || doc.status === selectedStatus
+
+    return matchesSearch && matchesDepartment && matchesStatus
+  })
+
+  const handleDeleteClick = (document: any) => {
+    setDeleteDialog({
+      open: true,
+      document,
+      isDeleting: false,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.document) return
+
+    try {
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
+
+      const { error } = await supabase.from("documents").delete().eq("id", deleteDialog.document.id)
+
+      if (error) throw error
+
+      setDocuments(documents.filter((doc) => doc.id !== deleteDialog.document.id))
+
+      toast({
+        title: "Documento eliminado",
+        description: "El documento ha sido eliminado correctamente.",
+      })
+
+      setDeleteDialog({
+        open: false,
+        document: null,
+        isDeleting: false,
+      })
+    } catch (error: any) {
+      console.error("Error deleting document:", error)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el documento: " + error.message,
+        variant: "destructive",
+      })
+      setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-muted-foreground">Cargando documentos...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="icon" asChild className="hover:scale-105 transition-transform duration-300">
-          <Link href="/documents">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-blue-600 bg-clip-text text-transparent">
-            Crear Nuevo Documento
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent">
+            Documentos
           </h1>
-          <p className="text-muted-foreground">Completa el formulario para crear un nuevo documento</p>
+          <p className="text-muted-foreground mt-1">
+            {user?.role === "admin"
+              ? "Gestiona todos los documentos del sistema"
+              : "Documentos de tu departamento y los que has creado"}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 hover:shadow-md transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Actualizando..." : "Actualizar"}
+          </Button>
+          <Button
+            asChild
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            <Link href="/documents/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Documento
+            </Link>
+          </Button>
         </div>
       </div>
 
-      <Card className="shadow-xl border-0 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
-              <FileText className="h-5 w-5" />
+      {error && (
+        <Alert variant="destructive" className="border-red-200 bg-red-50">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100">
+              <Filter className="h-5 w-5 text-blue-600" />
             </div>
-            Información del Documento
-          </CardTitle>
-          <CardDescription className="text-base">
-            Ingresa los detalles del nuevo documento que deseas registrar en el sistema.
-          </CardDescription>
+            <div>
+              <CardTitle className="text-gray-900">Filtros</CardTitle>
+              <CardDescription>Busca y filtra documentos</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="p-8">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Título</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Título del documento" 
-                          {...field} 
-                          className="border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
-                        />
-                      </FormControl>
-                      <FormDescription>Nombre descriptivo del documento.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="document_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Número de Documento</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Ej: DOC-2023-001" 
-                          {...field} 
-                          className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
-                        />
-                      </FormControl>
-                      <FormDescription>Identificador único del documento.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por título, número o descripción..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="department_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">Departamento</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300">
-                          <SelectValue placeholder="Selecciona un departamento" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {loadingDepartments ? (
-                          <div className="flex items-center justify-center p-4">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-500" />
-                            <span>Cargando departamentos...</span>
-                          </div>
-                        ) : departments.length === 0 ? (
-                          <div className="p-2 text-center text-sm text-muted-foreground">
-                            No hay departamentos disponibles
-                          </div>
-                        ) : (
-                          departments.map((department) => (
-                            <SelectItem key={department.id} value={department.id}>
-                              {department.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>Departamento al que pertenece el documento.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Descripción</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descripción detallada del documento"
-                        className="min-h-[120px] border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>Información adicional sobre el documento (opcional).</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Campo de acceso público */}
-              <FormField
-                control={form.control}
-                name="is_public"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 p-4 transition-all duration-300 hover:shadow-md">
-                    <FormControl>
-                      <Checkbox 
-                        checked={field.value} 
-                        onCheckedChange={field.onChange}
-                        className="border-emerald-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-emerald-700 dark:text-emerald-300 font-semibold">Documento público</FormLabel>
-                      <FormDescription>
-                        Permitir acceso público a este documento mediante código QR. El documento será visible para
-                        cualquier persona que tenga el enlace.
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              {/* Archivo Principal */}
-              <FormField
-                control={form.control}
-                name="file"
-                render={({ field: { onChange, value, ...field } }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">Archivo Principal (Opcional)</FormLabel>
-                    <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
-                          onChange={(e) => onChange(e.target.files)}
-                          className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300"
-                          {...field}
-                        />
-                        {uploading && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Subiendo archivo principal...
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Archivo principal del documento (PDF, DOC, DOCX, TXT, JPG, PNG, XLSX, XLS - máximo 10MB)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Archivos Adjuntos */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Archivos Adjuntos (Opcional)</label>
-                  <div className="mt-2">
-                    <Input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
-                      multiple
-                      onChange={handleAttachmentAdd}
-                      className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Puedes seleccionar múltiples archivos para adjuntar al documento
-                    </p>
-                  </div>
-                </div>
-
-                {attachments.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-green-700 dark:text-green-300">Archivos seleccionados:</h4>
-                    <div className="space-y-2">
-                      {attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-gradient-to-r from-green-50/50 to-emerald-50/50 dark:from-green-950/20 dark:to-emerald-950/20 transition-all duration-300 hover:shadow-md">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                              <File className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-sm">{file.name}</div>
-                              <div className="text-xs text-muted-foreground">{formatFileSize(file.size)}</div>
-                            </div>
-                          </div>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => removeAttachment(index)}
-                            className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    {uploadingAttachments && (
-                      <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-lg">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Subiendo archivos adjuntos...
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <CardFooter className="flex justify-end gap-2 px-0 pt-6">
-                <Button variant="outline" asChild className="hover:scale-105 transition-transform duration-300">
-                  <Link href="/documents">Cancelar</Link>
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={loading || uploading || uploadingAttachments}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                >
-                  {(loading || uploading || uploadingAttachments) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {uploading
-                    ? "Subiendo archivo..."
-                    : uploadingAttachments
-                      ? "Subiendo adjuntos..."
-                      : loading
-                        ? "Creando documento..."
-                        : "Crear Documento"}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+            </div>
+            {user?.role === "admin" && (
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger className="w-full md:w-48 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
+                  <SelectValue placeholder="Departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los departamentos</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-full md:w-48 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="pending">Pendiente</SelectItem>
+                <SelectItem value="in_progress">En Progreso</SelectItem>
+                <SelectItem value="completed">Completado</SelectItem>
+                <SelectItem value="cancelled">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
+
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-green-100 to-blue-100">
+              <FileText className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <CardTitle className="text-gray-900">Lista de Documentos</CardTitle>
+              <CardDescription>{filteredDocuments.length} documento(s) encontrado(s)</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {filteredDocuments.length === 0 ? (
+            <div className="text-center py-12 px-6">
+              <div className="p-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay documentos</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchTerm || selectedDepartment !== "all" || selectedStatus !== "all"
+                  ? "No se encontraron documentos con los filtros aplicados."
+                  : "Comienza creando tu primer documento."}
+              </p>
+              {!searchTerm && selectedDepartment === "all" && selectedStatus === "all" && (
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                >
+                  <Link href="/documents/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear Documento
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-100">
+                    <TableHead className="font-semibold text-gray-700">Título</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Número</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Creado por</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Fecha</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDocuments.map((document) => (
+                    <TableRow
+                      key={document.id}
+                      className="border-gray-100 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300"
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          {document.title || "Sin título"}
+                          {getDocumentBadge(document)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">{document.document_number || "Sin número"}</TableCell>
+                      <TableCell>{getStatusBadge(document.status)}</TableCell>
+                      <TableCell>
+                        {document.departments ? (
+                          getDepartmentBadge(document.departments)
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sin departamento</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {document.profiles?.full_name || "Usuario desconocido"}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {document.created_at
+                          ? format(new Date(document.created_at), "dd/MM/yyyy", { locale: es })
+                          : "Sin fecha"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-gray-100 transition-colors duration-200"
+                            >
+                              <span className="sr-only">Abrir menú de acciones</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 shadow-lg border-gray-200">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/documents/${document.id}`)}
+                              className="hover:bg-blue-50 transition-colors duration-200"
+                            >
+                              <Eye className="h-4 w-4 mr-2 text-blue-600" />
+                              Ver detalles
+                            </DropdownMenuItem>
+                            {(user?.role === "admin" || document.created_by === user?.id) && (
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/documents/edit/${document.id}`)}
+                                className="hover:bg-green-50 transition-colors duration-200"
+                              >
+                                <Edit className="h-4 w-4 mr-2 text-green-600" />
+                                Editar
+                              </DropdownMenuItem>
+                            )}
+                            {user?.role === "admin" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(document)}
+                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Documento"
+        description="¿Estás seguro de que deseas eliminar este documento? Se eliminarán también todos sus movimientos y archivos adjuntos."
+        itemName={deleteDialog.document?.title || deleteDialog.document?.document_number}
+        isDeleting={deleteDialog.isDeleting}
+      />
     </div>
-  );
+  )
 }

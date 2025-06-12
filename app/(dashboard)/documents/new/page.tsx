@@ -266,28 +266,32 @@ export default function NewDocumentPage() {
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">
       <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
+        <Button variant="outline" size="icon" asChild className="hover:scale-105 transition-transform duration-300">
           <Link href="/documents">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Crear Nuevo Documento</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-blue-600 bg-clip-text text-transparent">
+            Crear Nuevo Documento
+          </h1>
           <p className="text-muted-foreground">Completa el formulario para crear un nuevo documento</p>
         </div>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+      <Card className="shadow-xl border-0 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
+              <FileText className="h-5 w-5" />
+            </div>
             Información del Documento
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base">
             Ingresa los detalles del nuevo documento que deseas registrar en el sistema.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-8">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -296,9 +300,13 @@ export default function NewDocumentPage() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Título</FormLabel>
+                      <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Título</FormLabel>
                       <FormControl>
-                        <Input placeholder="Título del documento" {...field} />
+                        <Input 
+                          placeholder="Título del documento" 
+                          {...field} 
+                          className="border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
+                        />
                       </FormControl>
                       <FormDescription>Nombre descriptivo del documento.</FormDescription>
                       <FormMessage />
@@ -311,9 +319,13 @@ export default function NewDocumentPage() {
                   name="document_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Número de Documento</FormLabel>
+                      <FormLabel className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Número de Documento</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: DOC-2023-001" {...field} />
+                        <Input 
+                          placeholder="Ej: DOC-2023-001" 
+                          {...field} 
+                          className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
+                        />
                       </FormControl>
                       <FormDescription>Identificador único del documento.</FormDescription>
                       <FormMessage />
@@ -327,17 +339,17 @@ export default function NewDocumentPage() {
                 name="department_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Departamento</FormLabel>
+                    <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">Departamento</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300">
                           <SelectValue placeholder="Selecciona un departamento" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {loadingDepartments ? (
                           <div className="flex items-center justify-center p-4">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-500" />
                             <span>Cargando departamentos...</span>
                           </div>
                         ) : departments.length === 0 ? (
@@ -364,11 +376,11 @@ export default function NewDocumentPage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descripción</FormLabel>
+                    <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Descripción</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Descripción detallada del documento"
-                        className="min-h-[120px]"
+                        className="min-h-[120px] border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
                         {...field}
                       />
                     </FormControl>
@@ -383,12 +395,16 @@ export default function NewDocumentPage() {
                 control={form.control}
                 name="is_public"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 p-4 transition-all duration-300 hover:shadow-md">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      <Checkbox 
+                        checked={field.value} 
+                        onCheckedChange={field.onChange}
+                        className="border-emerald-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Documento público</FormLabel>
+                      <FormLabel className="text-emerald-700 dark:text-emerald-300 font-semibold">Documento público</FormLabel>
                       <FormDescription>
                         Permitir acceso público a este documento mediante código QR. El documento será visible para
                         cualquier persona que tenga el enlace.
@@ -404,17 +420,18 @@ export default function NewDocumentPage() {
                 name="file"
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Archivo Principal (Opcional)</FormLabel>
+                    <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">Archivo Principal (Opcional)</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
                         <Input
                           type="file"
                           accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
                           onChange={(e) => onChange(e.target.files)}
+                          className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300"
                           {...field}
                         />
                         {uploading && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Subiendo archivo principal...
                           </div>
@@ -432,13 +449,14 @@ export default function NewDocumentPage() {
               {/* Archivos Adjuntos */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium">Archivos Adjuntos (Opcional)</label>
+                  <label className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Archivos Adjuntos (Opcional)</label>
                   <div className="mt-2">
                     <Input
                       type="file"
                       accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
                       multiple
                       onChange={handleAttachmentAdd}
+                      className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Puedes seleccionar múltiples archivos para adjuntar al documento
@@ -448,25 +466,33 @@ export default function NewDocumentPage() {
 
                 {attachments.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Archivos seleccionados:</h4>
+                    <h4 className="text-sm font-semibold text-green-700 dark:text-green-300">Archivos seleccionados:</h4>
                     <div className="space-y-2">
                       {attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-gradient-to-r from-green-50/50 to-emerald-50/50 dark:from-green-950/20 dark:to-emerald-950/20 transition-all duration-300 hover:shadow-md">
                           <div className="flex items-center gap-2">
-                            <File className="h-4 w-4 text-muted-foreground" />
+                            <div className="p-1.5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                              <File className="h-4 w-4" />
+                            </div>
                             <div>
                               <div className="font-medium text-sm">{file.name}</div>
                               <div className="text-xs text-muted-foreground">{formatFileSize(file.size)}</div>
                             </div>
                           </div>
-                          <Button type="button" variant="outline" size="sm" onClick={() => removeAttachment(index)}>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => removeAttachment(index)}
+                            className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300"
+                          >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                     </div>
                     {uploadingAttachments && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-lg">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Subiendo archivos adjuntos...
                       </div>
@@ -475,11 +501,15 @@ export default function NewDocumentPage() {
                 )}
               </div>
 
-              <CardFooter className="flex justify-end gap-2 px-0">
-                <Button variant="outline" asChild>
+              <CardFooter className="flex justify-end gap-2 px-0 pt-6">
+                <Button variant="outline" asChild className="hover:scale-105 transition-transform duration-300">
                   <Link href="/documents">Cancelar</Link>
                 </Button>
-                <Button type="submit" disabled={loading || uploading || uploadingAttachments}>
+                <Button 
+                  type="submit" 
+                  disabled={loading || uploading || uploadingAttachments}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                >
                   {(loading || uploading || uploadingAttachments) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {uploading
                     ? "Subiendo archivo..."
@@ -495,5 +525,4 @@ export default function NewDocumentPage() {
         </CardContent>
       </Card>
     </div>
-  )
-}
+  );
