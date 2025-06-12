@@ -139,27 +139,28 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
             Noticias
           </h1>
-          <p className="text-muted-foreground mt-1">Gestiona las noticias de la empresa</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona las noticias de la empresa</p>
         </div>
         <Button
           asChild
-          className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
           <Link href="/news/create">
             <Plus className="h-4 w-4 mr-2" />
-            Nueva Noticia
+            <span className="sm:hidden">Nueva Noticia</span>
+            <span className="hidden sm:inline">Nueva Noticia</span>
           </Link>
         </Button>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -178,138 +179,154 @@ export default function NewsPage() {
               <p className="mt-4 text-muted-foreground">Cargando noticias...</p>
             </div>
           ) : filteredNews.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="p-4 rounded-full bg-gradient-to-br from-orange-100 to-red-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Newspaper className="h-8 w-8 text-orange-600" />
+            <div className="text-center py-8 sm:py-12">
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-orange-100 to-red-100 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Newspaper className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay noticias</h3>
-              <p className="text-muted-foreground">No se encontraron noticias en el sistema.</p>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay noticias</h3>
+              <p className="text-sm sm:text-base text-muted-foreground">No se encontraron noticias en el sistema.</p>
             </div>
           ) : (
             <div className="rounded-md border border-gray-200 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
-                    <TableHead className="font-semibold text-gray-700">Título</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Autor</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Fecha</TableHead>
-                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredNews.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      className="border-gray-100 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-red-50/50 transition-all duration-300"
-                    >
-                      <TableCell>
-                        <div>
-                          <div className="font-medium text-gray-900">{item.title}</div>
-                          <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                            {item.content.substring(0, 100)}...
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-md bg-gradient-to-br from-orange-100 to-red-100">
-                            <User className="h-3 w-3 text-orange-600" />
-                          </div>
-                          <span className="text-gray-600">{item.profiles?.full_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={item.published ? "default" : "secondary"}
-                          className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
-                            item.published
-                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm"
-                              : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 shadow-sm"
-                          }`}
-                          onClick={() => togglePublished(item.id, item.published)}
-                        >
-                          {item.published ? "Publicado" : "Borrador"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
-                            <Calendar className="h-3 w-3 text-blue-600" />
-                          </div>
-                          <span className="text-gray-600">{new Date(item.created_at).toLocaleDateString("es-ES")}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="hover:bg-gray-100 transition-colors duration-200"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="lucide lucide-more-horizontal"
-                              >
-                                <circle cx="12" cy="12" r="1" />
-                                <circle cx="19" cy="12" r="1" />
-                                <circle cx="5" cy="12" r="1" />
-                              </svg>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/news/view/${item.id}`}
-                                className="hover:bg-blue-50 transition-colors duration-200"
-                              >
-                                <Eye className="mr-2 h-4 w-4 text-blue-600" />
-                                <span>Ver</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/news/edit/${item.id}`}
-                                className="hover:bg-green-50 transition-colors duration-200"
-                              >
-                                <Edit className="mr-2 h-4 w-4 text-green-600" />
-                                <span>Editar</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => togglePublished(item.id, item.published)}
-                              className="hover:bg-yellow-50 transition-colors duration-200"
-                            >
-                              <span className="text-yellow-600">{item.published ? "Despublicar" : "Publicar"}</span>
-                            </DropdownMenuItem>
-                            {user?.role === "admin" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(item)}
-                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Eliminar</span>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Título</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                        Autor
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Estado</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                        Fecha
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                        Acciones
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredNews.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-red-50/50 transition-all duration-300"
+                      >
+                        <TableCell className="p-2 sm:p-4">
+                          <div>
+                            <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{item.title}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {item.content.substring(0, 100)}...
+                            </div>
+                            <div className="md:hidden flex items-center gap-2 mt-2">
+                              <div className="p-1 rounded-md bg-gradient-to-br from-orange-100 to-red-100">
+                                <User className="h-3 w-3 text-orange-600" />
+                              </div>
+                              <span className="text-xs text-gray-600">{item.profiles?.full_name}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-orange-100 to-red-100">
+                              <User className="h-3 w-3 text-orange-600" />
+                            </div>
+                            <span className="text-gray-600 text-sm">{item.profiles?.full_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-2 sm:p-4">
+                          <Badge
+                            variant={item.published ? "default" : "secondary"}
+                            className={`cursor-pointer transition-all duration-300 hover:scale-105 text-xs ${
+                              item.published
+                                ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm"
+                                : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 shadow-sm"
+                            }`}
+                            onClick={() => togglePublished(item.id, item.published)}
+                          >
+                            {item.published ? "Publicado" : "Borrador"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
+                              <Calendar className="h-3 w-3 text-blue-600" />
+                            </div>
+                            <span className="text-gray-600 text-sm">
+                              {new Date(item.created_at).toLocaleDateString("es-ES")}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right p-2 sm:p-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-gray-100 transition-colors duration-200 h-8 w-8"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="lucide lucide-more-horizontal"
+                                >
+                                  <circle cx="12" cy="12" r="1" />
+                                  <circle cx="19" cy="12" r="1" />
+                                  <circle cx="5" cy="12" r="1" />
+                                </svg>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/news/view/${item.id}`}
+                                  className="hover:bg-blue-50 transition-colors duration-200"
+                                >
+                                  <Eye className="mr-2 h-4 w-4 text-blue-600" />
+                                  <span>Ver</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/news/edit/${item.id}`}
+                                  className="hover:bg-green-50 transition-colors duration-200"
+                                >
+                                  <Edit className="mr-2 h-4 w-4 text-green-600" />
+                                  <span>Editar</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => togglePublished(item.id, item.published)}
+                                className="hover:bg-yellow-50 transition-colors duration-200"
+                              >
+                                <span className="text-yellow-600">{item.published ? "Despublicar" : "Publicar"}</span>
+                              </DropdownMenuItem>
+                              {user?.role === "admin" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(item)}
+                                    className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Eliminar</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>

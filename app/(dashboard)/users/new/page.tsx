@@ -144,151 +144,171 @@ export default function NewUserPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/users">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Crear Nuevo Usuario</h1>
-          <p className="text-muted-foreground">Completa el formulario para crear un nuevo usuario</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+      <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <Button variant="outline" size="icon" asChild className="self-start">
+            <Link href="/users">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Crear Nuevo Usuario</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Completa el formulario para crear un nuevo usuario
+            </p>
+          </div>
         </div>
+
+        {/* Form Card - Responsive */}
+        <Card className="shadow-lg">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
+              <User className="h-5 w-5 self-start sm:self-center" />
+              <span>Información del Usuario</span>
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base mt-2">
+              Ingresa los detalles del nuevo usuario que deseas registrar en el sistema.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+                {/* Name and Email - Responsive Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="full_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre Completo</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nombre completo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Correo Electrónico</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="correo@ejemplo.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Password - Full Width */}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contraseña</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Contraseña" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs sm:text-sm">
+                        Debe tener al menos 6 caracteres.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Role and Department - Responsive Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rol</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un rol" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="supervisor">Supervisor</SelectItem>
+                            <SelectItem value="user">Usuario</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs sm:text-sm">
+                          Nivel de acceso del usuario en el sistema.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="department_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Departamento (Opcional)</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un departamento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {loadingDepartments ? (
+                              <div className="flex items-center justify-center p-4">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <span className="text-sm">Cargando departamentos...</span>
+                              </div>
+                            ) : departments.length === 0 ? (
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                No hay departamentos disponibles
+                              </div>
+                            ) : (
+                              departments.map((department) => (
+                                <SelectItem key={department.id} value={department.id}>
+                                  {department.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs sm:text-sm">
+                          Departamento al que pertenece el usuario.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Action Buttons - Responsive */}
+                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">
+                  <Button variant="outline" asChild className="w-full sm:w-auto order-2 sm:order-1">
+                    <Link href="/users">Cancelar</Link>
+                  </Button>
+                  <Button type="submit" disabled={loading} className="w-full sm:w-auto order-1 sm:order-2">
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <span className="hidden sm:inline">Crear Usuario</span>
+                    <span className="sm:hidden">Crear</span>
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Información del Usuario
-          </CardTitle>
-          <CardDescription>Ingresa los detalles del nuevo usuario que deseas registrar en el sistema.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre Completo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nombre completo" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Correo Electrónico</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="correo@ejemplo.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Contraseña" {...field} />
-                    </FormControl>
-                    <FormDescription>Debe tener al menos 6 caracteres.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rol</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un rol" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="supervisor">Supervisor</SelectItem>
-                          <SelectItem value="user">Usuario</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>Nivel de acceso del usuario en el sistema.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="department_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Departamento (Opcional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un departamento" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {loadingDepartments ? (
-                            <div className="flex items-center justify-center p-4">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              <span>Cargando departamentos...</span>
-                            </div>
-                          ) : departments.length === 0 ? (
-                            <div className="p-2 text-center text-sm text-muted-foreground">
-                              No hay departamentos disponibles
-                            </div>
-                          ) : (
-                            departments.map((department) => (
-                              <SelectItem key={department.id} value={department.id}>
-                                {department.name}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>Departamento al que pertenece el usuario.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <CardFooter className="flex justify-end gap-2 px-0">
-                <Button variant="outline" asChild>
-                  <Link href="/users">Cancelar</Link>
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Crear Usuario
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
     </div>
   )
 }

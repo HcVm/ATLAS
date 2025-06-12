@@ -166,138 +166,147 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6">
       {/* Header with gradient text */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Dashboard
           </h1>
-          <p className="text-muted-foreground text-lg">Bienvenido de vuelta, {user.full_name}</p>
+          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground truncate">
+            Bienvenido de vuelta, {user.full_name}
+          </p>
         </div>
-        <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+        <Button
+          asChild
+          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
           <Link href="/documents/new">
             <Plus className="h-4 w-4 mr-2" />
-            Nuevo Documento
+            <span className="sm:hidden">Nuevo Doc</span>
+            <span className="hidden sm:inline">Nuevo Documento</span>
           </Link>
         </Button>
       </div>
 
-      {/* Stats Cards - Similar to statistics page */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Cards - Responsive grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Documentos</CardTitle>
+            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalDocuments}</div>
+          <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{stats.totalDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos en el sistema</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-orange-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium">Pendientes</CardTitle>
+            <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-orange-600">{stats.pendingDocuments}</div>
+          <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{stats.pendingDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos pendientes</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium">Completados</CardTitle>
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <Users className="h-4 w-4 text-green-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium">Completados</CardTitle>
+            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-green-600">{stats.completedDocuments}</div>
+          <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{stats.completedDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos completados</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium">Movimientos</CardTitle>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <Activity className="h-4 w-4 text-purple-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium">Movimientos</CardTitle>
+            <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-purple-600">{stats.totalMovements}</div>
+          <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.totalMovements}</div>
             <p className="text-xs text-muted-foreground">Total de movimientos</p>
           </CardContent>
         </Card>
       </div>
 
       {/* News Carousel */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Noticias de la Empresa
         </h2>
         <NewsCarousel />
       </div>
 
-      {/* Recent Documents and Activity */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Documentos Recientes
+      {/* Recent Documents and Activity - Responsive layout */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              <span className="sm:hidden">Documentos</span>
+              <span className="hidden sm:inline">Documentos Recientes</span>
             </CardTitle>
-            <CardDescription>Últimos documentos registrados en el sistema</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
+              Últimos documentos registrados en el sistema
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {loading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="h-12 w-12 rounded-lg bg-muted animate-pulse" />
+                  <div key={i} className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-muted animate-pulse" />
                     <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-muted rounded animate-pulse" />
-                      <div className="h-3 bg-muted rounded w-2/3 animate-pulse" />
+                      <div className="h-3 sm:h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-2 sm:h-3 bg-muted rounded w-2/3 animate-pulse" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : stats.recentDocuments.length === 0 ? (
               <div className="text-center py-6">
-                <div className="p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
+                <div className="p-3 sm:p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
+                  <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto" />
                 </div>
-                <p className="text-muted-foreground">No hay documentos disponibles</p>
+                <p className="text-sm sm:text-base text-muted-foreground">No hay documentos disponibles</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {stats.recentDocuments.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="group flex items-center space-x-4 p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
+                    className="group flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
-                      <FileText className="h-6 w-6 text-primary" />
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                      <FileText className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                     </div>
-                    <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none">{doc.title}</p>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-none truncate">{doc.title}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
                         {doc.document_number} • {doc.departments?.name || "Sin departamento"}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium capitalize">{doc.status}</p>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs sm:text-sm font-medium capitalize">{doc.status}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(doc.created_at).toLocaleDateString("es-ES")}
                       </p>
@@ -309,39 +318,40 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-green-600" />
-              Actividad Reciente
+        <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              <span className="sm:hidden">Actividad</span>
+              <span className="hidden sm:inline">Actividad Reciente</span>
             </CardTitle>
-            <CardDescription>Últimos movimientos del sistema</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Últimos movimientos del sistema</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {loading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="space-y-2">
-                    <div className="h-4 bg-muted rounded animate-pulse" />
-                    <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />
+                    <div className="h-3 sm:h-4 bg-muted rounded animate-pulse" />
+                    <div className="h-2 sm:h-3 bg-muted rounded w-3/4 animate-pulse" />
                   </div>
                 ))}
               </div>
             ) : stats.recentActivity.length === 0 ? (
               <div className="text-center py-6">
-                <div className="p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
-                  <Activity className="h-12 w-12 text-muted-foreground mx-auto" />
+                <div className="p-3 sm:p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
+                  <Activity className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto" />
                 </div>
-                <p className="text-muted-foreground">No hay actividad registrada</p>
+                <p className="text-sm sm:text-base text-muted-foreground">No hay actividad registrada</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {stats.recentActivity.map((activity: any) => (
                   <div
                     key={activity.id}
-                    className="group p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
+                    className="group p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
                   >
-                    <p className="text-sm font-medium">{activity.documents?.title}</p>
+                    <p className="text-sm font-medium truncate">{activity.documents?.title}</p>
                     <p className="text-xs text-muted-foreground">
                       Movido por {activity.profiles?.full_name} a {activity.departments?.name}
                     </p>

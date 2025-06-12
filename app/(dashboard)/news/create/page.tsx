@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2, Newspaper, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -145,89 +145,134 @@ export default function CreateNewsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/news">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Crear Nueva Noticia</h1>
-          <p className="text-muted-foreground">Completa el formulario para crear una nueva noticia</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+      <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <Button variant="outline" size="icon" asChild className="self-start">
+            <Link href="/news">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Crear Nueva Noticia</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Completa el formulario para crear una nueva noticia
+            </p>
+          </div>
         </div>
-      </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex">Noticia</CardTitle>
-          <CardDescription>Completa el formulario para crear una nueva noticia</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Título</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Título de la noticia" {...field} />
-                    </FormControl>
-                    <FormDescription>El título debe tener al menos 3 caracteres.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contenido</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Contenido de la noticia" {...field} />
-                    </FormControl>
-                    <FormDescription>El contenido debe tener al menos 10 caracteres.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Imagen</FormLabel>
-                    <FormControl>
-                      <Input type="file" onChange={handleImageChange} />
-                    </FormControl>
-                    <FormDescription>Sube una imagen para la noticia.</FormDescription>
-                    {imagePreview && (
-                      <img
-                        src={imagePreview || "/placeholder.svg"}
-                        alt="Preview"
-                        className="mt-2 w-full h-48 object-cover"
-                      />
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" type="button" onClick={() => router.back()}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Publicar Noticia
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+        {/* Form Card - Responsive */}
+        <Card className="shadow-lg">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
+              <Newspaper className="h-5 w-5 self-start sm:self-center" />
+              <span>Nueva Noticia</span>
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base mt-2">
+              Completa el formulario para crear una nueva noticia
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+                {/* Title Field */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Título de la noticia" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs sm:text-sm">
+                        El título debe tener al menos 3 caracteres.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Content Field */}
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contenido</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Contenido de la noticia"
+                          className="min-h-[120px] sm:min-h-[150px] resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs sm:text-sm">
+                        El contenido debe tener al menos 10 caracteres.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Image Field - Responsive */}
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Imagen (Opcional)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="space-y-3">
+                          <Input type="file" accept="image/*" onChange={handleImageChange} className="text-sm" />
+                          {imagePreview && (
+                            <div className="relative">
+                              <img
+                                src={imagePreview || "/placeholder.svg"}
+                                alt="Preview"
+                                className="w-full max-w-md h-32 sm:h-48 object-cover rounded-lg border"
+                              />
+                              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                Vista previa
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-xs sm:text-sm">
+                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 5MB).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Action Buttons - Responsive */}
+                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => router.back()}
+                    className="w-full sm:w-auto order-2 sm:order-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={loading} className="w-full sm:w-auto order-1 sm:order-2">
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    <span className="hidden sm:inline">Publicar Noticia</span>
+                    <span className="sm:hidden">Publicar</span>
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

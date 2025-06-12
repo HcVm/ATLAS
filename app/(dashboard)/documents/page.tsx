@@ -296,35 +296,37 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent">
             Documentos
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             {user?.role === "admin"
               ? "Gestiona todos los documentos del sistema"
               : "Documentos de tu departamento y los que has creado"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 hover:shadow-md transition-all duration-300 hover:scale-105"
+            className="flex items-center gap-2 hover:shadow-md transition-all duration-300 hover:scale-105 w-full sm:w-auto"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Actualizando..." : "Actualizar"}
+            <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
+            <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Actualizar"}</span>
           </Button>
           <Button
             asChild
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 w-full sm:w-auto"
           >
             <Link href="/documents/new">
               <Plus className="h-4 w-4 mr-2" />
-              Nuevo Documento
+              <span className="sm:hidden">Nuevo Doc</span>
+              <span className="hidden sm:inline">Nuevo Documento</span>
             </Link>
           </Button>
         </div>
@@ -337,19 +339,19 @@ export default function DocumentsPage() {
       )}
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b border-gray-100">
+        <CardHeader className="border-b border-gray-100 p-4 sm:p-6">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100">
-              <Filter className="h-5 w-5 text-blue-600" />
+              <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
             <div>
-              <CardTitle className="text-gray-900">Filtros</CardTitle>
-              <CardDescription>Busca y filtra documentos</CardDescription>
+              <CardTitle className="text-base sm:text-lg text-gray-900">Filtros</CardTitle>
+              <CardDescription className="text-sm">Busca y filtra documentos</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -361,57 +363,61 @@ export default function DocumentsPage() {
                 />
               </div>
             </div>
-            {user?.role === "admin" && (
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-full md:w-48 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
-                  <SelectValue placeholder="Departamento" />
+            <div className="flex flex-col sm:flex-row gap-4">
+              {user?.role === "admin" && (
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className="w-full border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
+                    <SelectValue placeholder="Departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los departamentos</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
+                  <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los departamentos</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="in_progress">En Progreso</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-            )}
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-full md:w-48 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="pending">Pendiente</SelectItem>
-                <SelectItem value="in_progress">En Progreso</SelectItem>
-                <SelectItem value="completed">Completado</SelectItem>
-                <SelectItem value="cancelled">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b border-gray-100">
+        <CardHeader className="border-b border-gray-100 p-4 sm:p-6">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-gradient-to-br from-green-100 to-blue-100">
-              <FileText className="h-5 w-5 text-green-600" />
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
             <div>
-              <CardTitle className="text-gray-900">Lista de Documentos</CardTitle>
-              <CardDescription>{filteredDocuments.length} documento(s) encontrado(s)</CardDescription>
+              <CardTitle className="text-base sm:text-lg text-gray-900">Lista de Documentos</CardTitle>
+              <CardDescription className="text-sm">
+                {filteredDocuments.length} documento(s) encontrado(s)
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {filteredDocuments.length === 0 ? (
-            <div className="text-center py-12 px-6">
-              <div className="p-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <FileText className="h-8 w-8 text-gray-400" />
+            <div className="text-center py-8 sm:py-12 px-4 sm:px-6">
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay documentos</h3>
-              <p className="text-muted-foreground mb-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay documentos</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4">
                 {searchTerm || selectedDepartment !== "all" || selectedStatus !== "all"
                   ? "No se encontraron documentos con los filtros aplicados."
                   : "Comienza creando tu primer documento."}
@@ -433,13 +439,23 @@ export default function DocumentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-gray-100">
-                    <TableHead className="font-semibold text-gray-700">Título</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Número</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Creado por</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Fecha</TableHead>
-                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Título</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                      Número
+                    </TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Estado</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                      Departamento
+                    </TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                      Creado por
+                    </TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                      Fecha
+                    </TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                      Acciones
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -448,30 +464,39 @@ export default function DocumentsPage() {
                       key={document.id}
                       className="border-gray-100 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300"
                     >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          {document.title || "Sin título"}
-                          {getDocumentBadge(document)}
+                      <TableCell className="font-medium p-2 sm:p-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center">
+                            <span className="truncate max-w-[120px] sm:max-w-none text-sm">
+                              {document.title || "Sin título"}
+                            </span>
+                            {getDocumentBadge(document)}
+                          </div>
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                            {document.document_number || "Sin número"}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-600">{document.document_number || "Sin número"}</TableCell>
-                      <TableCell>{getStatusBadge(document.status)}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-gray-600 text-sm hidden sm:table-cell p-2 sm:p-4">
+                        {document.document_number || "Sin número"}
+                      </TableCell>
+                      <TableCell className="p-2 sm:p-4">{getStatusBadge(document.status)}</TableCell>
+                      <TableCell className="hidden lg:table-cell p-2 sm:p-4">
                         {document.departments ? (
                           getDepartmentBadge(document.departments)
                         ) : (
                           <span className="text-muted-foreground text-sm">Sin departamento</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-gray-600">
+                      <TableCell className="text-gray-600 text-sm hidden md:table-cell p-2 sm:p-4">
                         {document.profiles?.full_name || "Usuario desconocido"}
                       </TableCell>
-                      <TableCell className="text-gray-600">
+                      <TableCell className="text-gray-600 text-sm hidden sm:table-cell p-2 sm:p-4">
                         {document.created_at
                           ? format(new Date(document.created_at), "dd/MM/yyyy", { locale: es })
                           : "Sin fecha"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right p-2 sm:p-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

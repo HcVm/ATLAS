@@ -1,5 +1,7 @@
 "use client"
 
+import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import { useState, useEffect } from "react"
 import { Plus, Search, Filter, User, Edit, Trash2, Users, Mail, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +12,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
@@ -171,25 +172,26 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
             Usuarios
           </h1>
-          <p className="text-muted-foreground mt-1">Gestiona todos los usuarios del sistema</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona todos los usuarios del sistema</p>
         </div>
         <Button
           onClick={() => router.push("/users/new")}
-          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Nuevo Usuario
+          <span className="sm:hidden">Nuevo Usuario</span>
+          <span className="hidden sm:inline">Nuevo Usuario</span>
         </Button>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -200,7 +202,11 @@ export default function UsersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="icon" className="hover:bg-gray-100 transition-colors duration-200">
+            <Button
+              variant="outline"
+              size="icon"
+              className="hover:bg-gray-100 transition-colors duration-200 flex-shrink-0"
+            >
               <Filter className="h-4 w-4" />
             </Button>
           </div>
@@ -211,137 +217,154 @@ export default function UsersPage() {
               <p className="mt-4 text-muted-foreground">Cargando usuarios...</p>
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Users className="h-8 w-8 text-purple-600" />
+            <div className="text-center py-8 sm:py-12">
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
-              <p className="text-muted-foreground">No se encontraron usuarios en el sistema.</p>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
+              <p className="text-sm sm:text-base text-muted-foreground">No se encontraron usuarios en el sistema.</p>
             </div>
           ) : (
             <div className="rounded-md border border-gray-200 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
-                    <TableHead className="font-semibold text-gray-700">Usuario</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Email</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Rol</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Fecha de registro</TableHead>
-                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((userItem) => (
-                    <TableRow
-                      key={userItem.id}
-                      className="border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 transition-all duration-300"
-                    >
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="relative">
-                            <Avatar className="h-10 w-10 ring-2 ring-white shadow-md">
-                              <AvatarImage src={userItem.avatar_url || ""} />
-                              <AvatarFallback className="bg-gradient-to-br from-purple-100 to-blue-100 text-purple-700 font-semibold">
-                                {userItem.full_name
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{userItem.full_name}</div>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <User className="h-3 w-3" />
-                              <span>ID: {userItem.id.slice(0, 8)}...</span>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Usuario</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                        Email
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                        Departamento
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Rol</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                        Fecha de registro
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                        Acciones
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((userItem) => (
+                      <TableRow
+                        key={userItem.id}
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 transition-all duration-300"
+                      >
+                        <TableCell className="p-2 sm:p-4">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <div className="relative flex-shrink-0">
+                              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-white shadow-md">
+                                <AvatarImage src={userItem.avatar_url || ""} />
+                                <AvatarFallback className="bg-gradient-to-br from-purple-100 to-blue-100 text-purple-700 font-semibold text-xs sm:text-sm">
+                                  {userItem.full_name
+                                    .split(" ")
+                                    .map((n: string) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                                {userItem.full_name}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <User className="h-3 w-3" />
+                                <span className="truncate">ID: {userItem.id.slice(0, 8)}...</span>
+                              </div>
+                              <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
+                                {userItem.email}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
-                            <Mail className="h-3 w-3 text-blue-600" />
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
+                              <Mail className="h-3 w-3 text-blue-600" />
+                            </div>
+                            <span className="text-gray-600 text-sm truncate max-w-[150px] lg:max-w-none">
+                              {userItem.email}
+                            </span>
                           </div>
-                          <span className="text-gray-600">{userItem.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {userItem.departments ? (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200 shadow-sm">
-                            {userItem.departments.name}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">Sin departamento</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{getRoleBadge(userItem.role)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-md bg-gradient-to-br from-gray-100 to-gray-200">
-                            <Calendar className="h-3 w-3 text-gray-600" />
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell p-2 sm:p-4">
+                          {userItem.departments ? (
+                            <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                              {userItem.departments.name}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Sin departamento</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="p-2 sm:p-4">{getRoleBadge(userItem.role)}</TableCell>
+                        <TableCell className="hidden sm:table-cell p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-gray-100 to-gray-200">
+                              <Calendar className="h-3 w-3 text-gray-600" />
+                            </div>
+                            <span className="text-gray-600 text-sm">
+                              {new Date(userItem.created_at).toLocaleDateString("es-ES")}
+                            </span>
                           </div>
-                          <span className="text-gray-600">
-                            {new Date(userItem.created_at).toLocaleDateString("es-ES")}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="hover:bg-gray-100 transition-colors duration-200"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="lucide lucide-more-horizontal"
+                        </TableCell>
+                        <TableCell className="text-right p-2 sm:p-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-gray-100 transition-colors duration-200 h-8 w-8"
                               >
-                                <circle cx="12" cy="12" r="1" />
-                                <circle cx="19" cy="12" r="1" />
-                                <circle cx="5" cy="12" r="1" />
-                              </svg>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/users/edit/${userItem.id}`)}
-                              className="hover:bg-blue-50 transition-colors duration-200"
-                            >
-                              <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                              <span>Editar</span>
-                            </DropdownMenuItem>
-                            {userItem.id !== user?.id && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(userItem)}
-                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="lucide lucide-more-horizontal"
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Eliminar</span>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                                  <circle cx="12" cy="12" r="1" />
+                                  <circle cx="19" cy="12" r="1" />
+                                  <circle cx="5" cy="12" r="1" />
+                                </svg>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/users/edit/${userItem.id}`)}
+                                className="hover:bg-blue-50 transition-colors duration-200"
+                              >
+                                <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                                <span>Editar</span>
+                              </DropdownMenuItem>
+                              {userItem.id !== user?.id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(userItem)}
+                                    className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Eliminar</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>

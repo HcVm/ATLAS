@@ -1,5 +1,7 @@
 "use client"
 
+import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import { useState, useEffect } from "react"
 import { Plus, Search, Building2, Edit, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +12,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
@@ -165,25 +166,28 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
             Departamentos
           </h1>
-          <p className="text-muted-foreground mt-1">Gestiona todos los departamentos de la organización</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Gestiona todos los departamentos de la organización
+          </p>
         </div>
         <Button
           onClick={() => router.push("/departments/new")}
-          className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Nuevo Departamento
+          <span className="sm:hidden">Nuevo Depto</span>
+          <span className="hidden sm:inline">Nuevo Departamento</span>
         </Button>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -202,115 +206,136 @@ export default function DepartmentsPage() {
               <p className="mt-4 text-muted-foreground">Cargando departamentos...</p>
             </div>
           ) : filteredDepartments.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="p-4 rounded-full bg-gradient-to-br from-emerald-100 to-blue-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Building2 className="h-8 w-8 text-emerald-600" />
+            <div className="text-center py-8 sm:py-12">
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-emerald-100 to-blue-100 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
-              <p className="text-muted-foreground">No se encontraron departamentos en el sistema.</p>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                No se encontraron departamentos en el sistema.
+              </p>
             </div>
           ) : (
             <div className="rounded-md border border-gray-200 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
-                    <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Descripción</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Color</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Usuarios</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Fecha de creación</TableHead>
-                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredDepartments.map((dept) => (
-                    <TableRow
-                      key={dept.id}
-                      className="border-gray-100 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/50 transition-all duration-300"
-                    >
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg transition-transform duration-300 hover:scale-110"
-                            style={{
-                              background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color || "#6B7280"}dd)`,
-                            }}
-                          >
-                            <Building2 className="h-5 w-5" />
-                          </div>
-                          <div className="font-medium text-gray-900">{dept.name}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-600">{dept.description || "Sin descripción"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-5 h-5 rounded-full border-2 border-white shadow-md transition-transform duration-300 hover:scale-125"
-                            style={{ backgroundColor: dept.color || "#6B7280" }}
-                          />
-                          <span className="text-sm text-muted-foreground font-mono">{dept.color || "#6B7280"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
-                            <Users className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <span className="font-medium text-gray-700">{dept.userCount || 0}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {new Date(dept.created_at).toLocaleDateString("es-ES")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="hover:bg-gray-100 transition-colors duration-200"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="lucide lucide-more-horizontal"
-                              >
-                                <circle cx="12" cy="12" r="1" />
-                                <circle cx="19" cy="12" r="1" />
-                                <circle cx="5" cy="12" r="1" />
-                              </svg>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/departments/edit/${dept.id}`)}
-                              className="hover:bg-blue-50 transition-colors duration-200"
-                            >
-                              <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                              <span>Editar</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(dept)}
-                              className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Eliminar</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Departamento</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                        Descripción
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                        Color
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Usuarios</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                        Fecha de creación
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                        Acciones
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDepartments.map((dept) => (
+                      <TableRow
+                        key={dept.id}
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/50 transition-all duration-300"
+                      >
+                        <TableCell className="p-2 sm:p-4">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <div
+                              className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl text-white shadow-lg transition-transform duration-300 hover:scale-110"
+                              style={{
+                                background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color || "#6B7280"}dd)`,
+                              }}
+                            >
+                              <Building2 className="h-3 w-3 sm:h-5 sm:w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{dept.name}</div>
+                              <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
+                                {dept.description || "Sin descripción"}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-600 text-sm hidden md:table-cell p-2 sm:p-4">
+                          {dept.description || "Sin descripción"}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-white shadow-md transition-transform duration-300 hover:scale-125"
+                              style={{ backgroundColor: dept.color || "#6B7280" }}
+                            />
+                            <span className="text-xs sm:text-sm text-muted-foreground font-mono hidden lg:inline">
+                              {dept.color || "#6B7280"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
+                              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
+                            </div>
+                            <span className="font-medium text-gray-700 text-sm">{dept.userCount || 0}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-600 text-sm hidden lg:table-cell p-2 sm:p-4">
+                          {new Date(dept.created_at).toLocaleDateString("es-ES")}
+                        </TableCell>
+                        <TableCell className="text-right p-2 sm:p-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-gray-100 transition-colors duration-200 h-8 w-8"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="lucide lucide-more-horizontal"
+                                >
+                                  <circle cx="12" cy="12" r="1" />
+                                  <circle cx="19" cy="12" r="1" />
+                                  <circle cx="5" cy="12" r="1" />
+                                </svg>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/departments/edit/${dept.id}`)}
+                                className="hover:bg-blue-50 transition-colors duration-200"
+                              >
+                                <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                                <span>Editar</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(dept)}
+                                className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Eliminar</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
