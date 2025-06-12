@@ -9,10 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useToast } from "@/hooks/use-toast"
 
 const DEPARTMENT_COLORS = [
   { value: "bg-red-500", label: "Rojo", textColor: "text-white" },
@@ -30,11 +30,10 @@ const DEPARTMENT_COLORS = [
 export default function EditDepartmentPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user: currentUser } = useAuth()
+  const { toast } = useToast()
   const [department, setDepartment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -52,6 +51,16 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
       const response = await fetch(`/api/departments/${params.id}`)
 
       if (!response.ok) {
+        if (response.status === 404) {
+          toast({
+            title: "Departamento no encontrado",
+            description: "El departamento que intentas editar no existe.",
+            variant: "destructive",
+          })
+          router.push("/departments")
+          return
+        }
+
         const errorData = await response.json()
         throw new Error(errorData.error || "Error al cargar el departamento")
       }
@@ -66,7 +75,11 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
       })
     } catch (error: any) {
       console.error("Error fetching department:", error)
-      setError(error.message)
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cargar el departamento",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -75,8 +88,6 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError("")
-    setMessage("")
 
     try {
       const response = await fetch(`/api/departments/${params.id}`, {
@@ -86,7 +97,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         },
         body: JSON.stringify({
           name: formData.name,
-          description: formData.description,
+          description: formData.description || null,
           color: formData.color,
         }),
       })
@@ -96,13 +107,19 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         throw new Error(errorData.error || "Error al actualizar departamento")
       }
 
-      setMessage("Departamento actualizado exitosamente")
-      setTimeout(() => {
-        router.push("/departments")
-      }, 2000)
+      toast({
+        title: "Departamento actualizado",
+        description: "El departamento se ha actualizado correctamente",
+      })
+
+      router.push("/departments")
     } catch (error: any) {
       console.error("Error updating department:", error)
-      setError(error.message)
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el departamento",
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
@@ -159,18 +176,6 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {message && (
-              <Alert>
-                <AlertDescription>{message}</AlertDescription>
-              </Alert>
-            )}
-
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Departamento</Label>
@@ -187,7 +192,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                 <Label htmlFor="description">Descripción</Label>
                 <Textarea
                   id="description"
-                  value={formData.description}
+                  value={formData.description || ""}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   disabled={saving}
                   rows={4}
@@ -224,7 +229,10 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
               </Button>
               <Button type="submit" disabled={saving}>
                 {saving ? (
-                  "Guardando..."
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
