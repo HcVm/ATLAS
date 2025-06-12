@@ -261,7 +261,7 @@ export default function ProfilePage() {
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 mb-6 bg-gradient-to-r from-blue-100 to-purple-100">
               <TabsTrigger
                 value="profile"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 items-center data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
               >
                 <User className="h-4 w-4 mr-2" />
                 <span className="sm:hidden">Perfil</span>
