@@ -1,137 +1,142 @@
 import { createClient } from "@supabase/supabase-js"
+import type { Database } from "./supabase"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Cliente de Supabase con permisos de administrador usando service_role
+const supabaseAdmin = createClient<Database>(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+)
 
-// Cliente de Supabase con permisos de administrador
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
-
-// Función para crear usuario con permisos de admin
-export async function createUserAsAdmin(userData: {
+export interface CreateUserParams {
   email: string
   password: string
   full_name: string
   role: string
+  department_id: string
+}
+
+export interface UpdateUserParams {
+  email?: string
+  full_name?: string
+  role?: string
   department_id?: string
-}) {
+}
+
+// Función para crear un usuario como administrador
+export async function createUserAsAdmin(params: CreateUserParams) {
   try {
-    // Crear usuario en auth
+    // 1. Crear el usuario en auth.users
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: userData.email,
-      password: userData.password,
+      email: params.email,
+      password: params.password,
       email_confirm: true,
       user_metadata: {
-        full_name: userData.full_name,
-        role: userData.role,
+        full_name: params.full_name,
       },
     })
 
     if (authError) {
       console.error("Error creating auth user:", authError)
-      throw authError
+      return { error: authError, data: null }
     }
 
-    if (!authData.user) {
-      throw new Error("No se pudo crear el usuario")
-    }
+    // 2. Crear el perfil en la tabla profiles
+    if (authData.user) {
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: authData.user.id,
+          email: params.email,
+          full_name: params.full_name,
+          role: params.role,
+          department_id: params.department_id,
+        })
+        .select()
+        .single()
 
-    // Crear o actualizar perfil
-    const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
-      id: authData.user.id,
-      email: userData.email,
-      full_name: userData.full_name,
-      role: userData.role,
-      department_id: userData.department_id || null,
-    })
+      if (profileError) {
+        console.error("Error creating profile:", profileError)
+        // Intentar eliminar el usuario auth si falló la creación del perfil
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+        return { error: profileError, data: null }
+      }
 
-    if (profileError) {
-      console.error("Error creating profile:", profileError)
-      // Si falla la creación del perfil, eliminar el usuario de auth
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-      throw profileError
+      return { data: { user: authData.user, profile: profileData }, error: null }
     }
 
     return { data: authData, error: null }
-  } catch (error) {
-    console.error("Error in createUserAsAdmin:", error)
-    return { data: null, error }
+  } catch (error: any) {
+    console.error("Unexpected error in createUserAsAdmin:", error)
+    return { error, data: null }
   }
 }
 
-// Función para actualizar usuario
-export async function updateUserAsAdmin(
-  userId: string,
-  userData: {
-    email?: string
-    full_name?: string
-    role?: string
-    department_id?: string
-  },
-) {
+// Función para actualizar un usuario como administrador
+export async function updateUserAsAdmin(userId: string, params: UpdateUserParams) {
   try {
-    // Actualizar en auth si hay cambios de email
-    if (userData.email) {
+    // 1. Actualizar el usuario en auth.users si se cambió el email
+    if (params.email) {
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        email: userData.email,
+        email: params.email,
+        user_metadata: params.full_name ? { full_name: params.full_name } : undefined,
       })
 
       if (authError) {
         console.error("Error updating auth user:", authError)
-        throw authError
+        return { error: authError }
+      }
+    } else if (params.full_name) {
+      // Solo actualizar metadata si no se actualizó el email pero sí el nombre
+      const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: { full_name: params.full_name },
+      })
+
+      if (metadataError) {
+        console.error("Error updating user metadata:", metadataError)
+        return { error: metadataError }
       }
     }
 
-    // Actualizar perfil
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .update({
-        email: userData.email,
-        full_name: userData.full_name,
-        role: userData.role,
-        department_id: userData.department_id === "none" ? null : userData.department_id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
+    // 2. Actualizar el perfil en la tabla profiles
+    const updateData: any = {}
+    if (params.email) updateData.email = params.email
+    if (params.full_name) updateData.full_name = params.full_name
+    if (params.role) updateData.role = params.role
+    if (params.department_id) updateData.department_id = params.department_id
 
-    if (profileError) {
-      console.error("Error updating profile:", profileError)
-      throw profileError
+    if (Object.keys(updateData).length > 0) {
+      const { error: profileError } = await supabaseAdmin.from("profiles").update(updateData).eq("id", userId)
+
+      if (profileError) {
+        console.error("Error updating profile:", profileError)
+        return { error: profileError }
+      }
     }
 
-    return { error: null }
-  } catch (error) {
-    console.error("Error in updateUserAsAdmin:", error)
+    return { success: true, error: null }
+  } catch (error: any) {
+    console.error("Unexpected error in updateUserAsAdmin:", error)
     return { error }
   }
 }
 
-// Función para eliminar usuario
+// Función para eliminar un usuario como administrador
 export async function deleteUserAsAdmin(userId: string) {
   try {
-    // Eliminar perfil primero
-    const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId)
+    // Eliminar el usuario de auth.users (esto debería eliminar en cascada el perfil)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
-    if (profileError) {
-      console.error("Error deleting profile:", profileError)
-      throw profileError
+    if (error) {
+      console.error("Error deleting user:", error)
+      return { error }
     }
 
-    // Eliminar usuario de auth
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    // Por si acaso, intentar eliminar el perfil explícitamente
+    await supabaseAdmin.from("profiles").delete().eq("id", userId)
 
-    if (authError) {
-      console.error("Error deleting auth user:", authError)
-      throw authError
-    }
-
-    return { error: null }
-  } catch (error) {
-    console.error("Error in deleteUserAsAdmin:", error)
+    return { success: true, error: null }
+  } catch (error: any) {
+    console.error("Unexpected error in deleteUserAsAdmin:", error)
     return { error }
   }
 }
