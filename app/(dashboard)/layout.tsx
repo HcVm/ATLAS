@@ -3,7 +3,7 @@
 import type React from "react"
 import { CompanyProvider } from "@/lib/company-context"
 import { AuthProvider } from "@/lib/auth-context"
-import DashboardLayoutClient from "@/app/(dashboard)/dashboard-layout-client"
+import DashboardLayoutClient from "./dashboard-layout-client"
 
 export const dynamic = "force-dynamic"
 
