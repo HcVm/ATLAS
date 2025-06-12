@@ -3,7 +3,7 @@
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Filter, User, Edit, Trash2, Users, Mail, Calendar } from "lucide-react"
+import { Plus, Search, Filter, User, Edit, Trash2, Users, Mail, Calendar, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,11 +19,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 
 export default function UsersPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -42,19 +44,40 @@ export default function UsersPage() {
     if (user && user.role === "admin") {
       fetchUsers()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+      console.log("Fetching users for company:", selectedCompany?.id || "all")
+
+      let query = supabase
         .from("profiles")
         .select(`
           *,
-          departments!profiles_department_id_fkey (name)
+          departments!profiles_department_id_fkey (name),
+          companies!profiles_company_id_fkey (id, name, code, color)
         `)
         .order("created_at", { ascending: false })
 
-      if (error) throw error
+      // Si hay una empresa seleccionada y el usuario es admin, filtrar por esa empresa
+      if (selectedCompany && user?.role === "admin") {
+        query = query.eq("company_id", selectedCompany.id)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("Error fetching users:", error)
+        toast({
+          title: "Error al cargar usuarios",
+          description: error.message,
+          variant: "destructive",
+        })
+        throw error
+      }
+
+      console.log(`Loaded ${data?.length || 0} users`)
       setUsers(data || [])
     } catch (error) {
       console.error("Error fetching users:", error)
@@ -78,6 +101,23 @@ export default function UsersPage() {
       default:
         return <Badge variant="outline">{role}</Badge>
     }
+  }
+
+  const getCompanyBadge = (company: any) => {
+    if (!company) return <Badge variant="outline">Sin empresa</Badge>
+    return (
+      <Badge
+        className="flex items-center gap-1"
+        style={{
+          backgroundColor: `${company.color}20`,
+          color: company.color,
+          borderColor: company.color,
+        }}
+      >
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: company.color }}></span>
+        {company.code}
+      </Badge>
+    )
   }
 
   const handleDeleteClick = (userToDelete: any) => {
@@ -157,9 +197,11 @@ export default function UsersPage() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.departments?.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.departments?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.companies?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.companies?.code?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   if (user?.role !== "admin") {
@@ -178,7 +220,9 @@ export default function UsersPage() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
             Usuarios
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona todos los usuarios del sistema</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            {selectedCompany ? `Usuarios de ${selectedCompany.name}` : "Gestiona todos los usuarios del sistema"}
+          </p>
         </div>
         <Button
           onClick={() => router.push("/users/new")}
@@ -206,6 +250,7 @@ export default function UsersPage() {
               variant="outline"
               size="icon"
               className="hover:bg-gray-100 transition-colors duration-200 flex-shrink-0"
+              onClick={fetchUsers}
             >
               <Filter className="h-4 w-4" />
             </Button>
@@ -222,7 +267,13 @@ export default function UsersPage() {
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
               </div>
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
-              <p className="text-sm sm:text-base text-muted-foreground">No se encontraron usuarios en el sistema.</p>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {searchTerm
+                  ? "No se encontraron usuarios con ese criterio de búsqueda."
+                  : selectedCompany
+                    ? `No hay usuarios en la empresa ${selectedCompany.name}.`
+                    : "No se encontraron usuarios en el sistema."}
+              </p>
             </div>
           ) : (
             <div className="rounded-md border border-gray-200 overflow-hidden">
@@ -237,6 +288,7 @@ export default function UsersPage() {
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
                         Departamento
                       </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Empresa</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Rol</TableHead>
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
                         Fecha de registro
@@ -259,17 +311,19 @@ export default function UsersPage() {
                                 <AvatarImage src={userItem.avatar_url || ""} />
                                 <AvatarFallback className="bg-gradient-to-br from-purple-100 to-blue-100 text-purple-700 font-semibold text-xs sm:text-sm">
                                   {userItem.full_name
-                                    .split(" ")
-                                    .map((n: string) => n[0])
-                                    .join("")
-                                    .toUpperCase()}
+                                    ? userItem.full_name
+                                        .split(" ")
+                                        .map((n: string) => n[0])
+                                        .join("")
+                                        .toUpperCase()
+                                    : "??"}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
-                                {userItem.full_name}
+                                {userItem.full_name || "Sin nombre"}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <User className="h-3 w-3" />
@@ -299,6 +353,12 @@ export default function UsersPage() {
                           ) : (
                             <span className="text-muted-foreground text-sm">Sin departamento</span>
                           )}
+                        </TableCell>
+                        <TableCell className="p-2 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-3 w-3 text-gray-500" />
+                            {getCompanyBadge(userItem.companies)}
+                          </div>
                         </TableCell>
                         <TableCell className="p-2 sm:p-4">{getRoleBadge(userItem.role)}</TableCell>
                         <TableCell className="hidden sm:table-cell p-2 sm:p-4">

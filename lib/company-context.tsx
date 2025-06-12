@@ -3,8 +3,9 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useAuth } from "./auth-context"
 import { supabase } from "./supabase"
+import { toast } from "sonner"
 
-interface Company {
+export interface Company {
   id: string
   name: string
   code: string
@@ -17,6 +18,7 @@ interface CompanyContextType {
   setSelectedCompany: (company: Company | null) => void
   loading: boolean
   error: string | null
+  refreshCompanies: () => Promise<void>
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
@@ -37,63 +39,96 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   // Cargar todas las empresas disponibles
-  useEffect(() => {
-    async function loadCompanies() {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Si es admin, cargar todas las empresas
-        if (user.role === "admin") {
-          const { data, error } = await supabase.from("companies").select("id, name, code, color").order("name")
-
-          if (error) throw error
-
-          setAllCompanies(data || [])
-
-          // Cargar selección guardada
-          const savedCompanyId = localStorage.getItem("selectedCompanyId")
-          if (savedCompanyId && data) {
-            const savedCompany = data.find((c) => c.id === savedCompanyId)
-            if (savedCompany) {
-              setSelectedCompany(savedCompany)
-            } else if (data.length > 0) {
-              setSelectedCompany(data[0])
-            }
-          } else if (data && data.length > 0) {
-            setSelectedCompany(data[0])
-          }
-        }
-        // Si es usuario normal, solo cargar su empresa
-        else if (user.company_id) {
-          const { data, error } = await supabase
-            .from("companies")
-            .select("id, name, code, color")
-            .eq("id", user.company_id)
-            .single()
-
-          if (error) throw error
-
-          if (data) {
-            setAllCompanies([data])
-            setSelectedCompany(data)
-          }
-        }
-      } catch (err: any) {
-        console.error("Error loading companies:", err)
-        setError(err.message || "Error al cargar empresas")
-      } finally {
-        setLoading(false)
-      }
+  const loadCompanies = async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
 
+    try {
+      setLoading(true)
+      setError(null)
+      console.log("CompanyContext: Cargando empresas para usuario:", user.id, user.role)
+
+      // Si es admin, cargar todas las empresas
+      if (user.role === "admin") {
+        const { data, error } = await supabase.from("companies").select("id, name, code, color").order("name")
+
+        if (error) {
+          console.error("Error cargando empresas:", error)
+          setError(error.message)
+          throw error
+        }
+
+        console.log("CompanyContext: Empresas cargadas para admin:", data?.length || 0)
+        setAllCompanies(data || [])
+
+        // Cargar selección guardada o usar la primera empresa
+        const savedCompanyId = localStorage.getItem("selectedCompanyId")
+        if (savedCompanyId && data) {
+          const savedCompany = data.find((c) => c.id === savedCompanyId)
+          if (savedCompany) {
+            setSelectedCompany(savedCompany)
+            console.log("CompanyContext: Empresa guardada seleccionada:", savedCompany.name)
+          } else if (data.length > 0) {
+            setSelectedCompany(data[0])
+            console.log("CompanyContext: Primera empresa seleccionada:", data[0].name)
+          }
+        } else if (data && data.length > 0) {
+          setSelectedCompany(data[0])
+          console.log("CompanyContext: Primera empresa seleccionada:", data[0].name)
+        }
+      }
+      // Si es usuario normal, solo cargar su empresa
+      else if (user.company_id) {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("id, name, code, color")
+          .eq("id", user.company_id)
+          .single()
+
+        if (error) {
+          console.error("Error cargando empresa del usuario:", error)
+          setError(error.message)
+          throw error
+        }
+
+        if (data) {
+          console.log("CompanyContext: Empresa del usuario cargada:", data.name)
+          setAllCompanies([data])
+          setSelectedCompany(data)
+        }
+      } else {
+        console.log("CompanyContext: Usuario sin empresa asignada")
+        setAllCompanies([])
+        setSelectedCompany(null)
+      }
+    } catch (err: any) {
+      console.error("Error en CompanyContext:", err)
+      setError(err.message || "Error al cargar empresas")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cargar empresas cuando cambia el usuario
+  useEffect(() => {
     loadCompanies()
   }, [user])
+
+  // Guardar la selección en localStorage (solo para admin)
+  useEffect(() => {
+    if (user?.role === "admin" && selectedCompany) {
+      localStorage.setItem("selectedCompanyId", selectedCompany.id)
+      console.log("CompanyContext: Guardando selección de empresa:", selectedCompany.name)
+    }
+  }, [selectedCompany, user?.role])
+
+  // Función para actualizar manualmente las empresas
+  const refreshCompanies = async () => {
+    await loadCompanies()
+    toast.success("Lista de empresas actualizada")
+  }
 
   return (
     <CompanyContext.Provider
@@ -103,6 +138,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         setSelectedCompany,
         loading,
         error,
+        refreshCompanies,
       }}
     >
       {children}

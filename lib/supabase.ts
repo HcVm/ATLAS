@@ -50,6 +50,7 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          companies: any
           id: string
           email: string
           full_name: string
