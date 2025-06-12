@@ -14,6 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -31,6 +32,7 @@ const formSchema = z.object({
   department_id: z.string().min(1, {
     message: "El departamento es requerido.",
   }),
+  is_public: z.boolean().default(false),
   file: z.any().optional(),
 })
 
@@ -52,6 +54,7 @@ export default function NewDocumentPage() {
       description: "",
       document_number: "",
       department_id: "",
+      is_public: false,
     },
   })
 
@@ -163,6 +166,7 @@ export default function NewDocumentPage() {
         created_by: user.id,
         current_department_id: values.department_id,
         file_url: fileUrl,
+        is_public: values.is_public,
       })
 
       // Crear documento - USANDO SOLO current_department_id
@@ -176,6 +180,7 @@ export default function NewDocumentPage() {
           created_by: user.id,
           current_department_id: values.department_id, // SOLO este campo
           file_url: fileUrl,
+          is_public: values.is_public, // Agregar el campo is_public
         })
         .select()
         .single()
@@ -240,7 +245,7 @@ export default function NewDocumentPage() {
 
       toast({
         title: "Documento creado",
-        description: "El documento se ha creado correctamente.",
+        description: `El documento se ha creado correctamente${values.is_public ? " y está disponible públicamente" : ""}.`,
       })
 
       router.push(`/documents/${document.id}`)
@@ -369,6 +374,26 @@ export default function NewDocumentPage() {
                     </FormControl>
                     <FormDescription>Información adicional sobre el documento (opcional).</FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Campo de acceso público */}
+              <FormField
+                control={form.control}
+                name="is_public"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Documento público</FormLabel>
+                      <FormDescription>
+                        Permitir acceso público a este documento mediante código QR. El documento será visible para
+                        cualquier persona que tenga el enlace.
+                      </FormDescription>
+                    </div>
                   </FormItem>
                 )}
               />

@@ -31,6 +31,7 @@ export default function EditDocumentPage() {
   const [documentNumber, setDocumentNumber] = useState("")
   const [description, setDescription] = useState("")
   const [departmentId, setDepartmentId] = useState("")
+  const [isPublic, setIsPublic] = useState(false)
 
   // Certification fields
   const [isCertified, setIsCertified] = useState(false)
@@ -68,6 +69,7 @@ export default function EditDocumentPage() {
         setDocumentNumber(document.document_number || "")
         setDescription(document.description || "")
         setDepartmentId(document.current_department_id || "")
+        setIsPublic(document.is_public || false)
 
         // Set certification data
         setIsCertified(document.is_certified || false)
@@ -105,6 +107,7 @@ export default function EditDocumentPage() {
       const updates: any = {
         title,
         description,
+        is_public: isPublic,
         updated_at: new Date().toISOString(),
       }
 
@@ -186,10 +189,14 @@ export default function EditDocumentPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general">
             <FileText className="h-4 w-4 mr-2" />
             Información General
+          </TabsTrigger>
+          <TabsTrigger value="access">
+            <User className="h-4 w-4 mr-2" />
+            Acceso Público
           </TabsTrigger>
           <TabsTrigger value="certification">
             <Shield className="h-4 w-4 mr-2" />
@@ -250,6 +257,55 @@ export default function EditDocumentPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="access">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de Acceso Público</CardTitle>
+              <CardDescription>
+                Controla si este documento puede ser accedido públicamente mediante código QR
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isPublic"
+                  checked={isPublic}
+                  onCheckedChange={(checked) => setIsPublic(checked === true)}
+                />
+                <Label htmlFor="isPublic" className="font-medium">
+                  Permitir acceso público a este documento
+                </Label>
+              </div>
+
+              {isPublic && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center text-blue-800 dark:text-blue-300 mb-2">
+                    <User className="h-5 w-5 mr-2" />
+                    <h4 className="font-semibold">Acceso Público Habilitado</h4>
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
+                    Este documento será accesible para cualquier persona que tenga el enlace o escanee el código QR. El
+                    acceso será rastreado para fines de auditoría.
+                  </p>
+                </div>
+              )}
+
+              {!isPublic && (
+                <div className="bg-gray-50 dark:bg-gray-950/30 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center text-gray-800 dark:text-gray-300 mb-2">
+                    <Shield className="h-5 w-5 mr-2" />
+                    <h4 className="font-semibold">Acceso Restringido</h4>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-400">
+                    Este documento solo será accesible para usuarios autenticados del sistema. El código QR no
+                    funcionará para acceso público.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
