@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, Camera } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
-import { UserEditForm } from "../../../../../components/users/user-edit-form"
+import { UserEditForm } from "@/components/users/user-edit-form"
+import { toast } from "sonner"
 
 export default function EditUserPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -69,8 +70,16 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchCompanies = async () => {
     try {
+      console.log("Cargando empresas en el editor de usuario...")
       const { data, error } = await supabase.from("companies").select("id, name, code").order("name")
-      if (error) throw error
+
+      if (error) {
+        console.error("Error al cargar empresas:", error)
+        toast.error(`Error al cargar empresas: ${error.message}`)
+        throw error
+      }
+
+      console.log("Empresas cargadas:", data)
       setCompanies(data || [])
     } catch (error: any) {
       console.error("Error fetching companies:", error)
@@ -109,7 +118,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={() => router.push("/users")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -146,20 +155,19 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
         </Card>
 
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información del Usuario</CardTitle>
-              <CardDescription>Actualiza la información del usuario</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {error && (
-                <Alert variant="destructive" className="mb-6">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <UserEditForm user={user} departments={departments} companies={companies} />
-            </CardContent>
-          </Card>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="mb-4">
+            <Button variant="outline" onClick={fetchCompanies} className="flex items-center gap-2">
+              <span>Recargar empresas</span>
+            </Button>
+          </div>
+
+          <UserEditForm user={user} departments={departments} companies={companies} />
         </div>
       </div>
     </div>

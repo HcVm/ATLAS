@@ -1,57 +1,50 @@
 import { createClient } from "@supabase/supabase-js"
 
+// Obtenemos las variables de entorno
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Verificar que las variables de entorno estén definidas
+// Verificar que las URL y la clave estén definidas
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    "Error: Variables de entorno NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY no definidas",
-    {
-      url: supabaseUrl ? "Definida" : "No definida",
-      key: supabaseAnonKey ? "Definida" : "No definida",
-    },
-  )
+  console.error("ADVERTENCIA: Variables de entorno de Supabase no definidas correctamente")
+  console.error("NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl || "INDEFINIDO")
+  console.error("NEXT_PUBLIC_SUPABASE_ANON_KEY:", supabaseAnonKey ? "DEFINIDO (oculto)" : "INDEFINIDO")
 }
 
-// Crear cliente con opciones mejoradas
+// Crear el cliente con opciones adicionales para mejorar la estabilidad
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true, // Activar auto refresh para evitar problemas de sesión
+    autoRefreshToken: true, // Activado para refrescar tokens automáticamente
     detectSessionInUrl: true,
+    flowType: "pkce", // Usar PKCE para mayor seguridad
   },
   global: {
     fetch: (...args) => {
-      // Añadir timeout para evitar problemas de red
-      const [resource, config] = args
-      return fetch(resource, {
-        ...config,
-        headers: {
-          ...config?.headers,
-          "Cache-Control": "no-cache",
-        },
-      })
+      // Añadir timeout de 30 segundos a todas las peticiones fetch
+      const [url, options] = args
+      const controller = new AbortController()
+      const signal = controller.signal
+
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+        console.error(`Supabase request timed out: ${url}`)
+      }, 30000)
+
+      return fetch(url, { ...options, signal }).finally(() => clearTimeout(timeoutId))
     },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+  db: {
+    schema: "public",
   },
 })
 
-// Verificar conexión
-supabase.auth
-  .getSession()
-  .then(({ data, error }) => {
-    if (error) {
-      console.error("Error verificando sesión:", error.message)
-    } else {
-      console.log("Conexión a Supabase establecida correctamente", {
-        session: data.session ? "Activa" : "Inactiva",
-      })
-    }
-  })
-  .catch((err) => {
-    console.error("Error crítico al conectar con Supabase:", err)
-  })
-
+// Definición de tipos para la base de datos
 export type Database = {
   public: {
     Tables: {
