@@ -398,12 +398,6 @@ export default function EditDocumentPage() {
                   </div>
 
                   <div className="flex items-center space-x-2 pt-2">
-                    <Checkbox
-                      id="verificationEnabled"
-                      checked={verificationEnabled}
-                      onCheckedChange={(checked) => setVerificationEnabled(checked === true)}
-                    />
-                    <Label htmlFor="verificationEnabled">Permitir verificación pública mediante QR</Label>
                   </div>
                 </div>
               )}
