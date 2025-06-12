@@ -185,52 +185,47 @@ export default function MovementsPage() {
   }
 
   return (
-    <div className="space-y-8 p-6">
-      {/* Header with gradient background */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 via-blue-600 to-purple-600 p-8 text-white">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">Movimientos de Documentos</h1>
-            <p className="text-green-100 text-lg">
-              Historial de todos los movimientos de documentos entre departamentos
-            </p>
-          </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-300 hover:scale-105 shadow-lg"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Actualizando..." : "Actualizar"}
-          </Button>
+    <div className="space-y-6 p-6">
+      {/* Header with gradient text */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
+            Movimientos de Documentos
+          </h1>
+          <p className="text-muted-foreground">Historial de todos los movimientos de documentos entre departamentos</p>
         </div>
-        {/* Decorative elements */}
-        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-green-400/20 rounded-full blur-2xl"></div>
+        <Button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          variant="outline"
+          className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Actualizando..." : "Actualizar"}
+        </Button>
       </div>
 
-      {/* Filters with modern styling */}
-      <Card className="border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+      {/* Filters */}
+      <Card className="hover:shadow-lg transition-shadow duration-300">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+            <Filter className="h-5 w-5 text-blue-600" />
             Filtros de Búsqueda
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar movimientos..."
-                className="pl-10 border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Select value={departmentFilter} onValueChange={(value) => setDepartmentFilter(value)}>
-              <SelectTrigger className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por departamento" />
               </SelectTrigger>
               <SelectContent>
@@ -248,7 +243,7 @@ export default function MovementsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg px-4 py-2 text-sm font-medium">
+            <div className="flex items-center justify-center bg-muted rounded-lg px-4 py-2 text-sm font-medium">
               Total: {filteredMovements.length} movimientos
             </div>
           </div>
@@ -257,14 +252,9 @@ export default function MovementsPage() {
 
       {/* Leyenda de colores */}
       {departments.length > 0 && (
-        <Card className="border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl">
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <div className="p-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded">
-                <FileText className="h-4 w-4 text-white" />
-              </div>
-              Leyenda de Departamentos
-            </CardTitle>
+            <CardTitle className="text-sm">Leyenda de Departamentos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3">
@@ -282,26 +272,23 @@ export default function MovementsPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card
-              key={i}
-              className="border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl animate-pulse"
-            >
+            <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-5 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-1/3"></div>
-                <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-1/4"></div>
+                <div className="h-5 bg-muted rounded w-1/3"></div>
+                <div className="h-4 bg-muted rounded w-1/4"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-full mb-2"></div>
-                <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-2/3"></div>
+                <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                <div className="h-4 bg-muted rounded w-2/3"></div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : filteredMovements.length === 0 ? (
-        <Card className="border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl">
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-12 text-center">
-            <div className="p-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl w-fit mx-auto mb-6">
-              <FileText className="h-16 w-16 text-blue-500 mx-auto" />
+            <div className="p-6 bg-muted/50 rounded-2xl w-fit mx-auto mb-6">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto" />
             </div>
             <h3 className="text-xl font-semibold mb-2">
               {movements.length === 0 ? "No hay movimientos registrados" : "No se encontraron movimientos"}
@@ -312,10 +299,7 @@ export default function MovementsPage() {
                 : "Los movimientos aparecerán aquí cuando se muevan documentos entre departamentos"}
             </p>
             {movements.length === 0 && (
-              <Button
-                onClick={handleRefresh}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              >
+              <Button onClick={handleRefresh} variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
               </Button>
@@ -325,14 +309,11 @@ export default function MovementsPage() {
       ) : (
         <div className="space-y-4">
           {filteredMovements.map((movement) => (
-            <Card
-              key={movement.id}
-              className="group border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
-            >
-              <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-t-lg">
+            <Card key={movement.id} className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+              <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg group-hover:text-blue-600 transition-colors duration-300">
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors duration-300">
                       {movement.documents ? (
                         <Link
                           href={`/documents/${movement.document_id}`}
@@ -354,34 +335,27 @@ export default function MovementsPage() {
                     </CardDescription>
                   </div>
                   {movement.documents && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700"
-                    >
+                    <Button variant="outline" size="sm" asChild>
                       <Link href={`/documents/${movement.document_id}`}>Ver Documento</Link>
                     </Button>
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl">
+                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
                     <DepartmentBadge department={movement.from_departments} />
-                    <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-                      <ArrowRight className="h-4 w-4 text-white" />
-                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground" />
                     <DepartmentBadge department={movement.to_departments} isDestination={true} />
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
                     Movido por {movement.profiles?.full_name || "Usuario desconocido"}
                   </div>
                   {movement.notes && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 rounded-xl border-l-4 border-gradient-to-b border-amber-500">
-                      <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">Notas:</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 whitespace-pre-line">{movement.notes}</p>
+                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-l-4 border-blue-500">
+                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Notas:</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-line">{movement.notes}</p>
                     </div>
                   )}
                 </div>

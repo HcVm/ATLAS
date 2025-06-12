@@ -212,19 +212,33 @@ export default function NotificationsPage() {
     <div className="container mx-auto py-10 px-4">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-6 w-6" />
-            Notificaciones
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg">
+              <Bell className="h-6 w-6" />
+            </div>
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              Notificaciones
+            </span>
           </h1>
           <p className="text-muted-foreground">Gestiona tus notificaciones del sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="hover:scale-105 transition-all duration-300 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
+          >
             <RefreshCw className="h-4 w-4 mr-1" />
             Actualizar
           </Button>
           {counts.unread > 0 && (
-            <Button variant="default" size="sm" onClick={handleMarkAllAsRead}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
               <Check className="h-4 w-4 mr-1" />
               Marcar todas como leídas
             </Button>
@@ -232,34 +246,59 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="shadow-xl border-0 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
         <CardHeader className="pb-3">
-          <CardTitle>Centro de notificaciones</CardTitle>
-          <CardDescription>Revisa tus notificaciones y actualizaciones del sistema</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg">
+              <Bell className="h-5 w-5" />
+            </div>
+            Centro de notificaciones
+          </CardTitle>
+          <CardDescription className="text-base">
+            Revisa tus notificaciones y actualizaciones del sistema
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">
+            <TabsList className="mb-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20">
+              <TabsTrigger
+                value="all"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300"
+              >
                 Todas{" "}
                 {counts.all > 0 && (
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                  >
                     {counts.all}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="unread">
+              <TabsTrigger
+                value="unread"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300"
+              >
                 No leídas{" "}
                 {counts.unread > 0 && (
-                  <Badge variant="destructive" className="ml-1">
+                  <Badge
+                    variant="destructive"
+                    className="ml-1 bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-md"
+                  >
                     {counts.unread}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="read">
+              <TabsTrigger
+                value="read"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white transition-all duration-300"
+              >
                 Leídas{" "}
                 {counts.read > 0 && (
-                  <Badge variant="outline" className="ml-1">
+                  <Badge
+                    variant="outline"
+                    className="ml-1 border-green-300 text-green-700 dark:border-green-700 dark:text-green-300"
+                  >
                     {counts.read}
                   </Badge>
                 )}
@@ -270,12 +309,17 @@ export default function NotificationsPage() {
               <TabsContent key={tab} value={tab} className="space-y-4">
                 {loading ? (
                   <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                      <p className="text-muted-foreground">Cargando notificaciones...</p>
+                    </div>
                   </div>
                 ) : notifications.length === 0 ? (
                   <div className="text-center py-10">
-                    <Bell className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                    <p className="mt-2 text-muted-foreground">
+                    <div className="p-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                      <Bell className="h-12 w-12 text-blue-400 opacity-60" />
+                    </div>
+                    <p className="mt-2 text-muted-foreground text-lg">
                       No hay notificaciones {tab === "unread" ? "no leídas" : tab === "read" ? "leídas" : ""}
                     </p>
                   </div>
@@ -284,36 +328,49 @@ export default function NotificationsPage() {
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-4 rounded-lg border ${notification.read ? "bg-muted/30" : "bg-card"} ${
-                          isNavigable(notification) ? "cursor-pointer hover:bg-muted/50" : ""
+                        className={`p-4 rounded-lg border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
+                          notification.read
+                            ? "bg-gradient-to-r from-gray-50/50 to-slate-50/50 dark:from-gray-900/20 dark:to-slate-900/20 border-gray-200 dark:border-gray-700"
+                            : "bg-gradient-to-r from-blue-50/50 via-purple-50/30 to-indigo-50/50 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-indigo-950/20 border-blue-200 dark:border-blue-700 shadow-md"
+                        } ${
+                          isNavigable(notification)
+                            ? "cursor-pointer hover:bg-gradient-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30"
+                            : ""
                         }`}
                         onClick={() => isNavigable(notification) && handleNotificationClick(notification)}
                       >
                         <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium">{notification.title}</h3>
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-medium text-lg">{notification.title}</h3>
                               {notification.type && (
-                                <Badge className={`text-xs ${getNotificationTypeColor(notification.type)}`}>
+                                <Badge
+                                  className={`text-xs shadow-sm transition-all duration-300 hover:scale-105 ${getNotificationTypeColor(notification.type)}`}
+                                >
                                   {getNotificationTypeLabel(notification.type)}
                                 </Badge>
                               )}
-                              {isNavigable(notification) && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
+                              {isNavigable(notification) && (
+                                <div className="p-1 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                  <ExternalLink className="h-3 w-3" />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm text-muted-foreground">{notification.message}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground leading-relaxed">{notification.message}</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-blue-400"></div>
                               {notification.created_at &&
                                 format(new Date(notification.created_at), "d 'de' MMMM, yyyy 'a las' HH:mm", {
                                   locale: es,
                                 })}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 ml-4">
                             {!notification.read && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 hover:bg-green-100 hover:text-green-600 transition-all duration-300 hover:scale-110"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleMarkAsRead(notification.id)
@@ -325,7 +382,7 @@ export default function NotificationsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-destructive"
+                              className="h-8 w-8 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all duration-300 hover:scale-110"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDelete(notification.id)

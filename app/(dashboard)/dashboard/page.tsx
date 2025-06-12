@@ -167,128 +167,116 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 p-6">
-      {/* Header with gradient background */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 p-8 text-white">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">Dashboard</h1>
-            <p className="text-blue-100 text-lg">Bienvenido de vuelta, {user.full_name}</p>
-          </div>
-          <Button
-            asChild
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-300 hover:scale-105 shadow-lg"
-          >
-            <Link href="/documents/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Documento
-            </Link>
-          </Button>
+      {/* Header with gradient text */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground text-lg">Bienvenido de vuelta, {user.full_name}</p>
         </div>
-        {/* Decorative elements */}
-        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl"></div>
+        <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <Link href="/documents/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Documento
+          </Link>
+        </Button>
       </div>
 
-      {/* Stats Cards with modern effects */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:-translate-y-1">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Documentos</CardTitle>
-            <div className="p-2 bg-blue-500 rounded-lg shadow-lg">
-              <FileText className="h-4 w-4 text-white" />
+      {/* Stats Cards - Similar to statistics page */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <FileText className="h-4 w-4 text-blue-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.totalDocuments}</div>
-            <p className="text-xs text-blue-600/70 dark:text-blue-400/70">Documentos en el sistema</p>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-blue-600">{stats.totalDocuments}</div>
+            <p className="text-xs text-muted-foreground">Documentos en el sistema</p>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/30 hover:shadow-xl hover:shadow-amber-500/25 transition-all duration-300 hover:-translate-y-1">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-300">Pendientes</CardTitle>
-            <div className="p-2 bg-amber-500 rounded-lg shadow-lg">
-              <TrendingUp className="h-4 w-4 text-white" />
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <TrendingUp className="h-4 w-4 text-orange-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.pendingDocuments}</div>
-            <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Documentos pendientes</p>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-orange-600">{stats.pendingDocuments}</div>
+            <p className="text-xs text-muted-foreground">Documentos pendientes</p>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 hover:shadow-xl hover:shadow-green-500/25 transition-all duration-300 hover:-translate-y-1">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">Completados</CardTitle>
-            <div className="p-2 bg-green-500 rounded-lg shadow-lg">
-              <Users className="h-4 w-4 text-white" />
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Completados</CardTitle>
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <Users className="h-4 w-4 text-green-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.completedDocuments}</div>
-            <p className="text-xs text-green-600/70 dark:text-green-400/70">Documentos completados</p>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-green-600">{stats.completedDocuments}</div>
+            <p className="text-xs text-muted-foreground">Documentos completados</p>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 hover:shadow-xl hover:shadow-purple-500/25 transition-all duration-300 hover:-translate-y-1">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Movimientos</CardTitle>
-            <div className="p-2 bg-purple-500 rounded-lg shadow-lg">
-              <Activity className="h-4 w-4 text-white" />
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Movimientos</CardTitle>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Activity className="h-4 w-4 text-purple-600" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.totalMovements}</div>
-            <p className="text-xs text-purple-600/70 dark:text-purple-400/70">Total de movimientos</p>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-purple-600">{stats.totalMovements}</div>
+            <p className="text-xs text-muted-foreground">Total de movimientos</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* News Carousel with enhanced styling */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Noticias de la Empresa
-          </h2>
-        </div>
+      {/* News Carousel */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Noticias de la Empresa
+        </h2>
         <NewsCarousel />
       </div>
 
-      {/* Recent Documents and Activity with modern cards */}
+      {/* Recent Documents and Activity */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl hover:shadow-2xl transition-all duration-300">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+        <Card className="col-span-4 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+              <FileText className="h-5 w-5 text-blue-600" />
               Documentos Recientes
             </CardTitle>
-            <CardDescription className="text-blue-100">Últimos documentos registrados en el sistema</CardDescription>
+            <CardDescription>Últimos documentos registrados en el sistema</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             {loading ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex items-center space-x-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-200 to-blue-300 animate-pulse" />
+                    <div className="h-12 w-12 rounded-lg bg-muted animate-pulse" />
                     <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-300 rounded animate-pulse" />
-                      <div className="h-3 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-2/3 animate-pulse" />
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-3 bg-muted rounded w-2/3 animate-pulse" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : stats.recentDocuments.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="p-4 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl w-fit mx-auto mb-4">
-                  <FileText className="h-12 w-12 text-blue-500 mx-auto" />
+              <div className="text-center py-6">
+                <div className="p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
                 </div>
                 <p className="text-muted-foreground">No hay documentos disponibles</p>
               </div>
@@ -297,15 +285,13 @@ export default function DashboardPage() {
                 {stats.recentDocuments.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="group flex items-center space-x-4 p-3 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950/30 dark:hover:to-purple-950/30 transition-all duration-300"
+                    className="group flex items-center space-x-4 p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <FileText className="h-6 w-6 text-white" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                      <FileText className="h-6 w-6 text-primary" />
                     </div>
                     <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none group-hover:text-blue-600 transition-colors duration-300">
-                        {doc.title}
-                      </p>
+                      <p className="text-sm font-medium leading-none">{doc.title}</p>
                       <p className="text-sm text-muted-foreground">
                         {doc.document_number} • {doc.departments?.name || "Sin departamento"}
                       </p>
@@ -323,28 +309,28 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 shadow-xl hover:shadow-2xl transition-all duration-300">
-          <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
+        <Card className="col-span-3 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
+              <Activity className="h-5 w-5 text-green-600" />
               Actividad Reciente
             </CardTitle>
-            <CardDescription className="text-green-100">Últimos movimientos del sistema</CardDescription>
+            <CardDescription>Últimos movimientos del sistema</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             {loading ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="space-y-2">
-                    <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-300 rounded animate-pulse" />
-                    <div className="h-3 bg-gradient-to-r from-slate-200 to-slate-300 rounded w-3/4 animate-pulse" />
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                    <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />
                   </div>
                 ))}
               </div>
             ) : stats.recentActivity.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="p-4 bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 rounded-2xl w-fit mx-auto mb-4">
-                  <Activity className="h-12 w-12 text-green-500 mx-auto" />
+              <div className="text-center py-6">
+                <div className="p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
+                  <Activity className="h-12 w-12 text-muted-foreground mx-auto" />
                 </div>
                 <p className="text-muted-foreground">No hay actividad registrada</p>
               </div>
@@ -353,11 +339,9 @@ export default function DashboardPage() {
                 {stats.recentActivity.map((activity: any) => (
                   <div
                     key={activity.id}
-                    className="group p-3 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 dark:hover:from-green-950/30 dark:hover:to-blue-950/30 transition-all duration-300"
+                    className="group p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
                   >
-                    <p className="text-sm font-medium group-hover:text-green-600 transition-colors duration-300">
-                      {activity.documents?.title}
-                    </p>
+                    <p className="text-sm font-medium">{activity.documents?.title}</p>
                     <p className="text-xs text-muted-foreground">
                       Movido por {activity.profiles?.full_name} a {activity.departments?.name}
                     </p>

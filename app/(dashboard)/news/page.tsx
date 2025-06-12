@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Newspaper, Edit, Trash2, Eye } from "lucide-react"
+import { Plus, Search, Newspaper, Edit, Trash2, Eye, Calendar, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -142,10 +142,15 @@ export default function NewsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Noticias</h1>
-          <p className="text-muted-foreground">Gestiona las noticias de la empresa</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
+            Noticias
+          </h1>
+          <p className="text-muted-foreground mt-1">Gestiona las noticias de la empresa</p>
         </div>
-        <Button asChild>
+        <Button
+          asChild
+          className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
           <Link href="/news/create">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Noticia
@@ -153,14 +158,14 @@ export default function NewsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar noticias..."
-                className="pl-8"
+                className="pl-8 border-gray-200 focus:border-orange-400 focus:ring-orange-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -169,53 +174,80 @@ export default function NewsPage() {
 
           {loading ? (
             <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
               <p className="mt-4 text-muted-foreground">Cargando noticias...</p>
             </div>
           ) : filteredNews.length === 0 ? (
-            <div className="text-center py-10">
-              <Newspaper className="h-12 w-12 text-muted-foreground mx-auto" />
-              <h3 className="mt-4 text-lg font-medium">No hay noticias</h3>
+            <div className="text-center py-12">
+              <div className="p-4 rounded-full bg-gradient-to-br from-orange-100 to-red-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Newspaper className="h-8 w-8 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay noticias</h3>
               <p className="text-muted-foreground">No se encontraron noticias en el sistema.</p>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border border-gray-200 overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Autor</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
+                    <TableHead className="font-semibold text-gray-700">Título</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Autor</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Fecha</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredNews.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow
+                      key={item.id}
+                      className="border-gray-100 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-red-50/50 transition-all duration-300"
+                    >
                       <TableCell>
                         <div>
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-sm text-muted-foreground line-clamp-2">
+                          <div className="font-medium text-gray-900">{item.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
                             {item.content.substring(0, 100)}...
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{item.profiles?.full_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="p-1 rounded-md bg-gradient-to-br from-orange-100 to-red-100">
+                            <User className="h-3 w-3 text-orange-600" />
+                          </div>
+                          <span className="text-gray-600">{item.profiles?.full_name}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={item.published ? "default" : "secondary"}
-                          className="cursor-pointer"
+                          className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
+                            item.published
+                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm"
+                              : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 shadow-sm"
+                          }`}
                           onClick={() => togglePublished(item.id, item.published)}
                         >
                           {item.published ? "Publicado" : "Borrador"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(item.created_at).toLocaleDateString("es-ES")}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
+                            <Calendar className="h-3 w-3 text-blue-600" />
+                          </div>
+                          <span className="text-gray-600">{new Date(item.created_at).toLocaleDateString("es-ES")}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="hover:bg-gray-100 transition-colors duration-200"
+                            >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="16"
@@ -234,28 +266,37 @@ export default function NewsPage() {
                               </svg>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
                             <DropdownMenuItem asChild>
-                              <Link href={`/news/view/${item.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
+                              <Link
+                                href={`/news/view/${item.id}`}
+                                className="hover:bg-blue-50 transition-colors duration-200"
+                              >
+                                <Eye className="mr-2 h-4 w-4 text-blue-600" />
                                 <span>Ver</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link href={`/news/edit/${item.id}`}>
-                                <Edit className="mr-2 h-4 w-4" />
+                              <Link
+                                href={`/news/edit/${item.id}`}
+                                className="hover:bg-green-50 transition-colors duration-200"
+                              >
+                                <Edit className="mr-2 h-4 w-4 text-green-600" />
                                 <span>Editar</span>
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => togglePublished(item.id, item.published)}>
-                              <span>{item.published ? "Despublicar" : "Publicar"}</span>
+                            <DropdownMenuItem
+                              onClick={() => togglePublished(item.id, item.published)}
+                              className="hover:bg-yellow-50 transition-colors duration-200"
+                            >
+                              <span className="text-yellow-600">{item.published ? "Despublicar" : "Publicar"}</span>
                             </DropdownMenuItem>
                             {user?.role === "admin" && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(item)}
-                                  className="text-red-600 focus:text-red-600"
+                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   <span>Eliminar</span>

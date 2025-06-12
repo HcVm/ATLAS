@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Building2, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Building2, Edit, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -155,23 +155,28 @@ export default function DepartmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Departamentos</h1>
-          <p className="text-muted-foreground">Gestiona todos los departamentos de la organización</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Departamentos
+          </h1>
+          <p className="text-muted-foreground mt-1">Gestiona todos los departamentos de la organización</p>
         </div>
-        <Button onClick={() => router.push("/departments/new")}>
+        <Button
+          onClick={() => router.push("/departments/new")}
+          className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Departamento
         </Button>
       </div>
 
-      <Card>
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar departamentos..."
-                className="pl-8"
+                className="pl-8 border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -180,58 +185,78 @@ export default function DepartmentsPage() {
 
           {loading ? (
             <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
               <p className="mt-4 text-muted-foreground">Cargando departamentos...</p>
             </div>
           ) : filteredDepartments.length === 0 ? (
-            <div className="text-center py-10">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto" />
-              <h3 className="mt-4 text-lg font-medium">No hay departamentos</h3>
+            <div className="text-center py-12">
+              <div className="p-4 rounded-full bg-gradient-to-br from-emerald-100 to-blue-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Building2 className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
               <p className="text-muted-foreground">No se encontraron departamentos en el sistema.</p>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border border-gray-200 overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Departamento</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Color</TableHead>
-                    <TableHead>Usuarios</TableHead>
-                    <TableHead>Fecha de creación</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                  <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
+                    <TableHead className="font-semibold text-gray-700">Departamento</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Descripción</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Color</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Usuarios</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Fecha de creación</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDepartments.map((dept) => (
-                    <TableRow key={dept.id}>
+                    <TableRow
+                      key={dept.id}
+                      className="border-gray-100 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/50 transition-all duration-300"
+                    >
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <div
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
-                            style={{ backgroundColor: dept.color || "#6B7280" }}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg transition-transform duration-300 hover:scale-110"
+                            style={{
+                              background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color || "#6B7280"}dd)`,
+                            }}
                           >
-                            <Building2 className="h-4 w-4" />
+                            <Building2 className="h-5 w-5" />
                           </div>
-                          <div className="font-medium">{dept.name}</div>
+                          <div className="font-medium text-gray-900">{dept.name}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{dept.description || "Sin descripción"}</TableCell>
+                      <TableCell className="text-gray-600">{dept.description || "Sin descripción"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div
-                            className="w-4 h-4 rounded-full border"
+                            className="w-5 h-5 rounded-full border-2 border-white shadow-md transition-transform duration-300 hover:scale-125"
                             style={{ backgroundColor: dept.color || "#6B7280" }}
                           />
-                          <span className="text-sm text-muted-foreground">{dept.color || "#6B7280"}</span>
+                          <span className="text-sm text-muted-foreground font-mono">{dept.color || "#6B7280"}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{dept.profiles?.length || 0}</TableCell>
-                      <TableCell>{new Date(dept.created_at).toLocaleDateString("es-ES")}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
+                            <Users className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <span className="font-medium text-gray-700">{dept.profiles?.length || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {new Date(dept.created_at).toLocaleDateString("es-ES")}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="hover:bg-gray-100 transition-colors duration-200"
+                            >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="16"
@@ -250,15 +275,18 @@ export default function DepartmentsPage() {
                               </svg>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)}>
-                              <Edit className="mr-2 h-4 w-4" />
+                          <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/departments/edit/${dept.id}`)}
+                              className="hover:bg-blue-50 transition-colors duration-200"
+                            >
+                              <Edit className="mr-2 h-4 w-4 text-blue-600" />
                               <span>Editar</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(dept)}
-                              className="text-red-600 focus:text-red-600"
+                              className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Eliminar</span>
