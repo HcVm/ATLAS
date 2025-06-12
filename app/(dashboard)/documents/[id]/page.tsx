@@ -498,25 +498,49 @@ export default function DocumentDetailsPage() {
     try {
       setDownloadLoading(true)
 
+      // Extraer la ruta del archivo de manera más robusta
       let filePath = attachment.file_url
+      let bucketName = "document_attachments"
 
       if (filePath.startsWith("http")) {
         try {
           const url = new URL(filePath)
-          const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/document_attachments\/(.+)/)
+
+          // Intentar diferentes patrones de URL
+          let pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/document_attachments\/(.+)/)
           if (pathMatch && pathMatch[1]) {
             filePath = pathMatch[1]
           } else {
-            filePath = url.pathname.replace("/storage/v1/object/public/", "")
+            pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/(.+?)\/(.+)/)
+            if (pathMatch && pathMatch[1] && pathMatch[2]) {
+              bucketName = pathMatch[1]
+              filePath = pathMatch[2]
+            } else {
+              // Último intento: eliminar el prefijo común
+              filePath = url.pathname.replace("/storage/v1/object/public/", "")
+
+              // Si todavía tiene document_attachments/ al principio, extraerlo
+              if (filePath.startsWith("document_attachments/")) {
+                filePath = filePath.replace("document_attachments/", "")
+              }
+            }
           }
+
+          console.log("Bucket:", bucketName, "FilePath:", filePath)
         } catch (e) {
           console.error("Error parsing URL:", e)
         }
       }
 
+      // Intentar crear una URL firmada
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from("document_attachments")
+        .from(bucketName)
         .createSignedUrl(filePath, 60)
+
+      if (signedUrlError) {
+        console.error("Error creating signed URL:", signedUrlError)
+        throw new Error(`Error al crear URL firmada: ${signedUrlError.message}`)
+      }
 
       if (signedUrlData?.signedUrl) {
         // Rastrear la descarga del adjunto
@@ -530,13 +554,16 @@ export default function DocumentDetailsPage() {
           })
         }
 
+        // Abrir en nueva pestaña
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
 
-      const { data, error } = await supabase.storage.from("document_attachments").download(filePath)
+      // Si no se pudo crear URL firmada, intentar descarga directa
+      const { data, error } = await supabase.storage.from(bucketName).download(filePath)
 
       if (error) {
+        console.error("Download error:", error)
         throw new Error(error.message || "Error al descargar el archivo adjunto")
       }
 
@@ -556,6 +583,7 @@ export default function DocumentDetailsPage() {
         })
       }
 
+      // Crear blob URL y descargar
       const url = URL.createObjectURL(data)
       const a = document.createElement("a")
       a.href = url
