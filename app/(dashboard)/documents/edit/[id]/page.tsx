@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { DatePicker } from "@/components/ui/date-picker"
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Save, ArrowLeft, Shield, Calendar, User, FileText } from "lucide-react"
 
@@ -374,16 +374,13 @@ export default function EditDocumentPage() {
                     />
                   </div>
 
-                  {/* Contenedor mejorado para los calendarios */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="issuedDate" className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
                         Fecha de Emisión
                       </Label>
-                      <div className="relative">
-                        <DatePicker date={issuedDate} setDate={setIssuedDate} placeholder="Fecha de emisión" />
-                      </div>
+                      <DatePickerImproved date={issuedDate} setDate={setIssuedDate} placeholder="Fecha de emisión" />
                     </div>
 
                     <div className="space-y-2">
@@ -391,9 +388,7 @@ export default function EditDocumentPage() {
                         <Calendar className="h-4 w-4 mr-1" />
                         Fecha de Expiración
                       </Label>
-                      <div className="relative">
-                        <DatePicker date={expiryDate} setDate={setExpiryDate} placeholder="Fecha de expiración" />
-                      </div>
+                      <DatePickerImproved date={expiryDate} setDate={setExpiryDate} placeholder="Fecha de expiración" />
                     </div>
                   </div>
 
