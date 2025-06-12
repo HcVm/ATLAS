@@ -27,11 +27,20 @@ const DEPARTMENT_COLORS = [
   { value: "bg-teal-500", label: "Verde Azulado", textColor: "text-white" },
 ]
 
+interface Department {
+  id: string
+  name: string
+  description?: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
 export default function EditDepartmentPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
-  const [department, setDepartment] = useState<any>(null)
+  const [department, setDepartment] = useState<Department | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
@@ -40,15 +49,38 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
     color: "bg-blue-500",
   })
 
+  // Función para verificar si el usuario es administrador
+  const isAdmin = (user: any): boolean => {
+    return user?.role === "admin" || user?.role === "supervisor"
+  }
+
   useEffect(() => {
-    if (currentUser?.role === "admin") {
-      fetchDepartment()
+    if (currentUser) {
+      if (isAdmin(currentUser)) {
+        fetchDepartment()
+      } else {
+        toast({
+          title: "Acceso denegado",
+          description: "No tienes permisos para acceder a esta página.",
+          variant: "destructive",
+        })
+        router.push("/departments")
+      }
     }
   }, [currentUser, params.id])
 
   const fetchDepartment = async () => {
     try {
-      const response = await fetch(`/api/departments/${params.id}`)
+      console.log(`Fetching department: ${params.id}`)
+
+      const response = await fetch(`/api/departments/${params.id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log(`Response status: ${response.status}`)
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -62,10 +94,12 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         }
 
         const errorData = await response.json()
+        console.error("Error response:", errorData)
         throw new Error(errorData.error || "Error al cargar el departamento")
       }
 
       const data = await response.json()
+      console.log("Department data received:", data)
 
       setDepartment(data)
       setFormData({
@@ -80,6 +114,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         description: error.message || "No se pudo cargar el departamento",
         variant: "destructive",
       })
+      router.push("/departments")
     } finally {
       setLoading(false)
     }
@@ -87,32 +122,54 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!formData.name.trim()) {
+      toast({
+        title: "Error de validación",
+        description: "El nombre del departamento es requerido.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setSaving(true)
 
     try {
+      console.log(`Updating department: ${params.id}`)
+      console.log("Form data:", formData)
+
       const response = await fetch(`/api/departments/${params.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || null,
+          name: formData.name.trim(),
+          description: formData.description?.trim() || null,
           color: formData.color,
         }),
       })
 
+      console.log(`Update response status: ${response.status}`)
+
       if (!response.ok) {
         const errorData = await response.json()
+        console.error("Update error response:", errorData)
         throw new Error(errorData.error || "Error al actualizar departamento")
       }
+
+      const result = await response.json()
+      console.log("Update result:", result)
 
       toast({
         title: "Departamento actualizado",
         description: "El departamento se ha actualizado correctamente",
       })
 
-      router.push("/departments")
+      // Esperar un poco antes de redirigir para que el usuario vea el mensaje
+      setTimeout(() => {
+        router.push("/departments")
+      }, 1500)
     } catch (error: any) {
       console.error("Error updating department:", error)
       toast({
@@ -125,11 +182,21 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
     }
   }
 
-  if (currentUser?.role !== "admin") {
+  if (!currentUser) {
+    return (
+      <div className="text-center py-10">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Cargando...</p>
+      </div>
+    )
+  }
+
+  if (!isAdmin(currentUser)) {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
         <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+        <p className="text-sm text-muted-foreground mt-2">Tu rol actual: {currentUser.role}</p>
       </div>
     )
   }
@@ -165,7 +232,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Editar Departamento</h1>
-          <p className="text-muted-foreground">Modifica la información del departamento</p>
+          <p className="text-muted-foreground">Modifica la información del departamento: {department.name}</p>
         </div>
       </div>
 
@@ -178,13 +245,14 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Departamento</Label>
+                <Label htmlFor="name">Nombre del Departamento *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   disabled={saving}
                   required
+                  placeholder="Ingresa el nombre del departamento"
                 />
               </div>
 
@@ -192,15 +260,16 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                 <Label htmlFor="description">Descripción</Label>
                 <Textarea
                   id="description"
-                  value={formData.description || ""}
+                  value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   disabled={saving}
                   rows={4}
+                  placeholder="Descripción opcional del departamento"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Color del Departamento</Label>
+                <Label>Color del Departamento *</Label>
                 <RadioGroup
                   value={formData.color}
                   onValueChange={(value) => setFormData({ ...formData, color: value })}
@@ -211,9 +280,9 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                       <RadioGroupItem value={color.value} id={color.value} className="sr-only" />
                       <Label
                         htmlFor={color.value}
-                        className={`flex items-center justify-center px-3 py-2 rounded-md cursor-pointer ${
+                        className={`flex items-center justify-center px-3 py-2 rounded-md cursor-pointer transition-all ${
                           formData.color === color.value ? "ring-2 ring-offset-2 ring-primary" : ""
-                        } ${color.value} ${color.textColor}`}
+                        } ${color.value} ${color.textColor} hover:opacity-80`}
                       >
                         {color.label}
                       </Label>
