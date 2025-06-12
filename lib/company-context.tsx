@@ -36,10 +36,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Cargar todas las empresas disponibles (solo para admin)
+  // Cargar todas las empresas disponibles
   useEffect(() => {
     async function loadCompanies() {
-      if (!user) return
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
       try {
         setLoading(true)
@@ -53,8 +56,16 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
           setAllCompanies(data || [])
 
-          // Si no hay empresa seleccionada, usar la primera
-          if (!selectedCompany && data && data.length > 0) {
+          // Cargar selección guardada
+          const savedCompanyId = localStorage.getItem("selectedCompanyId")
+          if (savedCompanyId && data) {
+            const savedCompany = data.find((c) => c.id === savedCompanyId)
+            if (savedCompany) {
+              setSelectedCompany(savedCompany)
+            } else if (data.length > 0) {
+              setSelectedCompany(data[0])
+            }
+          } else if (data && data.length > 0) {
             setSelectedCompany(data[0])
           }
         }
@@ -83,26 +94,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
     loadCompanies()
   }, [user])
-
-  // Guardar la selección en localStorage (solo para admin)
-  useEffect(() => {
-    if (user?.role === "admin" && selectedCompany) {
-      localStorage.setItem("selectedCompanyId", selectedCompany.id)
-    }
-  }, [selectedCompany, user?.role])
-
-  // Cargar la selección guardada al iniciar (solo para admin)
-  useEffect(() => {
-    if (user?.role === "admin" && allCompanies.length > 0) {
-      const savedCompanyId = localStorage.getItem("selectedCompanyId")
-      if (savedCompanyId) {
-        const savedCompany = allCompanies.find((c) => c.id === savedCompanyId)
-        if (savedCompany) {
-          setSelectedCompany(savedCompany)
-        }
-      }
-    }
-  }, [allCompanies, user?.role])
 
   return (
     <CompanyContext.Provider
