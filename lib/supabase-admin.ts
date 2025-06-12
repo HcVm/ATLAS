@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js"
-import type { Database } from "./supabase"
 
-// Cliente de Supabase con permisos de administrador usando service_role
-export const supabaseAdmin = createClient<Database>(
-  process.env.SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Cliente de Supabase con permisos de administrador
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
 export interface CreateUserParams {
   email: string
@@ -42,15 +46,17 @@ export async function createUserAsAdmin(params: CreateUserParams) {
 
     // 2. Crear el perfil en la tabla profiles
     if (authData.user) {
-      const { data: profileData, error: profileError } = await supabaseAdmin
+      const profileData = {
+        id: authData.user.id,
+        email: params.email,
+        full_name: params.full_name,
+        role: params.role,
+        department_id: params.department_id === "none" ? null : params.department_id,
+      }
+
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
-        .insert({
-          id: authData.user.id,
-          email: params.email,
-          full_name: params.full_name,
-          role: params.role,
-          department_id: params.department_id,
-        })
+        .insert(profileData)
         .select()
         .single()
 
@@ -61,7 +67,7 @@ export async function createUserAsAdmin(params: CreateUserParams) {
         return { error: profileError, data: null }
       }
 
-      return { data: { user: authData.user, profile: profileData }, error: null }
+      return { data: { user: authData.user, profile }, error: null }
     }
 
     return { data: authData, error: null }
@@ -102,7 +108,9 @@ export async function updateUserAsAdmin(userId: string, params: UpdateUserParams
     if (params.email) updateData.email = params.email
     if (params.full_name) updateData.full_name = params.full_name
     if (params.role) updateData.role = params.role
-    if (params.department_id) updateData.department_id = params.department_id
+    if (params.department_id !== undefined) {
+      updateData.department_id = params.department_id === "none" ? null : params.department_id
+    }
 
     if (Object.keys(updateData).length > 0) {
       const { error: profileError } = await supabaseAdmin.from("profiles").update(updateData).eq("id", userId)

@@ -172,10 +172,10 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
               <AvatarImage src={user.avatar_url || ""} />
               <AvatarFallback className="text-2xl">
                 {user.full_name
-                  .split(" ")
+                  ?.split(" ")
                   .map((n: string) => n[0])
                   .join("")
-                  .toUpperCase()}
+                  .toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
             <Button variant="outline" size="sm">
