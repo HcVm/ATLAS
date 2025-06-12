@@ -1,187 +1,117 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/lib/auth-context"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { User, Building2, Calendar, Shield, Save, Camera, FileText, Activity, Settings, Bell, Lock } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+
 import { supabase } from "@/lib/supabase"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Camera, Save, Upload, X } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
-  const [formData, setFormData] = useState({
-    full_name: user?.full_name || "",
-    email: user?.email || "",
+  const [profile, setProfile] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    avatar_url: "",
   })
-  const [userData, setUserData] = useState<any>(null)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [stats, setStats] = useState({
+    documentsCreated: 0,
+    documentsInDepartment: 0,
+    movementsMade: 0,
+  })
+  const [department, setDepartment] = useState<any>(null)
 
   useEffect(() => {
     if (user) {
-      fetchUserProfile()
+      setProfile({
+        full_name: user.full_name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        avatar_url: user.avatar_url || "",
+      })
+      fetchUserStats()
+      fetchDepartment()
     }
   }, [user])
 
-  const fetchUserProfile = async () => {
+  const fetchUserStats = async () => {
+    if (!user) return
+
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(`
-          *,
-          departments!profiles_department_id_fkey (
-            id,
-            name
-          )
-        `)
-        .eq("id", user?.id)
-        .single()
+      const [documentsRes, movementsRes] = await Promise.all([
+        supabase.from("documents").select("id", { count: "exact", head: true }).eq("created_by", user.id),
+        supabase.from("document_movements").select("id", { count: "exact", head: true }).eq("moved_by", user.id),
+      ])
+
+      let departmentDocsCount = 0
+      if (user.department_id) {
+        const { count } = await supabase
+          .from("documents")
+          .select("id", { count: "exact", head: true })
+          .eq("current_department_id", user.department_id)
+        departmentDocsCount = count || 0
+      }
+
+      setStats({
+        documentsCreated: documentsRes.count || 0,
+        documentsInDepartment: departmentDocsCount,
+        movementsMade: movementsRes.count || 0,
+      })
+    } catch (error) {
+      console.error("Error fetching user stats:", error)
+    }
+  }
+
+  const fetchDepartment = async () => {
+    if (!user?.department_id) return
+
+    try {
+      const { data, error } = await supabase.from("departments").select("*").eq("id", user.department_id).single()
 
       if (error) throw error
-
-      setFormData({
-        full_name: data.full_name || "",
-        email: data.email || "",
-      })
-
-      setUserData(data)
-    } catch (error: any) {
-      setError("Error al cargar el perfil: " + error.message)
+      setDepartment(data)
+    } catch (error) {
+      console.error("Error fetching department:", error)
     }
   }
 
-  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleSave = async () => {
+    if (!user) return
 
-    // Validar tipo de archivo
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
-        description: "Por favor selecciona un archivo de imagen válido",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validar tamaño (máximo 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "La imagen debe ser menor a 5MB",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setAvatarFile(file)
-
-    // Crear preview
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setAvatarPreview(e.target?.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const uploadAvatar = async () => {
-    if (!avatarFile || !user) return null
-
-    setUploadingAvatar(true)
-    try {
-      // Eliminar avatar anterior si existe
-      if (user.avatar_url) {
-        const oldPath = user.avatar_url.split("/").pop()
-        if (oldPath) {
-          await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`])
-        }
-      }
-
-      // Subir nuevo avatar
-      const fileExt = avatarFile.name.split(".").pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `${user.id}/${fileName}`
-
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, avatarFile)
-
-      if (uploadError) throw uploadError
-
-      // Obtener URL pública
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(filePath)
-
-      return publicUrl
-    } catch (error: any) {
-      console.error("Error uploading avatar:", error)
-      toast({
-        title: "Error",
-        description: "Error al subir la imagen: " + error.message,
-        variant: "destructive",
-      })
-      return null
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
     setLoading(true)
-    setMessage("")
-    setError("")
-
     try {
-      if (!user) throw new Error("Usuario no autenticado")
-
-      let avatarUrl = user.avatar_url
-
-      // Subir avatar si hay uno nuevo
-      if (avatarFile) {
-        const newAvatarUrl = await uploadAvatar()
-        if (newAvatarUrl) {
-          avatarUrl = newAvatarUrl
-        }
-      }
-
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: formData.full_name,
-          email: formData.email,
-          avatar_url: avatarUrl,
+          full_name: profile.full_name,
+          phone: profile.phone,
         })
         .eq("id", user.id)
 
       if (error) throw error
 
-      // Actualizar contexto de usuario
       await refreshUser()
-
-      setMessage("Perfil actualizado exitosamente")
-      setAvatarFile(null)
-      setAvatarPreview(null)
-
       toast({
-        title: "Éxito",
-        description: "Perfil actualizado correctamente",
+        title: "Perfil actualizado",
+        description: "Tu perfil ha sido actualizado correctamente.",
       })
     } catch (error: any) {
-      setError(error.message)
+      console.error("Error updating profile:", error)
       toast({
         title: "Error",
-        description: error.message,
+        description: "No se pudo actualizar el perfil: " + error.message,
         variant: "destructive",
       })
     } finally {
@@ -189,147 +119,303 @@ export default function ProfilePage() {
     }
   }
 
-  const cancelAvatarChange = () => {
-    setAvatarFile(null)
-    setAvatarPreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm">Administrador</Badge>
+      case "supervisor":
+        return <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm">Supervisor</Badge>
+      case "user":
+        return (
+          <Badge variant="secondary" className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm">
+            Usuario
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{role}</Badge>
     }
   }
 
   if (!user) {
-    return <div>Cargando...</div>
+    return (
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-muted-foreground">Cargando perfil...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Mi Perfil</h1>
-        <p className="text-muted-foreground">Gestiona tu información personal</p>
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Mi Perfil
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Gestiona tu información personal y configuración
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Foto de Perfil</CardTitle>
-            <CardDescription>Actualiza tu foto de perfil</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
-            <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-              <AvatarImage src={avatarPreview || user.avatar_url || ""} className="object-cover" />
-              <AvatarFallback className="text-2xl bg-primary/10">
-                {user.full_name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+      {/* Profile Header Card */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+            <div className="relative group">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-white shadow-xl">
+                <AvatarImage src={profile.avatar_url || "/placeholder.svg"} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 font-bold text-lg sm:text-xl">
+                  {profile.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                size="icon"
+                variant="outline"
+                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-white shadow-lg hover:scale-110 transition-all duration-300"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </div>
 
-            {avatarFile && (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={cancelAvatarChange} disabled={uploadingAvatar}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </Button>
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{profile.full_name}</h2>
+                <p className="text-sm sm:text-base text-muted-foreground">{profile.email}</p>
               </div>
-            )}
 
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                {getRoleBadge(user.role)}
+                {department && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: department.color || "#6B7280" }} />
+                    <span className="text-sm text-muted-foreground">{department.name}</span>
+                  </div>
+                )}
+              </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
-            >
-              {uploadingAvatar ? (
-                <>
-                  <Upload className="h-4 w-4 mr-2 animate-spin" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <Camera className="h-4 w-4 mr-2" />
-                  {avatarFile ? "Cambiar Foto" : "Subir Foto"}
-                </>
-              )}
-            </Button>
+              <div className="flex items-center justify-center sm:justify-start gap-1 text-xs sm:text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>Miembro desde {format(new Date(user.created_at), "MMMM yyyy", { locale: es })}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Documentos Creados</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.documentsCreated}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-100">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Personal</CardTitle>
-              <CardDescription>Actualiza tu información personal</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">En Mi Departamento</p>
+                <p className="text-2xl font-bold text-green-600">{stats.documentsInDepartment}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-green-100">
+                <Building2 className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                {message && (
-                  <Alert>
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
-                )}
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Movimientos</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.movementsMade}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-100">
+                <Activity className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Main Content */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 mb-6 bg-gradient-to-r from-blue-100 to-purple-100">
+              <TabsTrigger
+                value="profile"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
+              >
+                <User className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Perfil</span>
+                <span className="hidden sm:inline">Información Personal</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="security"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Seguridad</span>
+                <span className="hidden sm:inline">Seguridad</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="preferences"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm col-span-2 sm:col-span-1"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Preferencias</span>
+                <span className="hidden sm:inline">Preferencias</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Información Personal</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="full_name">Nombre Completo</Label>
                     <Input
                       id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      disabled={loading}
-                      required
+                      value={profile.full_name}
+                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                      className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      disabled={loading}
-                      required
+                      value={profile.email}
+                      disabled
+                      className="bg-gray-50 text-gray-500"
+                    />
+                    <p className="text-xs text-muted-foreground">El email no se puede cambiar</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Teléfono</Label>
+                    <Input
+                      id="phone"
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      placeholder="Número de teléfono"
+                      className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="role">Rol</Label>
-                    <Input id="role" value={user.role} disabled />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Departamento</Label>
-                    <Input id="department" value={userData?.departments?.name || "Sin departamento"} disabled />
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      {getRoleBadge(user.role)}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={loading || uploadingAvatar}>
-                    {loading ? (
-                      "Guardando..."
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Guardar Cambios
-                      </>
-                    )}
-                  </Button>
+              <Separator />
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                <Button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {loading ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Configuración de Seguridad</h3>
+                <div className="space-y-4">
+                  <Card className="border border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Cambiar Contraseña</h4>
+                          <p className="text-sm text-muted-foreground">Actualiza tu contraseña regularmente</p>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Cambiar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Autenticación de Dos Factores</h4>
+                          <p className="text-sm text-muted-foreground">Añade una capa extra de seguridad</p>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Configurar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="preferences" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Preferencias</h3>
+                <div className="space-y-4">
+                  <Card className="border border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Notificaciones por Email</h4>
+                          <p className="text-sm text-muted-foreground">Recibe actualizaciones por correo</p>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          <Bell className="h-4 w-4 mr-2" />
+                          Configurar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Tema de la Aplicación</h4>
+                          <p className="text-sm text-muted-foreground">Personaliza la apariencia</p>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Cambiar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }

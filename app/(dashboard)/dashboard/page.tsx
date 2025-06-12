@@ -1,25 +1,33 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, FileText, Activity, TrendingUp, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { NewsCarousel } from "@/components/news/news-carousel"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { FileText, Users, TrendingUp, ArrowRight, Activity, RefreshCw } from "lucide-react"
+import Link from "next/link"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
+import { NewsCarousel } from "@/components/news/news-carousel"
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState({
     totalDocuments: 0,
-    totalMovements: 0,
+    totalUsers: 0,
+    totalDepartments: 0,
     pendingDocuments: 0,
     completedDocuments: 0,
-    recentDocuments: [],
-    recentActivity: [],
+    recentMovements: 0,
   })
+  const [recentDocuments, setRecentDocuments] = useState<any[]>([])
+  const [recentMovements, setRecentMovements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -27,169 +35,180 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isRefresh = false) => {
     try {
-      // Fetch total documents based on user role
-      let documentsQuery = supabase.from("documents").select("*")
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
 
-      if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+      // Fetch statistics
+      const [documentsRes, usersRes, departmentsRes, pendingRes, completedRes] = await Promise.all([
+        supabase.from("documents").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("departments").select("id", { count: "exact", head: true }),
+        supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "completed"),
+      ])
+
+      // Fetch recent documents
+      let documentsQuery = supabase
+        .from("documents")
+        .select(`
+          *,
+          profiles!documents_created_by_fkey (full_name),
+          departments!documents_current_department_id_fkey (name, color)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(5)
+
+      // Apply user-specific filters
+      if (user && user.role !== "admin") {
+        if (user.department_id) {
+          documentsQuery = documentsQuery.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
+        } else {
+          documentsQuery = documentsQuery.eq("created_by", user.id)
+        }
       }
 
       const { data: documents } = await documentsQuery
 
-      // Calculate stats
-      const totalDocuments = documents?.length || 0
-      const pendingDocuments = documents?.filter((doc) => doc.status === "pending").length || 0
-      const completedDocuments = documents?.filter((doc) => doc.status === "completed").length || 0
-
-      // Fetch total movements
-      const { count: movementsCount } = await supabase
+      // Fetch recent movements
+      const { data: movements } = await supabase
         .from("document_movements")
-        .select("*", { count: "exact", head: true })
+        .select(`
+          *,
+          documents!inner (title, document_number),
+          from_departments:departments!document_movements_from_department_id_fkey (name, color),
+          to_departments:departments!document_movements_to_department_id_fkey (name, color),
+          profiles!document_movements_moved_by_fkey (full_name)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(5)
 
-      // Fetch recent documents - try with specific relationship first
-      try {
-        let recentDocsQuery = supabase
-          .from("documents")
-          .select(`
-            *,
-            profiles!documents_created_by_fkey (full_name),
-            departments!documents_current_department_id_fkey (name)
-          `)
-          .order("created_at", { ascending: false })
-          .limit(5)
+      setStats({
+        totalDocuments: documentsRes.count || 0,
+        totalUsers: usersRes.count || 0,
+        totalDepartments: departmentsRes.count || 0,
+        pendingDocuments: pendingRes.count || 0,
+        completedDocuments: completedRes.count || 0,
+        recentMovements: movements?.length || 0,
+      })
 
-        if (user?.role === "user") {
-          recentDocsQuery = recentDocsQuery.or(
-            `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
-          )
-        }
-
-        const { data: recentDocs, error } = await recentDocsQuery
-
-        if (error) {
-          throw error
-        }
-
-        // Fetch recent activity
-        const { data: recentActivity } = await supabase
-          .from("document_movements")
-          .select(`
-            *,
-            documents (title, document_number),
-            profiles!document_movements_moved_by_fkey (full_name),
-            departments!document_movements_to_department_id_fkey (name)
-          `)
-          .order("created_at", { ascending: false })
-          .limit(5)
-
-        setStats({
-          totalDocuments,
-          totalMovements: movementsCount || 0,
-          pendingDocuments,
-          completedDocuments,
-          recentDocuments: recentDocs || [],
-          recentActivity: recentActivity || [],
-        })
-      } catch (error) {
-        console.error("Error with specific relationship, trying fallback:", error)
-
-        // Fallback: fetch documents and departments separately
-        let recentDocsQuery = supabase
-          .from("documents")
-          .select(`
-            *,
-            profiles!documents_created_by_fkey (full_name)
-          `)
-          .order("created_at", { ascending: false })
-          .limit(5)
-
-        if (user?.role === "user") {
-          recentDocsQuery = recentDocsQuery.or(
-            `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
-          )
-        }
-
-        const { data: recentDocs } = await recentDocsQuery
-
-        // Fetch departments separately
-        const { data: departments } = await supabase.from("departments").select("id, name")
-        const departmentsMap = new Map(departments?.map((d) => [d.id, d]) || [])
-
-        // Combine data manually
-        const combinedDocs =
-          recentDocs?.map((doc) => ({
-            ...doc,
-            departments: doc.current_department_id
-              ? { name: departmentsMap.get(doc.current_department_id)?.name }
-              : null,
-          })) || []
-
-        // Fetch recent activity
-        const { data: recentActivity } = await supabase
-          .from("document_movements")
-          .select(`
-            *,
-            documents (title, document_number),
-            profiles!document_movements_moved_by_fkey (full_name),
-            departments!document_movements_to_department_id_fkey (name)
-          `)
-          .order("created_at", { ascending: false })
-          .limit(5)
-
-        setStats({
-          totalDocuments,
-          totalMovements: movementsCount || 0,
-          pendingDocuments,
-          completedDocuments,
-          recentDocuments: combinedDocs || [],
-          recentActivity: recentActivity || [],
-        })
-      }
+      setRecentDocuments(documents || [])
+      setRecentMovements(movements || [])
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  if (!user) {
+  const handleRefresh = () => {
+    fetchDashboardData(true)
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 border-yellow-200 shadow-sm"
+          >
+            Pendiente
+          </Badge>
+        )
+      case "in_progress":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200 shadow-sm"
+          >
+            En Progreso
+          </Badge>
+        )
+      case "completed":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 shadow-sm"
+          >
+            Completado
+          </Badge>
+        )
+      case "cancelled":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 shadow-sm"
+          >
+            Cancelado
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const getDepartmentBadge = (department: any) => {
+    if (!department) return null
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando...</p>
+      <span
+        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shadow-sm"
+        style={{
+          backgroundColor: department.color ? `${department.color}20` : "#f3f4f6",
+          color: department.color || "#6b7280",
+          borderColor: department.color || "#d1d5db",
+        }}
+      >
+        {department.name}
+      </span>
+    )
+  }
+
+  const completionRate = stats.totalDocuments > 0 ? (stats.completedDocuments / stats.totalDocuments) * 100 : 0
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="text-muted-foreground">Cargando dashboard...</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6">
-      {/* Header with gradient text */}
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground truncate">
-            Bienvenido de vuelta, {user.full_name}
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Bienvenido de vuelta, {user?.full_name || "Usuario"}
           </p>
         </div>
         <Button
-          asChild
-          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          variant="outline"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="w-full sm:w-auto hover:shadow-md transition-all duration-300 hover:scale-105"
         >
-          <Link href="/documents/new">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="sm:hidden">Nuevo Doc</span>
-            <span className="hidden sm:inline">Nuevo Documento</span>
-          </Link>
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+          <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
+          <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Actualizar"}</span>
         </Button>
       </div>
 
-      {/* Stats Cards - Responsive grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5"></div>
@@ -242,129 +261,200 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.totalMovements}</div>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.recentMovements}</div>
             <p className="text-xs text-muted-foreground">Total de movimientos</p>
           </CardContent>
         </Card>
       </div>
 
       {/* News Carousel */}
-      <div className="space-y-3 sm:space-y-4">
-        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Noticias de la Empresa
-        </h2>
-        <NewsCarousel />
-      </div>
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="border-b border-gray-100 p-4 sm:p-6">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-red-100 to-pink-100">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base sm:text-lg text-gray-900">Noticias Recientes</CardTitle>
+              <CardDescription className="text-sm">Últimas actualizaciones y anuncios</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <NewsCarousel />
+        </CardContent>
+      </Card>
 
-      {/* Recent Documents and Activity - Responsive layout */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-7">
-        <Card className="lg:col-span-4 hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              <span className="sm:hidden">Documentos</span>
-              <span className="hidden sm:inline">Documentos Recientes</span>
-            </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              Últimos documentos registrados en el sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3 sm:space-x-4">
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-muted animate-pulse" />
-                    <div className="space-y-2 flex-1">
-                      <div className="h-3 sm:h-4 bg-muted rounded animate-pulse" />
-                      <div className="h-2 sm:h-3 bg-muted rounded w-2/3 animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : stats.recentDocuments.length === 0 ? (
-              <div className="text-center py-6">
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
-                  <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto" />
-                </div>
-                <p className="text-sm sm:text-base text-muted-foreground">No hay documentos disponibles</p>
-              </div>
-            ) : (
-              <div className="space-y-3 sm:space-y-4">
-                {stats.recentDocuments.map((doc: any) => (
-                  <div
-                    key={doc.id}
-                    className="group flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
-                  >
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
-                      <FileText className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
-                    </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-none truncate">{doc.title}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                        {doc.document_number} • {doc.departments?.name || "Sin departamento"}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs sm:text-sm font-medium capitalize">{doc.status}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(doc.created_at).toLocaleDateString("es-ES")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Main Content Tabs */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <Tabs defaultValue="documents" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-blue-100 to-purple-100">
+              <TabsTrigger
+                value="documents"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Docs</span>
+                <span className="hidden sm:inline">Documentos Recientes</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="movements"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Movs</span>
+                <span className="hidden sm:inline">Movimientos</span>
+              </TabsTrigger>
+            </TabsList>
 
-        <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-              <span className="sm:hidden">Actividad</span>
-              <span className="hidden sm:inline">Actividad Reciente</span>
-            </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Últimos movimientos del sistema</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-3 sm:h-4 bg-muted rounded animate-pulse" />
-                    <div className="h-2 sm:h-3 bg-muted rounded w-3/4 animate-pulse" />
-                  </div>
-                ))}
+            <TabsContent value="documents" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Documentos Recientes</h3>
+                <Button variant="outline" size="sm" asChild className="hover:scale-105 transition-all duration-300">
+                  <Link href="/documents">
+                    <span className="sm:hidden">Ver todos</span>
+                    <span className="hidden sm:inline">Ver todos los documentos</span>
+                  </Link>
+                </Button>
               </div>
-            ) : stats.recentActivity.length === 0 ? (
-              <div className="text-center py-6">
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-2xl w-fit mx-auto mb-4">
-                  <Activity className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto" />
+
+              {recentDocuments.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-muted-foreground">No hay documentos recientes</p>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground">No hay actividad registrada</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentDocuments.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 hover:shadow-md"
+                    >
+                      <div className="flex-1 min-w-0 mb-3 sm:mb-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                            {doc.title || "Sin título"}
+                          </h4>
+                          {getStatusBadge(doc.status)}
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <span>#{doc.document_number || "Sin número"}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span>Por {doc.profiles?.full_name || "Usuario desconocido"}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span>{format(new Date(doc.created_at), "dd/MM/yyyy", { locale: es })}</span>
+                        </div>
+                        {doc.departments && <div className="mt-2">{getDepartmentBadge(doc.departments)}</div>}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="w-full sm:w-auto hover:scale-105 transition-all duration-300"
+                      >
+                        <Link href={`/documents/${doc.id}`}>
+                          <span className="sm:hidden">Ver</span>
+                          <span className="hidden sm:inline">Ver documento</span>
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="movements" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Movimientos Recientes</h3>
+                <Button variant="outline" size="sm" asChild className="hover:scale-105 transition-all duration-300">
+                  <Link href="/movements">
+                    <span className="sm:hidden">Ver todos</span>
+                    <span className="hidden sm:inline">Ver todos los movimientos</span>
+                  </Link>
+                </Button>
               </div>
-            ) : (
-              <div className="space-y-3 sm:space-y-4">
-                {stats.recentActivity.map((activity: any) => (
-                  <div
-                    key={activity.id}
-                    className="group p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors duration-300"
-                  >
-                    <p className="text-sm font-medium truncate">{activity.documents?.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Movido por {activity.profiles?.full_name} a {activity.departments?.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(activity.created_at).toLocaleDateString("es-ES")}
-                    </p>
+
+              {recentMovements.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <ArrowRight className="h-8 w-8 text-gray-400" />
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <p className="text-muted-foreground">No hay movimientos recientes</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentMovements.map((movement) => (
+                    <div
+                      key={movement.id}
+                      className="p-4 rounded-lg border border-gray-200 hover:bg-gradient-to-r hover:from-green-50/50 hover:to-emerald-50/50 transition-all duration-300 hover:shadow-md"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                            {movement.documents?.title || "Documento eliminado"}
+                          </h4>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2">
+                              {movement.from_departments && (
+                                <span
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                  style={{
+                                    backgroundColor: movement.from_departments.color
+                                      ? `${movement.from_departments.color}20`
+                                      : "#f3f4f6",
+                                    color: movement.from_departments.color || "#6b7280",
+                                  }}
+                                >
+                                  {movement.from_departments.name}
+                                </span>
+                              )}
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              {movement.to_departments && (
+                                <span
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-2 ring-offset-1"
+                                  style={{
+                                    backgroundColor: movement.to_departments.color
+                                      ? `${movement.to_departments.color}20`
+                                      : "#f3f4f6",
+                                    color: movement.to_departments.color || "#6b7280",
+                                    ringColor: movement.to_departments.color || "#d1d5db",
+                                  }}
+                                >
+                                  {movement.to_departments.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                            Por {movement.profiles?.full_name || "Usuario desconocido"} •{" "}
+                            {format(new Date(movement.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                          </p>
+                        </div>
+                        {movement.documents && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="w-full sm:w-auto hover:scale-105 transition-all duration-300"
+                          >
+                            <Link href={`/documents/${movement.document_id}`}>
+                              <span className="sm:hidden">Ver</span>
+                              <span className="hidden sm:inline">Ver documento</span>
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }
