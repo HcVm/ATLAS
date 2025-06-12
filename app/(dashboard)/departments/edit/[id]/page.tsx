@@ -1,148 +1,114 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Building2, ArrowLeft, Loader2, Palette } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, Save } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
-import { createNotification } from "@/lib/notifications"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
-const formSchema = z.object({
-  name: z.string().min(3, {
-    message: "El nombre debe tener al menos 3 caracteres.",
-  }),
-  description: z.string().optional(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, {
-    message: "Debe ser un color hexadecimal válido (ej: #FF0000)",
-  }),
-})
-
-// Colores predefinidos para departamentos
-const predefinedColors = [
-  { name: "Rojo", value: "#EF4444" },
-  { name: "Verde", value: "#10B981" },
-  { name: "Azul", value: "#3B82F6" },
-  { name: "Púrpura", value: "#8B5CF6" },
-  { name: "Ámbar", value: "#F59E0B" },
-  { name: "Cian", value: "#06B6D4" },
-  { name: "Lima", value: "#84CC16" },
-  { name: "Rosa", value: "#EC4899" },
-  { name: "Teal", value: "#14B8A6" },
-  { name: "Naranja", value: "#F97316" },
-  { name: "Violeta", value: "#A855F7" },
-  { name: "Índigo", value: "#6366F1" },
+const DEPARTMENT_COLORS = [
+  { value: "bg-red-500", label: "Rojo", textColor: "text-white" },
+  { value: "bg-blue-500", label: "Azul", textColor: "text-white" },
+  { value: "bg-green-500", label: "Verde", textColor: "text-white" },
+  { value: "bg-yellow-500", label: "Amarillo", textColor: "text-black" },
+  { value: "bg-purple-500", label: "Morado", textColor: "text-white" },
+  { value: "bg-pink-500", label: "Rosa", textColor: "text-white" },
+  { value: "bg-indigo-500", label: "Índigo", textColor: "text-white" },
+  { value: "bg-gray-500", label: "Gris", textColor: "text-white" },
+  { value: "bg-orange-500", label: "Naranja", textColor: "text-white" },
+  { value: "bg-teal-500", label: "Verde Azulado", textColor: "text-white" },
 ]
 
 export default function EditDepartmentPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
+  const { user: currentUser } = useAuth()
+  const [department, setDepartment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [department, setDepartment] = useState<any>(null)
-  const { toast } = useToast()
-  const router = useRouter()
-  const { user } = useAuth()
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      color: "#3B82F6",
-    },
+  const [error, setError] = useState("")
+  const [message, setMessage] = useState("")
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    color: "bg-blue-500",
   })
 
   useEffect(() => {
-    if (user && user.role === "admin") {
+    if (currentUser?.role === "admin") {
       fetchDepartment()
     }
-  }, [user, params.id])
+  }, [currentUser, params.id])
 
   const fetchDepartment = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("*").eq("id", params.id).single()
+      const response = await fetch(`/api/departments/${params.id}`)
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al cargar el departamento")
+      }
+
+      const data = await response.json()
 
       setDepartment(data)
-      form.reset({
-        name: data.name,
+      setFormData({
+        name: data.name || "",
         description: data.description || "",
-        color: data.color || "#3B82F6",
+        color: data.color || "bg-blue-500",
       })
     } catch (error: any) {
       console.error("Error fetching department:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el departamento.",
-        variant: "destructive",
-      })
-      router.push("/departments")
+      setError(error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || user.role !== "admin") {
-      toast({
-        title: "Error",
-        description: "No tienes permisos para editar departamentos.",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setSaving(true)
+    setError("")
+    setMessage("")
+
     try {
-      const { error } = await supabase
-        .from("departments")
-        .update({
-          name: values.name,
-          description: values.description || null,
-          color: values.color,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", params.id)
-
-      if (error) throw error
-
-      // Crear notificación para el administrador
-      await createNotification({
-        userId: user.id,
-        title: "Departamento actualizado",
-        message: `Has actualizado el departamento "${values.name}" con color ${values.color}`,
-        type: "department_updated",
-        relatedId: params.id,
+      const response = await fetch(`/api/departments/${params.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          color: formData.color,
+        }),
       })
 
-      toast({
-        title: "Departamento actualizado",
-        description: "El departamento se ha actualizado correctamente.",
-      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al actualizar departamento")
+      }
 
-      router.push("/departments")
+      setMessage("Departamento actualizado exitosamente")
+      setTimeout(() => {
+        router.push("/departments")
+      }, 2000)
     } catch (error: any) {
       console.error("Error updating department:", error)
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar el departamento.",
-        variant: "destructive",
-      })
+      setError(error.message)
     } finally {
       setSaving(false)
     }
   }
 
-  if (user?.role !== "admin") {
+  if (currentUser?.role !== "admin") {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -174,12 +140,11 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/departments">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="outline" onClick={() => router.push("/departments")}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Editar Departamento</h1>
@@ -187,103 +152,88 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
         </div>
       </div>
 
-      <Card className="shadow-lg">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Información del Departamento
-          </CardTitle>
-          <CardDescription>Actualiza los detalles del departamento.</CardDescription>
+          <CardTitle>Información del Departamento</CardTitle>
+          <CardDescription>Actualiza los detalles del departamento</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombre del departamento" {...field} />
-                    </FormControl>
-                    <FormDescription>Nombre descriptivo del departamento.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descripción</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descripción detallada del departamento"
-                        className="min-h-[120px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>Información adicional sobre el departamento (opcional).</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {message && (
+              <Alert>
+                <AlertDescription>{message}</AlertDescription>
+              </Alert>
+            )}
 
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Color del Departamento
-                    </FormLabel>
-                    <FormControl>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <Input type="color" className="w-16 h-10 p-1 border rounded" {...field} />
-                          <Input placeholder="#3B82F6" className="flex-1" {...field} />
-                          <div
-                            className="w-10 h-10 rounded border-2 border-gray-300"
-                            style={{ backgroundColor: field.value }}
-                          />
-                        </div>
-                        <div className="grid grid-cols-6 gap-2">
-                          {predefinedColors.map((color) => (
-                            <button
-                              key={color.value}
-                              type="button"
-                              className="w-8 h-8 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors"
-                              style={{ backgroundColor: color.value }}
-                              onClick={() => field.onChange(color.value)}
-                              title={color.name}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Color que identificará este departamento en los movimientos de documentos.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre del Departamento</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  disabled={saving}
+                  required
+                />
+              </div>
 
-              <CardFooter className="flex justify-end gap-2 px-0">
-                <Button variant="outline" asChild>
-                  <Link href="/departments">Cancelar</Link>
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Actualizar Departamento
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  disabled={saving}
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Color del Departamento</Label>
+                <RadioGroup
+                  value={formData.color}
+                  onValueChange={(value) => setFormData({ ...formData, color: value })}
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-2"
+                >
+                  {DEPARTMENT_COLORS.map((color) => (
+                    <div key={color.value} className="flex items-center space-x-2">
+                      <RadioGroupItem value={color.value} id={color.value} className="sr-only" />
+                      <Label
+                        htmlFor={color.value}
+                        className={`flex items-center justify-center px-3 py-2 rounded-md cursor-pointer ${
+                          formData.color === color.value ? "ring-2 ring-offset-2 ring-primary" : ""
+                        } ${color.value} ${color.textColor}`}
+                      >
+                        {color.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <Button type="button" variant="outline" onClick={() => router.push("/departments")} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  "Guardando..."
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Cambios
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

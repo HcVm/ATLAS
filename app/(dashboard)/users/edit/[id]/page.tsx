@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, Save, Camera } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 
 export default function EditUserPage({ params }: { params: { id: string } }) {
@@ -40,20 +39,15 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchUser = async () => {
     try {
-      // Usar supabaseAdmin para obtener el usuario sin restricciones RLS
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(`
-        *,
-        departments (id, name)
-      `)
-        .eq("id", params.id)
-        .single()
+      // Usar la API del servidor para obtener el usuario
+      const response = await fetch(`/api/users/${params.id}`)
 
-      if (error) {
-        console.error("Error fetching user:", error)
-        throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al cargar el usuario")
       }
+
+      const data = await response.json()
 
       setUser(data)
       setFormData({
@@ -63,7 +57,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
         department_id: data.department_id || "none",
       })
     } catch (error: any) {
-      console.error("Error in fetchUser:", error)
+      console.error("Error fetching user:", error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -72,9 +66,14 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("*").order("name")
+      const response = await fetch("/api/departments")
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al cargar departamentos")
+      }
+
+      const data = await response.json()
       setDepartments(data || [])
     } catch (error: any) {
       console.error("Error fetching departments:", error)
@@ -88,19 +87,10 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
     setMessage("")
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (!session) {
-        throw new Error("No hay sesión activa")
-      }
-
       const response = await fetch(`/api/users/${params.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           full_name: formData.full_name,
@@ -110,10 +100,9 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
         }),
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        throw new Error(result.error || "Error al actualizar usuario")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al actualizar usuario")
       }
 
       setMessage("Usuario actualizado exitosamente")
