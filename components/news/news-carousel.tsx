@@ -97,37 +97,45 @@ export function NewsCarousel() {
     >
       <CardContent className="p-0 h-full relative">
         <div className="h-full flex flex-col">
-          {/* Área de imagen - altura fija */}
-          <div className="h-32 relative bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+          {/* Área de imagen - altura aumentada */}
+          <div className="h-48 relative bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
             {currentNews.image_url ? (
               <Image
                 src={currentNews.image_url || "/placeholder.svg"}
                 alt={currentNews.title}
                 fill
-                className="object-contain p-2"
+                className="object-contain p-3"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 priority
               />
             ) : (
-              <FileText className="h-12 w-12 text-blue-500" />
+              <FileText className="h-16 w-16 text-blue-500" />
             )}
+
+            {/* Degradado de transición en la parte inferior */}
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
           </div>
 
-          {/* Área de contenido - altura flexible */}
-          <div className="flex-1 p-6 flex flex-col justify-center text-center">
-            <h3 className="text-lg font-semibold mb-3 line-clamp-2">{currentNews.title}</h3>
-            <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{currentNews.content}</p>
+          {/* Área de contenido - con degradado superior */}
+          <div className="flex-1 relative">
+            {/* Degradado de transición en la parte superior */}
+            <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/60 to-transparent pointer-events-none z-10" />
 
-            {/* Footer con fecha y estado */}
-            <div className="flex items-center justify-between mt-auto">
-              <p className="text-xs text-muted-foreground">
-                {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-              <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">Publicado</div>
+            <div className="p-6 pt-2 h-full flex flex-col justify-center text-center">
+              <h3 className="text-lg font-semibold mb-3 line-clamp-2">{currentNews.title}</h3>
+              <p className="text-muted-foreground text-sm line-clamp-2 mb-4">{currentNews.content}</p>
+
+              {/* Footer con fecha y estado */}
+              <div className="flex items-center justify-between mt-auto">
+                <p className="text-xs text-muted-foreground">
+                  {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">Publicado</div>
+              </div>
             </div>
           </div>
         </div>
@@ -138,7 +146,7 @@ export function NewsCarousel() {
             <Button
               variant="outline"
               size="icon"
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={prevSlide}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -146,7 +154,7 @@ export function NewsCarousel() {
             <Button
               variant="outline"
               size="icon"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={nextSlide}
             >
               <ChevronRight className="h-4 w-4" />
@@ -156,7 +164,7 @@ export function NewsCarousel() {
             <Button
               variant="outline"
               size="icon"
-              className="absolute top-2 right-2 bg-white/90 hover:bg-white shadow-lg z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={toggleAutoPlay}
             >
               {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
@@ -166,7 +174,7 @@ export function NewsCarousel() {
 
         {/* Indicadores de puntos con barra de progreso */}
         {news.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
             {news.map((_, index) => (
               <button
                 key={index}
@@ -191,7 +199,7 @@ export function NewsCarousel() {
 
         {/* Indicador de auto-play activo */}
         {news.length > 1 && !isPaused && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-green-500/80 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-2 left-2 px-2 py-1 bg-green-500/80 text-white text-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20">
             Auto
           </div>
         )}
