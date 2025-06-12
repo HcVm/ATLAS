@@ -63,20 +63,22 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         console.log("CompanyContext: Empresas cargadas para admin:", data?.length || 0)
         setAllCompanies(data || [])
 
-        // Cargar selección guardada o usar la primera empresa
+        // Cargar selección guardada o usar modo general (null)
         const savedCompanyId = localStorage.getItem("selectedCompanyId")
         if (savedCompanyId && data) {
           const savedCompany = data.find((c) => c.id === savedCompanyId)
           if (savedCompany) {
             setSelectedCompany(savedCompany)
             console.log("CompanyContext: Empresa guardada seleccionada:", savedCompany.name)
-          } else if (data.length > 0) {
-            setSelectedCompany(data[0])
-            console.log("CompanyContext: Primera empresa seleccionada:", data[0].name)
+          } else {
+            // Si no se encuentra la empresa guardada, usar modo general
+            setSelectedCompany(null)
+            console.log("CompanyContext: Modo general activado (empresa guardada no encontrada)")
           }
-        } else if (data && data.length > 0) {
-          setSelectedCompany(data[0])
-          console.log("CompanyContext: Primera empresa seleccionada:", data[0].name)
+        } else {
+          // Si no hay selección guardada, usar modo general
+          setSelectedCompany(null)
+          console.log("CompanyContext: Modo general activado (sin selección guardada)")
         }
       }
       // Si es usuario normal, solo cargar su empresa
@@ -115,14 +117,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadCompanies()
   }, [user])
-
-  // Guardar la selección en localStorage (solo para admin)
-  useEffect(() => {
-    if (user?.role === "admin" && selectedCompany) {
-      localStorage.setItem("selectedCompanyId", selectedCompany.id)
-      console.log("CompanyContext: Guardando selección de empresa:", selectedCompany.name)
-    }
-  }, [selectedCompany, user?.role])
 
   // Función para actualizar manualmente las empresas
   const refreshCompanies = async () => {

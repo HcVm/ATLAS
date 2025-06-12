@@ -24,11 +24,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { toast } from "@/hooks/use-toast"
 
 export default function DocumentsPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [documents, setDocuments] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +56,12 @@ export default function DocumentsPage() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (user) {
+      fetchDocuments()
+    }
+  }, [user, selectedCompany])
+
   const fetchDocuments = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -68,22 +76,28 @@ export default function DocumentsPage() {
         .from("documents")
         .select(`
           *,
-          profiles!documents_created_by_fkey (id, full_name, email),
+          profiles!documents_created_by_fkey (id, full_name, email, company_id),
           departments!documents_current_department_id_fkey (id, name)
         `)
         .order("created_at", { ascending: false })
 
-      // Users can see:
-      // 1. Documents from their department (if they have one)
-      // 2. Documents they created themselves
-      // Admins can see all documents
-      if (user && user.role !== "admin") {
+      // Filtrar por empresa seleccionada si el usuario es admin
+      if (user?.role === "admin" && selectedCompany) {
+        query = query.eq("company_id", selectedCompany.id)
+      }
+      // Si no es admin, aplicar filtros normales de permisos
+      else if (user && user.role !== "admin") {
         if (user.department_id) {
           // Documents from their department OR documents they created
           query = query.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
         } else {
           // Only documents they created if they don't have a department
           query = query.eq("created_by", user.id)
+        }
+
+        // Además, filtrar por la empresa del usuario
+        if (user.company_id) {
+          query = query.eq("company_id", user.company_id)
         }
       }
 
@@ -97,15 +111,22 @@ export default function DocumentsPage() {
           .from("documents")
           .select(`
             *,
-            profiles!documents_created_by_fkey (id, full_name, email)
+            profiles!documents_created_by_fkey (id, full_name, email, company_id)
           `)
           .order("created_at", { ascending: false })
 
-        if (user && user.role !== "admin") {
+        // Aplicar los mismos filtros de empresa
+        if (user?.role === "admin" && selectedCompany) {
+          fallbackQuery = fallbackQuery.eq("company_id", selectedCompany.id)
+        } else if (user && user.role !== "admin") {
           if (user.department_id) {
             fallbackQuery = fallbackQuery.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
           } else {
             fallbackQuery = fallbackQuery.eq("created_by", user.id)
+          }
+
+          if (user.company_id) {
+            fallbackQuery = fallbackQuery.eq("company_id", user.company_id)
           }
         }
 

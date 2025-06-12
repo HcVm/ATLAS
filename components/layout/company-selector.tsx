@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Check, ChevronsUpDown, Building2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState } from "react"
+import { Check, Building2, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { supabase } from "@/lib/supabase"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { toast } from "sonner"
 
 interface Company {
@@ -19,86 +17,27 @@ interface Company {
 
 export function CompanySelector() {
   const { user } = useAuth()
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { allCompanies, selectedCompany, setSelectedCompany, refreshCompanies } = useCompany()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (user?.role === "admin") {
-      loadCompanies()
-    }
-  }, [user])
-
-  const loadCompanies = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      console.log("Cargando empresas desde Supabase...")
-
-      // Verificar conexión con Supabase
-      const { data: testData, error: testError } = await supabase.from("companies").select("count").limit(1)
-
-      if (testError) {
-        console.error("Error de conexión con Supabase:", testError)
-        setError(`Error de conexión: ${testError.message}`)
-        throw testError
-      }
-
-      console.log("Conexión con Supabase establecida, obteniendo empresas...")
-      const { data, error } = await supabase.from("companies").select("*").order("name")
-
-      if (error) {
-        console.error("Error al cargar empresas:", error)
-        setError(`Error al cargar empresas: ${error.message}`)
-        toast.error(`Error al cargar empresas: ${error.message}`)
-        throw error
-      }
-
-      console.log("Empresas cargadas:", data?.length || 0, data)
-      setCompanies(data || [])
-
-      // Si no hay empresas, verificar y mostrar mensaje
-      if (!data || data.length === 0) {
-        console.warn("No se encontraron empresas en la base de datos")
-        toast.warning("No hay empresas configuradas. Ejecute el script para crear empresas.")
-        return
-      }
-
-      // Cargar selección guardada o usar la primera empresa
-      const savedCompanyId = localStorage.getItem("selectedCompanyId")
-      if (savedCompanyId && data) {
-        const savedCompany = data.find((c) => c.id === savedCompanyId)
-        if (savedCompany) {
-          setSelectedCompany(savedCompany)
-          console.log("Empresa guardada cargada:", savedCompany.name)
-        } else if (data.length > 0) {
-          setSelectedCompany(data[0])
-          console.log("Primera empresa seleccionada:", data[0].name)
-        }
-      } else if (data && data.length > 0) {
-        setSelectedCompany(data[0])
-        console.log("Primera empresa seleccionada:", data[0].name)
-      }
-    } catch (error: any) {
-      console.error("Error loading companies:", error)
-      setError(error.message || "Error desconocido al cargar empresas")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleCompanySelect = (company: Company) => {
+  const handleCompanySelect = (company: Company | null) => {
     setSelectedCompany(company)
-    localStorage.setItem("selectedCompanyId", company.id)
-    setOpen(false)
-    toast.success(`Empresa seleccionada: ${company.name}`)
+    if (company) {
+      localStorage.setItem("selectedCompanyId", company.id)
+      toast.success(`Empresa seleccionada: ${company.name}`)
+    } else {
+      localStorage.removeItem("selectedCompanyId")
+      toast.success("Modo general activado - Todos los usuarios visibles")
+    }
+    setDialogOpen(false)
   }
 
-  const handleReload = () => {
+  const handleReload = async () => {
+    setLoading(true)
     toast.info("Recargando lista de empresas...")
-    loadCompanies()
+    await refreshCompanies()
+    setLoading(false)
   }
 
   // No mostrar si no es admin
@@ -110,95 +49,130 @@ export function CompanySelector() {
     return <div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>
   }
 
-  if (error) {
-    return (
-      <Button variant="destructive" size="sm" className="gap-2" onClick={handleReload}>
-        <Building2 className="h-4 w-4" />
-        <span className="truncate">Error: {error.substring(0, 20)}...</span>
-      </Button>
-    )
-  }
-
-  if (companies.length === 0) {
-    return (
-      <Button variant="outline" className="flex items-center gap-2" onClick={handleReload}>
-        <Building2 className="h-4 w-4" />
-        <span>Sin empresas</span>
-      </Button>
-    )
-  }
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-[200px] justify-between">
-          {selectedCompany ? (
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: selectedCompany.color || "#888888" }} />
-              <span className="truncate">{selectedCompany.code}</span>
+    <>
+      {/* Botón para abrir el selector visual */}
+      <Button variant="outline" className="flex items-center gap-2 pr-3" onClick={() => setDialogOpen(true)}>
+        {selectedCompany ? (
+          <>
+            <div
+              className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+              style={{ backgroundColor: selectedCompany.color || "#888888" }}
+            >
+              {selectedCompany.code.substring(0, 2).toUpperCase()}
             </div>
-          ) : (
-            <span>Seleccionar empresa</span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[250px] p-0">
-        <Command>
-          <CommandInput placeholder="Buscar empresa..." />
-          <CommandList>
-            <CommandEmpty>
-              <div className="p-2 text-center">
-                <p className="text-sm text-muted-foreground">No se encontraron empresas.</p>
-                <Button variant="ghost" size="sm" className="mt-2" onClick={handleReload}>
-                  Recargar
-                </Button>
-              </div>
-            </CommandEmpty>
-            <CommandGroup>
-              {companies.map((company) => (
-                <CommandItem
-                  key={company.id}
-                  value={company.code}
-                  onSelect={() => handleCompanySelect(company)}
-                  className="flex items-center gap-2"
-                >
-                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: company.color || "#888888" }} />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{company.code}</span>
-                    <span className="text-xs text-muted-foreground truncate">{company.name}</span>
+            <span className="truncate max-w-[120px]">{selectedCompany.name}</span>
+          </>
+        ) : (
+          <>
+            <div className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-medium">
+              G
+            </div>
+            <span>General</span>
+          </>
+        )}
+      </Button>
+
+      {/* Diálogo de selector visual de empresas */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl font-bold">¿Qué empresa quieres gestionar?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-center text-muted-foreground mb-6">
+              Selecciona una empresa para gestionar sus usuarios y documentos, o usa el modo general para ver todos los
+              usuarios.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {/* Opción General */}
+              <div
+                className={`relative rounded-lg border-2 ${
+                  selectedCompany === null
+                    ? "border-purple-500 bg-purple-50"
+                    : "border-gray-200 hover:border-purple-300"
+                } p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center`}
+                onClick={() => handleCompanySelect(null)}
+              >
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white mb-2">
+                  <Building2 className="h-8 w-8" />
+                </div>
+                <h3 className="font-medium text-center">General</h3>
+                <p className="text-xs text-muted-foreground text-center">Ver todos los usuarios</p>
+                {selectedCompany === null && (
+                  <div className="absolute top-2 right-2">
+                    <Check className="h-5 w-5 text-purple-500" />
                   </div>
-                  <Check
-                    className={cn("ml-auto h-4 w-4", selectedCompany?.id === company.id ? "opacity-100" : "opacity-0")}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <div className="p-2 border-t">
-              <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleReload}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-refresh-cw mr-2 h-4 w-4"
+                )}
+              </div>
+
+              {/* Empresas */}
+              {allCompanies.map((company) => (
+                <div
+                  key={company.id}
+                  className={`relative rounded-lg border-2 ${
+                    selectedCompany?.id === company.id
+                      ? "border-purple-500 bg-purple-50"
+                      : "border-gray-200 hover:border-purple-300"
+                  } p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center`}
+                  onClick={() => handleCompanySelect(company)}
                 >
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                  <path d="M21 3v5h-5" />
-                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                  <path d="M8 16H3v5" />
-                </svg>
-                Recargar empresas
-              </Button>
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center mb-2 text-white font-bold text-xl"
+                    style={{ backgroundColor: company.color || "#888888" }}
+                  >
+                    {company.code.substring(0, 2).toUpperCase()}
+                  </div>
+                  <h3 className="font-medium text-center">{company.code}</h3>
+                  <p className="text-xs text-muted-foreground text-center truncate max-w-full">{company.name}</p>
+                  {selectedCompany?.id === company.id && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="h-5 w-5 text-purple-500" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Añadir nueva empresa */}
+              <div
+                className="rounded-lg border-2 border-dashed border-gray-300 hover:border-purple-300 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center"
+                onClick={() => {
+                  setDialogOpen(false)
+                  toast.info("Funcionalidad para añadir empresas en desarrollo")
+                }}
+              >
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-2">
+                  <Plus className="h-8 w-8 text-gray-500" />
+                </div>
+                <h3 className="font-medium text-center">Añadir</h3>
+                <p className="text-xs text-muted-foreground text-center">Nueva empresa</p>
+              </div>
             </div>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </div>
+          <div className="flex justify-center mt-2">
+            <Button variant="outline" onClick={handleReload} className="gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-refresh-cw h-4 w-4"
+              >
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M8 16H3v5" />
+              </svg>
+              Recargar empresas
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

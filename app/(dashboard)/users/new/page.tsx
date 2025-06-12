@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
 
@@ -40,6 +41,19 @@ export default function NewUserPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
+
+  // Redirigir si no es administrador
+  useEffect(() => {
+    if (user && user.role !== "admin") {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para crear usuarios.",
+        variant: "destructive",
+      })
+      router.push("/dashboard")
+    }
+  }, [user, router, toast])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,7 +67,7 @@ export default function NewUserPage() {
   })
 
   // Cargar departamentos
-  useState(() => {
+  useEffect(() => {
     const fetchDepartments = async () => {
       try {
         const { data, error } = await supabase.from("departments").select("*").order("name")
@@ -72,7 +86,7 @@ export default function NewUserPage() {
     }
 
     fetchDepartments()
-  })
+  }, [toast])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || user.role !== "admin") {
@@ -107,6 +121,7 @@ export default function NewUserPage() {
           full_name: values.full_name,
           role: values.role,
           department_id: values.department_id || null,
+          company_id: selectedCompany?.id || null, // Asignar automáticamente la empresa seleccionada
         }),
       })
 
@@ -120,7 +135,9 @@ export default function NewUserPage() {
       await createNotification({
         userId: user.id,
         title: "Usuario creado con éxito",
-        message: `Has creado el usuario ${values.full_name} (${values.email}) con rol ${values.role}`,
+        message: `Has creado el usuario ${values.full_name} (${values.email}) con rol ${values.role}${
+          selectedCompany ? ` en la empresa ${selectedCompany.name}` : ""
+        }`,
         type: "user_created",
         relatedId: result.user?.id,
       })
@@ -157,6 +174,7 @@ export default function NewUserPage() {
             <h1 className="text-2xl sm:text-3xl font-bold">Crear Nuevo Usuario</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Completa el formulario para crear un nuevo usuario
+              {selectedCompany && <span className="font-medium text-primary"> en {selectedCompany.name}</span>}
             </p>
           </div>
         </div>
@@ -170,6 +188,11 @@ export default function NewUserPage() {
             </CardTitle>
             <CardDescription className="text-sm sm:text-base mt-2">
               Ingresa los detalles del nuevo usuario que deseas registrar en el sistema.
+              {selectedCompany && (
+                <span className="block mt-1">
+                  El usuario será asignado automáticamente a la empresa <strong>{selectedCompany.name}</strong>.
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
 
@@ -292,6 +315,19 @@ export default function NewUserPage() {
                     )}
                   />
                 </div>
+
+                {/* Información sobre la empresa asignada */}
+                {selectedCompany && (
+                  <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Empresa asignada:</span> {selectedCompany.name}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      El usuario será asignado automáticamente a esta empresa. Para asignar a otra empresa, cambia la
+                      selección en el selector de empresas.
+                    </p>
+                  </div>
+                )}
 
                 {/* Action Buttons - Responsive */}
                 <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">

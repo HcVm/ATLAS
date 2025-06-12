@@ -51,6 +51,7 @@ export default function UsersPage() {
       setLoading(true)
       console.log("Fetching users for company:", selectedCompany?.id || "all")
 
+      // Construimos la consulta base
       let query = supabase
         .from("profiles")
         .select(`
@@ -60,8 +61,9 @@ export default function UsersPage() {
         `)
         .order("created_at", { ascending: false })
 
-      // Si hay una empresa seleccionada y el usuario es admin, filtrar por esa empresa
-      if (selectedCompany && user?.role === "admin") {
+      // Aplicamos el filtro solo si hay una empresa seleccionada
+      if (selectedCompany) {
+        // Filtrar exactamente por el ID de la empresa seleccionada
         query = query.eq("company_id", selectedCompany.id)
       }
 
@@ -221,7 +223,7 @@ export default function UsersPage() {
             Usuarios
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            {selectedCompany ? `Usuarios de ${selectedCompany.name}` : "Gestiona todos los usuarios del sistema"}
+            {selectedCompany ? `Usuarios de ${selectedCompany.name}` : "Todos los usuarios del sistema"}
           </p>
         </div>
         <Button

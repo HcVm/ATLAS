@@ -17,11 +17,13 @@ import { Badge } from "@/components/ui/badge"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 export default function NewsPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [news, setNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -39,17 +41,28 @@ export default function NewsPage() {
     if (user && (user.role === "admin" || user.role === "supervisor")) {
       fetchNews()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchNews = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("news")
         .select(`
           *,
           profiles!news_created_by_fkey (full_name)
         `)
         .order("created_at", { ascending: false })
+
+      // Filtrar por empresa seleccionada si el usuario es admin
+      if (user?.role === "admin" && selectedCompany) {
+        query = query.eq("company_id", selectedCompany.id)
+      }
+      // Si no es admin, aplicar filtros normales de permisos
+      else if (user && user.role !== "admin" && user.company_id) {
+        query = query.eq("company_id", user.company_id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setNews(data || [])
@@ -143,7 +156,7 @@ export default function NewsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
-            Noticias
+            {selectedCompany ? `Noticias - ${selectedCompany.name}` : "Noticias"}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona las noticias de la empresa</p>
         </div>

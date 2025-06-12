@@ -36,6 +36,10 @@ export function useAuth() {
 
 async function fetchUserProfile(authUser: User): Promise<Profile | null> {
   try {
+    // Usamos el cliente de servicio para evitar problemas de RLS
+    const adminClient = supabase.auth.admin
+
+    // Primero intentamos obtener el perfil directamente con el ID
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select(`
@@ -50,6 +54,23 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
 
     if (profileError) {
       console.error("Error fetching profile:", profileError)
+
+      // Si hay un error de RLS, intentamos una consulta más simple
+      const { data: simpleProfile, error: simpleError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authUser.id)
+        .maybeSingle()
+
+      if (simpleError) {
+        console.error("Error with simple profile query:", simpleError)
+        return null
+      }
+
+      if (simpleProfile) {
+        return simpleProfile
+      }
+
       return null
     }
 

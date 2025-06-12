@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Título y contenido son requeridos" }, { status: 400 })
     }
 
+    // Determinar la empresa para la noticia
+    const companyId = profile.role === "admin" ? body.company_id : profile.company_id
+
     // Crear la noticia
     const { data: news, error: newsError } = await supabaseServer
       .from("news")
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest) {
         image_url: image || null,
         created_by: user.id,
         published: true, // Publicar directamente
+        company_id: companyId, // Asignar la empresa seleccionada o la del usuario
       })
       .select()
       .single()
@@ -87,9 +91,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data: news, error } = await supabase
+    // Obtener parámetros de consulta
+    const url = new URL(request.url)
+    const companyId = url.searchParams.get("company_id")
+
+    let query = supabase
       .from("news")
       .select(`
         *,
@@ -97,6 +105,13 @@ export async function GET() {
       `)
       .eq("published", true)
       .order("created_at", { ascending: false })
+
+    // Filtrar por empresa si se proporciona
+    if (companyId) {
+      query = query.eq("company_id", companyId)
+    }
+
+    const { data: news, error } = await query
 
     if (error) {
       console.error("Error fetching news:", error)

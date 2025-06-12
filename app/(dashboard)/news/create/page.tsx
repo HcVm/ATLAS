@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
 
@@ -35,6 +36,7 @@ export default function CreateNewsPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -87,6 +89,9 @@ export default function CreateNewsPage() {
         imageUrl = urlData.publicUrl
       }
 
+      // Determinar la empresa para la noticia
+      const companyId = user.role === "admin" ? selectedCompany?.id : user.company_id
+
       // Crear noticia
       const { data: news, error } = await supabase
         .from("news")
@@ -96,6 +101,7 @@ export default function CreateNewsPage() {
           image_url: imageUrl,
           created_by: user.id,
           published: true,
+          company_id: companyId, // Asignar la empresa seleccionada o la del usuario
         })
         .select()
         .single()
@@ -112,7 +118,14 @@ export default function CreateNewsPage() {
       })
 
       // Notificar a todos los usuarios sobre la nueva noticia
-      const { data: allUsers } = await supabase.from("profiles").select("id").neq("id", user.id) // Excluir al creador que ya recibió notificación
+      // Si hay una empresa seleccionada, solo notificar a usuarios de esa empresa
+      let userQuery = supabase.from("profiles").select("id").neq("id", user.id) // Excluir al creador
+
+      if (companyId) {
+        userQuery = userQuery.eq("company_id", companyId)
+      }
+
+      const { data: allUsers } = await userQuery
 
       if (allUsers && allUsers.length > 0) {
         for (const userToNotify of allUsers) {
@@ -157,7 +170,9 @@ export default function CreateNewsPage() {
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold">Crear Nueva Noticia</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Completa el formulario para crear una nueva noticia
+              {selectedCompany
+                ? `Creando noticia para ${selectedCompany.name}`
+                : "Completa el formulario para crear una nueva noticia"}
             </p>
           </div>
         </div>

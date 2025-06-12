@@ -6,11 +6,15 @@ import { ChevronLeft, ChevronRight, FileText, Pause, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
+import { useCompany } from "@/lib/company-context"
+import { useAuth } from "@/lib/auth-context"
 import type { Database } from "@/lib/supabase"
 
 type News = Database["public"]["Tables"]["news"]["Row"]
 
 export function NewsCarousel() {
+  const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [news, setNews] = useState<News[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -19,7 +23,7 @@ export function NewsCarousel() {
 
   useEffect(() => {
     fetchNews()
-  }, [])
+  }, [selectedCompany])
 
   // Auto-play functionality
   useEffect(() => {
@@ -34,15 +38,37 @@ export function NewsCarousel() {
 
   const fetchNews = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+      console.log("Fetching news for company:", selectedCompany?.id || "all")
+
+      let query = supabase
         .from("news")
-        .select("*")
+        .select(`
+          *,
+          profiles!news_created_by_fkey (full_name)
+        `)
         .eq("published", true)
         .order("created_at", { ascending: false })
-        .limit(5)
 
-      if (error) throw error
+      // Filtrar por empresa si hay una seleccionada (admin) o por la empresa del usuario
+      if (selectedCompany && user?.role === "admin") {
+        query = query.eq("company_id", selectedCompany.id)
+      } else if (user?.company_id && user?.role !== "admin") {
+        query = query.eq("company_id", user.company_id)
+      }
+
+      const { data, error } = await query.limit(5)
+
+      if (error) {
+        console.error("Error fetching news:", error)
+        throw error
+      }
+
+      console.log(`Loaded ${data?.length || 0} news items`)
       setNews(data || [])
+
+      // Reiniciar el índice cuando cambian las noticias
+      setCurrentIndex(0)
     } catch (error) {
       console.error("Error fetching news:", error)
     } finally {
@@ -81,7 +107,11 @@ export function NewsCarousel() {
       <Card className="min-h-80">
         <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center">
           <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No hay noticias disponibles</p>
+          <p className="text-muted-foreground">
+            {selectedCompany
+              ? `No hay noticias disponibles para ${selectedCompany.name}`
+              : "No hay noticias disponibles"}
+          </p>
         </CardContent>
       </Card>
     )
