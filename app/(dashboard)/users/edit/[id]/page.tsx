@@ -40,16 +40,20 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchUser = async () => {
     try {
+      // Usar supabaseAdmin para obtener el usuario sin restricciones RLS
       const { data, error } = await supabase
         .from("profiles")
         .select(`
-          *,
-          departments (id, name)
-        `)
+        *,
+        departments (id, name)
+      `)
         .eq("id", params.id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("Error fetching user:", error)
+        throw error
+      }
 
       setUser(data)
       setFormData({
@@ -59,6 +63,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
         department_id: data.department_id || "none",
       })
     } catch (error: any) {
+      console.error("Error in fetchUser:", error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -83,23 +88,40 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
     setMessage("")
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        throw new Error("No hay sesión activa")
+      }
+
+      const response = await fetch(`/api/users/${params.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           full_name: formData.full_name,
           email: formData.email,
           role: formData.role,
           department_id: formData.department_id === "none" ? null : formData.department_id,
-        })
-        .eq("id", params.id)
+        }),
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al actualizar usuario")
+      }
 
       setMessage("Usuario actualizado exitosamente")
       setTimeout(() => {
         router.push("/users")
       }, 2000)
     } catch (error: any) {
+      console.error("Error updating user:", error)
       setError(error.message)
     } finally {
       setSaving(false)

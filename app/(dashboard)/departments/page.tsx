@@ -251,7 +251,7 @@ export default function DepartmentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               <span>Editar</span>
                             </DropdownMenuItem>
