@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { NotificationBadge } from "@/components/notifications/notification-badge"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function DashboardLayout({
   children,
@@ -142,6 +143,7 @@ export default function DashboardLayout({
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <NotificationBadge />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

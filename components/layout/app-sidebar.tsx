@@ -7,7 +7,6 @@ import {
   FileText,
   Plus,
   Bell,
-  QrCode,
   BarChart3,
   Users,
   Building2,
@@ -37,7 +36,6 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
 
 const menuItems = [
@@ -137,14 +135,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 border-b">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <FileText className="h-4 w-4" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+            <FileText className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">Sistema Docs</span>
-            <span className="text-xs text-muted-foreground">Seguimiento</span>
+            <span className="text-xs text-muted-foreground">v2.0</span>
           </div>
         </div>
       </SidebarHeader>
@@ -158,9 +156,25 @@ export function AppSidebar() {
                 {filteredMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={pathname === item.url}>
-                      <Link href={item.url} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                      <Link
+                        href={item.url}
+                        className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-300 hover:bg-primary/10 group"
+                      >
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-md ${pathname === item.url ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"} transition-colors duration-300`}
+                        >
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span
+                          className={`${pathname === item.url ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground"} transition-colors duration-300`}
+                        >
+                          {item.title}
+                        </span>
+                        {item.title === "Notificaciones" && (
+                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                            5
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -226,16 +240,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Theme Toggle */}
-        <div className="flex items-center justify-center p-2 mt-2">
-          <ThemeToggle />
-        </div>
-
         {user && (
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted mt-4">
-            <Avatar className="h-8 w-8">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-300 mt-4 border border-border/50">
+            <Avatar className="h-10 w-10 ring-2 ring-primary/20">
               <AvatarImage src={user.avatar_url || ""} />
-              <AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary">
                 {user.full_name
                   .split(" ")
                   .map((n) => n[0])
@@ -246,10 +255,9 @@ export function AppSidebar() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user.full_name}</p>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">Rol:</span>
                 <Badge
                   variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
-                  className="text-xs"
+                  className="text-xs px-2 py-0 h-5"
                 >
                   {user.role || "Sin rol"}
                 </Badge>
@@ -260,7 +268,7 @@ export function AppSidebar() {
 
         <Button
           variant="ghost"
-          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 mt-4"
+          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 transition-colors duration-300"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-2" />
