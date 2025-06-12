@@ -91,7 +91,7 @@ export function NewsCarousel() {
 
   return (
     <Card
-      className="min-h-80 overflow-hidden group"
+      className="min-h-120 overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -116,17 +116,27 @@ export function NewsCarousel() {
             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
           </div>
 
-          {/* Área de contenido - altura dinámica */}
-          <div className="relative min-h-32">
+          {/* Área de contenido - altura fija */}
+          <div className="relative h-80">
             {/* Degradado de transición en la parte superior */}
             <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/60 to-transparent pointer-events-none z-10" />
 
-            <div className="p-6 pt-2 text-center">
-              <h3 className="text-lg font-semibold mb-3">{currentNews.title}</h3>
-              <div className="text-muted-foreground text-sm mb-6 leading-relaxed">{currentNews.content}</div>
+            <div className="p-6 pt-2 text-center h-full flex flex-col">
+              <h3 className="text-lg font-semibold mb-3 flex-shrink-0">{currentNews.title}</h3>
 
-              {/* Footer con fecha y estado */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              {/* Área de contenido con scroll */}
+              <div className="flex-1 overflow-y-auto mb-4 px-2 -mx-2">
+                <div className="text-muted-foreground text-sm leading-relaxed">
+                  {currentNews.content.split("\n").map((paragraph: string, i: number) => (
+                    <p key={i} className="mb-2 last:mb-0">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer con fecha y estado - siempre visible */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100 flex-shrink-0">
                 <p className="text-xs text-muted-foreground">
                   {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
                     year: "numeric",
@@ -209,6 +219,24 @@ export function NewsCarousel() {
         @keyframes progress {
           from { width: 0%; }
           to { width: 100%; }
+        }
+
+        .overflow-y-auto::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 3px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 3px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
       `}</style>
     </Card>
