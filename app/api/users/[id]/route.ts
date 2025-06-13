@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin, updateUserAsAdmin, deleteUserAsAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin, updateUserWithAdmin, deleteUserWithAdmin } from "@/lib/supabase-admin"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -45,13 +45,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
-    const { full_name, email, role, department_id } = body
+    const { full_name, email, role, department_id, company_id = null, phone = null } = body
 
-    const { error } = await updateUserAsAdmin(params.id, {
-      full_name,
+    const { error } = await updateUserWithAdmin({
+      userId: params.id,
+      fullName: full_name,
       email,
       role,
-      department_id,
+      departmentId: department_id,
+      companyId: company_id,
+      phone,
     })
 
     if (error) {
@@ -66,9 +69,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
+
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await deleteUserAsAdmin(params.id)
+    const { error } = await deleteUserWithAdmin(params.id)
 
     if (error) {
       console.error("Error deleting user:", error)
