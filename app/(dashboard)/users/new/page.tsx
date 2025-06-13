@@ -27,9 +27,7 @@ const formSchema = z.object({
   full_name: z.string().min(3, {
     message: "El nombre completo debe tener al menos 3 caracteres.",
   }),
-  role: z.enum(["admin", "supervisor", "user"], {
-    required_error: "Debes seleccionar un rol.",
-  }),
+  role: z.enum(["admin", "supervisor", "user"],),
   department_id: z.string().optional(),
 })
 
