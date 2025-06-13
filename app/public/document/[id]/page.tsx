@@ -230,11 +230,11 @@ export default function PublicDocumentPage() {
           }
         }
       } catch (e) {
-        console.log("Could not get IP info")
+        console.log("Could not get IP info:", e)
       }
 
-      // Registrar la descarga con información del usuario anónimo
-      const { error } = await supabasePublic.from("document_downloads").insert({
+      // Preparar datos para insertar
+      const downloadData = {
         document_id: documentData.id,
         user_id: null,
         download_type: "main_file",
@@ -252,12 +252,19 @@ export default function PublicDocumentPage() {
         anonymous_purpose: anonymousData.purpose,
         download_token: downloadToken,
         downloaded_at: new Date().toISOString(),
-      })
+      }
+
+      console.log("Inserting download data:", downloadData)
+
+      // Registrar la descarga con información del usuario anónimo
+      const { data, error } = await supabasePublic.from("document_downloads").insert(downloadData)
 
       if (error) {
         console.error("Error tracking download:", error)
         throw error
       }
+
+      console.log("Download tracked successfully:", data)
     } catch (error) {
       console.error("Error in trackPublicDownload:", error)
       throw error
@@ -354,7 +361,13 @@ export default function PublicDocumentPage() {
       const downloadToken = generateDownloadToken()
 
       // Registrar la descarga primero
+      console.log("Attempting to track download with data:", {
+        anonymousData,
+        downloadToken,
+        documentId: documentData.id,
+      })
       await trackPublicDownload(anonymousData, downloadToken)
+      console.log("Download tracked successfully")
 
       // Crear opciones para la información de descarga
       const watermarkOptions = {
@@ -659,8 +672,8 @@ export default function PublicDocumentPage() {
 
       {/* Visor de archivos con protección selectiva */}
       <Dialog open={viewerOpen} onOpenChange={closeViewer}>
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center">
               <Lock className="h-4 w-4 mr-2 text-amber-600" />
               Vista previa protegida: {documentData.title}
