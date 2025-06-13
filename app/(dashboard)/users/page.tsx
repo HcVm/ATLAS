@@ -3,7 +3,7 @@
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Filter, User, Edit, Trash2, Users, Mail, Calendar, Building2 } from "lucide-react"
+import { Search, Filter, User, Edit, Trash2, Users, Mail, Calendar, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -226,14 +226,9 @@ export default function UsersPage() {
             {selectedCompany ? `Usuarios de ${selectedCompany.name}` : "Todos los usuarios del sistema"}
           </p>
         </div>
-        <Button
-          onClick={() => router.push("/users/new")}
-          className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          <span className="sm:hidden">Nuevo Usuario</span>
-          <span className="hidden sm:inline">Nuevo Usuario</span>
-        </Button>
+        <div className="text-sm bg-blue-50 border border-blue-200 rounded-md p-3 text-blue-700">
+          <p>Los usuarios deben registrarse desde la página pública de registro.</p>
+        </div>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">

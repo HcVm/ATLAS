@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     .select(
       `*,
       departments!profiles_department_id_fkey (id, name),
-      companies!profiles_company_id_fkey (id, name, code, color)`
+      companies!profiles_company_id_fkey (id, name, code, color)`,
     )
     .order("created_at", { ascending: false })
 
@@ -63,63 +63,65 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ users: data })
 }
 
-// POST: crear usuario
+// POST: crear usuario - ahora disponible para registro público
 export async function POST(request: NextRequest) {
-  const supabase = getSupabaseServerClient()
+  try {
+    const body = await request.json()
+    const parsed = userSchema.safeParse(body)
 
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await supabase.auth.getUser()
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Datos inválidos", issues: parsed.error.format() }, { status: 400 })
+    }
 
-  if (authError || !authUser) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    const { email, password, fullName, departmentId, phone } = parsed.data
+
+    // Verificar si el departamento existe
+    const { data: deptCheck, error: deptError } = await supabaseAdmin
+      .from("departments")
+      .select("id")
+      .eq("id", departmentId)
+      .single()
+
+    if (deptError || !deptCheck) {
+      console.error("Error validando departamento:", deptError)
+      return NextResponse.json({ error: "El departamento seleccionado no existe" }, { status: 400 })
+    }
+
+    // Crear el usuario en Auth
+    const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: password!,
+      email_confirm: true,
+    })
+
+    if (createError) {
+      console.error("Error creando usuario en Auth:", createError)
+      return NextResponse.json({ error: `Error creando usuario: ${createError.message}` }, { status: 500 })
+    }
+
+    // Crear el perfil del usuario
+    const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+      id: userData.user.id,
+      email,
+      full_name: fullName,
+      role: "user",
+      department_id: departmentId,
+      company_id: null, // La empresa será asignada por el admin
+      phone: phone || null,
+    })
+
+    if (profileError) {
+      console.error("Error creando perfil:", profileError)
+      // Si falla la creación del perfil, eliminar el usuario de Auth
+      await supabaseAdmin.auth.admin.deleteUser(userData.user.id)
+      return NextResponse.json({ error: `Error creando perfil: ${profileError.message}` }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, user: userData.user })
+  } catch (error: any) {
+    console.error("Error inesperado en registro:", error)
+    return NextResponse.json({ error: `Error inesperado: ${error.message}` }, { status: 500 })
   }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", authUser.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== "admin") {
-    return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 })
-  }
-
-  const body = await request.json()
-  const parsed = userSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Datos inválidos", issues: parsed.error.format() }, { status: 400 })
-  }
-
-  const { email, password, fullName, departmentId, companyId, phone } = parsed.data
-
-  const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password: password!,
-    email_confirm: true,
-  })
-
-  if (createError) {
-    return NextResponse.json({ error: createError.message }, { status: 500 })
-  }
-
-  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
-    id: userData.user.id,
-    email,
-    full_name: fullName,
-    role: "user",
-    department_id: departmentId,
-    company_id: companyId || null,
-    phone: phone || null,
-  })
-
-  if (profileError) {
-    await supabaseAdmin.auth.admin.deleteUser(userData.user.id)
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true, user: userData.user })
 }
 
 // PUT: actualizar usuario
@@ -135,11 +137,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", authUser.id)
-    .single()
+  const { data: adminProfile } = await supabase.from("profiles").select("role").eq("id", authUser.id).single()
 
   if (!adminProfile || adminProfile.role !== "admin") {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 })
@@ -185,11 +183,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", authUser.id)
-    .single()
+  const { data: adminProfile } = await supabase.from("profiles").select("role").eq("id", authUser.id).single()
 
   if (!adminProfile || adminProfile.role !== "admin") {
     return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 })

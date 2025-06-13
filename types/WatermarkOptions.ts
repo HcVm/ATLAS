@@ -6,4 +6,3 @@ export interface WatermarkOptions {
     downloadToken: string
     documentId: string
   }
-  
