@@ -91,10 +91,6 @@ export default function NewUserPage() {
         email: values.email,
         password: values.password,
         email_confirm: true,
-        user_metadata: {
-          full_name: values.full_name,
-          role: values.role,
-        },
       })
 
       if (authError) throw authError
