@@ -257,31 +257,84 @@ export default function DocumentDetailsPage() {
   }
 
   const fetchDownloadStats = async () => {
-    if (user?.role !== "admin") return
+    if (user?.role !== "admin") {
+      console.log("User is not admin, skipping download stats")
+      return
+    }
 
     try {
       setStatsLoading(true)
+      console.log("Fetching download stats for document:", params.id)
+      console.log("Current user:", user)
 
-      // Consulta directa a la tabla document_downloads con todos los campos necesarios
+      // Primero, verificar si el documento existe
+      const { data: docCheck, error: docError } = await supabase
+        .from("documents")
+        .select("id, title")
+        .eq("id", params.id)
+        .single()
+
+      if (docError) {
+        console.error("Document not found:", docError)
+        throw new Error("Documento no encontrado")
+      }
+
+      console.log("Document found:", docCheck)
+
+      // Consulta simplificada sin relaciones complejas
       const { data, error } = await supabase
         .from("document_downloads")
-        .select(`
-          *,
-          profiles (id, full_name, email)
-        `)
+        .select("*")
         .eq("document_id", params.id)
         .order("downloaded_at", { ascending: false })
-        .order("created_at", { ascending: false })
 
       if (error) {
         console.error("Error fetching download stats:", error)
         throw error
       }
 
-      console.log("Download stats fetched:", data) // Debug log
-      setDownloadStats(data || [])
+      console.log("Raw download data:", data)
+      console.log("Number of records found:", data?.length || 0)
+
+      // Si tenemos datos, obtener información de perfiles por separado
+      let enrichedData = data || []
+
+      if (data && data.length > 0) {
+        const userIds = [...new Set(data.filter((d) => d.user_id).map((d) => d.user_id))]
+        console.log("Unique user IDs:", userIds)
+
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", userIds)
+
+          if (!profilesError && profiles) {
+            console.log("Profiles found:", profiles)
+
+            // Enriquecer los datos con información de perfiles
+            enrichedData = data.map((download) => {
+              const profile = profiles.find((p) => p.id === download.user_id)
+              return {
+                ...download,
+                profiles: profile || null,
+              }
+            })
+          } else {
+            console.error("Error fetching profiles:", profilesError)
+          }
+        }
+      }
+
+      console.log("Final enriched data:", enrichedData)
+      setDownloadStats(enrichedData)
     } catch (error) {
-      console.error("Error fetching download stats:", error)
+      console.error("Error in fetchDownloadStats:", error)
+      toast({
+        title: "Error al cargar estadísticas",
+        description: error.message || "No se pudieron cargar las estadísticas de descarga",
+        variant: "destructive",
+      })
     } finally {
       setStatsLoading(false)
     }
