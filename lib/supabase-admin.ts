@@ -1,22 +1,13 @@
 import { createClient } from "@supabase/supabase-js"
-import type { Database } from "./supabase"
 
-// Obtenemos las variables de entorno para el cliente admin
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Verificar que las URL y la clave estén definidas
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("ADVERTENCIA: Variables de entorno de Supabase Admin no definidas correctamente")
-  console.error("NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl || "INDEFINIDO")
-  console.error("SUPABASE_SERVICE_ROLE_KEY:", supabaseServiceKey ? "DEFINIDO (oculto)" : "INDEFINIDO")
-}
-
-// Crear el cliente admin con la clave de servicio
-export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
+    persistSession: true,
+    autoRefreshToken: false, // DESACTIVAR auto refresh para evitar eventos
+    detectSessionInUrl: true,
   },
 })
 

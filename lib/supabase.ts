@@ -1,46 +1,13 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Obtenemos las variables de entorno
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Verificar que las URL y la clave estén definidas
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("ADVERTENCIA: Variables de entorno de Supabase no definidas correctamente")
-  console.error("NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl || "INDEFINIDO")
-  console.error("NEXT_PUBLIC_SUPABASE_ANON_KEY:", supabaseAnonKey ? "DEFINIDO (oculto)" : "INDEFINIDO")
-}
-
-// Crear el cliente con opciones adicionales para mejorar la estabilidad
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true, // Activado para refrescar tokens automáticamente
+    autoRefreshToken: false, // DESACTIVAR auto refresh para evitar eventos
     detectSessionInUrl: true,
-    flowType: "pkce", // Usar PKCE para mayor seguridad
-  },
-  global: {
-    fetch: (...args) => {
-      // Añadir timeout de 30 segundos a todas las peticiones fetch
-      const [url, options] = args
-      const controller = new AbortController()
-      const signal = controller.signal
-
-      const timeoutId = setTimeout(() => {
-        controller.abort()
-        console.error(`Supabase request timed out: ${url}`)
-      }, 30000)
-
-      return fetch(url, { ...options, signal }).finally(() => clearTimeout(timeoutId))
-    },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-  db: {
-    schema: "public",
   },
 })
 
