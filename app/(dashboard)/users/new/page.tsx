@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
+import { createUser } from "@/app/actions/user-actions"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -44,7 +45,7 @@ export default function NewUserPage() {
   const { selectedCompany } = useCompany()
 
   // Redirigir si no es administrador
-  useEffect(() => {
+  useState(() => {
     if (user && user.role !== "admin") {
       toast({
         title: "Acceso denegado",
@@ -53,7 +54,7 @@ export default function NewUserPage() {
       })
       router.push("/dashboard")
     }
-  }, [user, router, toast])
+  })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,7 +68,7 @@ export default function NewUserPage() {
   })
 
   // Cargar departamentos
-  useEffect(() => {
+  useState(() => {
     const fetchDepartments = async () => {
       try {
         const { data, error } = await supabase.from("departments").select("*").order("name")
@@ -86,7 +87,7 @@ export default function NewUserPage() {
     }
 
     fetchDepartments()
-  }, [toast])
+  })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || user.role !== "admin") {
@@ -100,35 +101,18 @@ export default function NewUserPage() {
 
     setLoading(true)
     try {
-      // Obtener token de sesión
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
-        throw new Error("No hay sesión activa")
-      }
-
-      // Crear usuario usando la API
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          email: values.email,
-          password: values.password,
-          full_name: values.full_name,
-          role: values.role,
-          department_id: values.department_id || null,
-          company_id: selectedCompany?.id || null, // Asignar automáticamente la empresa seleccionada
-        }),
+      // Usar la Server Action para crear el usuario
+      const result = await createUser({
+        email: values.email,
+        password: values.password,
+        full_name: values.full_name,
+        role: values.role,
+        department_id: values.department_id || null,
+        company_id: selectedCompany?.id || null,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Error al crear usuario")
+      if (result.error) {
+        throw new Error(result.error)
       }
 
       // Crear notificación para el administrador
@@ -148,6 +132,7 @@ export default function NewUserPage() {
       })
 
       router.push("/users")
+      router.refresh()
     } catch (error: any) {
       console.error("Error creating user:", error)
       toast({
