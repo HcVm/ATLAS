@@ -21,7 +21,6 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
 import { trackDownload } from "@/lib/download-tracker"
-import { getCombinedDownloadStats } from "@/lib/public-download-tracker"
 
 // Helper function to validate UUID
 const isValidUUID = (str: string) => {
@@ -262,9 +261,25 @@ export default function DocumentDetailsPage() {
 
     try {
       setStatsLoading(true)
-      // Usar la nueva función que combina descargas autenticadas y públicas
-      const stats = await getCombinedDownloadStats(params.id as string)
-      setDownloadStats(stats)
+
+      // Consulta directa a la tabla document_downloads con todos los campos necesarios
+      const { data, error } = await supabase
+        .from("document_downloads")
+        .select(`
+          *,
+          profiles (id, full_name, email)
+        `)
+        .eq("document_id", params.id)
+        .order("downloaded_at", { ascending: false })
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching download stats:", error)
+        throw error
+      }
+
+      console.log("Download stats fetched:", data) // Debug log
+      setDownloadStats(data || [])
     } catch (error) {
       console.error("Error fetching download stats:", error)
     } finally {

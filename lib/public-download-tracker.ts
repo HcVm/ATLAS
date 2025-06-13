@@ -55,6 +55,8 @@ export async function trackPublicDownload(data: PublicDownloadTrackingData) {
 
 export async function getCombinedDownloadStats(documentId: string) {
   try {
+    console.log("Fetching download stats for document:", documentId) // Debug log
+
     const { data, error } = await supabase
       .from("document_downloads")
       .select(`
@@ -63,11 +65,14 @@ export async function getCombinedDownloadStats(documentId: string) {
       `)
       .eq("document_id", documentId)
       .order("downloaded_at", { ascending: false })
+      .order("created_at", { ascending: false })
 
     if (error) {
+      console.error("Error in getCombinedDownloadStats:", error)
       throw error
     }
 
+    console.log("Download stats data:", data) // Debug log
     return data || []
   } catch (error) {
     console.error("Error fetching combined download stats:", error)
