@@ -46,40 +46,53 @@ export default function DashboardPage() {
       }
 
       // Determinar qué empresa usar para filtrar
+      let shouldFilterByCompany = false
       let companyFilter = null
+
       if (user?.role === "admin") {
-        // Admin: usar empresa seleccionada (null = modo general, ver todo)
-        companyFilter = selectedCompany?.id || null
+        // Admin: si hay empresa seleccionada, filtrar por ella. Si no (modo general), no filtrar
+        if (selectedCompany) {
+          shouldFilterByCompany = true
+          companyFilter = selectedCompany.id
+        }
       } else {
-        // Usuario normal: usar su empresa asignada
-        companyFilter = user?.company_id || null
+        // Usuario normal: siempre filtrar por su empresa asignada
+        if (user?.company_id) {
+          shouldFilterByCompany = true
+          companyFilter = user.company_id
+        }
       }
 
-      // Construir filtros base para documentos
-      let documentsBaseQuery = supabase.from("documents")
-      let documentsCountQuery = supabase.from("documents")
-      let pendingCountQuery = supabase.from("documents")
-      let completedCountQuery = supabase.from("documents")
+      // Construir queries base
+      let documentsCountQuery = supabase.from("documents").select("id", { count: "exact", head: true })
+      let pendingCountQuery = supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+      let completedCountQuery = supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed")
 
-      // Aplicar filtro de empresa si corresponde
-      if (companyFilter) {
-        documentsBaseQuery = documentsBaseQuery.eq("company_id", companyFilter)
+      // Aplicar filtro de empresa solo si es necesario
+      if (shouldFilterByCompany && companyFilter) {
         documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
         pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
         completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
       }
 
-      // Fetch statistics con filtros de empresa
+      // Fetch statistics
       const [documentsRes, usersRes, departmentsRes, pendingRes, completedRes] = await Promise.all([
-        documentsCountQuery.select("id", { count: "exact", head: true }),
+        documentsCountQuery,
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("departments").select("id", { count: "exact", head: true }),
-        pendingCountQuery.select("id", { count: "exact", head: true }).eq("status", "pending"),
-        completedCountQuery.select("id", { count: "exact", head: true }).eq("status", "completed"),
+        pendingCountQuery,
+        completedCountQuery,
       ])
 
-      // Fetch recent documents con filtros
-      let documentsQuery = documentsBaseQuery
+      // Fetch recent documents
+      let documentsQuery = supabase
+        .from("documents")
         .select(`
         *,
         profiles!documents_created_by_fkey (full_name),
@@ -87,6 +100,11 @@ export default function DashboardPage() {
       `)
         .order("created_at", { ascending: false })
         .limit(5)
+
+      // Aplicar filtro de empresa a documentos recientes
+      if (shouldFilterByCompany && companyFilter) {
+        documentsQuery = documentsQuery.eq("company_id", companyFilter)
+      }
 
       // Aplicar filtros adicionales para usuarios no-admin
       if (user && user.role !== "admin") {
@@ -99,17 +117,17 @@ export default function DashboardPage() {
 
       const { data: documents } = await documentsQuery
 
-      // Fetch recent movements con filtros de empresa
+      // Fetch recent movements
       let movementsQuery = supabase.from("document_movements").select(`
-        *,
-        documents!inner (title, document_number, company_id),
-        from_departments:departments!document_movements_from_department_id_fkey (name, color),
-        to_departments:departments!document_movements_to_department_id_fkey (name, color),
-        profiles!document_movements_moved_by_fkey (full_name)
-      `)
+      *,
+      documents!inner (title, document_number, company_id),
+      from_departments:departments!document_movements_from_department_id_fkey (name, color),
+      to_departments:departments!document_movements_to_department_id_fkey (name, color),
+      profiles!document_movements_moved_by_fkey (full_name)
+    `)
 
       // Aplicar filtro de empresa a movimientos
-      if (companyFilter) {
+      if (shouldFilterByCompany && companyFilter) {
         movementsQuery = movementsQuery.eq("documents.company_id", companyFilter)
       }
 
