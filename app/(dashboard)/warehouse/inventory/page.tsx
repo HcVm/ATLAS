@@ -473,7 +473,6 @@ export default function InventoryPage() {
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Precio/Total</TableHead>
                   <TableHead>Detalles</TableHead>
-                  <TableHead>Usuario</TableHead>
                   <TableHead>Adjuntos</TableHead>
                 </TableRow>
               </TableHeader>
