@@ -321,10 +321,6 @@ export default function InventoryPage() {
         if (updateError) throw updateError
       }
 
-      // Recargar movimientos
-      fetchMovements(companyId)
-      setShowMovementForm(false)
-
       toast({
         title: "Éxito",
         description: "Movimiento creado correctamente",
@@ -340,6 +336,15 @@ export default function InventoryPage() {
         variant: "destructive",
       })
       throw error // Re-throw so the dialog can handle it
+    }
+  }
+
+  const handleDialogClose = () => {
+    setShowMovementForm(false)
+    // Refresh movements when dialog closes
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+    if (companyId) {
+      fetchMovements(companyId)
     }
   }
 
@@ -473,6 +478,7 @@ export default function InventoryPage() {
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Precio/Total</TableHead>
                   <TableHead>Detalles</TableHead>
+                  <TableHead>Usuario</TableHead>
                   <TableHead>Adjuntos</TableHead>
                 </TableRow>
               </TableHeader>
@@ -566,11 +572,7 @@ export default function InventoryPage() {
       </Card>
 
       {showMovementForm && (
-        <MovementFormDialog
-          open={showMovementForm}
-          onClose={() => setShowMovementForm(false)}
-          onSubmit={handleCreateMovement}
-        />
+        <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
       )}
     </div>
   )
