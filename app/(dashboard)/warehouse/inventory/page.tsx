@@ -88,7 +88,7 @@ export default function InventoryPage() {
           ),
           peru_departments!inventory_movements_destination_department_id_fkey (
             name
-          )
+          )            
         `)
         .eq("company_id", user.company_id)
         .order("movement_date", { ascending: false })
@@ -182,6 +182,7 @@ export default function InventoryPage() {
         return <Badge variant="outline">{type}</Badge>
     }
   }
+
 
   const handleCreateMovement = async (movementData: any) => {
     try {
@@ -331,28 +332,28 @@ export default function InventoryPage() {
                             <div className="font-medium text-green-600">
                               Total: {formatCurrency(movement.total_amount)}
                             </div>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
+                          </div>  
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}                      
+                          </TableCell>
                       <TableCell>
                         <div className="text-sm space-y-1">
-                          {movement.purchase_order_number && (
-                            <div>
-                              <span className="font-medium">OC:</span> {movement.purchase_order_number}
-                            </div>
-                          )}
-                          {movement.destination_entity_name && (
-                            <div>
+                            {movement.purchase_order_number && (
+                              <div>
+                                <span className="font-medium">OC:</span> {movement.purchase_order_number}
+                              </div>
+                            )}
+                            {movement.destination_entity_name && (
+                              <div>
                               <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
                             </div>
                           )}
                           {movement.peru_departments?.name && (
                             <div>
                               <span className="font-medium">Destino:</span> {movement.peru_departments.name}
-                            </div>
-                          )}
+                              </div>
+                              )}
                           {movement.supplier && (
                             <div>
                               <span className="font-medium">Proveedor:</span> {movement.supplier}
@@ -387,7 +388,6 @@ export default function InventoryPage() {
           </div>
         </CardContent>
       </Card>
-
       {showMovementForm && (
         <MovementFormDialog
           open={showMovementForm}
