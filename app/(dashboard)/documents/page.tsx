@@ -278,15 +278,25 @@ export default function DocumentsPage() {
     try {
       setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
 
+      console.log("Attempting to delete document:", deleteDialog.document.id)
+
+      // Con las políticas RLS y CASCADE configuradas, solo necesitamos eliminar el documento
+      // Las tablas relacionadas se eliminarán automáticamente por CASCADE
       const { error } = await supabase.from("documents").delete().eq("id", deleteDialog.document.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("Delete error:", error)
+        throw error
+      }
 
+      console.log("Document deleted successfully")
+
+      // Actualizar la lista local inmediatamente
       setDocuments(documents.filter((doc) => doc.id !== deleteDialog.document.id))
 
       toast({
         title: "Documento eliminado",
-        description: "El documento ha sido eliminado correctamente.",
+        description: "El documento y todos sus datos relacionados han sido eliminados correctamente.",
       })
 
       setDeleteDialog({
@@ -294,13 +304,30 @@ export default function DocumentsPage() {
         document: null,
         isDeleting: false,
       })
+
+      // Refrescar la lista después de un momento para verificar
+      setTimeout(() => {
+        fetchDocuments(true)
+      }, 1000)
     } catch (error: any) {
       console.error("Error deleting document:", error)
+
+      let errorMessage = "No se pudo eliminar el documento."
+
+      if (error.code === "42501") {
+        errorMessage = "No tienes permisos para eliminar este documento."
+      } else if (error.code === "23503") {
+        errorMessage = "No se puede eliminar el documento porque tiene datos relacionados."
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       toast({
         title: "Error al eliminar",
-        description: "No se pudo eliminar el documento: " + error.message,
+        description: errorMessage,
         variant: "destructive",
       })
+
       setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
     }
   }
