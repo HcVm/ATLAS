@@ -183,6 +183,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${user?.id}/${fileName}`
 
+        console.log("Uploading file:", file.name, "to path:", filePath)
+
         // Subir archivo a Supabase Storage
         const { error: uploadError } = await supabase.storage.from("inventory-attachments").upload(filePath, file)
 
@@ -195,6 +197,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         const {
           data: { publicUrl },
         } = supabase.storage.from("inventory-attachments").getPublicUrl(filePath)
+
+        console.log("File uploaded, creating database record...")
 
         // Crear registro en la base de datos
         const { error: dbError } = await supabase.from("inventory_movement_attachments").insert({
@@ -210,6 +214,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           console.error("Database error:", dbError)
           throw dbError
         }
+
+        console.log("Database record created successfully")
       }
 
       toast({
@@ -306,6 +312,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     const totalAmount = salePrice ? salePrice * quantity : null
 
     try {
+      console.log("Creating movement...")
+
       // Crear el movimiento primero
       const movementData = {
         ...formData,
@@ -319,8 +327,11 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       // Llamar a onSubmit que debería retornar el ID del movimiento creado
       const createdMovement = await onSubmit(movementData)
 
+      console.log("Movement created:", createdMovement)
+
       // Si hay archivos adjuntos y se creó el movimiento exitosamente
       if (attachments.length > 0 && createdMovement?.id) {
+        console.log("Uploading attachments for movement:", createdMovement.id)
         await uploadAttachments(createdMovement.id)
       }
 
@@ -340,6 +351,9 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       })
       setSelectedProductData(null)
       setAttachments([])
+
+      // Cerrar el diálogo
+      onClose()
     } catch (error: any) {
       console.error("Error creating movement:", error)
       toast({
