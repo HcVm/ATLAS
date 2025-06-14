@@ -15,6 +15,7 @@ import { AlertTriangle, Package, DollarSign, MapPin, Building, Info } from "luci
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useCompany } from "@/lib/company-context"
 
 interface Product {
   id: string
@@ -42,6 +43,7 @@ interface MovementFormDialogProps {
 
 export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }: MovementFormDialogProps) {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
@@ -64,10 +66,13 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   })
 
   useEffect(() => {
-    if (user?.company_id && open) {
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (companyId && open) {
       fetchData()
     }
-  }, [user?.company_id, open])
+  }, [user, selectedCompany, open])
 
   useEffect(() => {
     if (selectedProduct) {
@@ -78,13 +83,28 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
   const fetchData = async () => {
     try {
+      // For admin users, use selectedCompany; for others, use their assigned company
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+      if (!companyId) {
+        console.log("No company ID available")
+        return
+      }
+
+      console.log("Fetching products for company:", companyId)
+
       // Obtener productos
-      const { data: productsData } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from("products")
         .select("id, name, code, current_stock, minimum_stock, unit_of_measure, cost_price, sale_price")
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .eq("is_active", true)
         .order("name")
+
+      if (productsError) {
+        console.error("Error fetching products:", productsError)
+        throw productsError
+      }
 
       // Obtener departamentos del Perú
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
@@ -92,6 +112,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       // Obtener sugerencias de entidades globales
       const { data: suggestionsData } = await supabase.rpc("get_global_entity_suggestions")
 
+      console.log("Products fetched:", productsData?.length || 0)
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
       setEntitySuggestions(suggestionsData?.map((item) => item.entity_name) || [])
@@ -127,6 +148,18 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      toast({
+        title: "Error",
+        description: "No hay empresa seleccionada",
+        variant: "destructive",
+      })
+      return
+    }
 
     // Validaciones
     if (!selectedProductData) {
@@ -195,6 +228,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       sale_price: salePrice,
       total_amount: totalAmount,
       destination_department_id: formData.destination_department_id || null,
+      company_id: companyId, // Add company_id to the submission
     })
 
     // Limpiar formulario
