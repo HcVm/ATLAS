@@ -39,7 +39,7 @@ interface ProductForm {
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
-  unit_cost: number
+  cost_price: number
   sale_price: number
   location: string
   notes: string
@@ -65,7 +65,7 @@ export default function NewProductPage() {
     unit_of_measure: "unidad",
     minimum_stock: 0,
     current_stock: 0,
-    unit_cost: 0,
+    cost_price: 0,
     sale_price: 0,
     location: "",
     notes: "",
@@ -140,22 +140,32 @@ export default function NewProductPage() {
     try {
       setSaving(true)
 
-      const { data, error } = await supabase
-        .from("products")
-        .insert({
-          ...form,
-          company_id: user.company_id,
-          created_by: user.id,
-          brand_id: form.brand_id || null,
-          category_id: form.category_id || null,
-          barcode: form.barcode || null,
-          location: form.location || null,
-          notes: form.notes || null,
-        })
-        .select()
-        .single()
+      // Preparar los datos para insertar
+      const productData = {
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        code: form.code.trim(),
+        barcode: form.barcode.trim() || null,
+        brand_id: form.brand_id || null,
+        category_id: form.category_id || null,
+        unit_of_measure: form.unit_of_measure,
+        minimum_stock: form.minimum_stock,
+        current_stock: form.current_stock,
+        cost_price: form.cost_price,
+        sale_price: form.sale_price,
+        location: form.location.trim() || null,
+        notes: form.notes.trim() || null,
+        is_active: form.is_active,
+        company_id: user.company_id,
+        created_by: user.id,
+      }
+
+      console.log("Inserting product data:", productData)
+
+      const { data, error } = await supabase.from("products").insert(productData).select().single()
 
       if (error) {
+        console.error("Supabase error:", error)
         if (error.code === "23505") {
           toast({
             title: "Error",
@@ -172,12 +182,12 @@ export default function NewProductPage() {
         description: "Producto creado correctamente",
       })
 
-      router.push(`/warehouse/products/${data.id}`)
+      router.push("/warehouse/products")
     } catch (error) {
       console.error("Error creating product:", error)
       toast({
         title: "Error",
-        description: "No se pudo crear el producto",
+        description: "No se pudo crear el producto. Verifica que todos los campos estén correctos.",
         variant: "destructive",
       })
     } finally {
@@ -301,7 +311,10 @@ export default function NewProductPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Marca</Label>
-                    <Select value={form.brand_id} onValueChange={(value) => updateForm("brand_id", value)}>
+                    <Select
+                      value={form.brand_id}
+                      onValueChange={(value) => updateForm("brand_id", value === "none" ? "" : value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar marca" />
                       </SelectTrigger>
@@ -320,7 +333,10 @@ export default function NewProductPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
-                    <Select value={form.category_id} onValueChange={(value) => updateForm("category_id", value)}>
+                    <Select
+                      value={form.category_id}
+                      onValueChange={(value) => updateForm("category_id", value === "none" ? "" : value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar categoría" />
                       </SelectTrigger>
@@ -404,14 +420,14 @@ export default function NewProductPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="unit_cost">Costo Unitario (S/)</Label>
+                    <Label htmlFor="cost_price">Costo Unitario (S/)</Label>
                     <Input
-                      id="unit_cost"
+                      id="cost_price"
                       type="number"
                       min="0"
                       step="0.01"
-                      value={form.unit_cost}
-                      onChange={(e) => updateForm("unit_cost", Number.parseFloat(e.target.value) || 0)}
+                      value={form.cost_price}
+                      onChange={(e) => updateForm("cost_price", Number.parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
