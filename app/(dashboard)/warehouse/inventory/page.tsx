@@ -1,264 +1,143 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useState } from "react"
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { useUser } from "@/hooks/use-user"
-import { Loader2, Paperclip } from "lucide-react"
-import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon } from "@radix-ui/react-icons"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText, Paperclip, Download } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
+import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
+import { useCompany } from "@/lib/company-context"
+import { useToast } from "@/hooks/use-toast"
+
+interface InventoryMovement {
+  id: string
+  movement_type: string
+  quantity: number
+  sale_price: number | null
+  total_amount: number | null
+  purchase_order_number: string | null
+  destination_entity_name: string | null
+  destination_address: string | null
+  supplier: string | null
+  reason: string | null
+  notes: string | null
+  movement_date: string
+  created_at: string
+  products?: {
+    id: string
+    name: string
+    code: string
+    unit_of_measure: string
+  } | null
+  profiles?: {
+    full_name: string
+  } | null
+  peru_departments?: {
+    name: string
+  } | null
+}
+
+interface MovementAttachment {
+  id: string
+  movement_id: string
+  file_name: string
+  file_url: string
+  file_size: number
+  file_type: string
+  created_at: string
+  profiles?: {
+    full_name: string
+  } | null
+}
 
 export default function InventoryPage() {
-  const { user } = useUser()
+  const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const { toast } = useToast()
+  const [movements, setMovements] = useState<InventoryMovement[]>([])
+  const [attachments, setAttachments] = useState<Record<string, MovementAttachment[]>>({})
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
+  const [dateFilter, setDateFilter] = useState<string>("all")
+  const [showMovementForm, setShowMovementForm] = useState(false)
 
-  const [products, setProducts] = useState<any[]>([])
-  const [movements, setMovements] = useState<any[]>([])
-  const [companies, setCompanies] = useState<any[]>([])
-  const [departments, setDepartments] = useState<any[]>([])
+  useEffect(() => {
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-  const [selectedCompany, setSelectedCompany] = useState<any>(null)
-
-  const [showMovementDialog, setShowMovementDialog] = useState(false)
-  const [isCreatingMovement, setIsCreatingMovement] = useState(false)
-
-  const [movementAttachments, setMovementAttachments] = useState<Record<string, any[]>>({})
-
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("company_id", user?.role === "admin" ? selectedCompany?.id : user?.company_id)
-
-      if (error) throw error
-
-      setProducts(data || [])
-    } catch (error: any) {
-      console.error("Error fetching products:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch products. Please try again.",
-        variant: "destructive",
-      })
+    if (companyId) {
+      fetchMovements(companyId)
     }
-  }
+  }, [user, selectedCompany])
 
-  const fetchMovements = async () => {
+  const fetchMovements = async (companyId: string) => {
+    if (!companyId) return
+
     try {
+      setLoading(true)
+      console.log("Fetching movements for company:", companyId)
+
       const { data, error } = await supabase
         .from("inventory_movements")
         .select(`
-          *,
-          products (
+          id,
+          movement_type,
+          quantity,
+          sale_price,
+          total_amount,
+          purchase_order_number,
+          destination_entity_name,
+          destination_address,
+          supplier,
+          reason,
+          notes,
+          movement_date,
+          created_at,
+          products!inventory_movements_product_id_fkey (
+            id,
+            name,
+            code,
+            unit_of_measure
+          ),
+          profiles!inventory_movements_created_by_fkey (
+            full_name
+          ),
+          peru_departments (
             name
-          )
+          )            
         `)
-        .eq("company_id", user?.role === "admin" ? selectedCompany?.id : user?.company_id)
-        .order("created_at", { ascending: false })
+        .eq("company_id", companyId)
+        .order("movement_date", { ascending: false })
+        .limit(100)
 
       if (error) throw error
 
+      console.log("Movements fetched:", data?.length || 0)
       setMovements(data || [])
-    } catch (error: any) {
+
+      // Fetch attachments for these movements
+      if (data && data.length > 0) {
+        await fetchAttachments(data.map((m) => m.id))
+      }
+    } catch (error) {
       console.error("Error fetching movements:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch movements. Please try again.",
+        description: "Error al cargar los movimientos de inventario",
         variant: "destructive",
       })
-    }
-  }
-
-  const fetchCompanies = async () => {
-    try {
-      const { data, error } = await supabase.from("companies").select("*")
-
-      if (error) throw error
-
-      setCompanies(data || [])
-    } catch (error: any) {
-      console.error("Error fetching companies:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch companies. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const fetchDepartments = async () => {
-    try {
-      const { data, error } = await supabase.from("departments").select("*")
-
-      if (error) throw error
-
-      setDepartments(data || [])
-    } catch (error: any) {
-      console.error("Error fetching departments:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch departments. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  useEffect(() => {
-    fetchProducts()
-    fetchMovements()
-    fetchCompanies()
-    fetchDepartments()
-  }, [user])
-
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchProducts()
-      fetchMovements()
-    }
-  }, [selectedCompany])
-
-  const handleCreateMovement = async (data: any) => {
-    try {
-      setIsCreatingMovement(true)
-
-      // For admin users, use selectedCompany; for others, use their assigned company
-      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-
-      if (!companyId) {
-        toast({
-          title: "Error",
-          description: "No hay empresa seleccionada",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const { data: movementData, error } = await supabase
-        .from("inventory_movements")
-        .insert({
-          product_id: data.product_id,
-          movement_type: data.movement_type,
-          quantity: data.quantity,
-          sale_price: data.sale_price,
-          total_amount: data.total_amount,
-          purchase_order_number: data.purchase_order_number,
-          destination_entity_name: data.destination_entity_name,
-          destination_department_id: data.destination_department_id,
-          destination_address: data.destination_address,
-          supplier: data.supplier,
-          reason: data.reason,
-          notes: data.notes,
-          company_id: companyId,
-          created_by: user.id,
-          movement_date: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Update product stock
-      const product = products.find((p) => p.id === data.product_id)
-      if (product) {
-        let newStock = product.current_stock
-
-        if (data.movement_type === "entrada") {
-          newStock += data.quantity
-        } else if (data.movement_type === "salida") {
-          newStock -= data.quantity
-        } else if (data.movement_type === "ajuste") {
-          newStock = data.quantity
-        }
-
-        const { error: updateError } = await supabase
-          .from("products")
-          .update({ current_stock: newStock })
-          .eq("id", data.product_id)
-
-        if (updateError) throw updateError
-      }
-
-      toast({
-        title: "Movimiento creado",
-        description: "El movimiento de inventario ha sido registrado exitosamente.",
-      })
-
-      setShowMovementDialog(false)
-      fetchMovements()
-      fetchProducts()
-
-      // Return the created movement data for attachment upload
-      return movementData
-    } catch (error: any) {
-      console.error("Error creating movement:", error)
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el movimiento. Intente nuevamente.",
-        variant: "destructive",
-      })
-      throw error // Re-throw so the dialog can handle it
     } finally {
-      setIsCreatingMovement(false)
+      setLoading(false)
     }
   }
 
-  const AttachmentsList = ({ movementId }: { movementId: string }) => {
-    const attachments = movementAttachments[movementId] || []
-
-    if (attachments.length === 0) return null
-
-    return (
-      <div className="mt-2 space-y-1">
-        <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos:</p>
-        {attachments.map((attachment) => (
-          <div key={attachment.id} className="flex items-center gap-2">
-            <Paperclip className="h-3 w-3 text-muted-foreground" />
-            <a
-              href={attachment.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:underline truncate"
-            >
-              {attachment.file_name}
-            </a>
-            <span className="text-xs text-muted-foreground">
-              ({(attachment.file_size / 1024 / 1024).toFixed(1)} MB)
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const fetchMovementAttachments = async () => {
+  const fetchAttachments = async (movementIds: string[]) => {
     try {
       const { data, error } = await supabase
         .from("inventory_movement_attachments")
@@ -274,10 +153,7 @@ export default function InventoryPage() {
             full_name
           )
         `)
-        .in(
-          "movement_id",
-          movements.map((m) => m.id),
-        )
+        .in("movement_id", movementIds)
 
       if (error) throw error
 
@@ -290,332 +166,406 @@ export default function InventoryPage() {
           acc[attachment.movement_id].push(attachment)
           return acc
         },
-        {} as Record<string, any[]>,
+        {} as Record<string, MovementAttachment[]>,
       )
 
-      setMovementAttachments(groupedAttachments)
+      setAttachments(groupedAttachments)
     } catch (error) {
-      console.error("Error fetching movement attachments:", error)
+      console.error("Error fetching attachments:", error)
     }
   }
 
-  useEffect(() => {
-    if (movements.length > 0) {
-      fetchMovementAttachments()
-    }
-  }, [movements])
+  const filteredMovements = movements.filter((movement) => {
+    const matchesSearch =
+      movement.products?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.products?.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.purchase_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.destination_entity_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Inventario</h1>
+    const matchesType = movementTypeFilter === "all" || movement.movement_type === movementTypeFilter
 
-        {user?.role === "admin" && (
-          <Select onValueChange={(value) => setSelectedCompany(companies.find((c) => c.id === value))}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecciona una empresa" defaultValue={user?.company_id} />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>
-                  {company.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+    const now = new Date()
+    const movementDate = new Date(movement.movement_date)
+    let matchesDate = true
 
-        <Dialog open={showMovementDialog} onOpenChange={setShowMovementDialog}>
-          <DialogTrigger asChild>
-            <Button>Crear Movimiento</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Crear Movimiento de Inventario</DialogTitle>
-              <DialogDescription>Realiza un nuevo movimiento de inventario.</DialogDescription>
-            </DialogHeader>
-            <CreateMovementForm
-              products={products}
-              departments={departments}
-              onCreate={handleCreateMovement}
-              isLoading={isCreatingMovement}
-              onCancel={() => setShowMovementDialog(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Table>
-        <TableCaption>Una lista de los movimientos de inventario.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Producto</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Cantidad</TableHead>
-            <TableHead>Precio de Venta</TableHead>
-            <TableHead>Monto Total</TableHead>
-            <TableHead>Orden de Compra</TableHead>
-            <TableHead>Entidad Destino</TableHead>
-            <TableHead>Departamento Destino</TableHead>
-            <TableHead>Dirección Destino</TableHead>
-            <TableHead>Proveedor</TableHead>
-            <TableHead>Razón</TableHead>
-            <TableHead>Notas</TableHead>
-            <TableHead>Adjuntos</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {movements.map((movement) => (
-            <TableRow key={movement.id}>
-              <TableCell>{movement.products?.name}</TableCell>
-              <TableCell>{movement.movement_type}</TableCell>
-              <TableCell>{movement.quantity}</TableCell>
-              <TableCell>{movement.sale_price}</TableCell>
-              <TableCell>{movement.total_amount}</TableCell>
-              <TableCell>{movement.purchase_order_number}</TableCell>
-              <TableCell>{movement.destination_entity_name}</TableCell>
-              <TableCell>{movement.destination_department_id}</TableCell>
-              <TableCell>{movement.destination_address}</TableCell>
-              <TableCell>{movement.supplier}</TableCell>
-              <TableCell>{movement.reason}</TableCell>
-              <TableCell>{movement.notes}</TableCell>
-              <TableCell>
-                <AttachmentsList movementId={movement.id} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={12}>{movements.length} Movimientos Totales</TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
-    </div>
-  )
-}
-
-interface CreateMovementFormProps {
-  products: any[]
-  departments: any[]
-  onCreate: (data: any) => Promise<any>
-  isLoading: boolean
-  onCancel: () => void
-}
-
-function CreateMovementForm({ products, departments, onCreate, isLoading, onCancel }: CreateMovementFormProps) {
-  const { toast } = useToast()
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
-  const [selectedDepartment, setSelectedDepartment] = useState<any>(null)
-  const [movementType, setMovementType] = useState<"entrada" | "salida" | "ajuste">("entrada")
-  const [quantity, setQuantity] = useState<number>(0)
-  const [salePrice, setSalePrice] = useState<number>(0)
-  const [totalAmount, setTotalAmount] = useState<number>(0)
-  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState<string>("")
-  const [destinationEntityName, setDestinationEntityName] = useState<string>("")
-  const [destinationAddress, setDestinationAddress] = useState<string>("")
-  const [supplier, setSupplier] = useState<string>("")
-  const [reason, setReason] = useState<string>("")
-  const [notes, setNotes] = useState<string>("")
-  const [movementDate, setMovementDate] = useState<Date | undefined>(new Date())
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-
-    if (!selectedProduct) {
-      toast({
-        title: "Error",
-        description: "Por favor, selecciona un producto.",
-        variant: "destructive",
-      })
-      return
+    if (dateFilter === "today") {
+      matchesDate = movementDate.toDateString() === now.toDateString()
+    } else if (dateFilter === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      matchesDate = movementDate >= weekAgo
+    } else if (dateFilter === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      matchesDate = movementDate >= monthAgo
     }
 
-    if (!quantity || quantity <= 0) {
-      toast({
-        title: "Error",
-        description: "Por favor, ingresa una cantidad válida.",
-        variant: "destructive",
-      })
-      return
-    }
+    return matchesSearch && matchesType && matchesDate
+  })
 
-    const data = {
-      product_id: selectedProduct.id,
-      movement_type: movementType,
-      quantity: quantity,
-      sale_price: salePrice,
-      total_amount: totalAmount,
-      purchase_order_number: purchaseOrderNumber,
-      destination_entity_name: destinationEntityName,
-      destination_department_id: selectedDepartment?.id,
-      destination_address: destinationAddress,
-      supplier: supplier,
-      reason: reason,
-      notes: notes,
-      movement_date: movementDate,
-    }
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return "-"
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: "PEN",
+    }).format(amount)
+  }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const formatFileSize = (bytes: number) => {
+    return (bytes / 1024 / 1024).toFixed(1) + " MB"
+  }
+
+  const getMovementIcon = (type: string) => {
+    switch (type) {
+      case "entrada":
+        return <TrendingUp className="h-4 w-4 text-green-600" />
+      case "salida":
+        return <TrendingDown className="h-4 w-4 text-red-600" />
+      case "ajuste":
+        return <RotateCcw className="h-4 w-4 text-blue-600" />
+      default:
+        return <FileText className="h-4 w-4" />
+    }
+  }
+
+  const getMovementBadge = (type: string) => {
+    switch (type) {
+      case "entrada":
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            Entrada
+          </Badge>
+        )
+      case "salida":
+        return <Badge variant="destructive">Salida</Badge>
+      case "ajuste":
+        return (
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+            Ajuste
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{type}</Badge>
+    }
+  }
+
+  const handleCreateMovement = async (movementData: any) => {
     try {
-      const movementData = await onCreate(data)
-      // Handle success, clear form, etc.
-      console.log("Movement created successfully:", movementData)
-    } catch (error) {
-      // Handle error
-      console.error("Failed to create movement:", error)
+      // For admin users, use selectedCompany; for others, use their assigned company
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+      if (!companyId) {
+        toast({
+          title: "Error",
+          description: "No hay empresa seleccionada",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const { data: createdMovement, error } = await supabase
+        .from("inventory_movements")
+        .insert({
+          ...movementData,
+          company_id: companyId,
+          created_by: user.id,
+          movement_date: new Date().toISOString(),
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Update product stock
+      const { data: productData } = await supabase
+        .from("products")
+        .select("current_stock")
+        .eq("id", movementData.product_id)
+        .single()
+
+      if (productData) {
+        let newStock = productData.current_stock
+
+        if (movementData.movement_type === "entrada") {
+          newStock += movementData.quantity
+        } else if (movementData.movement_type === "salida") {
+          newStock -= movementData.quantity
+        } else if (movementData.movement_type === "ajuste") {
+          newStock = movementData.quantity
+        }
+
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ current_stock: newStock })
+          .eq("id", movementData.product_id)
+
+        if (updateError) throw updateError
+      }
+
+      // Recargar movimientos
+      fetchMovements(companyId)
+      setShowMovementForm(false)
+
+      toast({
+        title: "Éxito",
+        description: "Movimiento creado correctamente",
+      })
+
+      // Return the created movement for attachment upload
+      return createdMovement
+    } catch (error: any) {
+      console.error("Error creating movement:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Error al crear el movimiento",
+        variant: "destructive",
+      })
+      throw error // Re-throw so the dialog can handle it
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
-      <div className="grid gap-2">
-        <Label htmlFor="product">Producto</Label>
-        <Select onValueChange={(value) => setSelectedProduct(products.find((p) => p.id === value))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona un producto" />
-          </SelectTrigger>
-          <SelectContent>
-            {products.map((product) => (
-              <SelectItem key={product.id} value={product.id}>
-                {product.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+  const AttachmentsList = ({ movementId }: { movementId: string }) => {
+    const movementAttachments = attachments[movementId] || []
 
-      <div className="grid gap-2">
-        <Label htmlFor="movementType">Tipo de Movimiento</Label>
-        <Select onValueChange={(value) => setMovementType(value as "entrada" | "salida" | "ajuste")}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona un tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="entrada">Entrada</SelectItem>
-            <SelectItem value="salida">Salida</SelectItem>
-            <SelectItem value="ajuste">Ajuste</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    if (movementAttachments.length === 0) return null
 
-      <div className="grid gap-2">
-        <Label htmlFor="quantity">Cantidad</Label>
-        <Input type="number" id="quantity" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="salePrice">Precio de Venta</Label>
-        <Input type="number" id="salePrice" value={salePrice} onChange={(e) => setSalePrice(Number(e.target.value))} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="totalAmount">Monto Total</Label>
-        <Input
-          type="number"
-          id="totalAmount"
-          value={totalAmount}
-          onChange={(e) => setTotalAmount(Number(e.target.value))}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="purchaseOrderNumber">Orden de Compra</Label>
-        <Input
-          type="text"
-          id="purchaseOrderNumber"
-          value={purchaseOrderNumber}
-          onChange={(e) => setPurchaseOrderNumber(e.target.value)}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="destinationEntityName">Entidad Destino</Label>
-        <Input
-          type="text"
-          id="destinationEntityName"
-          value={destinationEntityName}
-          onChange={(e) => setDestinationEntityName(e.target.value)}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="destinationDepartment">Departamento Destino</Label>
-        <Select onValueChange={(value) => setSelectedDepartment(departments.find((d) => d.id === value))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona un departamento" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map((department) => (
-              <SelectItem key={department.id} value={department.id}>
-                {department.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="destinationAddress">Dirección Destino</Label>
-        <Input
-          type="text"
-          id="destinationAddress"
-          value={destinationAddress}
-          onChange={(e) => setDestinationAddress(e.target.value)}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="supplier">Proveedor</Label>
-        <Input type="text" id="supplier" value={supplier} onChange={(e) => setSupplier(e.target.value)} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="reason">Razón</Label>
-        <Input type="text" id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="notes">Notas</Label>
-        <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label>Fecha de Movimiento</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn("w-[240px] justify-start text-left font-normal", !movementDate && "text-muted-foreground")}
+    return (
+      <div className="mt-2 space-y-1">
+        <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos ({movementAttachments.length}):</p>
+        {movementAttachments.map((attachment) => (
+          <div key={attachment.id} className="flex items-center gap-2 p-1">
+            <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <a
+              href={attachment.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:underline truncate flex-1"
+              title={attachment.file_name}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {movementDate ? format(movementDate, "PPP") : <span>Pick a date</span>}
+              {attachment.file_name}
+            </a>
+            <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => window.open(attachment.file_url, "_blank")}
+              title="Descargar archivo"
+            >
+              <Download className="h-3 w-3" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={movementDate}
-              onSelect={setMovementDate}
-              disabled={(date) => date > new Date()}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
+            <p className="text-muted-foreground">Historial de entradas, salidas y ajustes</p>
+          </div>
+          <Button disabled>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Movimiento
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">Cargando movimientos...</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
+          <p className="text-muted-foreground">Historial de entradas, salidas y ajustes de inventario</p>
+        </div>
+        <Button onClick={() => setShowMovementForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Movimiento
+        </Button>
       </div>
 
-      <Button type="submit" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            Creando...
-            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          </>
-        ) : (
-          "Crear Movimiento"
-        )}
-      </Button>
-      <Button type="button" variant="secondary" onClick={onCancel}>
-        Cancelar
-      </Button>
-    </form>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Historial de Movimientos
+          </CardTitle>
+          <CardDescription>
+            {filteredMovements.length} de {movements.length} movimientos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por producto, orden, entidad..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Tipo de movimiento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                <SelectItem value="entrada">Entradas</SelectItem>
+                <SelectItem value="salida">Salidas</SelectItem>
+                <SelectItem value="ajuste">Ajustes</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los períodos</SelectItem>
+                <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="week">Última semana</SelectItem>
+                <SelectItem value="month">Último mes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tabla de movimientos */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Precio/Total</TableHead>
+                  <TableHead>Detalles</TableHead>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Adjuntos</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMovements.length > 0 ? (
+                  filteredMovements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>
+                        <div className="text-sm">{formatDate(movement.movement_date)}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{movement.products?.name || "Producto eliminado"}</div>
+                          <div className="text-sm text-muted-foreground">{movement.products?.code}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getMovementIcon(movement.movement_type)}
+                          {getMovementBadge(movement.movement_type)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}
+                          {movement.quantity} {movement.products?.unit_of_measure}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {movement.movement_type === "salida" && movement.sale_price ? (
+                          <div>
+                            <div className="text-sm">Precio: {formatCurrency(movement.sale_price)}</div>
+                            <div className="font-medium text-green-600">
+                              Total: {formatCurrency(movement.total_amount)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm space-y-1">
+                          {movement.purchase_order_number && (
+                            <div>
+                              <span className="font-medium">OC:</span> {movement.purchase_order_number}
+                            </div>
+                          )}
+                          {movement.destination_entity_name && (
+                            <div>
+                              <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
+                            </div>
+                          )}
+                          {movement.peru_departments?.name && (
+                            <div>
+                              <span className="font-medium">Destino:</span> {movement.peru_departments.name}
+                            </div>
+                          )}
+                          {movement.supplier && (
+                            <div>
+                              <span className="font-medium">Proveedor:</span> {movement.supplier}
+                            </div>
+                          )}
+                          {movement.reason && (
+                            <div>
+                              <span className="font-medium">Motivo:</span> {movement.reason}
+                            </div>
+                          )}
+                          {movement.notes && <div className="text-muted-foreground">{movement.notes}</div>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{movement.profiles?.full_name || "Usuario eliminado"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <AttachmentsList movementId={movement.id} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="text-muted-foreground">
+                        {movements.length === 0
+                          ? "No hay movimientos registrados"
+                          : "No se encontraron movimientos con los filtros aplicados"}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showMovementForm && (
+        <MovementFormDialog
+          open={showMovementForm}
+          onClose={() => setShowMovementForm(false)}
+          onSubmit={handleCreateMovement}
+        />
+      )}
+    </div>
   )
 }
