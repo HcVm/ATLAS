@@ -591,19 +591,17 @@ export interface Database {
       inventory_movements: {
         Row: {
           id: string
-          product_id: string | null
           movement_type: string
           quantity: number
-          unit_cost: number | null
-          total_cost: number | null
-          reference_document: string | null
-          destination: string | null
+          sale_price: number | null
+          total_amount: number | null
+          purchase_order_number: string | null
+          destination_entity_name: string | null
+          destination_address: string | null
           supplier: string | null
           reason: string | null
           notes: string | null
           movement_date: string
-          company_id: string | null
-          created_by: string | null
           created_at: string
           products?: {
             id: string
@@ -611,40 +609,48 @@ export interface Database {
             code: string
             unit_of_measure: string
           } | null
+          profiles?: {
+            full_name: string
+          } | null
+          peru_departments?: {
+            name: string
+          } | null
         }
         Insert: {
-          id?: string
-          product_id?: string | null
+          id: string
           movement_type: string
           quantity: number
-          unit_cost?: number | null
-          total_cost?: number | null
-          reference_document?: string | null
-          destination?: string | null
-          supplier?: string | null
-          reason?: string | null
-          notes?: string | null
-          movement_date?: string
-          company_id?: string | null
-          created_by?: string | null
-          created_at?: string
+          sale_price: number | null
+          total_amount: number | null
+          purchase_order_number: string | null
+          destination_entity_name: string | null
+          destination_address: string | null
+          supplier: string | null
+          reason: string | null
+          notes: string | null
+          movement_date: string
+          created_at: string
+          product_id?: string | null
+          profile_id?: string | null
+          peru_department_id?: string | null  
         }
         Update: {
-          id?: string
+          id: string
+          movement_type: string
+          quantity: number
+          sale_price: number | null
+          total_amount: number | null
+          purchase_order_number: string | null
+          destination_entity_name: string | null
+          destination_address: string | null
+          supplier: string | null
+          reason: string | null
+          notes: string | null
+          movement_date: string
+          created_at: string
           product_id?: string | null
-          movement_type?: string
-          quantity?: number
-          unit_cost?: number | null
-          total_cost?: number | null
-          reference_document?: string | null
-          destination?: string | null
-          supplier?: string | null
-          reason?: string | null
-          notes?: string | null
-          movement_date?: string
-          company_id?: string | null
-          created_by?: string | null
-          created_at?: string
+          profile_id?: string | null
+          peru_department_id?: string | null
         }
         Relationships: [
           {
@@ -665,7 +671,34 @@ export interface Database {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_destination_department"
+            columns: ["destination_department_id"]
+            referencedRelation: "peru_departments"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      peru_departments: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          code: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          code?: string
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -86,7 +86,7 @@ export default function InventoryPage() {
           profiles!inventory_movements_created_by_fkey (
             full_name
           ),
-          peru_departments!inventory_movements_destination_department_id_fkey (
+          peru_departments (
             name
           )            
         `)
