@@ -139,23 +139,32 @@ export default function InventoryPage() {
 
   const fetchAttachments = async (movementIds: string[]) => {
     try {
+      // First check if we have any movement IDs
+      if (!movementIds || movementIds.length === 0) {
+        return
+      }
+
       const { data, error } = await supabase
         .from("inventory_movement_attachments")
         .select(`
-          id,
-          movement_id,
-          file_name,
-          file_url,
-          file_size,
-          file_type,
-          created_at,
-          profiles:uploaded_by (
-            full_name
-          )
-        `)
+        id,
+        movement_id,
+        file_name,
+        file_url,
+        file_size,
+        file_type,
+        created_at,
+        profiles:uploaded_by (
+          full_name
+        )
+      `)
         .in("movement_id", movementIds)
 
-      if (error) throw error
+      if (error) {
+        // If the table doesn't exist or columns are missing, just log and continue
+        console.warn("Could not fetch attachments:", error.message)
+        return
+      }
 
       // Group attachments by movement_id
       const groupedAttachments = (data || []).reduce(
@@ -171,7 +180,8 @@ export default function InventoryPage() {
 
       setAttachments(groupedAttachments)
     } catch (error) {
-      console.error("Error fetching attachments:", error)
+      console.warn("Error fetching attachments:", error)
+      // Don't show error to user, just continue without attachments
     }
   }
 
@@ -533,9 +543,6 @@ export default function InventoryPage() {
                           )}
                           {movement.notes && <div className="text-muted-foreground">{movement.notes}</div>}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{movement.profiles?.full_name || "Usuario eliminado"}</div>
                       </TableCell>
                       <TableCell>
                         <AttachmentsList movementId={movement.id} />
