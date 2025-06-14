@@ -23,7 +23,7 @@ interface Product {
   code: string
   current_stock: number
   minimum_stock: number
-  unit_cost: number
+  cost_price: number
   brands?: { name: string; color: string } | null
   product_categories?: { name: string; color: string } | null
 }
@@ -42,18 +42,16 @@ export default function WarehousePage() {
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (user?.company_id) {
-      fetchWarehouseData()
-    }
-  }, [user?.company_id])
+  const [error, setError] = useState<string | null>(null)
 
   const fetchWarehouseData = async () => {
     if (!user?.company_id) return
 
     try {
       setLoading(true)
+      setError(null)
+
+      console.log("Fetching warehouse data for company:", user.company_id)
 
       // Obtener estadísticas de productos
       const { data: products, error: productsError } = await supabase
@@ -64,19 +62,24 @@ export default function WarehousePage() {
           code,
           current_stock,
           minimum_stock,
-          unit_cost,
+          cost_price,
           brands!products_brand_id_fkey (name, color),
           product_categories!products_category_id_fkey (name, color)
         `)
         .eq("company_id", user.company_id)
         .eq("is_active", true)
 
-      if (productsError) throw productsError
+      console.log("Products query result:", { products, productsError })
+
+      if (productsError) {
+        console.error("Products error:", productsError)
+        throw new Error(`Error al obtener productos: ${productsError.message}`)
+      }
 
       // Calcular estadísticas
       const totalProducts = products?.length || 0
-      const lowStockProducts = products?.filter((p) => p.current_stock <= p.minimum_stock) || []
-      const totalValue = products?.reduce((sum, p) => sum + p.current_stock * p.unit_cost, 0) || 0
+      const lowStockProductsList = products?.filter((p) => p.current_stock <= p.minimum_stock) || []
+      const totalValue = products?.reduce((sum, p) => sum + p.current_stock * (p.cost_price || 0), 0) || 0
 
       // Obtener movimientos recientes
       const { data: movements, error: movementsError } = await supabase
@@ -89,26 +92,42 @@ export default function WarehousePage() {
           products!inventory_movements_product_id_fkey (name, code)
         `)
         .eq("company_id", user.company_id)
-        .order("movement_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(5)
 
-      if (movementsError) throw movementsError
+      console.log("Movements query result:", { movements, movementsError })
+
+      if (movementsError) {
+        console.error("Movements error:", movementsError)
+        // No lanzar error aquí, solo log
+      }
 
       setStats({
         totalProducts,
-        lowStockProducts: lowStockProducts.length,
+        lowStockProducts: lowStockProductsList.length,
         totalValue,
         recentMovements: movements?.length || 0,
       })
 
-      setLowStockProducts(lowStockProducts.slice(0, 5))
+      setLowStockProducts(lowStockProductsList.slice(0, 5))
       setRecentMovements(movements || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching warehouse data:", error)
+      setError(error.message)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (user?.company_id) {
+      fetchWarehouseData()
+    } else if (user) {
+      // Si el usuario no tiene company_id, mostrar error específico
+      setError("Usuario sin empresa asignada")
+      setLoading(false)
+    }
+  }, [user])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-PE", {
@@ -151,6 +170,42 @@ export default function WarehousePage() {
             </Card>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
+            <p className="text-muted-foreground">Error al cargar datos</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Error al cargar el almacén</h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <div className="space-y-2 text-sm text-left bg-muted p-4 rounded">
+                <p>
+                  <strong>Usuario:</strong> {user?.full_name}
+                </p>
+                <p>
+                  <strong>Empresa ID:</strong> {user?.company_id || "No asignada"}
+                </p>
+                <p>
+                  <strong>Rol:</strong> {user?.role}
+                </p>
+              </div>
+              <Button onClick={() => fetchWarehouseData()} className="mt-4">
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -499,7 +499,7 @@ export interface Database {
           unit_of_measure: string
           minimum_stock: number
           current_stock: number
-          unit_cost: number
+          cost_price: number
           sale_price: number
           location: string | null
           notes: string | null
@@ -530,7 +530,7 @@ export interface Database {
           unit_of_measure?: string
           minimum_stock?: number
           current_stock?: number
-          unit_cost?: number
+          cost_price?: number
           sale_price?: number
           location?: string | null
           notes?: string | null
@@ -551,7 +551,7 @@ export interface Database {
           unit_of_measure?: string
           minimum_stock?: number
           current_stock?: number
-          unit_cost?: number
+          cost_price?: number
           sale_price?: number
           location?: string | null
           notes?: string | null
