@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, DollarSign } from "lucide-react"
+import { AlertTriangle, Package, DollarSign, MapPin, Building } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -31,6 +31,18 @@ interface Department {
   id: string
   name: string
   code: string
+}
+
+interface Province {
+  id: string
+  name: string
+  department_id: string
+}
+
+interface District {
+  id: string
+  name: string
+  province_id: string
 }
 
 interface DestinationEntity {
@@ -53,8 +65,13 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
   const [entities, setEntities] = useState<DestinationEntity[]>([])
+  const [entitySuggestions, setEntitySuggestions] = useState<string[]>([])
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null)
+  const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
+
   const [formData, setFormData] = useState({
     product_id: selectedProduct?.id || "",
     movement_type: "",
@@ -63,7 +80,11 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     unit_price: "",
     purchase_order_number: "",
     destination_entity_id: "",
-    destination: "",
+    destination_entity_name: "",
+    destination_department_id: "",
+    destination_province_id: "",
+    destination_district_id: "",
+    destination_address: "",
     supplier: "",
     reason: "",
     notes: "",
@@ -103,11 +124,57 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         .eq("is_active", true)
         .order("name")
 
+      // Obtener sugerencias de nombres de entidades (nombres únicos usados anteriormente)
+      const { data: suggestionsData } = await supabase
+        .from("inventory_movements")
+        .select("destination_entity_name")
+        .eq("company_id", user.company_id)
+        .not("destination_entity_name", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50)
+
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
       setEntities(entitiesData || [])
+
+      // Crear lista única de sugerencias
+      const uniqueSuggestions = [
+        ...new Set(suggestionsData?.map((item) => item.destination_entity_name).filter(Boolean) || []),
+      ]
+      setEntitySuggestions(uniqueSuggestions)
     } catch (error) {
       console.error("Error fetching data:", error)
+    }
+  }
+
+  const fetchProvinces = async (departmentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("peru_provinces")
+        .select("id, name, department_id")
+        .eq("department_id", departmentId)
+        .order("name")
+
+      setProvinces(data || [])
+      setDistricts([])
+      setFormData((prev) => ({ ...prev, destination_province_id: "", destination_district_id: "" }))
+    } catch (error) {
+      console.error("Error fetching provinces:", error)
+    }
+  }
+
+  const fetchDistricts = async (provinceId: string) => {
+    try {
+      const { data } = await supabase
+        .from("peru_districts")
+        .select("id, name, province_id")
+        .eq("province_id", provinceId)
+        .order("name")
+
+      setDistricts(data || [])
+      setFormData((prev) => ({ ...prev, destination_district_id: "" }))
+    } catch (error) {
+      console.error("Error fetching districts:", error)
     }
   }
 
@@ -125,7 +192,29 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleEntityNameChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, destination_entity_name: value }))
+    setShowEntitySuggestions(
+      value.length > 0 && entitySuggestions.some((s) => s.toLowerCase().includes(value.toLowerCase())),
+    )
+  }
+
+  const selectEntitySuggestion = (suggestion: string) => {
+    setFormData((prev) => ({ ...prev, destination_entity_name: suggestion }))
+    setShowEntitySuggestions(false)
+  }
+
+  const handleDepartmentChange = (departmentId: string) => {
+    setFormData((prev) => ({ ...prev, destination_department_id: departmentId }))
+    fetchProvinces(departmentId)
+  }
+
+  const handleProvinceChange = (provinceId: string) => {
+    setFormData((prev) => ({ ...prev, destination_province_id: provinceId }))
+    fetchDistricts(provinceId)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validaciones
@@ -168,10 +257,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         })
         return
       }
-      if (!formData.destination_entity_id && !formData.destination) {
+      if (!formData.destination_entity_id && !formData.destination_entity_name) {
         toast({
           title: "Error",
-          description: "Selecciona una entidad destino o especifica el destino",
+          description: "Selecciona una entidad destino o especifica el nombre de la entidad",
           variant: "destructive",
         })
         return
@@ -181,6 +270,34 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     const unitPrice = formData.unit_price ? Number.parseFloat(formData.unit_price) : null
     const totalAmount = unitPrice ? unitPrice * quantity : null
 
+    // Si se especificó una entidad nueva por nombre, crearla primero
+    let destinationEntityId = formData.destination_entity_id || null
+
+    if (formData.movement_type === "salida" && formData.destination_entity_name && !formData.destination_entity_id) {
+      try {
+        const newEntity = {
+          name: formData.destination_entity_name,
+          entity_type: "Cliente",
+          document_number: "",
+          address: formData.destination_address || "",
+          company_id: user.company_id,
+          is_active: true,
+        }
+
+        const { data: createdEntity, error } = await supabase
+          .from("destination_entities")
+          .insert(newEntity)
+          .select()
+          .single()
+
+        if (error) throw error
+        destinationEntityId = createdEntity.id
+      } catch (error) {
+        console.error("Error creating entity:", error)
+        // Continuar sin crear la entidad, solo usar el nombre
+      }
+    }
+
     onSubmit({
       ...formData,
       quantity,
@@ -188,7 +305,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       unit_price: unitPrice,
       total_cost: formData.unit_cost ? Number.parseFloat(formData.unit_cost) * quantity : null,
       total_amount: totalAmount,
-      destination_entity_id: formData.destination_entity_id || null,
+      destination_entity_id: destinationEntityId,
     })
 
     // Limpiar formulario
@@ -200,12 +317,18 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       unit_price: "",
       purchase_order_number: "",
       destination_entity_id: "",
-      destination: "",
+      destination_entity_name: "",
+      destination_department_id: "",
+      destination_province_id: "",
+      destination_district_id: "",
+      destination_address: "",
       supplier: "",
       reason: "",
       notes: "",
     })
     setSelectedProductData(null)
+    setProvinces([])
+    setDistricts([])
   }
 
   const getStockWarning = () => {
@@ -239,9 +362,13 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     }).format(amount)
   }
 
+  const filteredSuggestions = entitySuggestions.filter((suggestion) =>
+    suggestion.toLowerCase().includes(formData.destination_entity_name.toLowerCase()),
+  )
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nuevo Movimiento de Inventario</DialogTitle>
         </DialogHeader>
@@ -372,7 +499,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           {/* Campos específicos para salidas */}
           {formData.movement_type === "salida" && (
             <div className="space-y-4 border-t pt-4">
-              <h4 className="font-medium">Información de Salida</h4>
+              <h4 className="font-medium flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Información de Salida
+              </h4>
 
               <div>
                 <Label htmlFor="purchase_order_number">Número de Orden de Compra *</Label>
@@ -385,38 +515,132 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 />
               </div>
 
-              <div>
-                <Label htmlFor="destination_entity_id">Entidad Destino</Label>
-                <Select
-                  value={formData.destination_entity_id}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, destination_entity_id: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar entidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entities.map((entity) => (
-                      <SelectItem key={entity.id} value={entity.id}>
-                        <div>
-                          <div className="font-medium">{entity.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {entity.entity_type} - {entity.document_number}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="destination_entity_id">Entidad Destino Registrada</Label>
+                  <Select
+                    value={formData.destination_entity_id}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, destination_entity_id: value, destination_entity_name: "" }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar entidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {entities.map((entity) => (
+                        <SelectItem key={entity.id} value={entity.id}>
+                          <div>
+                            <div className="font-medium">{entity.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {entity.entity_type} - {entity.document_number}
+                            </div>
                           </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="relative">
+                  <Label htmlFor="destination_entity_name">O Nombre de Entidad *</Label>
+                  <Input
+                    id="destination_entity_name"
+                    value={formData.destination_entity_name}
+                    onChange={(e) => handleEntityNameChange(e.target.value)}
+                    placeholder="Escribir nombre de la entidad"
+                    disabled={!!formData.destination_entity_id}
+                  />
+                  {showEntitySuggestions && filteredSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
+                          onClick={() => selectEntitySuggestion(suggestion)}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="destination">Destino Manual (si no hay entidad)</Label>
-                <Input
-                  id="destination"
-                  value={formData.destination}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, destination: e.target.value }))}
-                  placeholder="Especificar destino manualmente"
-                />
+              <div className="space-y-4 border-t pt-4">
+                <h5 className="font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Ubicación de Destino
+                </h5>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="destination_department_id">Departamento</Label>
+                    <Select value={formData.destination_department_id} onValueChange={handleDepartmentChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="destination_province_id">Provincia</Label>
+                    <Select
+                      value={formData.destination_province_id}
+                      onValueChange={handleProvinceChange}
+                      disabled={!formData.destination_department_id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar provincia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((prov) => (
+                          <SelectItem key={prov.id} value={prov.id}>
+                            {prov.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="destination_district_id">Distrito</Label>
+                    <Select
+                      value={formData.destination_district_id}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, destination_district_id: value }))}
+                      disabled={!formData.destination_province_id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar distrito" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districts.map((dist) => (
+                          <SelectItem key={dist.id} value={dist.id}>
+                            {dist.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="destination_address">Dirección Específica</Label>
+                  <Input
+                    id="destination_address"
+                    value={formData.destination_address}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, destination_address: e.target.value }))}
+                    placeholder="Dirección completa del destino"
+                  />
+                </div>
               </div>
             </div>
           )}
