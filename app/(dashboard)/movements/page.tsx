@@ -88,7 +88,15 @@ export default function MovementsPage() {
       // Determinar filtro de empresa
       const isAdmin = user?.role === "admin" || user?.role === "supervisor"
       const shouldFilterByCompany = !isAdmin || selectedCompany !== null
-      const companyFilter = isAdmin ? selectedCompany : user?.company_id
+      const companyFilter = isAdmin ? selectedCompany?.id : user?.company_id
+
+      console.log("Movement filtering:", {
+        isAdmin,
+        shouldFilterByCompany,
+        companyFilter,
+        selectedCompany: selectedCompany?.name || "null",
+        userCompany: user?.company_id,
+      })
 
       // Construir query base
       let query = supabase.from("document_movements").select(`
@@ -151,6 +159,7 @@ export default function MovementsPage() {
 
   const fetchDepartments = async () => {
     try {
+      // Obtener departamentos únicos sin duplicados
       const { data, error } = await supabase.from("departments").select("id, name, color").order("name")
 
       if (error) {
@@ -158,7 +167,11 @@ export default function MovementsPage() {
         return
       }
 
-      setDepartments(data || [])
+      // Eliminar duplicados por nombre y ID
+      const uniqueDepartments =
+        data?.filter((dept, index, self) => index === self.findIndex((d) => d.id === dept.id)) || []
+
+      setDepartments(uniqueDepartments)
     } catch (error) {
       console.error("Error fetching departments:", error)
     }
@@ -286,12 +299,9 @@ export default function MovementsPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              {Array.from(new Set(departments.map((d) => d.id)))
-                .map((id) => departments.find((d) => d.id === id))
-                .filter(Boolean)
-                .map((department) => (
-                  <DepartmentBadge key={department.id} department={department} />
-                ))}
+              {departments.map((department) => (
+                <DepartmentBadge key={department.id} department={department} />
+              ))}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               Los badges con 📍 indican el departamento de destino en los movimientos

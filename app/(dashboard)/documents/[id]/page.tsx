@@ -432,7 +432,7 @@ export default function DocumentDetailsPage() {
   }
 
   const canEdit = () => {
-    // Solo admins pueden editar cualquier documento
+    // Admins pueden editar cualquier documento
     if (user?.role === "admin") return true
 
     // El creador puede editar solo si el documento está en su departamento
@@ -1044,17 +1044,27 @@ export default function DocumentDetailsPage() {
                   Cambiar Estado
                 </Button>
               )}
-              <Button className="w-full justify-start" variant="outline" asChild disabled={!canEdit()}>
-                <Link href={`/documents/edit/${document.id}`}>
+
+              {canEdit() ? (
+                <Button className="w-full justify-start" variant="outline" asChild>
+                  <Link href={`/documents/edit/${document.id}`}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar Documento
+                  </Link>
+                </Button>
+              ) : (
+                <Button className="w-full justify-start" variant="outline" disabled>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar Documento
-                </Link>
-              </Button>
+                </Button>
+              )}
+
               {!canEdit() && user?.id === document?.created_by && (
                 <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
                   ℹ️ Solo puedes editar documentos que están en tu departamento
                 </div>
               )}
+
               {document.file_url && (
                 <>
                   <Button
@@ -1076,15 +1086,25 @@ export default function DocumentDetailsPage() {
                   </Button>
                 </>
               )}
-              <Button
-                className="w-full justify-start"
-                variant="default"
-                onClick={() => setMovementDialogOpen(true)}
-                disabled={!canMove()}
-              >
-                <MoveRight className="h-4 w-4 mr-2" />
-                Mover Documento
-              </Button>
+
+              {canMove() ? (
+                <Button className="w-full justify-start" variant="default" onClick={() => setMovementDialogOpen(true)}>
+                  <MoveRight className="h-4 w-4 mr-2" />
+                  Mover Documento
+                </Button>
+              ) : (
+                <Button className="w-full justify-start" variant="default" disabled>
+                  <MoveRight className="h-4 w-4 mr-2" />
+                  Mover Documento
+                </Button>
+              )}
+
+              {!canMove() && user?.role !== "admin" && user?.role !== "supervisor" && (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                  ℹ️ Solo puedes mover documentos que están en tu departamento
+                </div>
+              )}
+
               {user?.role === "admin" && (
                 <Button className="w-full justify-start" variant="outline" onClick={handleViewDownloadStats}>
                   <BarChart3 className="h-4 w-4 mr-2" />
