@@ -11,6 +11,7 @@ import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText } from "luc
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
+import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
 
 interface InventoryMovement {
   id: string
@@ -174,6 +175,29 @@ export default function InventoryPage() {
     }
   }
 
+  const [showMovementForm, setShowMovementForm] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+
+  const handleCreateMovement = async (movementData: any) => {
+    try {
+      const { error } = await supabase.from("inventory_movements").insert({
+        ...movementData,
+        company_id: user.company_id,
+        created_by: user.id,
+        movement_date: new Date().toISOString(),
+      })
+
+      if (error) throw error
+
+      // Recargar movimientos
+      fetchMovements()
+      setShowMovementForm(false)
+      setSelectedProduct(null)
+    } catch (error) {
+      console.error("Error creating movement:", error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -212,14 +236,20 @@ export default function InventoryPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Historial de Movimientos
-          </CardTitle>
-          <CardDescription>
-            {filteredMovements.length} de {movements.length} movimientos
-          </CardDescription>
+        <CardHeader className="flex items-center">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Historial de Movimientos
+            </CardTitle>
+            <CardDescription>
+              {filteredMovements.length} de {movements.length} movimientos
+            </CardDescription>
+          </div>
+          <Button onClick={() => setShowMovementForm(true)} className="ml-2">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Movimiento
+          </Button>
         </CardHeader>
         <CardContent>
           {/* Filtros */}
@@ -350,6 +380,17 @@ export default function InventoryPage() {
           </div>
         </CardContent>
       </Card>
+      {showMovementForm && (
+        <MovementFormDialog
+          open={showMovementForm}
+          onClose={() => {
+            setShowMovementForm(false)
+            setSelectedProduct(null)
+          }}
+          onSubmit={handleCreateMovement}
+          selectedProduct={selectedProduct}
+        />
+      )}
     </div>
   )
 }

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El email ya está registrado" }, { status: 400 })
     }
 
-    // Obtener el ID del departamento "ASIGNAR"
+    // Obtener el departamento "ASIGNAR" global (único)
     const { data: defaultDept, error: deptError } = await supabaseAdmin
       .from("departments")
       .select("id")
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       full_name: fullName,
       role: "user",
       department_id: defaultDept.id,
+      company_id: null, // Los usuarios públicos no tienen empresa inicialmente
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
