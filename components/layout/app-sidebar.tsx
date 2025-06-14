@@ -17,6 +17,9 @@ import {
   Bug,
   AlertTriangle,
   MapPin,
+  Package,
+  Box,
+  ClipboardList,
 } from "lucide-react"
 
 import {
@@ -62,6 +65,24 @@ const menuItems = [
     url: "/movements",
     icon: MapPin,
     roles: ["admin", "supervisor", "user"],
+  },
+  {
+    title: "Almacén",
+    url: "/warehouse",
+    icon: Package,
+    roles: ["admin", "supervisor", "almacen", "contabilidad"],
+  },
+  {
+    title: "Productos",
+    url: "/warehouse/products",
+    icon: Box,
+    roles: ["admin", "supervisor", "almacen", "contabilidad"],
+  },
+  {
+    title: "Inventario",
+    url: "/warehouse/inventory",
+    icon: ClipboardList,
+    roles: ["admin", "supervisor", "almacen", "contabilidad"],
   },
   {
     title: "Notificaciones",

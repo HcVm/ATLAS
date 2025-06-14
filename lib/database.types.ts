@@ -410,6 +410,263 @@ export interface Database {
           },
         ]
       }
+      brands: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          company_id: string | null
+          logo_url: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          company_id?: string | null
+          logo_url?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          company_id?: string | null
+          logo_url?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          company_id: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          company_id?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          company_id?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          code: string
+          barcode: string | null
+          brand_id: string | null
+          category_id: string | null
+          unit_of_measure: string
+          minimum_stock: number
+          current_stock: number
+          unit_cost: number
+          sale_price: number
+          location: string | null
+          notes: string | null
+          is_active: boolean
+          company_id: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          brands?: {
+            id: string
+            name: string
+            color: string
+          } | null
+          product_categories?: {
+            id: string
+            name: string
+            color: string
+          } | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          code: string
+          barcode?: string | null
+          brand_id?: string | null
+          category_id?: string | null
+          unit_of_measure?: string
+          minimum_stock?: number
+          current_stock?: number
+          unit_cost?: number
+          sale_price?: number
+          location?: string | null
+          notes?: string | null
+          is_active?: boolean
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          code?: string
+          barcode?: string | null
+          brand_id?: string | null
+          category_id?: string | null
+          unit_of_measure?: string
+          minimum_stock?: number
+          current_stock?: number
+          unit_cost?: number
+          sale_price?: number
+          location?: string | null
+          notes?: string | null
+          is_active?: boolean
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          id: string
+          product_id: string | null
+          movement_type: string
+          quantity: number
+          unit_cost: number | null
+          total_cost: number | null
+          reference_document: string | null
+          destination: string | null
+          supplier: string | null
+          reason: string | null
+          notes: string | null
+          movement_date: string
+          company_id: string | null
+          created_by: string | null
+          created_at: string
+          products?: {
+            id: string
+            name: string
+            code: string
+            unit_of_measure: string
+          } | null
+        }
+        Insert: {
+          id?: string
+          product_id?: string | null
+          movement_type: string
+          quantity: number
+          unit_cost?: number | null
+          total_cost?: number | null
+          reference_document?: string | null
+          destination?: string | null
+          supplier?: string | null
+          reason?: string | null
+          notes?: string | null
+          movement_date?: string
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string | null
+          movement_type?: string
+          quantity?: number
+          unit_cost?: number | null
+          total_cost?: number | null
+          reference_document?: string | null
+          destination?: string | null
+          supplier?: string | null
+          reason?: string | null
+          notes?: string | null
+          movement_date?: string
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
