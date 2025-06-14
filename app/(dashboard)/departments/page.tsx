@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
+import { useCompany } from "@/lib/company-context"
 
 export default function DepartmentsPage() {
   const { user } = useAuth()
@@ -35,27 +36,44 @@ export default function DepartmentsPage() {
     isDeleting: false,
   })
   const router = useRouter()
+  const { selectedCompany } = useCompany()
 
   useEffect(() => {
     if (user && user.role === "admin") {
       fetchDepartments()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchDepartments = async () => {
     try {
-      // First get all departments
-      const { data: departmentsData, error: deptError } = await supabase.from("departments").select("*").order("name")
+      // Get current company from context
+      const currentCompanyId = selectedCompany?.id
+
+      let query = supabase.from("departments").select("*")
+
+      // Filter by company if a specific company is selected
+      if (currentCompanyId && selectedCompany?.code !== "general") {
+        query = query.eq("company_id", currentCompanyId)
+      }
+
+      const { data: departmentsData, error: deptError } = await query.order("name")
 
       if (deptError) throw deptError
 
       // Then get user counts for each department
       const departmentsWithCounts = await Promise.all(
         (departmentsData || []).map(async (dept) => {
-          const { count, error: countError } = await supabase
+          let countQuery = supabase
             .from("profiles")
             .select("*", { count: "exact", head: true })
             .eq("department_id", dept.id)
+
+          // Also filter user count by company if specific company is selected
+          if (currentCompanyId && selectedCompany?.code !== "general") {
+            countQuery = countQuery.eq("company_id", currentCompanyId)
+          }
+
+          const { count, error: countError } = await countQuery
 
           if (countError) {
             console.error(`Error counting users for department ${dept.id}:`, countError)
