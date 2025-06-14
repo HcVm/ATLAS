@@ -27,6 +27,7 @@ type UserEditFormValues = z.infer<typeof userEditSchema>
 interface Department {
   id: string
   name: string
+  company_id: string | null
 }
 
 interface Company {
@@ -69,6 +70,7 @@ export function UserEditForm({
   const [isLoading, setIsLoading] = useState(false)
   const [departments, setDepartments] = useState<Department[]>(initialDepartments)
   const [companies, setCompanies] = useState<Company[]>(initialCompanies)
+  const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([])
 
   const form = useForm<UserEditFormValues>({
     resolver: zodResolver(userEditSchema),
@@ -81,6 +83,9 @@ export function UserEditForm({
       phone: user.phone || "",
     },
   })
+
+  // Watch company changes to filter departments
+  const selectedCompanyId = form.watch("company_id")
 
   // Cargar empresas si no se pasaron como prop
   useEffect(() => {
@@ -96,6 +101,11 @@ export function UserEditForm({
     }
   }, [departments.length])
 
+  // Filter departments when company changes
+  useEffect(() => {
+    filterDepartmentsByCompany()
+  }, [selectedCompanyId, departments])
+
   const loadCompanies = async () => {
     try {
       const { data, error } = await supabase.from("companies").select("id, name, code").order("name")
@@ -109,12 +119,32 @@ export function UserEditForm({
 
   const loadDepartments = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("id, name").order("name")
+      const { data, error } = await supabase.from("departments").select("id, name, company_id").order("name")
       if (error) throw error
       setDepartments(data || [])
     } catch (error) {
       console.error("Error loading departments:", error)
       toast.error("Error al cargar departamentos")
+    }
+  }
+
+  const filterDepartmentsByCompany = () => {
+    if (!selectedCompanyId || selectedCompanyId === "none") {
+      // Show all departments if no company selected
+      setFilteredDepartments(departments)
+    } else {
+      // Filter departments by selected company
+      const filtered = departments.filter((dept) => dept.company_id === selectedCompanyId)
+      setFilteredDepartments(filtered)
+
+      // Reset department selection if current department doesn't belong to selected company
+      const currentDeptId = form.getValues("department_id")
+      if (currentDeptId && currentDeptId !== "none") {
+        const currentDeptBelongsToCompany = filtered.some((dept) => dept.id === currentDeptId)
+        if (!currentDeptBelongsToCompany) {
+          form.setValue("department_id", "none")
+        }
+      }
     }
   }
 
@@ -254,7 +284,12 @@ export function UserEditForm({
                 name="department_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Departamento</FormLabel>
+                    <FormLabel>
+                      Departamento
+                      {selectedCompanyId && selectedCompanyId !== "none" && (
+                        <span className="text-sm text-muted-foreground ml-2">(Solo de la empresa seleccionada)</span>
+                      )}
+                    </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -263,7 +298,7 @@ export function UserEditForm({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Sin departamento</SelectItem>
-                        {departments.map((department) => (
+                        {filteredDepartments.map((department) => (
                           <SelectItem key={department.id} value={department.id}>
                             {department.name}
                           </SelectItem>
