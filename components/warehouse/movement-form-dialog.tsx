@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, DollarSign, MapPin, Building } from "lucide-react"
+import { AlertTriangle, Package, DollarSign, MapPin, Building, Info } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -33,26 +33,6 @@ interface Department {
   code: string
 }
 
-interface Province {
-  id: string
-  name: string
-  department_id: string
-}
-
-interface District {
-  id: string
-  name: string
-  province_id: string
-}
-
-interface DestinationEntity {
-  id: string
-  name: string
-  entity_type: string
-  document_number: string
-  address: string
-}
-
 interface MovementFormDialogProps {
   open: boolean
   onClose: () => void
@@ -65,9 +45,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [districts, setDistricts] = useState<District[]>([])
-  const [entities, setEntities] = useState<DestinationEntity[]>([])
   const [entitySuggestions, setEntitySuggestions] = useState<string[]>([])
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null)
   const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
@@ -77,13 +54,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     movement_type: "",
     quantity: "",
     unit_cost: "",
-    unit_price: "",
+    sale_price: "",
     purchase_order_number: "",
-    destination_entity_id: "",
     destination_entity_name: "",
     destination_department_id: "",
-    destination_province_id: "",
-    destination_district_id: "",
     destination_address: "",
     supplier: "",
     reason: "",
@@ -116,65 +90,14 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       // Obtener departamentos del Perú
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
 
-      // Obtener entidades destino
-      const { data: entitiesData } = await supabase
-        .from("destination_entities")
-        .select("id, name, entity_type, document_number, address")
-        .eq("company_id", user.company_id)
-        .eq("is_active", true)
-        .order("name")
-
-      // Obtener sugerencias de nombres de entidades (nombres únicos usados anteriormente)
-      const { data: suggestionsData } = await supabase
-        .from("inventory_movements")
-        .select("destination_entity_name")
-        .eq("company_id", user.company_id)
-        .not("destination_entity_name", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(50)
+      // Obtener sugerencias de entidades (nombres únicos usados anteriormente)
+      const { data: suggestionsData } = await supabase.rpc("get_entity_suggestions", { company_uuid: user.company_id })
 
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
-      setEntities(entitiesData || [])
-
-      // Crear lista única de sugerencias
-      const uniqueSuggestions = [
-        ...new Set(suggestionsData?.map((item) => item.destination_entity_name).filter(Boolean) || []),
-      ]
-      setEntitySuggestions(uniqueSuggestions)
+      setEntitySuggestions(suggestionsData?.map((item) => item.entity_name) || [])
     } catch (error) {
       console.error("Error fetching data:", error)
-    }
-  }
-
-  const fetchProvinces = async (departmentId: string) => {
-    try {
-      const { data } = await supabase
-        .from("peru_provinces")
-        .select("id, name, department_id")
-        .eq("department_id", departmentId)
-        .order("name")
-
-      setProvinces(data || [])
-      setDistricts([])
-      setFormData((prev) => ({ ...prev, destination_province_id: "", destination_district_id: "" }))
-    } catch (error) {
-      console.error("Error fetching provinces:", error)
-    }
-  }
-
-  const fetchDistricts = async (provinceId: string) => {
-    try {
-      const { data } = await supabase
-        .from("peru_districts")
-        .select("id, name, province_id")
-        .eq("province_id", provinceId)
-        .order("name")
-
-      setDistricts(data || [])
-      setFormData((prev) => ({ ...prev, destination_district_id: "" }))
-    } catch (error) {
-      console.error("Error fetching districts:", error)
     }
   }
 
@@ -187,7 +110,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         ...prev,
         product_id: productId,
         unit_cost: product.cost_price.toString(),
-        unit_price: product.sale_price.toString(),
+        sale_price: product.sale_price.toString(),
       }))
     }
   }
@@ -202,16 +125,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const selectEntitySuggestion = (suggestion: string) => {
     setFormData((prev) => ({ ...prev, destination_entity_name: suggestion }))
     setShowEntitySuggestions(false)
-  }
-
-  const handleDepartmentChange = (departmentId: string) => {
-    setFormData((prev) => ({ ...prev, destination_department_id: departmentId }))
-    fetchProvinces(departmentId)
-  }
-
-  const handleProvinceChange = (provinceId: string) => {
-    setFormData((prev) => ({ ...prev, destination_province_id: provinceId }))
-    fetchDistricts(provinceId)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -257,55 +170,26 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         })
         return
       }
-      if (!formData.destination_entity_id && !formData.destination_entity_name) {
+      if (!formData.destination_entity_name) {
         toast({
           title: "Error",
-          description: "Selecciona una entidad destino o especifica el nombre de la entidad",
+          description: "Especifica el nombre de la entidad destino",
           variant: "destructive",
         })
         return
       }
     }
 
-    const unitPrice = formData.unit_price ? Number.parseFloat(formData.unit_price) : null
-    const totalAmount = unitPrice ? unitPrice * quantity : null
-
-    // Si se especificó una entidad nueva por nombre, crearla primero
-    let destinationEntityId = formData.destination_entity_id || null
-
-    if (formData.movement_type === "salida" && formData.destination_entity_name && !formData.destination_entity_id) {
-      try {
-        const newEntity = {
-          name: formData.destination_entity_name,
-          entity_type: "Cliente",
-          document_number: "",
-          address: formData.destination_address || "",
-          company_id: user.company_id,
-          is_active: true,
-        }
-
-        const { data: createdEntity, error } = await supabase
-          .from("destination_entities")
-          .insert(newEntity)
-          .select()
-          .single()
-
-        if (error) throw error
-        destinationEntityId = createdEntity.id
-      } catch (error) {
-        console.error("Error creating entity:", error)
-        // Continuar sin crear la entidad, solo usar el nombre
-      }
-    }
+    const salePrice = formData.sale_price ? Number.parseFloat(formData.sale_price) : null
+    const totalCost = formData.unit_cost ? Number.parseFloat(formData.unit_cost) * quantity : null
 
     onSubmit({
       ...formData,
       quantity,
       unit_cost: formData.unit_cost ? Number.parseFloat(formData.unit_cost) : null,
-      unit_price: unitPrice,
-      total_cost: formData.unit_cost ? Number.parseFloat(formData.unit_cost) * quantity : null,
-      total_amount: totalAmount,
-      destination_entity_id: destinationEntityId,
+      sale_price: salePrice,
+      total_cost: totalCost,
+      destination_department_id: formData.destination_department_id || null,
     })
 
     // Limpiar formulario
@@ -314,21 +198,16 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       movement_type: "",
       quantity: "",
       unit_cost: "",
-      unit_price: "",
+      sale_price: "",
       purchase_order_number: "",
-      destination_entity_id: "",
       destination_entity_name: "",
       destination_department_id: "",
-      destination_province_id: "",
-      destination_district_id: "",
       destination_address: "",
       supplier: "",
       reason: "",
       notes: "",
     })
     setSelectedProductData(null)
-    setProvinces([])
-    setDistricts([])
   }
 
   const getStockWarning = () => {
@@ -368,7 +247,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nuevo Movimiento de Inventario</DialogTitle>
         </DialogHeader>
@@ -400,8 +279,12 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
           {/* Información del producto seleccionado */}
           {selectedProductData && (
-            <Card>
+            <Card className="bg-blue-50/50 border-blue-200">
               <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Información del Producto</span>
+                </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <Label className="text-muted-foreground">Stock actual</Label>
@@ -421,16 +304,16 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                   <div>
                     <Label className="text-muted-foreground flex items-center gap-1">
                       <Package className="h-3 w-3" />
-                      Precio de costo
+                      Precio de costo (referencia)
                     </Label>
-                    <p className="font-medium">{formatCurrency(selectedProductData.cost_price)}</p>
+                    <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.cost_price)}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      Precio de venta
+                      Precio de venta (referencia)
                     </Label>
-                    <p className="font-medium text-green-600">{formatCurrency(selectedProductData.sale_price)}</p>
+                    <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.sale_price)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -483,14 +366,15 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             </div>
             {formData.movement_type === "salida" && (
               <div>
-                <Label htmlFor="unit_price">Precio Unitario</Label>
+                <Label htmlFor="sale_price">Precio de Venta *</Label>
                 <Input
-                  id="unit_price"
+                  id="sale_price"
                   type="number"
                   step="0.01"
-                  value={formData.unit_price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, unit_price: e.target.value }))}
+                  value={formData.sale_price}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, sale_price: e.target.value }))}
                   placeholder="0.00"
+                  required
                 />
               </div>
             )}
@@ -515,57 +399,29 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="destination_entity_id">Entidad Destino Registrada</Label>
-                  <Select
-                    value={formData.destination_entity_id}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, destination_entity_id: value, destination_entity_name: "" }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar entidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {entities.map((entity) => (
-                        <SelectItem key={entity.id} value={entity.id}>
-                          <div>
-                            <div className="font-medium">{entity.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {entity.entity_type} - {entity.document_number}
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="relative">
-                  <Label htmlFor="destination_entity_name">O Nombre de Entidad *</Label>
-                  <Input
-                    id="destination_entity_name"
-                    value={formData.destination_entity_name}
-                    onChange={(e) => handleEntityNameChange(e.target.value)}
-                    placeholder="Escribir nombre de la entidad"
-                    disabled={!!formData.destination_entity_id}
-                  />
-                  {showEntitySuggestions && filteredSuggestions.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredSuggestions.map((suggestion, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
-                          onClick={() => selectEntitySuggestion(suggestion)}
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="relative">
+                <Label htmlFor="destination_entity_name">Nombre de la Entidad/Cliente *</Label>
+                <Input
+                  id="destination_entity_name"
+                  value={formData.destination_entity_name}
+                  onChange={(e) => handleEntityNameChange(e.target.value)}
+                  placeholder="Escribir nombre de la entidad o cliente"
+                  required
+                />
+                {showEntitySuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {filteredSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
+                        onClick={() => selectEntitySuggestion(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4 border-t pt-4">
@@ -574,10 +430,13 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                   Ubicación de Destino
                 </h5>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="destination_department_id">Departamento</Label>
-                    <Select value={formData.destination_department_id} onValueChange={handleDepartmentChange}>
+                    <Select
+                      value={formData.destination_department_id}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, destination_department_id: value }))}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar departamento" />
                       </SelectTrigger>
@@ -592,54 +451,14 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                   </div>
 
                   <div>
-                    <Label htmlFor="destination_province_id">Provincia</Label>
-                    <Select
-                      value={formData.destination_province_id}
-                      onValueChange={handleProvinceChange}
-                      disabled={!formData.destination_department_id}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar provincia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {provinces.map((prov) => (
-                          <SelectItem key={prov.id} value={prov.id}>
-                            {prov.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="destination_address">Dirección Específica</Label>
+                    <Input
+                      id="destination_address"
+                      value={formData.destination_address}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, destination_address: e.target.value }))}
+                      placeholder="Dirección completa del destino"
+                    />
                   </div>
-
-                  <div>
-                    <Label htmlFor="destination_district_id">Distrito</Label>
-                    <Select
-                      value={formData.destination_district_id}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, destination_district_id: value }))}
-                      disabled={!formData.destination_province_id}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar distrito" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {districts.map((dist) => (
-                          <SelectItem key={dist.id} value={dist.id}>
-                            {dist.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="destination_address">Dirección Específica</Label>
-                  <Input
-                    id="destination_address"
-                    value={formData.destination_address}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, destination_address: e.target.value }))}
-                    placeholder="Dirección completa del destino"
-                  />
                 </div>
               </div>
             </div>
@@ -688,7 +507,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           {formData.quantity && selectedProductData && (
             <Card className="bg-muted/50">
               <CardContent className="pt-4">
-                <h4 className="font-medium mb-2">Resumen</h4>
+                <h4 className="font-medium mb-2">Resumen del Movimiento</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Cantidad:</span>
@@ -696,11 +515,11 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                       {formData.quantity} {selectedProductData.unit_of_measure}
                     </p>
                   </div>
-                  {formData.unit_price && (
+                  {formData.sale_price && formData.movement_type === "salida" && (
                     <div>
-                      <span className="text-muted-foreground">Total:</span>
+                      <span className="text-muted-foreground">Total de Venta:</span>
                       <p className="font-medium text-green-600">
-                        {formatCurrency(Number.parseFloat(formData.unit_price) * Number.parseInt(formData.quantity))}
+                        {formatCurrency(Number.parseFloat(formData.sale_price) * Number.parseInt(formData.quantity))}
                       </p>
                     </div>
                   )}
