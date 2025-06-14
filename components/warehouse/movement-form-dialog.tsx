@@ -90,8 +90,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       // Obtener departamentos del Perú
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
 
-      // Obtener sugerencias de entidades (nombres únicos usados anteriormente)
-      const { data: suggestionsData } = await supabase.rpc("get_entity_suggestions", { company_uuid: user.company_id })
+      // Obtener sugerencias de entidades globales
+      const { data: suggestionsData } = await supabase.rpc("get_entity_suggestions")
 
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
@@ -177,6 +177,18 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           variant: "destructive",
         })
         return
+      }
+    }
+
+    // Si es una salida y se especificó una entidad, crearla globalmente si no existe
+    if (formData.movement_type === "salida" && formData.destination_entity_name) {
+      try {
+        await supabase.rpc("create_entity_if_not_exists", {
+          entity_name: formData.destination_entity_name,
+        })
+      } catch (error) {
+        console.error("Error creating entity:", error)
+        // Continuar sin crear la entidad, solo usar el nombre
       }
     }
 
