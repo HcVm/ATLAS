@@ -10,17 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
 
 interface InventoryMovement {
   id: string
   movement_type: string
   quantity: number
-  unit_cost: number | null
-  total_cost: number | null
-  reference_document: string | null
-  destination: string | null
+  sale_price: number | null
+  total_amount: number | null
+  purchase_order_number: string | null
+  destination_entity_name: string | null
+  destination_address: string | null
   supplier: string | null
   reason: string | null
   notes: string | null
@@ -35,6 +35,9 @@ interface InventoryMovement {
   profiles?: {
     full_name: string
   } | null
+  peru_departments?: {
+    name: string
+  } | null
 }
 
 export default function InventoryPage() {
@@ -44,6 +47,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("all")
+  const [showMovementForm, setShowMovementForm] = useState(false)
 
   useEffect(() => {
     if (user?.company_id) {
@@ -63,10 +67,11 @@ export default function InventoryPage() {
           id,
           movement_type,
           quantity,
-          unit_cost,
-          total_cost,
-          reference_document,
-          destination,
+          sale_price,
+          total_amount,
+          purchase_order_number,
+          destination_entity_name,
+          destination_address,
           supplier,
           reason,
           notes,
@@ -80,6 +85,9 @@ export default function InventoryPage() {
           ),
           profiles!inventory_movements_created_by_fkey (
             full_name
+          ),
+          peru_departments!inventory_movements_destination_department_id_fkey (
+            name
           )
         `)
         .eq("company_id", user.company_id)
@@ -100,8 +108,8 @@ export default function InventoryPage() {
     const matchesSearch =
       movement.products?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       movement.products?.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.reference_document?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.destination?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.purchase_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.destination_entity_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       movement.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesType = movementTypeFilter === "all" || movement.movement_type === movementTypeFilter
@@ -175,9 +183,6 @@ export default function InventoryPage() {
     }
   }
 
-  const [showMovementForm, setShowMovementForm] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
-
   const handleCreateMovement = async (movementData: any) => {
     try {
       const { error } = await supabase.from("inventory_movements").insert({
@@ -192,7 +197,6 @@ export default function InventoryPage() {
       // Recargar movimientos
       fetchMovements()
       setShowMovementForm(false)
-      setSelectedProduct(null)
     } catch (error) {
       console.error("Error creating movement:", error)
     }
@@ -227,29 +231,21 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
           <p className="text-muted-foreground">Historial de entradas, salidas y ajustes de inventario</p>
         </div>
-        <Button asChild>
-          <Link href="/warehouse/inventory/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Movimiento
-          </Link>
+        <Button onClick={() => setShowMovementForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Movimiento
         </Button>
       </div>
 
       <Card>
-        <CardHeader className="flex items-center">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Historial de Movimientos
-            </CardTitle>
-            <CardDescription>
-              {filteredMovements.length} de {movements.length} movimientos
-            </CardDescription>
-          </div>
-          <Button onClick={() => setShowMovementForm(true)} className="ml-2">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Movimiento
-          </Button>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Historial de Movimientos
+          </CardTitle>
+          <CardDescription>
+            {filteredMovements.length} de {movements.length} movimientos
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Filtros */}
@@ -258,7 +254,7 @@ export default function InventoryPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Buscar por producto, documento, destino..."
+                  placeholder="Buscar por producto, orden, entidad..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -298,7 +294,7 @@ export default function InventoryPage() {
                   <TableHead>Producto</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Cantidad</TableHead>
-                  <TableHead>Costo</TableHead>
+                  <TableHead>Precio/Total</TableHead>
                   <TableHead>Detalles</TableHead>
                   <TableHead>Usuario</TableHead>
                 </TableRow>
@@ -329,21 +325,32 @@ export default function InventoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <div className="text-sm">Unit: {formatCurrency(movement.unit_cost)}</div>
-                          <div className="font-medium">Total: {formatCurrency(movement.total_cost)}</div>
-                        </div>
+                        {movement.movement_type === "salida" && movement.sale_price ? (
+                          <div>
+                            <div className="text-sm">Precio: {formatCurrency(movement.sale_price)}</div>
+                            <div className="font-medium text-green-600">
+                              Total: {formatCurrency(movement.total_amount)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm space-y-1">
-                          {movement.reference_document && (
+                          {movement.purchase_order_number && (
                             <div>
-                              <span className="font-medium">Doc:</span> {movement.reference_document}
+                              <span className="font-medium">OC:</span> {movement.purchase_order_number}
                             </div>
                           )}
-                          {movement.destination && (
+                          {movement.destination_entity_name && (
                             <div>
-                              <span className="font-medium">Destino:</span> {movement.destination}
+                              <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
+                            </div>
+                          )}
+                          {movement.peru_departments?.name && (
+                            <div>
+                              <span className="font-medium">Destino:</span> {movement.peru_departments.name}
                             </div>
                           )}
                           {movement.supplier && (
@@ -380,15 +387,12 @@ export default function InventoryPage() {
           </div>
         </CardContent>
       </Card>
+
       {showMovementForm && (
         <MovementFormDialog
           open={showMovementForm}
-          onClose={() => {
-            setShowMovementForm(false)
-            setSelectedProduct(null)
-          }}
+          onClose={() => setShowMovementForm(false)}
           onSubmit={handleCreateMovement}
-          selectedProduct={selectedProduct}
         />
       )}
     </div>

@@ -53,7 +53,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     product_id: selectedProduct?.id || "",
     movement_type: "",
     quantity: "",
-    unit_cost: "",
     sale_price: "",
     purchase_order_number: "",
     destination_entity_name: "",
@@ -91,7 +90,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
 
       // Obtener sugerencias de entidades globales
-      const { data: suggestionsData } = await supabase.rpc("get_entity_suggestions")
+      const { data: suggestionsData } = await supabase.rpc("get_global_entity_suggestions")
 
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
@@ -109,7 +108,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       setFormData((prev) => ({
         ...prev,
         product_id: productId,
-        unit_cost: product.cost_price.toString(),
         sale_price: product.sale_price.toString(),
       }))
     }
@@ -178,29 +176,24 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         })
         return
       }
-    }
-
-    // Si es una salida y se especificó una entidad, crearla globalmente si no existe
-    if (formData.movement_type === "salida" && formData.destination_entity_name) {
-      try {
-        await supabase.rpc("create_entity_if_not_exists", {
-          entity_name: formData.destination_entity_name,
+      if (!formData.sale_price) {
+        toast({
+          title: "Error",
+          description: "El precio de venta es requerido para salidas",
+          variant: "destructive",
         })
-      } catch (error) {
-        console.error("Error creating entity:", error)
-        // Continuar sin crear la entidad, solo usar el nombre
+        return
       }
     }
 
     const salePrice = formData.sale_price ? Number.parseFloat(formData.sale_price) : null
-    const totalCost = formData.unit_cost ? Number.parseFloat(formData.unit_cost) * quantity : null
+    const totalAmount = salePrice ? salePrice * quantity : null
 
     onSubmit({
       ...formData,
       quantity,
-      unit_cost: formData.unit_cost ? Number.parseFloat(formData.unit_cost) : null,
       sale_price: salePrice,
-      total_cost: totalCost,
+      total_amount: totalAmount,
       destination_department_id: formData.destination_department_id || null,
     })
 
@@ -209,7 +202,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       product_id: "",
       movement_type: "",
       quantity: "",
-      unit_cost: "",
       sale_price: "",
       purchase_order_number: "",
       destination_entity_name: "",
@@ -351,8 +343,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             </Select>
           </div>
 
-          {/* Cantidad y precios */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Cantidad y precio */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="quantity">{formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}</Label>
               <Input
@@ -363,17 +355,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 required
                 min="1"
                 max={formData.movement_type === "salida" ? selectedProductData?.current_stock : undefined}
-              />
-            </div>
-            <div>
-              <Label htmlFor="unit_cost">Costo Unitario</Label>
-              <Input
-                id="unit_cost"
-                type="number"
-                step="0.01"
-                value={formData.unit_cost}
-                onChange={(e) => setFormData((prev) => ({ ...prev, unit_cost: e.target.value }))}
-                placeholder="0.00"
               />
             </div>
             {formData.movement_type === "salida" && (
