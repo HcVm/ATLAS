@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 
 // Función para obtener el color de texto basado en el color de fondo
 const getTextColor = (backgroundColor: string) => {
@@ -61,6 +62,7 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
 
 export default function MovementsPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [movements, setMovements] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,7 +75,7 @@ export default function MovementsPage() {
       fetchMovements()
       fetchDepartments()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchMovements = async (showRefreshing = false) => {
     try {
@@ -83,16 +85,20 @@ export default function MovementsPage() {
         setLoading(true)
       }
 
-      // Consulta con colores de departamentos
-      const { data, error } = await supabase
-        .from("document_movements")
-        .select(`
+      // Determinar filtro de empresa
+      const isAdmin = user?.role === "admin" || user?.role === "supervisor"
+      const shouldFilterByCompany = !isAdmin || selectedCompany !== null
+      const companyFilter = isAdmin ? selectedCompany : user?.company_id
+
+      // Construir query base
+      let query = supabase.from("document_movements").select(`
           *,
           documents!inner (
             id, 
             title, 
             document_number,
-            status
+            status,
+            company_id
           ),
           from_departments:departments!document_movements_from_department_id_fkey (
             id, 
@@ -110,7 +116,13 @@ export default function MovementsPage() {
             email
           )
         `)
-        .order("created_at", { ascending: false })
+
+      // Aplicar filtro de empresa si es necesario
+      if (shouldFilterByCompany && companyFilter) {
+        query = query.eq("documents.company_id", companyFilter)
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false })
 
       if (error) {
         console.error("Error fetching movements:", error)
@@ -173,6 +185,19 @@ export default function MovementsPage() {
     return matchesSearch && matchesDepartment
   })
 
+  // Determinar el título según el contexto
+  const getPageTitle = () => {
+    const isAdmin = user?.role === "admin" || user?.role === "supervisor"
+    if (isAdmin) {
+      if (selectedCompany === null) {
+        return "Movimientos de Documentos - Vista General"
+      } else if (selectedCompany) {
+        return `Movimientos de Documentos - ${selectedCompany.name}`
+      }
+    }
+    return "Movimientos de Documentos"
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -190,7 +215,7 @@ export default function MovementsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            Movimientos de Documentos
+            {getPageTitle()}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             Historial de todos los movimientos de documentos entre departamentos
