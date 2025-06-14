@@ -20,6 +20,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
+import { useCompany } from "@/lib/company-context"
 
 const formSchema = z.object({
   title: z.string().min(3, {
@@ -46,6 +47,7 @@ export default function NewDocumentPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,9 +66,19 @@ export default function NewDocumentPage() {
       try {
         setLoadingDepartments(true)
 
-        // Only fetch departments from the user's company
-        if (!user?.company_id) {
-          console.log("User has no company assigned")
+        // Determine which company to filter by
+        let companyToFilter = null
+
+        if (user?.role === "admin") {
+          // For admin: use selected company from context
+          companyToFilter = selectedCompany?.id || null
+        } else {
+          // For regular users: use their assigned company
+          companyToFilter = user?.company_id || null
+        }
+
+        if (!companyToFilter) {
+          console.log("No company available for filtering departments")
           setDepartments([])
           return
         }
@@ -74,7 +86,7 @@ export default function NewDocumentPage() {
         const { data, error } = await supabase
           .from("departments")
           .select("*")
-          .eq("company_id", user.company_id) // Filter by user's company
+          .eq("company_id", companyToFilter)
           .order("name")
 
         if (error) throw error
@@ -92,7 +104,7 @@ export default function NewDocumentPage() {
     }
 
     fetchDepartments()
-  }, [toast, user?.company_id])
+  }, [toast, user?.company_id, user?.role, selectedCompany?.id])
 
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
@@ -154,10 +166,24 @@ export default function NewDocumentPage() {
       return
     }
 
-    if (!user.company_id) {
+    // Determine which company to use
+    let companyToUse = null
+
+    if (user.role === "admin") {
+      // For admin: use selected company from context
+      companyToUse = selectedCompany?.id || null
+    } else {
+      // For regular users: use their assigned company
+      companyToUse = user.company_id || null
+    }
+
+    if (!companyToUse) {
       toast({
         title: "Error",
-        description: "Debes pertenecer a una empresa para crear un documento.",
+        description:
+          user.role === "admin"
+            ? "Debes seleccionar una empresa para crear un documento."
+            : "Debes pertenecer a una empresa para crear un documento.",
         variant: "destructive",
       })
       return
@@ -189,9 +215,10 @@ export default function NewDocumentPage() {
         current_department_id: values.department_id,
         file_url: fileUrl,
         is_public: values.is_public,
+        company_id: companyToUse,
       })
 
-      // Crear documento - USANDO company_id del usuario
+      // Crear documento - USANDO company_id determinado
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
@@ -200,7 +227,7 @@ export default function NewDocumentPage() {
           document_number: values.document_number,
           status: "pending",
           created_by: user.id,
-          company_id: user.company_id, // Add company_id
+          company_id: companyToUse, // Use determined company
           current_department_id: values.department_id,
           file_url: fileUrl,
           is_public: values.is_public,
@@ -305,6 +332,13 @@ export default function NewDocumentPage() {
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-blue-600 bg-clip-text text-transparent">
               Crear Nuevo Documento
             </h1>
+            {user?.role === "admin" && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedCompany
+                  ? `Creando documento para: ${selectedCompany.name}`
+                  : "Selecciona una empresa para crear documentos"}
+              </p>
+            )}
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Completa el formulario para crear un nuevo documento
             </p>
