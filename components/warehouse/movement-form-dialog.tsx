@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, DollarSign, MapPin, Building, Info } from "lucide-react"
+import { AlertTriangle, Package, DollarSign, MapPin, Building, Info, Upload, X, Paperclip } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -50,6 +50,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const [entitySuggestions, setEntitySuggestions] = useState<string[]>([])
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null)
   const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [uploadingAttachments, setUploadingAttachments] = useState(false)
 
   const [formData, setFormData] = useState({
     product_id: selectedProduct?.id || "",
@@ -146,6 +148,87 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     setShowEntitySuggestions(false)
   }
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+
+    // Validar tamaño de archivos (10MB máximo)
+    const validFiles = files.filter((file) => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Archivo muy grande",
+          description: `El archivo "${file.name}" excede el límite de 10MB.`,
+          variant: "destructive",
+        })
+        return false
+      }
+      return true
+    })
+
+    setAttachments((prev) => [...prev, ...validFiles])
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadAttachments = async (movementId: string) => {
+    if (attachments.length === 0) return
+
+    setUploadingAttachments(true)
+
+    try {
+      for (const file of attachments) {
+        // Generar nombre único para el archivo
+        const fileExt = file.name.split(".").pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+        const filePath = `${user?.id}/${fileName}`
+
+        // Subir archivo a Supabase Storage
+        const { error: uploadError } = await supabase.storage.from("inventory-attachments").upload(filePath, file)
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError)
+          throw uploadError
+        }
+
+        // Obtener URL pública del archivo
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("inventory-attachments").getPublicUrl(filePath)
+
+        // Crear registro en la base de datos
+        const { error: dbError } = await supabase.from("inventory_movement_attachments").insert({
+          movement_id: movementId,
+          file_name: file.name,
+          file_url: publicUrl,
+          file_size: file.size,
+          file_type: file.type,
+          uploaded_by: user?.id,
+        })
+
+        if (dbError) {
+          console.error("Database error:", dbError)
+          throw dbError
+        }
+      }
+
+      toast({
+        title: "Archivos subidos",
+        description: `Se subieron ${attachments.length} archivo(s) correctamente.`,
+      })
+    } catch (error: any) {
+      console.error("Error uploading attachments:", error)
+      toast({
+        title: "Error al subir archivos",
+        description: error.message || "Error al subir algunos archivos adjuntos.",
+        variant: "destructive",
+      })
+      throw error // Re-throw para manejar en onSubmit
+    } finally {
+      setUploadingAttachments(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -222,30 +305,49 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     const salePrice = formData.sale_price ? Number.parseFloat(formData.sale_price) : null
     const totalAmount = salePrice ? salePrice * quantity : null
 
-    onSubmit({
-      ...formData,
-      quantity,
-      sale_price: salePrice,
-      total_amount: totalAmount,
-      destination_department_id: formData.destination_department_id || null,
-      company_id: companyId, // Add company_id to the submission
-    })
+    try {
+      // Crear el movimiento primero
+      const movementData = {
+        ...formData,
+        quantity,
+        sale_price: salePrice,
+        total_amount: totalAmount,
+        destination_department_id: formData.destination_department_id || null,
+        company_id: companyId,
+      }
 
-    // Limpiar formulario
-    setFormData({
-      product_id: "",
-      movement_type: "",
-      quantity: "",
-      sale_price: "",
-      purchase_order_number: "",
-      destination_entity_name: "",
-      destination_department_id: "",
-      destination_address: "",
-      supplier: "",
-      reason: "",
-      notes: "",
-    })
-    setSelectedProductData(null)
+      // Llamar a onSubmit que debería retornar el ID del movimiento creado
+      const createdMovement = await onSubmit(movementData)
+
+      // Si hay archivos adjuntos y se creó el movimiento exitosamente
+      if (attachments.length > 0 && createdMovement?.id) {
+        await uploadAttachments(createdMovement.id)
+      }
+
+      // Limpiar formulario
+      setFormData({
+        product_id: "",
+        movement_type: "",
+        quantity: "",
+        sale_price: "",
+        purchase_order_number: "",
+        destination_entity_name: "",
+        destination_department_id: "",
+        destination_address: "",
+        supplier: "",
+        reason: "",
+        notes: "",
+      })
+      setSelectedProductData(null)
+      setAttachments([])
+    } catch (error: any) {
+      console.error("Error creating movement:", error)
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el movimiento. Intente nuevamente.",
+        variant: "destructive",
+      })
+    }
   }
 
   const getStockWarning = () => {
@@ -285,7 +387,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nuevo Movimiento de Inventario</DialogTitle>
         </DialogHeader>
@@ -518,6 +620,70 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             </div>
           )}
 
+          {/* Sección de archivos adjuntos */}
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Documentos Adjuntos (opcional)
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              Sube facturas, hojas de ruta, órdenes de compra u otros documentos relacionados al movimiento.
+            </p>
+
+            <div>
+              <Label htmlFor="attachments" className="cursor-pointer">
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Haz clic para seleccionar archivos o arrastra y suelta aquí
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. 10MB cada uno)
+                  </p>
+                </div>
+              </Label>
+              <Input
+                id="attachments"
+                type="file"
+                multiple
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                onChange={handleFileSelect}
+              />
+            </div>
+
+            {/* Lista de archivos seleccionados */}
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                <Label>Archivos seleccionados ({attachments.length}):</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate font-medium">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {file.type} • {(file.size / 1024 / 1024).toFixed(1)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAttachment(index)}
+                        className="flex-shrink-0 h-8 w-8 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Notas */}
           <div>
             <Label htmlFor="notes">Notas Adicionales</Label>
@@ -550,6 +716,12 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                       </p>
                     </div>
                   )}
+                  {attachments.length > 0 && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Documentos adjuntos:</span>
+                      <p className="font-medium">{attachments.length} archivo(s)</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -559,7 +731,9 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit">Crear Movimiento</Button>
+            <Button type="submit" disabled={uploadingAttachments}>
+              {uploadingAttachments ? "Subiendo archivos..." : "Crear Movimiento"}
+            </Button>
           </div>
         </form>
       </DialogContent>
