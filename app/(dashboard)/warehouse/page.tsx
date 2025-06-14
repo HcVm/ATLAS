@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 
 interface WarehouseStats {
@@ -31,6 +32,7 @@ interface WarehouseStats {
 
 export default function WarehousePage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [stats, setStats] = useState<WarehouseStats>({
     totalProducts: 0,
     totalValue: 0,
@@ -50,14 +52,17 @@ export default function WarehousePage() {
       user?.departments?.name === "Almacén" ||
       user?.departments?.name === "Contabilidad"
 
-    if (user?.company_id && hasWarehouseAccess) {
-      fetchWarehouseData()
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (companyId && hasWarehouseAccess) {
+      fetchWarehouseData(companyId)
+    } else {
+      setLoading(false)
     }
-  }, [user?.company_id, user?.role, user?.departments])
+  }, [user, selectedCompany])
 
-  const fetchWarehouseData = async () => {
-    if (!user?.company_id) return
-
+  const fetchWarehouseData = async (companyId: string) => {
     try {
       setLoading(true)
 
@@ -74,7 +79,7 @@ export default function WarehousePage() {
           brands!products_brand_id_fkey (name, color),
           product_categories!products_category_id_fkey (name, color)
         `)
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .eq("is_active", true)
 
       console.log("Products query result:", { products, productsError })
@@ -94,7 +99,7 @@ export default function WarehousePage() {
           movement_date,
           products (name, code)
         `)
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("created_at", { ascending: false })
         .limit(5)
 
@@ -135,6 +140,62 @@ export default function WarehousePage() {
     }).format(amount)
   }
 
+  // Check if user has warehouse access
+  const hasWarehouseAccess =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Almacén" ||
+    user?.departments?.name === "Contabilidad"
+
+  // Get the company to use
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
+
+  if (!hasWarehouseAccess) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
+            <p className="text-muted-foreground">Panel de control del inventario</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No tienes permisos para acceder al almacén.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!companyToUse) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
+            <p className="text-muted-foreground">Panel de control del inventario</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {user?.role === "admin"
+                  ? "Selecciona una empresa para ver su inventario."
+                  : "No tienes una empresa asignada. Contacta al administrador."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -165,7 +226,12 @@ export default function WarehousePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
-          <p className="text-muted-foreground">Panel de control del inventario</p>
+          <p className="text-muted-foreground">
+            Panel de control del inventario
+            {user?.role === "admin" && selectedCompany && (
+              <span className="ml-2 text-primary">- {selectedCompany.name}</span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Edit, Eye, AlertTriangle, Package } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
@@ -44,6 +45,7 @@ interface Category {
 
 export default function ProductsPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const searchParams = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -62,10 +64,15 @@ export default function ProductsPage() {
       user?.departments?.name === "Almacén" ||
       user?.departments?.name === "Contabilidad"
 
-    if (user?.company_id && hasWarehouseAccess) {
-      fetchData()
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (companyId && hasWarehouseAccess) {
+      fetchData(companyId)
+    } else {
+      setLoading(false)
     }
-  }, [user?.company_id, user?.role, user?.departments])
+  }, [user, selectedCompany])
 
   useEffect(() => {
     // Aplicar filtro de URL si existe
@@ -75,9 +82,7 @@ export default function ProductsPage() {
     }
   }, [searchParams])
 
-  const fetchData = async () => {
-    if (!user?.company_id) return
-
+  const fetchData = async (companyId: string) => {
     try {
       setLoading(true)
 
@@ -100,7 +105,7 @@ export default function ProductsPage() {
           brands!products_brand_id_fkey (id, name, color),
           product_categories!products_category_id_fkey (id, name, color)
         `)
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("name")
 
       if (productsError) {
@@ -112,7 +117,7 @@ export default function ProductsPage() {
       const { data: brandsData, error: brandsError } = await supabase
         .from("brands")
         .select("id, name, color")
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("name")
 
       if (brandsError) throw brandsError
@@ -121,7 +126,7 @@ export default function ProductsPage() {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("product_categories")
         .select("id, name, color")
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("name")
 
       if (categoriesError) throw categoriesError
@@ -167,6 +172,62 @@ export default function ProductsPage() {
     return { label: "Disponible", variant: "default" as const }
   }
 
+  // Check if user has warehouse access
+  const hasWarehouseAccess =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Almacén" ||
+    user?.departments?.name === "Contabilidad"
+
+  // Get the company to use
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
+
+  if (!hasWarehouseAccess) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
+            <p className="text-muted-foreground">Gestión de productos del inventario</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No tienes permisos para acceder a los productos.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!companyToUse) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
+            <p className="text-muted-foreground">Gestión de productos del inventario</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {user?.role === "admin"
+                  ? "Selecciona una empresa para ver sus productos."
+                  : "No tienes una empresa asignada. Contacta al administrador."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -194,7 +255,12 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Productos</h1>
-          <p className="text-muted-foreground">Gestión de productos del inventario</p>
+          <p className="text-muted-foreground">
+            Gestión de productos del inventario
+            {user?.role === "admin" && selectedCompany && (
+              <span className="ml-2 text-primary">- {selectedCompany.name}</span>
+            )}
+          </p>
         </div>
         <Button asChild>
           <Link href="/warehouse/products/new">

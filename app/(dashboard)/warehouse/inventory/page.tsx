@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText } from "lucide-react"
+import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText, AlertTriangle, Package } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
 
 interface InventoryMovement {
@@ -42,6 +43,7 @@ interface InventoryMovement {
 
 export default function InventoryPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [movements, setMovements] = useState<InventoryMovement[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -50,21 +52,17 @@ export default function InventoryPage() {
   const [showMovementForm, setShowMovementForm] = useState(false)
 
   useEffect(() => {
-    // Check if user has warehouse access
-    const hasWarehouseAccess =
-      user?.role === "admin" ||
-      user?.role === "supervisor" ||
-      user?.departments?.name === "Almacén" ||
-      user?.departments?.name === "Contabilidad"
+    // For admin users, use selectedCompany; for others, use their assigned company
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-    if (user?.company_id && hasWarehouseAccess) {
-      fetchMovements()
+    if (companyId) {
+      fetchMovements(companyId)
+    } else {
+      setLoading(false)
     }
-  }, [user?.company_id, user?.role, user?.departments])
+  }, [user, selectedCompany])
 
-  const fetchMovements = async () => {
-    if (!user?.company_id) return
-
+  const fetchMovements = async (companyId: string) => {
     try {
       setLoading(true)
 
@@ -97,7 +95,7 @@ export default function InventoryPage() {
             name
           )            
         `)
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("movement_date", { ascending: false })
         .limit(100)
 
@@ -192,9 +190,11 @@ export default function InventoryPage() {
 
   const handleCreateMovement = async (movementData: any) => {
     try {
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
       const { error } = await supabase.from("inventory_movements").insert({
         ...movementData,
-        company_id: user.company_id,
+        company_id: companyId,
         created_by: user.id,
         movement_date: new Date().toISOString(),
       })
@@ -202,11 +202,69 @@ export default function InventoryPage() {
       if (error) throw error
 
       // Recargar movimientos
-      fetchMovements()
+      if (companyId) {
+        fetchMovements(companyId)
+      }
       setShowMovementForm(false)
     } catch (error) {
       console.error("Error creating movement:", error)
     }
+  }
+
+  // Check if user has warehouse access
+  const hasWarehouseAccess =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Almacén" ||
+    user?.departments?.name === "Contabilidad"
+
+  // Get the company to use
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
+
+  if (!hasWarehouseAccess) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
+            <p className="text-muted-foreground">Historial de entradas, salidas y ajustes</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No tienes permisos para acceder al inventario.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!companyToUse) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
+            <p className="text-muted-foreground">Historial de entradas, salidas y ajustes</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {user?.role === "admin"
+                  ? "Selecciona una empresa para ver su inventario."
+                  : "No tienes una empresa asignada. Contacta al administrador."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   if (loading) {
@@ -236,7 +294,12 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
-          <p className="text-muted-foreground">Historial de entradas, salidas y ajustes de inventario</p>
+          <p className="text-muted-foreground">
+            Historial de entradas, salidas y ajustes de inventario
+            {user?.role === "admin" && selectedCompany && (
+              <span className="ml-2 text-primary">- {selectedCompany.name}</span>
+            )}
+          </p>
         </div>
         <Button onClick={() => setShowMovementForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
