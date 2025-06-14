@@ -22,7 +22,7 @@ interface Product {
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
-  unit_cost: number
+  cost_price: number
   sale_price: number
   location: string | null
   is_active: boolean
@@ -86,7 +86,7 @@ export default function ProductsPage() {
           unit_of_measure,
           minimum_stock,
           current_stock,
-          unit_cost,
+          cost_price,
           sale_price,
           location,
           is_active,
@@ -96,7 +96,10 @@ export default function ProductsPage() {
         .eq("company_id", user.company_id)
         .order("name")
 
-      if (productsError) throw productsError
+      if (productsError) {
+        console.error("Products error:", productsError)
+        throw productsError
+      }
 
       // Obtener marcas
       const { data: brandsData, error: brandsError } = await supabase
@@ -344,7 +347,7 @@ export default function ProductsPage() {
                           <div className="text-right">
                             <div className="font-medium">{formatCurrency(product.sale_price)}</div>
                             <div className="text-xs text-muted-foreground">
-                              Costo: {formatCurrency(product.unit_cost)}
+                              Costo: {formatCurrency(product.cost_price)}
                             </div>
                           </div>
                         </TableCell>
