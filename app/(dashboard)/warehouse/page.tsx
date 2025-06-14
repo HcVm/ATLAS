@@ -43,10 +43,17 @@ export default function WarehousePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user?.company_id) {
+    // Check if user has warehouse access
+    const hasWarehouseAccess =
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      user?.departments?.name === "Almacén" ||
+      user?.departments?.name === "Contabilidad"
+
+    if (user?.company_id && hasWarehouseAccess) {
       fetchWarehouseData()
     }
-  }, [user?.company_id])
+  }, [user?.company_id, user?.role, user?.departments])
 
   const fetchWarehouseData = async () => {
     if (!user?.company_id) return

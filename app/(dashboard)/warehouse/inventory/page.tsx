@@ -50,10 +50,17 @@ export default function InventoryPage() {
   const [showMovementForm, setShowMovementForm] = useState(false)
 
   useEffect(() => {
-    if (user?.company_id) {
+    // Check if user has warehouse access
+    const hasWarehouseAccess =
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      user?.departments?.name === "Almacén" ||
+      user?.departments?.name === "Contabilidad"
+
+    if (user?.company_id && hasWarehouseAccess) {
       fetchMovements()
     }
-  }, [user?.company_id])
+  }, [user?.company_id, user?.role, user?.departments])
 
   const fetchMovements = async () => {
     if (!user?.company_id) return
@@ -182,7 +189,6 @@ export default function InventoryPage() {
         return <Badge variant="outline">{type}</Badge>
     }
   }
-
 
   const handleCreateMovement = async (movementData: any) => {
     try {
@@ -332,28 +338,28 @@ export default function InventoryPage() {
                             <div className="font-medium text-green-600">
                               Total: {formatCurrency(movement.total_amount)}
                             </div>
-                          </div>  
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}                      
-                          </TableCell>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="text-sm space-y-1">
-                            {movement.purchase_order_number && (
-                              <div>
-                                <span className="font-medium">OC:</span> {movement.purchase_order_number}
-                              </div>
-                            )}
-                            {movement.destination_entity_name && (
-                              <div>
+                          {movement.purchase_order_number && (
+                            <div>
+                              <span className="font-medium">OC:</span> {movement.purchase_order_number}
+                            </div>
+                          )}
+                          {movement.destination_entity_name && (
+                            <div>
                               <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
                             </div>
                           )}
                           {movement.peru_departments?.name && (
                             <div>
                               <span className="font-medium">Destino:</span> {movement.peru_departments.name}
-                              </div>
-                              )}
+                            </div>
+                          )}
                           {movement.supplier && (
                             <div>
                               <span className="font-medium">Proveedor:</span> {movement.supplier}

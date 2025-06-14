@@ -55,10 +55,17 @@ export default function ProductsPage() {
   const [stockFilter, setStockFilter] = useState<string>("all")
 
   useEffect(() => {
-    if (user?.company_id) {
+    // Check if user has warehouse access
+    const hasWarehouseAccess =
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      user?.departments?.name === "Almacén" ||
+      user?.departments?.name === "Contabilidad"
+
+    if (user?.company_id && hasWarehouseAccess) {
       fetchData()
     }
-  }, [user?.company_id])
+  }, [user?.company_id, user?.role, user?.departments])
 
   useEffect(() => {
     // Aplicar filtro de URL si existe

@@ -63,7 +63,20 @@ export default function NewDocumentPage() {
     const fetchDepartments = async () => {
       try {
         setLoadingDepartments(true)
-        const { data, error } = await supabase.from("departments").select("*").order("name")
+
+        // Only fetch departments from the user's company
+        if (!user?.company_id) {
+          console.log("User has no company assigned")
+          setDepartments([])
+          return
+        }
+
+        const { data, error } = await supabase
+          .from("departments")
+          .select("*")
+          .eq("company_id", user.company_id) // Filter by user's company
+          .order("name")
+
         if (error) throw error
         setDepartments(data || [])
       } catch (error) {
@@ -79,7 +92,7 @@ export default function NewDocumentPage() {
     }
 
     fetchDepartments()
-  }, [toast])
+  }, [toast, user?.company_id])
 
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
@@ -141,6 +154,15 @@ export default function NewDocumentPage() {
       return
     }
 
+    if (!user.company_id) {
+      toast({
+        title: "Error",
+        description: "Debes pertenecer a una empresa para crear un documento.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       let fileUrl = null
@@ -169,7 +191,7 @@ export default function NewDocumentPage() {
         is_public: values.is_public,
       })
 
-      // Crear documento - USANDO SOLO current_department_id
+      // Crear documento - USANDO company_id del usuario
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
@@ -178,9 +200,10 @@ export default function NewDocumentPage() {
           document_number: values.document_number,
           status: "pending",
           created_by: user.id,
-          current_department_id: values.department_id, // SOLO este campo
+          company_id: user.company_id, // Add company_id
+          current_department_id: values.department_id,
           file_url: fileUrl,
-          is_public: values.is_public, // Agregar el campo is_public
+          is_public: values.is_public,
         })
         .select()
         .single()
