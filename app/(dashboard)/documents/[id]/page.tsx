@@ -431,6 +431,26 @@ export default function DocumentDetailsPage() {
     return user?.role === "admin" || user?.id === document?.created_by
   }
 
+  const canEdit = () => {
+    // Solo admins pueden editar cualquier documento
+    if (user?.role === "admin") return true
+
+    // El creador puede editar solo si el documento está en su departamento
+    if (user?.id === document?.created_by && user?.department_id === document?.current_department_id) {
+      return true
+    }
+
+    return false
+  }
+
+  const canMove = () => {
+    // Admins y supervisors pueden mover cualquier documento
+    if (user?.role === "admin" || user?.role === "supervisor") return true
+
+    // Usuarios normales solo pueden mover documentos que están en su departamento
+    return user?.department_id === document?.current_department_id
+  }
+
   const viewFile = async (fileUrl: string) => {
     try {
       let filePath = fileUrl
@@ -1024,12 +1044,17 @@ export default function DocumentDetailsPage() {
                   Cambiar Estado
                 </Button>
               )}
-              <Button className="w-full justify-start" variant="outline" asChild>
+              <Button className="w-full justify-start" variant="outline" asChild disabled={!canEdit()}>
                 <Link href={`/documents/edit/${document.id}`}>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar Documento
                 </Link>
               </Button>
+              {!canEdit() && user?.id === document?.created_by && (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                  ℹ️ Solo puedes editar documentos que están en tu departamento
+                </div>
+              )}
               {document.file_url && (
                 <>
                   <Button
@@ -1051,7 +1076,12 @@ export default function DocumentDetailsPage() {
                   </Button>
                 </>
               )}
-              <Button className="w-full justify-start" variant="default" onClick={() => setMovementDialogOpen(true)}>
+              <Button
+                className="w-full justify-start"
+                variant="default"
+                onClick={() => setMovementDialogOpen(true)}
+                disabled={!canMove()}
+              >
                 <MoveRight className="h-4 w-4 mr-2" />
                 Mover Documento
               </Button>

@@ -286,9 +286,12 @@ export default function MovementsPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              {departments.map((department) => (
-                <DepartmentBadge key={department.id} department={department} />
-              ))}
+              {Array.from(new Set(departments.map((d) => d.id)))
+                .map((id) => departments.find((d) => d.id === id))
+                .filter(Boolean)
+                .map((department) => (
+                  <DepartmentBadge key={department.id} department={department} />
+                ))}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               Los badges con 📍 indican el departamento de destino en los movimientos
