@@ -13,9 +13,11 @@ import { es } from "date-fns/locale"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { NewsCarousel } from "@/components/news/news-carousel"
+import { useCompany } from "@/lib/company-context"
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalUsers: 0,
@@ -33,7 +35,7 @@ export default function DashboardPage() {
     if (user) {
       fetchDashboardData()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchDashboardData = async (isRefresh = false) => {
     try {
@@ -43,27 +45,50 @@ export default function DashboardPage() {
         setLoading(true)
       }
 
-      // Fetch statistics
+      // Determinar qué empresa usar para filtrar
+      let companyFilter = null
+      if (user?.role === "admin") {
+        // Admin: usar empresa seleccionada (null = modo general, ver todo)
+        companyFilter = selectedCompany?.id || null
+      } else {
+        // Usuario normal: usar su empresa asignada
+        companyFilter = user?.company_id || null
+      }
+
+      // Construir filtros base para documentos
+      let documentsBaseQuery = supabase.from("documents")
+      let documentsCountQuery = supabase.from("documents")
+      let pendingCountQuery = supabase.from("documents")
+      let completedCountQuery = supabase.from("documents")
+
+      // Aplicar filtro de empresa si corresponde
+      if (companyFilter) {
+        documentsBaseQuery = documentsBaseQuery.eq("company_id", companyFilter)
+        documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
+        pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
+        completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
+      }
+
+      // Fetch statistics con filtros de empresa
       const [documentsRes, usersRes, departmentsRes, pendingRes, completedRes] = await Promise.all([
-        supabase.from("documents").select("id", { count: "exact", head: true }),
+        documentsCountQuery.select("id", { count: "exact", head: true }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("departments").select("id", { count: "exact", head: true }),
-        supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("documents").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        pendingCountQuery.select("id", { count: "exact", head: true }).eq("status", "pending"),
+        completedCountQuery.select("id", { count: "exact", head: true }).eq("status", "completed"),
       ])
 
-      // Fetch recent documents
-      let documentsQuery = supabase
-        .from("documents")
+      // Fetch recent documents con filtros
+      let documentsQuery = documentsBaseQuery
         .select(`
-          *,
-          profiles!documents_created_by_fkey (full_name),
-          departments!documents_current_department_id_fkey (name, color)
-        `)
+        *,
+        profiles!documents_created_by_fkey (full_name),
+        departments!documents_current_department_id_fkey (name, color)
+      `)
         .order("created_at", { ascending: false })
         .limit(5)
 
-      // Apply user-specific filters
+      // Aplicar filtros adicionales para usuarios no-admin
       if (user && user.role !== "admin") {
         if (user.department_id) {
           documentsQuery = documentsQuery.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
@@ -74,18 +99,21 @@ export default function DashboardPage() {
 
       const { data: documents } = await documentsQuery
 
-      // Fetch recent movements
-      const { data: movements } = await supabase
-        .from("document_movements")
-        .select(`
-          *,
-          documents!inner (title, document_number),
-          from_departments:departments!document_movements_from_department_id_fkey (name, color),
-          to_departments:departments!document_movements_to_department_id_fkey (name, color),
-          profiles!document_movements_moved_by_fkey (full_name)
-        `)
-        .order("created_at", { ascending: false })
-        .limit(5)
+      // Fetch recent movements con filtros de empresa
+      let movementsQuery = supabase.from("document_movements").select(`
+        *,
+        documents!inner (title, document_number, company_id),
+        from_departments:departments!document_movements_from_department_id_fkey (name, color),
+        to_departments:departments!document_movements_to_department_id_fkey (name, color),
+        profiles!document_movements_moved_by_fkey (full_name)
+      `)
+
+      // Aplicar filtro de empresa a movimientos
+      if (companyFilter) {
+        movementsQuery = movementsQuery.eq("documents.company_id", companyFilter)
+      }
+
+      const { data: movements } = await movementsQuery.order("created_at", { ascending: false }).limit(5)
 
       setStats({
         totalDocuments: documentsRes.count || 0,
@@ -191,9 +219,21 @@ export default function DashboardPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
             Dashboard
+            {user?.role === "admin" && selectedCompany && (
+              <span className="text-lg font-normal text-muted-foreground ml-2">- {selectedCompany.name}</span>
+            )}
+            {user?.role === "admin" && !selectedCompany && (
+              <span className="text-lg font-normal text-muted-foreground ml-2">- Vista General</span>
+            )}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Bienvenido de vuelta, {user?.full_name || "Usuario"}
+            {user?.role === "admin" && selectedCompany && (
+              <span className="block text-xs">Viendo datos de: {selectedCompany.name}</span>
+            )}
+            {user?.role === "admin" && !selectedCompany && (
+              <span className="block text-xs">Viendo datos de todas las empresas</span>
+            )}
           </p>
         </div>
         <Button
