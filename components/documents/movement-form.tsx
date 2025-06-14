@@ -37,6 +37,7 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
   const [loading, setLoading] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [documentCompanyId, setDocumentCompanyId] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,58 +47,59 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
   })
 
   useEffect(() => {
-    const fetchDepartments = async () => {
-      if (!currentDepartmentId) {
-        console.log("Current department ID is not available, skipping fetchDepartments.")
-        setDepartments([])
+    const fetchDocumentAndDepartments = async () => {
+      if (!documentId) {
+        console.log("Document ID is not available")
         return
       }
 
       try {
-        console.log("Current department ID:", currentDepartmentId)
-
-        // Obtener la empresa del documento primero
-        const { data: docData, error: docError } = await supabase
+        // Primero obtener la empresa del documento
+        const { data: documentData, error: documentError } = await supabase
           .from("documents")
           .select("company_id")
           .eq("id", documentId)
           .single()
 
-        if (docError) {
-          console.error("Error fetching document:", docError)
-          throw docError
+        if (documentError) {
+          console.error("Error fetching document:", documentError)
+          return
         }
 
-        // Obtener departamentos únicos de la misma empresa, excluyendo el actual
-        const { data, error } = await supabase
+        setDocumentCompanyId(documentData.company_id)
+
+        // Luego obtener departamentos de la misma empresa, excluyendo el actual
+        const { data: departmentsData, error: departmentsError } = await supabase
           .from("departments")
-          .select("id, name, color, company_id")
-          .eq("company_id", docData.company_id)
+          .select("*")
+          .eq("company_id", documentData.company_id)
           .neq("id", currentDepartmentId)
           .order("name")
 
-        console.log("Departments data:", data)
-        console.log("Departments error:", error)
+        if (departmentsError) {
+          console.error("Error fetching departments:", departmentsError)
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los departamentos. Intente nuevamente.",
+            variant: "destructive",
+          })
+          return
+        }
 
-        if (error) throw error
-
-        // Filtrar duplicados por nombre en el frontend como medida adicional
-        const uniqueDepartments =
-          data?.filter((dept, index, self) => index === self.findIndex((d) => d.name === dept.name)) || []
-
-        setDepartments(uniqueDepartments)
+        console.log("Departments for company:", departmentsData)
+        setDepartments(departmentsData || [])
       } catch (error) {
-        console.error("Error fetching departments:", error)
+        console.error("Error in fetchDocumentAndDepartments:", error)
         toast({
           title: "Error",
-          description: "No se pudieron cargar los departamentos. Intente nuevamente.",
+          description: "Error al cargar la información del documento.",
           variant: "destructive",
         })
       }
     }
 
-    fetchDepartments()
-  }, [currentDepartmentId, documentId])
+    fetchDocumentAndDepartments()
+  }, [documentId, currentDepartmentId])
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -194,12 +196,29 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
     try {
       setLoading(true)
 
+      // Determinar el departamento origen correcto
+      // Para usuarios normales: usar su department_id
+      // Para admins/supervisors: usar el current_department_id del documento
+      const fromDepartmentId =
+        user.role === "admin" || user.role === "supervisor"
+          ? currentDepartmentId
+          : user.department_id || currentDepartmentId
+
+      console.log("Movement details:", {
+        documentId,
+        fromDepartmentId,
+        toDepartmentId: values.to_department_id,
+        userRole: user.role,
+        userDepartmentId: user.department_id,
+        currentDepartmentId,
+      })
+
       // Create the movement record
       const { data: movementData, error: movementError } = await supabase
         .from("document_movements")
         .insert({
           document_id: documentId,
-          from_department_id: currentDepartmentId,
+          from_department_id: fromDepartmentId,
           to_department_id: values.to_department_id,
           moved_by: user.id,
           notes: values.notes || null,
