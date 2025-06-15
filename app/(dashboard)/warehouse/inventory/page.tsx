@@ -7,10 +7,21 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, TrendingUp, TrendingDown, RotateCcw, FileText, Paperclip, Download } from "lucide-react"
+import {
+  Plus,
+  Search,
+  TrendingUp,
+  TrendingDown,
+  RotateCcw,
+  FileText,
+  Paperclip,
+  Download,
+  Settings,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
+import { MovementAttachmentsDialog } from "@/components/warehouse/movement-attachments-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 
@@ -66,6 +77,8 @@ export default function InventoryPage() {
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("all")
   const [showMovementForm, setShowMovementForm] = useState(false)
+  const [showAttachmentsDialog, setShowAttachmentsDialog] = useState(false)
+  const [selectedMovement, setSelectedMovement] = useState<InventoryMovement | null>(null)
 
   useEffect(() => {
     // For admin users, use selectedCompany; for others, use their assigned company
@@ -348,6 +361,21 @@ export default function InventoryPage() {
     }
   }
 
+  const handleAttachmentsDialogClose = () => {
+    setShowAttachmentsDialog(false)
+    setSelectedMovement(null)
+    // Refresh attachments when dialog closes
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+    if (companyId) {
+      fetchMovements(companyId)
+    }
+  }
+
+  const openAttachmentsDialog = (movement: InventoryMovement) => {
+    setSelectedMovement(movement)
+    setShowAttachmentsDialog(true)
+  }
+
   const AttachmentsList = ({ movementId }: { movementId: string }) => {
     const movementAttachments = attachments[movementId] || []
 
@@ -356,7 +384,7 @@ export default function InventoryPage() {
     return (
       <div className="mt-2 space-y-1">
         <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos ({movementAttachments.length}):</p>
-        {movementAttachments.map((attachment) => (
+        {movementAttachments.slice(0, 2).map((attachment) => (
           <div key={attachment.id} className="flex items-center gap-2 p-1">
             <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             <a
@@ -380,6 +408,9 @@ export default function InventoryPage() {
             </Button>
           </div>
         ))}
+        {movementAttachments.length > 2 && (
+          <p className="text-xs text-muted-foreground">y {movementAttachments.length - 2} archivo(s) más...</p>
+        )}
       </div>
     )
   }
@@ -478,7 +509,9 @@ export default function InventoryPage() {
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Precio/Total</TableHead>
                   <TableHead>Detalles</TableHead>
+                  <TableHead>Usuario</TableHead>
                   <TableHead>Adjuntos</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -549,13 +582,26 @@ export default function InventoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="text-sm">{movement.profiles?.full_name || "Usuario eliminado"}</div>
+                      </TableCell>
+                      <TableCell>
                         <AttachmentsList movementId={movement.id} />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAttachmentsDialog(movement)}
+                          title="Gestionar archivos adjuntos"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {movements.length === 0
                           ? "No hay movimientos registrados"
@@ -572,6 +618,20 @@ export default function InventoryPage() {
 
       {showMovementForm && (
         <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
+      )}
+
+      {showAttachmentsDialog && selectedMovement && (
+        <MovementAttachmentsDialog
+          open={showAttachmentsDialog}
+          onClose={handleAttachmentsDialogClose}
+          movementId={selectedMovement.id}
+          movementInfo={{
+            movement_type: selectedMovement.movement_type,
+            quantity: selectedMovement.quantity,
+            movement_date: selectedMovement.movement_date,
+            products: selectedMovement.products,
+          }}
+        />
       )}
     </div>
   )
