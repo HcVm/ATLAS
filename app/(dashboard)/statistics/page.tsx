@@ -158,38 +158,45 @@ export default function StatisticsPage() {
     }
 
     try {
-      console.log("Fetching statistics for company:", selectedCompany?.name || "General Mode")
+      console.log("=== DEBUGGING STATISTICS ===")
+      console.log("User:", user?.email, "Role:", user?.role)
+      console.log("Selected Company:", selectedCompany?.name || "General Mode", "ID:", selectedCompany?.id)
 
       // Obtener departamentos con colores (filtrados por empresa si aplica)
-      let departmentsQuery = supabase.from("departments").select("id, name, color")
+      let departmentsQuery = supabase.from("departments").select("id, name, color, company_id")
       if (selectedCompany) {
         departmentsQuery = departmentsQuery.eq("company_id", selectedCompany.id)
       }
       const { data: departments, error: deptError } = await departmentsQuery
-      if (deptError) throw deptError
+      if (deptError) {
+        console.error("Error fetching departments:", deptError)
+        throw deptError
+      }
+      console.log("Departments found:", departments?.length || 0, departments)
 
-      // Obtener documentos con información completa (filtrados por empresa)
+      // Obtener documentos con información completa
       let documentsQuery = supabase.from("documents").select(`
-        id, current_department_id, status, created_at, company_id
+        id, current_department_id, status, created_at, company_id, created_by
       `)
 
-      // Aplicar filtros de empresa y permisos de usuario
+      // Aplicar filtros de empresa
       if (selectedCompany) {
         documentsQuery = documentsQuery.eq("company_id", selectedCompany.id)
       }
 
+      // Aplicar filtros de permisos de usuario DESPUÉS del filtro de empresa
       if (user?.role === "user") {
-        if (selectedCompany) {
-          documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
-        } else {
-          documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
-        }
+        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
       }
 
       const { data: documents, error: docsError } = await documentsQuery
-      if (docsError) throw docsError
+      if (docsError) {
+        console.error("Error fetching documents:", docsError)
+        throw docsError
+      }
+      console.log("Documents found:", documents?.length || 0)
 
-      // Obtener movimientos de documentos (filtrados por empresa)
+      // Obtener movimientos de documentos
       let movementsQuery = supabase.from("document_movements").select(`
         id, to_department_id, created_at, company_id,
         departments!document_movements_to_department_id_fkey (name, color)
@@ -200,16 +207,21 @@ export default function StatisticsPage() {
       }
 
       const { data: movements, error: movError } = await movementsQuery
-      if (movError) throw movError
+      if (movError) {
+        console.error("Error fetching movements:", movError)
+        throw movError
+      }
+      console.log("Document movements found:", movements?.length || 0)
 
-      // Obtener totales de usuarios (filtrados por empresa)
+      // Obtener totales de usuarios
       let usersCountQuery = supabase.from("profiles").select("*", { count: "exact", head: true })
       if (selectedCompany) {
         usersCountQuery = usersCountQuery.eq("company_id", selectedCompany.id)
       }
       const { count: totalUsers } = await usersCountQuery
+      console.log("Users found:", totalUsers || 0)
 
-      // Obtener productos (filtrados por empresa)
+      // Obtener productos
       let productsQuery = supabase
         .from("products")
         .select(`
@@ -224,9 +236,13 @@ export default function StatisticsPage() {
       }
 
       const { data: products, error: productsError } = await productsQuery
-      if (productsError) throw productsError
+      if (productsError) {
+        console.error("Error fetching products:", productsError)
+        throw productsError
+      }
+      console.log("Products found:", products?.length || 0)
 
-      // Obtener movimientos de inventario (filtrados por empresa)
+      // Obtener movimientos de inventario
       let inventoryMovementsQuery = supabase
         .from("inventory_movements")
         .select(`
@@ -241,23 +257,24 @@ export default function StatisticsPage() {
       }
 
       const { data: inventoryMovements, error: movementsError } = await inventoryMovementsQuery
-      if (movementsError) throw movementsError
+      if (movementsError) {
+        console.error("Error fetching inventory movements:", movementsError)
+        throw movementsError
+      }
+      console.log("Inventory movements found:", inventoryMovements?.length || 0)
 
-      console.log("Statistics data loaded:", {
-        documents: documents?.length || 0,
-        movements: movements?.length || 0,
-        departments: departments?.length || 0,
-        products: products?.length || 0,
-        inventoryMovements: inventoryMovements?.length || 0,
-        company: selectedCompany?.name || "General Mode",
-      })
+      console.log("=== PROCESSING STATISTICS ===")
 
       // Procesar estadísticas
       const processedStats = processStatistics(documents || [], movements || [], departments || [], totalUsers || 0)
+      console.log("Processed document stats:", processedStats.totalStats)
       setStats(processedStats)
 
       const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements || [])
+      console.log("Processed warehouse stats:", warehouseProcessed.inventoryValue)
       setWarehouseStats(warehouseProcessed)
+
+      console.log("=== STATISTICS COMPLETE ===")
     } catch (error) {
       console.error("Error fetching statistics:", error)
     } finally {
@@ -272,6 +289,13 @@ export default function StatisticsPage() {
     departments: any[],
     totalUsers: number,
   ): StatisticsData => {
+    console.log("Processing statistics with:", {
+      documents: documents.length,
+      movements: movements.length,
+      departments: departments.length,
+      users: totalUsers,
+    })
+
     // Documentos por departamento con colores modernos
     const modernColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16", "#EF4444"]
 
@@ -286,6 +310,8 @@ export default function StatisticsPage() {
       })
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
+
+    console.log("Documents by department:", documentsByDepartment)
 
     // Documentos por estado con gradientes
     const statusColors = {
@@ -322,6 +348,8 @@ export default function StatisticsPage() {
         color: statusColors[status as keyof typeof statusColors],
       }))
       .filter((item) => item.value > 0)
+
+    console.log("Documents by status:", documentsByStatus)
 
     // Documentos por mes (últimos 6 meses)
     const now = new Date()
@@ -378,7 +406,7 @@ export default function StatisticsPage() {
       })
     }
 
-    return {
+    const result = {
       documentsByDepartment,
       documentsByStatus,
       documentsByMonth,
@@ -391,9 +419,17 @@ export default function StatisticsPage() {
       },
       recentActivity,
     }
+
+    console.log("Final processed stats:", result.totalStats)
+    return result
   }
 
   const processWarehouseStatistics = (products: any[], movements: any[]) => {
+    console.log("Processing warehouse statistics with:", {
+      products: products.length,
+      movements: movements.length,
+    })
+
     // Process products by category
     const categoryStats = {}
     const brandStats = {}
@@ -496,7 +532,7 @@ export default function StatisticsPage() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
 
-    return {
+    const result = {
       productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
       productsByBrand: Object.values(brandStats).filter((item) => item.value > 0),
       lowStockProducts: lowStockProducts.sort((a, b) => b.difference - a.difference).slice(0, 10),
@@ -510,6 +546,9 @@ export default function StatisticsPage() {
       movementsByMonth: months,
       topProducts,
     }
+
+    console.log("Final warehouse stats:", result.inventoryValue)
+    return result
   }
 
   const handleRefresh = () => {
@@ -555,6 +594,22 @@ export default function StatisticsPage() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </Button>
       </div>
+
+      {/* Debug Info - Remove in production */}
+      <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+        <CardHeader>
+          <CardTitle className="text-sm text-yellow-800 dark:text-yellow-200">Debug Info</CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs text-yellow-700 dark:text-yellow-300">
+          <p>
+            Usuario: {user?.email} ({user?.role})
+          </p>
+          <p>Empresa: {selectedCompany?.name || "Modo General"}</p>
+          <p>Documentos: {stats.totalStats.totalDocuments}</p>
+          <p>Productos: {warehouseStats.inventoryValue.totalProducts}</p>
+          <p>Departamentos: {stats.totalStats.totalDepartments}</p>
+        </CardContent>
+      </Card>
 
       {/* Stats Cards Mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
