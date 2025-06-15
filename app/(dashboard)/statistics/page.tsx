@@ -33,6 +33,7 @@ import {
   Area,
   AreaChart,
 } from "recharts"
+import { useCompany } from "@/lib/company-context"
 
 interface StatisticsData {
   documentsByDepartment: Array<{ name: string; value: number; color: string }>
@@ -111,6 +112,7 @@ const renderGradients = () => (
 
 export default function StatisticsPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [stats, setStats] = useState<StatisticsData>({
@@ -146,7 +148,7 @@ export default function StatisticsPage() {
     if (user) {
       fetchStatistics()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchStatistics = async (isRefresh = false) => {
     if (isRefresh) {
@@ -156,59 +158,104 @@ export default function StatisticsPage() {
     }
 
     try {
-      // Obtener departamentos con colores
-      const { data: departments, error: deptError } = await supabase.from("departments").select("id, name, color")
+      console.log("Fetching statistics for company:", selectedCompany?.name || "General Mode")
 
+      // Obtener departamentos con colores (filtrados por empresa si aplica)
+      let departmentsQuery = supabase.from("departments").select("id, name, color")
+      if (selectedCompany) {
+        departmentsQuery = departmentsQuery.eq("company_id", selectedCompany.id)
+      }
+      const { data: departments, error: deptError } = await departmentsQuery
       if (deptError) throw deptError
 
-      // Obtener documentos con información completa
+      // Obtener documentos con información completa (filtrados por empresa)
       let documentsQuery = supabase.from("documents").select(`
-  id, current_department_id, status, created_at
-`)
+        id, current_department_id, status, created_at, company_id
+      `)
 
-      // Filtrar por permisos de usuario
+      // Aplicar filtros de empresa y permisos de usuario
+      if (selectedCompany) {
+        documentsQuery = documentsQuery.eq("company_id", selectedCompany.id)
+      }
+
       if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+        if (selectedCompany) {
+          documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+        } else {
+          documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
+        }
       }
 
       const { data: documents, error: docsError } = await documentsQuery
       if (docsError) throw docsError
 
-      // Obtener movimientos
-      const { data: movements, error: movError } = await supabase.from("document_movements").select(`
-          id, to_department_id, created_at,
-          departments!document_movements_to_department_id_fkey (name, color)
-        `)
+      // Obtener movimientos de documentos (filtrados por empresa)
+      let movementsQuery = supabase.from("document_movements").select(`
+        id, to_department_id, created_at, company_id,
+        departments!document_movements_to_department_id_fkey (name, color)
+      `)
 
+      if (selectedCompany) {
+        movementsQuery = movementsQuery.eq("company_id", selectedCompany.id)
+      }
+
+      const { data: movements, error: movError } = await movementsQuery
       if (movError) throw movError
 
-      // Obtener totales
-      const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true })
+      // Obtener totales de usuarios (filtrados por empresa)
+      let usersCountQuery = supabase.from("profiles").select("*", { count: "exact", head: true })
+      if (selectedCompany) {
+        usersCountQuery = usersCountQuery.eq("company_id", selectedCompany.id)
+      }
+      const { count: totalUsers } = await usersCountQuery
 
-      // Add after existing queries
-      const { data: products, error: productsError } = await supabase
+      // Obtener productos (filtrados por empresa)
+      let productsQuery = supabase
         .from("products")
         .select(`
-    id, name, code, current_stock, minimum_stock, cost_price, sale_price,
-    brands (name, color),
-    product_categories (name, color)
-  `)
+        id, name, code, current_stock, minimum_stock, cost_price, sale_price, company_id,
+        brands (name, color),
+        product_categories (name, color)
+      `)
         .eq("is_active", true)
 
-      const { data: inventoryMovements, error: movementsError } = await supabase
+      if (selectedCompany) {
+        productsQuery = productsQuery.eq("company_id", selectedCompany.id)
+      }
+
+      const { data: products, error: productsError } = await productsQuery
+      if (productsError) throw productsError
+
+      // Obtener movimientos de inventario (filtrados por empresa)
+      let inventoryMovementsQuery = supabase
         .from("inventory_movements")
         .select(`
-    id, movement_type, quantity, total_amount, movement_date, created_at,
-    products (name, code)
-  `)
+        id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
+        products (name, code)
+      `)
         .order("created_at", { ascending: false })
         .limit(1000)
+
+      if (selectedCompany) {
+        inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
+      }
+
+      const { data: inventoryMovements, error: movementsError } = await inventoryMovementsQuery
+      if (movementsError) throw movementsError
+
+      console.log("Statistics data loaded:", {
+        documents: documents?.length || 0,
+        movements: movements?.length || 0,
+        departments: departments?.length || 0,
+        products: products?.length || 0,
+        inventoryMovements: inventoryMovements?.length || 0,
+        company: selectedCompany?.name || "General Mode",
+      })
 
       // Procesar estadísticas
       const processedStats = processStatistics(documents || [], movements || [], departments || [], totalUsers || 0)
       setStats(processedStats)
 
-      // Add after processing documents statistics
       const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements || [])
       setWarehouseStats(warehouseProcessed)
     } catch (error) {
@@ -493,7 +540,10 @@ export default function StatisticsPage() {
             <BarChart3 className="h-8 w-8 text-blue-600" />
             Estadísticas
           </h1>
-          <p className="text-muted-foreground">Análisis y métricas del sistema de documentos</p>
+          <p className="text-muted-foreground">
+            Análisis y métricas del sistema de documentos
+            {selectedCompany ? ` - ${selectedCompany.name}` : " - Vista General"}
+          </p>
         </div>
         <Button
           onClick={handleRefresh}
