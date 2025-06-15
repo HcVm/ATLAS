@@ -3,7 +3,19 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, TrendingUp, BarChart3, PieChart, Calendar, Users, FileText, ArrowRightLeft } from "lucide-react"
+import {
+  RefreshCw,
+  TrendingUp,
+  BarChart3,
+  PieChart,
+  Calendar,
+  Users,
+  FileText,
+  ArrowRightLeft,
+  Package,
+  AlertTriangle,
+  DollarSign,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -18,8 +30,6 @@ import {
   Pie,
   Cell,
   Legend,
-  LineChart,
-  Line,
   Area,
   AreaChart,
 } from "recharts"
@@ -40,6 +50,28 @@ interface StatisticsData {
     documents: number
     movements: number
   }>
+}
+
+interface WarehouseStats {
+  productsByCategory: Array<{ name: string; value: number; color: string }>
+  productsByBrand: Array<{ name: string; value: number; color: string }>
+  lowStockProducts: Array<{ name: string; code: string; current: number; minimum: number; difference: number }>
+  inventoryValue: {
+    totalCostValue: number
+    totalSaleValue: number
+    totalProducts: number
+    lowStockCount: number
+  }
+  movementsByType: Array<{ name: string; value: number; color: string }>
+  movementsByMonth: Array<{
+    name: string
+    month: string
+    year: number
+    entries: number
+    exits: number
+    adjustments: number
+  }>
+  topProducts: Array<{ name: string; value: number }>
 }
 
 // Componente personalizado para tooltips modernos
@@ -95,6 +127,21 @@ export default function StatisticsPage() {
     recentActivity: [],
   })
 
+  const [warehouseStats, setWarehouseStats] = useState<WarehouseStats>({
+    productsByCategory: [],
+    productsByBrand: [],
+    lowStockProducts: [],
+    inventoryValue: {
+      totalCostValue: 0,
+      totalSaleValue: 0,
+      totalProducts: 0,
+      lowStockCount: 0,
+    },
+    movementsByType: [],
+    movementsByMonth: [],
+    topProducts: [],
+  })
+
   useEffect(() => {
     if (user) {
       fetchStatistics()
@@ -121,9 +168,7 @@ export default function StatisticsPage() {
 
       // Filtrar por permisos de usuario
       if (user?.role === "user") {
-        documentsQuery = documentsQuery.or(
-          `created_by.eq.${user.id},current_department_id.eq.${user.department_id}`,
-        )
+        documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
       }
 
       const { data: documents, error: docsError } = await documentsQuery
@@ -140,9 +185,32 @@ export default function StatisticsPage() {
       // Obtener totales
       const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true })
 
+      // Add after existing queries
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select(`
+    id, name, code, current_stock, minimum_stock, cost_price, sale_price,
+    brands (name, color),
+    product_categories (name, color)
+  `)
+        .eq("is_active", true)
+
+      const { data: inventoryMovements, error: movementsError } = await supabase
+        .from("inventory_movements")
+        .select(`
+    id, movement_type, quantity, total_amount, movement_date, created_at,
+    products (name, code)
+  `)
+        .order("created_at", { ascending: false })
+        .limit(1000)
+
       // Procesar estadísticas
       const processedStats = processStatistics(documents || [], movements || [], departments || [], totalUsers || 0)
       setStats(processedStats)
+
+      // Add after processing documents statistics
+      const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements || [])
+      setWarehouseStats(warehouseProcessed)
     } catch (error) {
       console.error("Error fetching statistics:", error)
     } finally {
@@ -278,6 +346,125 @@ export default function StatisticsPage() {
     }
   }
 
+  const processWarehouseStatistics = (products: any[], movements: any[]) => {
+    // Process products by category
+    const categoryStats = {}
+    const brandStats = {}
+    let totalCostValue = 0
+    let totalSaleValue = 0
+    let lowStockCount = 0
+    const lowStockProducts = []
+
+    products.forEach((product) => {
+      // Category stats
+      const categoryName = product.product_categories?.name || "Sin Categoría"
+      if (!categoryStats[categoryName]) {
+        categoryStats[categoryName] = {
+          name: categoryName,
+          value: 0,
+          color: product.product_categories?.color || "#6B7280",
+        }
+      }
+      categoryStats[categoryName].value++
+
+      // Brand stats
+      const brandName = product.brands?.name || "Sin Marca"
+      if (!brandStats[brandName]) {
+        brandStats[brandName] = {
+          name: brandName,
+          value: 0,
+          color: product.brands?.color || "#6B7280",
+        }
+      }
+      brandStats[brandName].value++
+
+      // Value calculations
+      totalCostValue += (product.current_stock || 0) * (product.cost_price || 0)
+      totalSaleValue += (product.current_stock || 0) * (product.sale_price || 0)
+
+      // Low stock check
+      if (product.current_stock <= product.minimum_stock) {
+        lowStockCount++
+        lowStockProducts.push({
+          name: product.name,
+          code: product.code,
+          current: product.current_stock,
+          minimum: product.minimum_stock,
+          difference: product.minimum_stock - product.current_stock,
+        })
+      }
+    })
+
+    // Process movements by type
+    const movementTypes = {
+      entry: { name: "Entradas", value: 0, color: "#10B981" },
+      exit: { name: "Salidas", value: 0, color: "#EF4444" },
+      adjustment: { name: "Ajustes", value: 0, color: "#F59E0B" },
+      transfer: { name: "Transferencias", value: 0, color: "#8B5CF6" },
+    }
+
+    movements.forEach((movement) => {
+      if (movementTypes[movement.movement_type]) {
+        movementTypes[movement.movement_type].value++
+      }
+    })
+
+    // Process movements by month (last 6 months)
+    const now = new Date()
+    const months = []
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      months.push({
+        name: month.toLocaleDateString("es-ES", { month: "short", year: "2-digit" }),
+        month: month.getMonth(),
+        year: month.getFullYear(),
+        entries: 0,
+        exits: 0,
+        adjustments: 0,
+      })
+    }
+
+    movements.forEach((movement) => {
+      const movDate = new Date(movement.movement_date || movement.created_at)
+      const monthData = months.find((m) => m.month === movDate.getMonth() && m.year === movDate.getFullYear())
+      if (monthData) {
+        if (movement.movement_type === "entry") monthData.entries++
+        else if (movement.movement_type === "exit") monthData.exits++
+        else if (movement.movement_type === "adjustment") monthData.adjustments++
+      }
+    })
+
+    // Top products by movement frequency
+    const productMovements = {}
+    movements.forEach((movement) => {
+      const productName = movement.products?.name || "Producto Desconocido"
+      if (!productMovements[productName]) {
+        productMovements[productName] = 0
+      }
+      productMovements[productName]++
+    })
+
+    const topProducts = Object.entries(productMovements)
+      .map(([name, count]) => ({ name, value: count }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+
+    return {
+      productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
+      productsByBrand: Object.values(brandStats).filter((item) => item.value > 0),
+      lowStockProducts: lowStockProducts.sort((a, b) => b.difference - a.difference).slice(0, 10),
+      inventoryValue: {
+        totalCostValue,
+        totalSaleValue,
+        totalProducts: products.length,
+        lowStockCount,
+      },
+      movementsByType: Object.values(movementTypes).filter((item) => item.value > 0),
+      movementsByMonth: months,
+      topProducts,
+    }
+  }
+
   const handleRefresh = () => {
     fetchStatistics(true)
   }
@@ -374,6 +561,69 @@ export default function StatisticsPage() {
           <CardContent className="relative">
             <div className="text-2xl font-bold text-orange-600">{stats.totalStats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">Usuarios registrados</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Warehouse Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+              <Package className="h-4 w-4 text-emerald-600" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-emerald-600">{warehouseStats.inventoryValue.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">Productos en inventario</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-red-600">{warehouseStats.inventoryValue.lowStockCount}</div>
+            <p className="text-xs text-muted-foreground">Productos con stock bajo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Valor Costo</CardTitle>
+            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+              <DollarSign className="h-4 w-4 text-cyan-600" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-cyan-600">
+              S/ {warehouseStats.inventoryValue.totalCostValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">Valor total a costo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium">Valor Venta</CardTitle>
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <TrendingUp className="h-4 w-4 text-indigo-600" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-indigo-600">
+              S/ {warehouseStats.inventoryValue.totalSaleValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">Valor total de venta</p>
           </CardContent>
         </Card>
       </div>
@@ -535,46 +785,187 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Actividad Reciente */}
-      <Card className="hover:shadow-lg transition-shadow duration-300">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
-            Actividad de los Últimos 7 Días
-          </CardTitle>
-          <CardDescription>Documentos creados y movimientos realizados por día</CardDescription>
-        </CardHeader>
-        <CardContent className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={stats.recentActivity}>
-              {renderGradients()}
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
-              <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="documents"
-                stroke="#10B981"
-                strokeWidth={3}
-                name="Documentos Creados"
-                dot={{ fill: "#10B981", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "#10B981", strokeWidth: 2 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="movements"
-                stroke="#3B82F6"
-                strokeWidth={3}
-                name="Movimientos"
-                dot={{ fill: "#3B82F6", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "#3B82F6", strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Warehouse Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Products by Category */}
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-emerald-600" />
+              Productos por Categoría
+            </CardTitle>
+            <CardDescription>Distribución de productos por categoría</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            {warehouseStats.productsByCategory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={warehouseStats.productsByCategory}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    stroke="#fff"
+                    strokeWidth={2}
+                  >
+                    {warehouseStats.productsByCategory.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Movements by Type */}
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+              Movimientos por Tipo
+            </CardTitle>
+            <CardDescription>Distribución de movimientos de inventario</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            {warehouseStats.movementsByType.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={warehouseStats.movementsByType}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    stroke="#fff"
+                    strokeWidth={2}
+                  >
+                    {warehouseStats.movementsByType.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <ArrowRightLeft className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Inventory Movements by Month */}
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              Movimientos por Mes
+            </CardTitle>
+            <CardDescription>Movimientos de inventario en los últimos 6 meses</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={warehouseStats.movementsByMonth}>
+                {renderGradients()}
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="entries" name="Entradas" fill="#10B981" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="exits" name="Salidas" fill="#EF4444" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="adjustments" name="Ajustes" fill="#F59E0B" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Top Products by Movement */}
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-600" />
+              Productos Más Movidos
+            </CardTitle>
+            <CardDescription>Top 10 productos con más movimientos</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            {warehouseStats.topProducts.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={warehouseStats.topProducts} layout="vertical">
+                  {renderGradients()}
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} stroke="#6b7280" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" name="Movimientos" radius={[0, 4, 4, 0]} fill="url(#barGradient)" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos disponibles</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Low Stock Alert */}
+      {warehouseStats.lowStockProducts.length > 0 && (
+        <Card className="hover:shadow-lg transition-shadow duration-300 border-red-200 dark:border-red-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Productos con Stock Bajo
+            </CardTitle>
+            <CardDescription>Productos que requieren reposición urgente</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {warehouseStats.lowStockProducts.map((product, index) => (
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-sm">{product.name}</h4>
+                    <span className="text-xs text-muted-foreground">{product.code}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-red-600">Stock: {product.current}</span>
+                    <span className="text-muted-foreground">Mín: {product.minimum}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-red-600 font-medium">Faltan: {product.difference} unidades</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

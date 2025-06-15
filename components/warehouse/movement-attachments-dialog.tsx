@@ -46,9 +46,24 @@ interface MovementAttachmentsDialogProps {
     movement_type: string
     quantity: number
     movement_date: string
+    sale_price: number | null
+    total_amount: number | null
+    purchase_order_number: string | null
+    destination_entity_name: string | null
+    destination_address: string | null
+    supplier: string | null
+    reason: string | null
+    notes: string | null
     products?: {
       name: string
       code: string
+      unit_of_measure: string
+    } | null
+    profiles?: {
+      full_name: string
+    } | null
+    peru_departments?: {
+      name: string
     } | null
   }
 }
@@ -320,6 +335,14 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
     }
   }
 
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return "-"
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: "PEN",
+    }).format(amount)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -330,33 +353,145 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           </DialogTitle>
         </DialogHeader>
 
-        {/* Información del movimiento */}
+        {/* Información completa del movimiento */}
         <Card className="bg-muted/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Información del Movimiento
+              Información Completa del Movimiento
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge className={getMovementTypeColor(movementInfo.movement_type)}>
-                  {movementInfo.movement_type.charAt(0).toUpperCase() + movementInfo.movement_type.slice(1)}
-                </Badge>
-                <span className="font-medium">{movementInfo.quantity} unidades</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{formatDate(movementInfo.movement_date)}</span>
-              </div>
-              {movementInfo.products && (
-                <div className="col-span-2">
-                  <span className="font-medium">{movementInfo.products.name}</span>
-                  <span className="text-muted-foreground ml-2">({movementInfo.products.code})</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {/* Información básica */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">TIPO DE MOVIMIENTO</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className={getMovementTypeColor(movementInfo.movement_type)}>
+                      {movementInfo.movement_type.charAt(0).toUpperCase() + movementInfo.movement_type.slice(1)}
+                    </Badge>
+                  </div>
                 </div>
-              )}
+
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">PRODUCTO</Label>
+                  <div className="mt-1">
+                    <div className="font-medium">{movementInfo.products?.name || "Producto eliminado"}</div>
+                    <div className="text-muted-foreground">Código: {movementInfo.products?.code || "N/A"}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">CANTIDAD</Label>
+                  <div className="mt-1 font-medium">
+                    {movementInfo.movement_type === "entrada"
+                      ? "+"
+                      : movementInfo.movement_type === "salida"
+                        ? "-"
+                        : "±"}
+                    {movementInfo.quantity} {movementInfo.products?.unit_of_measure || "unidades"}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">FECHA DEL MOVIMIENTO</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{formatDate(movementInfo.movement_date)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">CREADO POR</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>{movementInfo.profiles?.full_name || "Usuario eliminado"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información específica del tipo de movimiento */}
+              <div className="space-y-3">
+                {/* Información de precios (para salidas) */}
+                {movementInfo.movement_type === "salida" && (movementInfo.sale_price || movementInfo.total_amount) && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">INFORMACIÓN DE VENTA</Label>
+                    <div className="mt-1 space-y-1">
+                      {movementInfo.sale_price && (
+                        <div>
+                          Precio unitario:{" "}
+                          <span className="font-medium">{formatCurrency(movementInfo.sale_price)}</span>
+                        </div>
+                      )}
+                      {movementInfo.total_amount && (
+                        <div>
+                          Total:{" "}
+                          <span className="font-medium text-green-600">
+                            {formatCurrency(movementInfo.total_amount)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Orden de compra */}
+                {movementInfo.purchase_order_number && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">ORDEN DE COMPRA</Label>
+                    <div className="mt-1 font-medium">{movementInfo.purchase_order_number}</div>
+                  </div>
+                )}
+
+                {/* Información del cliente/destino */}
+                {movementInfo.destination_entity_name && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">CLIENTE/ENTIDAD DESTINO</Label>
+                    <div className="mt-1">
+                      <div className="font-medium">{movementInfo.destination_entity_name}</div>
+                      {movementInfo.destination_address && (
+                        <div className="text-muted-foreground text-xs mt-1">
+                          <strong>Dirección:</strong> {movementInfo.destination_address}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Departamento de destino */}
+                {movementInfo.peru_departments?.name && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">DEPARTAMENTO DESTINO</Label>
+                    <div className="mt-1 font-medium">{movementInfo.peru_departments.name}</div>
+                  </div>
+                )}
+
+                {/* Proveedor */}
+                {movementInfo.supplier && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">PROVEEDOR</Label>
+                    <div className="mt-1 font-medium">{movementInfo.supplier}</div>
+                  </div>
+                )}
+
+                {/* Motivo del ajuste */}
+                {movementInfo.reason && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">MOTIVO</Label>
+                    <div className="mt-1">{movementInfo.reason}</div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Notas adicionales */}
+            {movementInfo.notes && (
+              <div className="mt-4 pt-4 border-t">
+                <Label className="text-xs font-medium text-muted-foreground">NOTAS ADICIONALES</Label>
+                <div className="mt-1 p-3 bg-background rounded-md border text-sm">{movementInfo.notes}</div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

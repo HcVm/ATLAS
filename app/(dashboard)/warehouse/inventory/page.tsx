@@ -561,6 +561,9 @@ export default function InventoryPage() {
                           {movement.destination_entity_name && (
                             <div>
                               <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
+                              {movement.destination_address && (
+                                <div className="text-xs text-muted-foreground ml-2">{movement.destination_address}</div>
+                              )}
                             </div>
                           )}
                           {movement.peru_departments?.name && (
@@ -629,7 +632,17 @@ export default function InventoryPage() {
             movement_type: selectedMovement.movement_type,
             quantity: selectedMovement.quantity,
             movement_date: selectedMovement.movement_date,
+            sale_price: selectedMovement.sale_price,
+            total_amount: selectedMovement.total_amount,
+            purchase_order_number: selectedMovement.purchase_order_number,
+            destination_entity_name: selectedMovement.destination_entity_name,
+            destination_address: selectedMovement.destination_address,
+            supplier: selectedMovement.supplier,
+            reason: selectedMovement.reason,
+            notes: selectedMovement.notes,
             products: selectedMovement.products,
+            profiles: selectedMovement.profiles,
+            peru_departments: selectedMovement.peru_departments,
           }}
         />
       )}
