@@ -749,7 +749,10 @@ export default function StatisticsPage() {
               <PieChart className="h-5 w-5 text-blue-600" />
               Documentos por Departamento
             </CardTitle>
-            <CardDescription>Distribución de documentos por departamento</CardDescription>
+            <CardDescription>
+              Distribución de documentos por departamento
+              {!selectedCompany && " (con información de empresa)"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {stats.documentsByDepartment.length > 0 ? (
@@ -771,7 +774,7 @@ export default function StatisticsPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<DepartmentTooltip />} />
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
