@@ -37,6 +37,11 @@ import {
   Line,
   RadialBarChart,
   RadialBar,
+  ComposedChart,
+  Treemap,
+  FunnelChart,
+  Funnel,
+  LabelList,
 } from "recharts"
 import { useCompany } from "@/lib/company-context"
 
@@ -224,9 +229,9 @@ export default function StatisticsPage() {
 
       // Obtener departamentos con información de empresa
       let departmentsQuery = supabase.from("departments").select(`
-          id, name, color, company_id,
-          companies (name)
-        `)
+        id, name, color, company_id,
+        companies (name)
+      `)
 
       if (selectedCompany) {
         departmentsQuery = departmentsQuery.eq("company_id", selectedCompany.id)
@@ -241,8 +246,8 @@ export default function StatisticsPage() {
 
       // Obtener documentos con información completa
       let documentsQuery = supabase.from("documents").select(`
-        id, current_department_id, status, created_at, company_id, created_by
-      `)
+      id, current_department_id, status, created_at, company_id, created_by
+    `)
 
       // Aplicar filtros de empresa
       if (selectedCompany) {
@@ -265,12 +270,12 @@ export default function StatisticsPage() {
       let movements: any[] = []
       try {
         let movementsQuery = supabase.from("document_movements").select(`
-          id, to_department_id, created_at, company_id,
-          departments!document_movements_to_department_id_fkey (
-            name, color,
-            companies (name)
-          )
-        `)
+        id, to_department_id, created_at, company_id,
+        departments!document_movements_to_department_id_fkey (
+          name, color,
+          companies (name)
+        )
+      `)
 
         if (selectedCompany) {
           movementsQuery = movementsQuery.eq("company_id", selectedCompany.id)
@@ -295,14 +300,15 @@ export default function StatisticsPage() {
       const { count: totalUsers } = await usersCountQuery
       console.log("Users found:", totalUsers || 0)
 
-      // Obtener productos
+      // Obtener productos con mejor información
       let productsQuery = supabase
         .from("products")
         .select(`
-        id, name, code, current_stock, minimum_stock, cost_price, sale_price, company_id,
-        brands (name, color),
-        product_categories (name, color)
-      `)
+      id, name, code, current_stock, minimum_stock, cost_price, sale_price, company_id,
+      brands (name, color),
+      product_categories (name, color),
+      companies (name)
+    `)
         .eq("is_active", true)
 
       if (selectedCompany) {
@@ -316,17 +322,17 @@ export default function StatisticsPage() {
       }
       console.log("Products found:", products?.length || 0)
 
-      // Obtener movimientos de inventario
+      // CORREGIR: Obtener movimientos de inventario correctamente
       let inventoryMovements: any[] = []
       try {
         let inventoryMovementsQuery = supabase
           .from("inventory_movements")
           .select(`
-          id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
-          products (name, code)
-        `)
+        id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
+        products!inventory_movements_product_id_fkey (name, code),
+        companies (name)
+      `)
           .order("created_at", { ascending: false })
-          .limit(1000)
 
         if (selectedCompany) {
           inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
@@ -334,7 +340,20 @@ export default function StatisticsPage() {
 
         const { data: inventoryMovementsData, error: movementsError } = await inventoryMovementsQuery
         if (movementsError) {
-          console.warn("Error fetching inventory movements (continuing without them):", movementsError)
+          console.warn("Error fetching inventory movements:", movementsError)
+          // Intentar consulta más simple si falla
+          const { data: simpleMovements, error: simpleError } = await supabase
+            .from("inventory_movements")
+            .select("*")
+            .eq("company_id", selectedCompany?.id || null)
+            .order("created_at", { ascending: false })
+
+          if (simpleError) {
+            console.warn("Simple inventory movements query also failed:", simpleError)
+          } else {
+            inventoryMovements = simpleMovements || []
+            console.log("Using simple inventory movements query")
+          }
         } else {
           inventoryMovements = inventoryMovementsData || []
         }
@@ -582,7 +601,7 @@ export default function StatisticsPage() {
       }
     })
 
-    // Process movements by type
+    // Process movements by type - CORREGIDO
     const movementTypes = {
       entry: { name: "Entradas", value: 0, color: "#00D68F" },
       exit: { name: "Salidas", value: 0, color: "#FF5B5B" },
@@ -590,13 +609,18 @@ export default function StatisticsPage() {
       transfer: { name: "Transferencias", value: 0, color: "#8B5CF6" },
     }
 
+    console.log("Processing movements by type:", movements.length)
     movements.forEach((movement) => {
-      if (movementTypes[movement.movement_type]) {
-        movementTypes[movement.movement_type].value++
+      const movementType = movement.movement_type
+      console.log("Movement type:", movementType)
+      if (movementTypes[movementType]) {
+        movementTypes[movementType].value++
       }
     })
 
-    // Process movements by month (last 6 months)
+    console.log("Movement types processed:", movementTypes)
+
+    // Process movements by month (last 6 months) - CORREGIDO
     const now = new Date()
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -611,20 +635,27 @@ export default function StatisticsPage() {
       })
     }
 
+    console.log(
+      "Processing movements by month for months:",
+      months.map((m) => m.name),
+    )
     movements.forEach((movement) => {
       const movDate = new Date(movement.movement_date || movement.created_at)
       const monthData = months.find((m) => m.month === movDate.getMonth() && m.year === movDate.getFullYear())
       if (monthData) {
+        console.log(`Adding movement ${movement.movement_type} to month ${monthData.name}`)
         if (movement.movement_type === "entry") monthData.entries++
         else if (movement.movement_type === "exit") monthData.exits++
         else if (movement.movement_type === "adjustment") monthData.adjustments++
       }
     })
 
-    // Top products by movement frequency
+    console.log("Movements by month processed:", months)
+
+    // Top products by movement frequency - CORREGIDO
     const productMovements = {}
     movements.forEach((movement) => {
-      const productName = movement.products?.name || "Producto Desconocido"
+      const productName = movement.products?.name || `Producto ID: ${movement.product_id || "Desconocido"}`
       if (!productMovements[productName]) {
         productMovements[productName] = 0
       }
@@ -635,6 +666,8 @@ export default function StatisticsPage() {
       .map(([name, count]) => ({ name, value: count }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
+
+    console.log("Top products processed:", topProducts)
 
     const result = {
       productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
@@ -651,7 +684,7 @@ export default function StatisticsPage() {
       topProducts,
     }
 
-    console.log("Final warehouse stats:", result.inventoryValue)
+    console.log("Final warehouse stats:", result)
     return result
   }
 
@@ -1040,9 +1073,9 @@ export default function StatisticsPage() {
         </AnimatedCard>
       </div>
 
-      {/* Resto de los gráficos de warehouse... */}
+      {/* Resto de los gráficos de warehouse con nuevos tipos... */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Products by Category */}
+        {/* Products by Category - Treemap */}
         <AnimatedCard delay={1300}>
           <Card className="hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             <CardHeader className="pb-4">
@@ -1052,37 +1085,23 @@ export default function StatisticsPage() {
                 </div>
                 Productos por Categoría
               </CardTitle>
-              <CardDescription className="text-base">Distribución de productos por categoría</CardDescription>
+              <CardDescription className="text-base">Distribución de productos por categoría (Treemap)</CardDescription>
             </CardHeader>
             <CardContent className="h-96">
               {warehouseStats.productsByCategory.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={warehouseStats.productsByCategory}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={120}
-                      innerRadius={40}
-                      fill="#8884d8"
-                      dataKey="value"
-                      stroke="#fff"
-                      strokeWidth={3}
-                      animationBegin={0}
-                      animationDuration={1500}
-                    >
-                      {warehouseStats.productsByCategory.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          className="hover:opacity-80 transition-opacity duration-300"
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </RechartsPieChart>
+                  <Treemap
+                    data={warehouseStats.productsByCategory}
+                    dataKey="value"
+                    aspectRatio={4 / 3}
+                    stroke="#fff"
+                    strokeWidth={2}
+                    animationDuration={1500}
+                  >
+                    {warehouseStats.productsByCategory.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Treemap>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -1096,7 +1115,7 @@ export default function StatisticsPage() {
           </Card>
         </AnimatedCard>
 
-        {/* Movements by Type */}
+        {/* Movements by Type - Funnel Chart */}
         <AnimatedCard delay={1400}>
           <Card className="hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             <CardHeader className="pb-4">
@@ -1106,37 +1125,27 @@ export default function StatisticsPage() {
                 </div>
                 Movimientos por Tipo
               </CardTitle>
-              <CardDescription className="text-base">Distribución de movimientos de inventario</CardDescription>
+              <CardDescription className="text-base">
+                Distribución de movimientos de inventario (Embudo)
+              </CardDescription>
             </CardHeader>
             <CardContent className="h-96">
               {warehouseStats.movementsByType.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={warehouseStats.movementsByType}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={120}
-                      innerRadius={40}
-                      fill="#8884d8"
+                  <FunnelChart>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Funnel
                       dataKey="value"
-                      stroke="#fff"
-                      strokeWidth={3}
-                      animationBegin={0}
+                      data={warehouseStats.movementsByType}
+                      isAnimationActive={true}
                       animationDuration={1500}
                     >
                       {warehouseStats.movementsByType.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          className="hover:opacity-80 transition-opacity duration-300"
-                        />
+                        <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </RechartsPieChart>
+                      <LabelList position="center" fill="#fff" stroke="none" fontSize={12} />
+                    </Funnel>
+                  </FunnelChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -1150,7 +1159,7 @@ export default function StatisticsPage() {
           </Card>
         </AnimatedCard>
 
-        {/* Inventory Movements by Month */}
+        {/* Inventory Movements by Month - Composed Chart */}
         <AnimatedCard delay={1500}>
           <Card className="hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             <CardHeader className="pb-4">
@@ -1160,11 +1169,13 @@ export default function StatisticsPage() {
                 </div>
                 Movimientos por Mes
               </CardTitle>
-              <CardDescription className="text-base">Movimientos de inventario en los últimos 6 meses</CardDescription>
+              <CardDescription className="text-base">
+                Movimientos de inventario en los últimos 6 meses (Combinado)
+              </CardDescription>
             </CardHeader>
             <CardContent className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={warehouseStats.movementsByMonth}>
+                <ComposedChart data={warehouseStats.movementsByMonth}>
                   {renderGradients()}
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" opacity={0.5} />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" axisLine={{ stroke: "#e0e7ff" }} />
@@ -1179,20 +1190,22 @@ export default function StatisticsPage() {
                     animationDuration={1500}
                   />
                   <Bar dataKey="exits" name="Salidas" fill="#FF5B5B" radius={[4, 4, 0, 0]} animationDuration={1500} />
-                  <Bar
+                  <Line
+                    type="monotone"
                     dataKey="adjustments"
                     name="Ajustes"
-                    fill="#FF9F43"
-                    radius={[4, 4, 0, 0]}
-                    animationDuration={1500}
+                    stroke="#FF9F43"
+                    strokeWidth={3}
+                    dot={{ fill: "#FF9F43", strokeWidth: 2, r: 4 }}
+                    animationDuration={2000}
                   />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </AnimatedCard>
 
-        {/* Top Products by Movement */}
+        {/* Top Products by Movement - Horizontal Bar with Gradient */}
         <AnimatedCard delay={1600}>
           <Card className="hover:shadow-2xl transition-all duration-500 border-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             <CardHeader className="pb-4">
@@ -1202,7 +1215,9 @@ export default function StatisticsPage() {
                 </div>
                 Productos Más Movidos
               </CardTitle>
-              <CardDescription className="text-base">Top 10 productos con más movimientos</CardDescription>
+              <CardDescription className="text-base">
+                Top 10 productos con más movimientos (Barras horizontales)
+              </CardDescription>
             </CardHeader>
             <CardContent className="h-96">
               {warehouseStats.topProducts.length > 0 ? (
@@ -1220,13 +1235,14 @@ export default function StatisticsPage() {
                       axisLine={{ stroke: "#e0e7ff" }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar
-                      dataKey="value"
-                      name="Movimientos"
-                      fill="url(#barGradient)"
-                      radius={[0, 8, 8, 0]}
-                      animationDuration={1500}
-                    />
+                    <Bar dataKey="value" name="Movimientos" radius={[0, 8, 8, 0]} animationDuration={1500}>
+                      {warehouseStats.topProducts.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={`hsl(${(index * 360) / warehouseStats.topProducts.length}, 70%, 60%)`}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
