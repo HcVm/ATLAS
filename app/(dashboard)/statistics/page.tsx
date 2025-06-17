@@ -172,7 +172,7 @@ export default function StatisticsPage() {
         console.error("Error fetching departments:", deptError)
         throw deptError
       }
-      console.log("Departments found:", departments?.length || 0, departments)
+      console.log("Departments found:", departments?.length || 0)
 
       // Obtener documentos con información completa
       let documentsQuery = supabase.from("documents").select(`
@@ -196,22 +196,29 @@ export default function StatisticsPage() {
       }
       console.log("Documents found:", documents?.length || 0)
 
-      // Obtener movimientos de documentos
-      let movementsQuery = supabase.from("document_movements").select(`
-        id, to_department_id, created_at, company_id,
-        departments!document_movements_to_department_id_fkey (name, color)
-      `)
+      // Obtener movimientos de documentos (con manejo de errores)
+      let movements: any[] = []
+      try {
+        let movementsQuery = supabase.from("document_movements").select(`
+          id, to_department_id, created_at, company_id,
+          departments!document_movements_to_department_id_fkey (name, color)
+        `)
 
-      if (selectedCompany) {
-        movementsQuery = movementsQuery.eq("company_id", selectedCompany.id)
-      }
+        if (selectedCompany) {
+          movementsQuery = movementsQuery.eq("company_id", selectedCompany.id)
+        }
 
-      const { data: movements, error: movError } = await movementsQuery
-      if (movError) {
-        console.error("Error fetching movements:", movError)
-        throw movError
+        const { data: movementsData, error: movError } = await movementsQuery
+        if (movError) {
+          console.warn("Error fetching movements (continuing without them):", movError)
+          // Continue without movements data
+        } else {
+          movements = movementsData || []
+        }
+      } catch (error) {
+        console.warn("Failed to fetch document movements, continuing without them:", error)
       }
-      console.log("Document movements found:", movements?.length || 0)
+      console.log("Document movements found:", movements.length)
 
       // Obtener totales de usuarios
       let usersCountQuery = supabase.from("profiles").select("*", { count: "exact", head: true })
@@ -242,35 +249,42 @@ export default function StatisticsPage() {
       }
       console.log("Products found:", products?.length || 0)
 
-      // Obtener movimientos de inventario
-      let inventoryMovementsQuery = supabase
-        .from("inventory_movements")
-        .select(`
-        id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
-        products (name, code)
-      `)
-        .order("created_at", { ascending: false })
-        .limit(1000)
+      // Obtener movimientos de inventario (con manejo de errores)
+      let inventoryMovements: any[] = []
+      try {
+        let inventoryMovementsQuery = supabase
+          .from("inventory_movements")
+          .select(`
+          id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
+          products (name, code)
+        `)
+          .order("created_at", { ascending: false })
+          .limit(1000)
 
-      if (selectedCompany) {
-        inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
-      }
+        if (selectedCompany) {
+          inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
+        }
 
-      const { data: inventoryMovements, error: movementsError } = await inventoryMovementsQuery
-      if (movementsError) {
-        console.error("Error fetching inventory movements:", movementsError)
-        throw movementsError
+        const { data: inventoryMovementsData, error: movementsError } = await inventoryMovementsQuery
+        if (movementsError) {
+          console.warn("Error fetching inventory movements (continuing without them):", movementsError)
+          // Continue without inventory movements data
+        } else {
+          inventoryMovements = inventoryMovementsData || []
+        }
+      } catch (error) {
+        console.warn("Failed to fetch inventory movements, continuing without them:", error)
       }
-      console.log("Inventory movements found:", inventoryMovements?.length || 0)
+      console.log("Inventory movements found:", inventoryMovements.length)
 
       console.log("=== PROCESSING STATISTICS ===")
 
       // Procesar estadísticas
-      const processedStats = processStatistics(documents || [], movements || [], departments || [], totalUsers || 0)
+      const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
       console.log("Processed document stats:", processedStats.totalStats)
       setStats(processedStats)
 
-      const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements || [])
+      const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements)
       console.log("Processed warehouse stats:", warehouseProcessed.inventoryValue)
       setWarehouseStats(warehouseProcessed)
 
@@ -594,22 +608,6 @@ export default function StatisticsPage() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </Button>
       </div>
-
-      {/* Debug Info - Remove in production */}
-      <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
-        <CardHeader>
-          <CardTitle className="text-sm text-yellow-800 dark:text-yellow-200">Debug Info</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs text-yellow-700 dark:text-yellow-300">
-          <p>
-            Usuario: {user?.email} ({user?.role})
-          </p>
-          <p>Empresa: {selectedCompany?.name || "Modo General"}</p>
-          <p>Documentos: {stats.totalStats.totalDocuments}</p>
-          <p>Productos: {warehouseStats.inventoryValue.totalProducts}</p>
-          <p>Departamentos: {stats.totalStats.totalDepartments}</p>
-        </CardContent>
-      </Card>
 
       {/* Stats Cards Mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
