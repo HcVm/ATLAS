@@ -15,6 +15,19 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 
+// Departamentos hardcodeados con sus colores estándar
+const STANDARD_DEPARTMENTS = [
+  { id: "admin", name: "Administración", color: "#FF8C00" },
+  { id: "almacen", name: "Almacén", color: "#20B2AA" },
+  { id: "asignar", name: "ASIGNAR", color: "#808080" },
+  { id: "certificaciones", name: "Certificaciones", color: "#9370DB" },
+  { id: "contabilidad", name: "Contabilidad", color: "#4169E1" },
+  { id: "legal", name: "Legal", color: "#8A2BE2" },
+  { id: "operaciones", name: "Operaciones", color: "#9ACD32" },
+  { id: "recursos-humanos", name: "Recursos Humanos", color: "#FF6347" },
+  { id: "tecnologia", name: "Tecnología", color: "#00CED1" },
+]
+
 // Función para obtener el color de texto basado en el color de fondo
 const getTextColor = (backgroundColor: string) => {
   // Convertir hex a RGB
@@ -159,18 +172,43 @@ export default function MovementsPage() {
 
   const fetchDepartments = async () => {
     try {
-      // Obtener departamentos únicos sin duplicados
-      const { data, error } = await supabase.from("departments").select("id, name, color").order("name")
+      // Determinar filtro de empresa
+      const isAdmin = user?.role === "admin" || user?.role === "supervisor"
+      const shouldFilterByCompany = !isAdmin || selectedCompany !== null
+      const companyFilter = isAdmin ? selectedCompany?.id : user?.company_id
+
+      let query = supabase.from("departments").select("id, name, color, company_id").order("name")
+
+      // Aplicar filtro de empresa si es necesario
+      if (shouldFilterByCompany && companyFilter) {
+        query = query.eq("company_id", companyFilter)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error("Error fetching departments:", error)
         return
       }
 
-      // Eliminar duplicados por nombre y ID
-      const uniqueDepartments =
-        data?.filter((dept, index, self) => index === self.findIndex((d) => d.id === dept.id)) || []
+      // Usar Map para eliminar duplicados de manera más efectiva
+      const uniqueDepartmentsMap = new Map()
 
+      data?.forEach((dept) => {
+        // Usar el ID como clave única para evitar duplicados
+        if (!uniqueDepartmentsMap.has(dept.id)) {
+          uniqueDepartmentsMap.set(dept.id, dept)
+        }
+      })
+
+      // Convertir Map de vuelta a array y ordenar por nombre
+      const uniqueDepartments = Array.from(uniqueDepartmentsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+
+      console.log(
+        "Unique departments:",
+        uniqueDepartments.length,
+        uniqueDepartments.map((d) => d.name),
+      )
       setDepartments(uniqueDepartments)
     } catch (error) {
       console.error("Error fetching departments:", error)
@@ -291,24 +329,28 @@ export default function MovementsPage() {
         </CardContent>
       </Card>
 
-      {/* Leyenda de colores */}
-      {departments.length > 0 && (
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-sm">Leyenda de Departamentos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {departments.map((department) => (
-                <DepartmentBadge key={department.id} department={department} />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Los badges con 📍 indican el departamento de destino en los movimientos
+      {/* Leyenda de colores - Hardcodeada */}
+      <Card className="hover:shadow-lg transition-shadow duration-300">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-green-500 rounded-full"></div>
+            Leyenda de Departamentos ({STANDARD_DEPARTMENTS.length} departamentos)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
+            {STANDARD_DEPARTMENTS.map((department) => (
+              <DepartmentBadge key={`legend-${department.id}`} department={department} />
+            ))}
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-l-4 border-blue-500">
+            <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+              <span>💡</span>
+              <span>Los badges con 📍 indican el departamento de destino en los movimientos</span>
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="space-y-4">
