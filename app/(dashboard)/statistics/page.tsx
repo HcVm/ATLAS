@@ -87,9 +87,10 @@ interface WarehouseStats {
   topProducts: Array<{ name: string; value: number }>
 }
 
-// Gradientes para los gráficos mejorados
+// Gradientes animados para los gráficos
 const renderGradients = () => (
   <defs>
+    {/* Gradientes básicos */}
     <linearGradient id="colorDocuments" x1="0" y1="0" x2="0" y2="1">
       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
       <stop offset="95%" stopColor="#1E40AF" stopOpacity={0.2} />
@@ -102,32 +103,111 @@ const renderGradients = () => (
       <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.8} />
       <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.6} />
     </linearGradient>
-    {/* Gradientes adicionales para efectos modernos */}
+
+    {/* Gradientes animados para pie charts */}
     <linearGradient id="pieGradient1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#1E40AF" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#3B82F6;#1E40AF;#3B82F6" dur="4s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#1E40AF" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#1E40AF;#3B82F6;#1E40AF" dur="4s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
+
     <linearGradient id="pieGradient2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#8B5CF6;#5B21B6;#8B5CF6" dur="5s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#5B21B6;#8B5CF6;#5B21B6" dur="5s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
+
     <linearGradient id="pieGradient3" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#10B981" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#047857" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#10B981" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#10B981;#047857;#10B981" dur="6s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#047857" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#047857;#10B981;#047857" dur="6s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
+
     <linearGradient id="pieGradient4" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#D97706" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#F59E0B;#D97706;#F59E0B" dur="3.5s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#D97706" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#D97706;#F59E0B;#D97706" dur="3.5s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
+
     <linearGradient id="pieGradient5" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#EC4899" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#BE185D" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#EC4899" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#EC4899;#BE185D;#EC4899" dur="4.5s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#BE185D" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#BE185D;#EC4899;#BE185D" dur="4.5s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
+
     <linearGradient id="pieGradient6" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.9} />
-      <stop offset="100%" stopColor="#0891B2" stopOpacity={0.7} />
+      <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.9}>
+        <animate attributeName="stop-color" values="#06B6D4;#0891B2;#06B6D4" dur="5.5s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stopColor="#0891B2" stopOpacity={0.7}>
+        <animate attributeName="stop-color" values="#0891B2;#06B6D4;#0891B2" dur="5.5s" repeatCount="indefinite" />
+      </stop>
     </linearGradient>
-    {/* Filtros para efectos de sombra */}
+
+    {/* Gradiente de alerta animado */}
+    <linearGradient id="alertGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stopColor="#EF4444">
+        <animate
+          attributeName="stop-color"
+          values="#EF4444;#DC2626;#B91C1C;#DC2626;#EF4444"
+          dur="2s"
+          repeatCount="indefinite"
+        />
+      </stop>
+      <stop offset="50%" stopColor="#F87171">
+        <animate
+          attributeName="stop-color"
+          values="#F87171;#EF4444;#DC2626;#EF4444;#F87171"
+          dur="2s"
+          repeatCount="indefinite"
+        />
+      </stop>
+      <stop offset="100%" stopColor="#FCA5A5">
+        <animate
+          attributeName="stop-color"
+          values="#FCA5A5;#F87171;#EF4444;#F87171;#FCA5A5"
+          dur="2s"
+          repeatCount="indefinite"
+        />
+      </stop>
+    </linearGradient>
+
+    {/* Gradiente de éxito animado */}
+    <linearGradient id="successGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stopColor="#10B981">
+        <animate
+          attributeName="stop-color"
+          values="#10B981;#059669;#047857;#059669;#10B981"
+          dur="3s"
+          repeatCount="indefinite"
+        />
+      </stop>
+      <stop offset="100%" stopColor="#34D399">
+        <animate
+          attributeName="stop-color"
+          values="#34D399;#10B981;#059669;#10B981;#34D399"
+          dur="3s"
+          repeatCount="indefinite"
+        />
+      </stop>
+    </linearGradient>
+
+    {/* Filtros para efectos */}
     <filter id="dropshadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.1" />
     </filter>
@@ -138,6 +218,14 @@ const renderGradients = () => (
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
+    <filter id="pulseGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+      <animate attributeName="stdDeviation" values="2;6;2" dur="2s" repeatCount="indefinite" />
+    </filter>
   </defs>
 )
 
@@ -145,15 +233,19 @@ const renderGradients = () => (
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105">
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105 animate-in fade-in-0 zoom-in-95">
         <div className="space-y-2">
           <p className="font-semibold text-foreground text-sm">{label}</p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+              <div className="w-3 h-3 rounded-full shadow-sm animate-pulse" style={{ backgroundColor: entry.color }} />
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium">{entry.name}:</span>
-                <span className="ml-1 font-semibold text-foreground">{entry.value}</span>
+                <span className="ml-1 font-semibold text-foreground">
+                  {typeof entry.value === "number" && entry.name?.toLowerCase().includes("valor")
+                    ? `S/ ${entry.value.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+                    : entry.value}
+                </span>
               </p>
             </div>
           ))}
@@ -164,21 +256,55 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-const DepartmentTooltip = ({ active, payload, label }: any) => {
+const DepartmentTooltip = ({ active, payload }: any) => {
+  const { selectedCompany } = useCompany()
   if (active && payload && payload.length) {
+    const data = payload[0].payload
     return (
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105">
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105 animate-in fade-in-0 zoom-in-95">
         <div className="space-y-2">
-          <p className="font-semibold text-foreground text-sm">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium">{entry.dataKey}:</span>
-                <span className="ml-1 font-semibold text-foreground">{entry.value}</span>
-              </p>
+          <p className="font-semibold text-foreground text-sm">{data.fullName || data.name}</p>
+          {data.company && !selectedCompany && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <span>Empresa: {data.company}</span>
             </div>
-          ))}
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full shadow-sm animate-pulse" style={{ backgroundColor: data.color }} />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium">Documentos:</span>
+              <span className="ml-1 font-semibold text-foreground">{data.value}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
+const MovementTooltip = ({ active, payload }: any) => {
+  const { selectedCompany } = useCompany()
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105 animate-in fade-in-0 zoom-in-95">
+        <div className="space-y-2">
+          <p className="font-semibold text-foreground text-sm">{data.fullName || data.name}</p>
+          {data.company && !selectedCompany && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+              <span>Empresa: {data.company}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full shadow-sm animate-pulse" style={{ backgroundColor: data.color }} />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium">Movimientos:</span>
+              <span className="ml-1 font-semibold text-foreground">{data.value}</span>
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -858,7 +984,7 @@ export default function StatisticsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            <BarChart3 className="h-8 w-8 text-blue-600" />
+            <BarChart3 className="h-8 w-8 text-blue-600 animate-pulse" />
             Estadísticas
           </h1>
           <p className="text-muted-foreground">
@@ -870,9 +996,9 @@ export default function StatisticsPage() {
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="gap-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950 dark:hover:to-purple-950"
+          className="gap-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950 dark:hover:to-purple-950 transition-all duration-300"
         >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : "animate-pulse"}`} />
           {refreshing ? "Actualizando..." : "Actualizar"}
         </Button>
       </div>
@@ -880,15 +1006,15 @@ export default function StatisticsPage() {
       {/* Stats Cards Mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5 animate-pulse"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600" />
+              <FileText className="h-4 w-4 text-blue-600 animate-bounce" />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalStats.totalDocuments}</div>
+            <div className="text-2xl font-bold text-blue-600 animate-pulse">{stats.totalStats.totalDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos en el sistema</p>
           </CardContent>
         </Card>
@@ -898,7 +1024,7 @@ export default function StatisticsPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Movimientos</CardTitle>
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <ArrowRightLeft className="h-4 w-4 text-green-600" />
+              <ArrowRightLeft className="h-4 w-4 text-green-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -912,7 +1038,7 @@ export default function StatisticsPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Departamentos</CardTitle>
             <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <PieChart className="h-4 w-4 text-purple-600" />
+              <PieChart className="h-4 w-4 text-purple-600 animate-spin" style={{ animationDuration: "8s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -926,7 +1052,7 @@ export default function StatisticsPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <Users className="h-4 w-4 text-orange-600" />
+              <Users className="h-4 w-4 text-orange-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -936,14 +1062,14 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Warehouse Stats Cards */}
+      {/* Warehouse Stats Cards con Animaciones */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
             <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <Package className="h-4 w-4 text-emerald-600" />
+              <Package className="h-4 w-4 text-emerald-600 animate-bounce" style={{ animationDelay: "0.5s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -952,17 +1078,28 @@ export default function StatisticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+        <Card
+          className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertTriangle
+                className={`h-4 w-4 text-red-600 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+              />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-red-600">{warehouseStats.inventoryValue.lowStockCount}</div>
+            <div
+              className={`text-2xl font-bold text-red-600 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+            >
+              {warehouseStats.inventoryValue.lowStockCount}
+            </div>
             <p className="text-xs text-muted-foreground">Productos con stock bajo</p>
+            {warehouseStats.inventoryValue.lowStockCount > 0 && (
+              <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+            )}
           </CardContent>
         </Card>
 
@@ -971,7 +1108,7 @@ export default function StatisticsPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Valor Costo</CardTitle>
             <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
-              <DollarSign className="h-4 w-4 text-cyan-600" />
+              <DollarSign className="h-4 w-4 text-cyan-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -987,7 +1124,7 @@ export default function StatisticsPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Valor Venta</CardTitle>
             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-indigo-600" />
+              <TrendingUp className="h-4 w-4 text-indigo-600 animate-bounce" style={{ animationDelay: "1s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
@@ -999,14 +1136,14 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Charts Grid Modernos con Animaciones */}
+      {/* Charts Grid Modernos con Animaciones Permanentes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos por Departamento */}
         <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <PieChart className="h-5 w-5 text-blue-600" />
+                <PieChart className="h-5 w-5 text-blue-600 animate-spin" style={{ animationDuration: "10s" }} />
               </div>
               Documentos por Departamento
             </CardTitle>
@@ -1054,7 +1191,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <PieChart className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1068,7 +1205,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <BarChart3 className="h-5 w-5 text-green-600" />
+                <BarChart3 className="h-5 w-5 text-green-600 animate-pulse" />
               </div>
               Documentos por Estado
             </CardTitle>
@@ -1116,7 +1253,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <BarChart3 className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1130,7 +1267,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+                <TrendingUp className="h-5 w-5 text-purple-600 animate-bounce" />
               </div>
               Documentos por Mes
             </CardTitle>
@@ -1165,7 +1302,7 @@ export default function StatisticsPage() {
                   animationEasing="ease-out"
                   filter="url(#glow)"
                   dot={{ fill: "#8B5CF6", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: "#8B5CF6", strokeWidth: 2, fill: "#fff" }}
+                  activeDot={{ r: 6, stroke: "#8B5CF6", strokeWidth: 2, fill: "#fff", className: "animate-ping" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -1177,7 +1314,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+                <ArrowRightLeft className="h-5 w-5 text-orange-600 animate-pulse" />
               </div>
               Movimientos por Departamento
             </CardTitle>
@@ -1211,7 +1348,7 @@ export default function StatisticsPage() {
                     tickLine={false}
                     axisLine={false}
                   />
-                  <Tooltip content={<DepartmentTooltip />} />
+                  <Tooltip content={<MovementTooltip />} />
                   <Bar
                     dataKey="value"
                     name="Movimientos"
@@ -1237,7 +1374,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <ArrowRightLeft className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1254,7 +1391,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <Package className="h-5 w-5 text-emerald-600" />
+                <Package className="h-5 w-5 text-emerald-600 animate-bounce" style={{ animationDelay: "2s" }} />
               </div>
               Productos por Categoría
             </CardTitle>
@@ -1302,7 +1439,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <Package className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1316,7 +1453,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+                <ArrowRightLeft className="h-5 w-5 text-blue-600 animate-pulse" />
               </div>
               Movimientos por Tipo
             </CardTitle>
@@ -1364,7 +1501,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <ArrowRightLeft className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1378,7 +1515,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <Calendar className="h-5 w-5 text-purple-600" />
+                <Calendar className="h-5 w-5 text-purple-600 animate-pulse" />
               </div>
               Movimientos por Mes
             </CardTitle>
@@ -1448,7 +1585,7 @@ export default function StatisticsPage() {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <TrendingUp className="h-5 w-5 text-orange-600" />
+                <TrendingUp className="h-5 w-5 text-orange-600 animate-bounce" style={{ animationDelay: "1.5s" }} />
               </div>
               Productos Más Movidos
             </CardTitle>
@@ -1498,7 +1635,7 @@ export default function StatisticsPage() {
                 <div className="text-center space-y-3">
                   <div className="relative">
                     <TrendingUp className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-yellow-400/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-yellow-400/20 rounded-full blur-xl animate-pulse"></div>
                   </div>
                   <p className="text-sm">No hay datos disponibles</p>
                 </div>
@@ -1546,14 +1683,14 @@ export default function StatisticsPage() {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-red-100 dark:bg-red-900/30 rounded-full h-2 overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-1000 ease-out"
+                        className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-1000 ease-out animate-pulse"
                         style={{
                           width: `${Math.max(10, (product.current / product.minimum) * 100)}%`,
                           animationDelay: `${index * 200}ms`,
                         }}
                       />
                     </div>
-                    <span className="text-xs text-red-600 font-bold">Faltan: {product.difference}</span>
+                    <span className="text-xs text-red-600 font-bold animate-pulse">Faltan: {product.difference}</span>
                   </div>
                 </div>
               ))}
