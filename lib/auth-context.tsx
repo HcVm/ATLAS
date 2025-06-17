@@ -9,7 +9,7 @@ import type { User } from "@supabase/supabase-js"
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
 export interface AuthContextType {
-  user: Profile | null
+  user: (Profile & { selectedCompanyId?: string }) | null
   loading: boolean
   error: string | null
   refreshUser: () => Promise<void>
@@ -22,6 +22,7 @@ export interface AuthContextType {
     departmentId: string,
     phone?: string,
   ) => Promise<{ data: any; error: any }>
+  setSelectedCompanyId: (companyId: string | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -75,6 +76,11 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
     }
 
     if (profileData) {
+      // Para admins, cargar la empresa seleccionada desde localStorage
+      if (profileData.role === "admin") {
+        const savedCompanyId = localStorage.getItem("selectedCompanyId")
+        return { ...profileData, selectedCompanyId: savedCompanyId || undefined }
+      }
       return profileData
     }
 
@@ -114,7 +120,7 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Profile | null>(null)
+  const [user, setUser] = useState<(Profile & { selectedCompanyId?: string }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const initialized = useRef(false)
@@ -331,6 +337,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const setSelectedCompanyId = (companyId: string | null) => {
+    if (user) {
+      setUser({ ...user, selectedCompanyId: companyId || undefined })
+      if (companyId) {
+        localStorage.setItem("selectedCompanyId", companyId)
+      } else {
+        localStorage.removeItem("selectedCompanyId")
+      }
+    }
+  }
+
   const value: AuthContextType = {
     user,
     loading,
@@ -339,6 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut: signOutUser,
     signIn: signInUser,
     signUp: signUpUser,
+    setSelectedCompanyId,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -39,12 +39,20 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+    console.log("ProductDetail: User data:", {
+      userId: user?.id,
+      role: user?.role,
+      companyId: user?.company_id,
+      selectedCompanyId: user?.selectedCompanyId,
+      paramId: params.id,
+    })
 
-    if (params.id && companyId) {
+    if (params.id && user) {
       fetchProduct()
+    } else {
+      console.log("ProductDetail: Missing params.id or user")
     }
-  }, [params.id, user?.company_id, user?.selectedCompanyId, user?.role])
+  }, [params.id, user])
 
   const fetchProduct = async () => {
     try {
@@ -52,12 +60,25 @@ export default function ProductDetailPage() {
       setError(null)
 
       // Determinar el company_id correcto
-      const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+      let companyId: string | null = null
+
+      if (user?.role === "admin") {
+        companyId = user?.selectedCompanyId || user?.company_id || null
+      } else {
+        companyId = user?.company_id || null
+      }
+
+      console.log("ProductDetail: Using companyId:", companyId)
 
       if (!companyId) {
         setError("No se pudo determinar la empresa")
         return
       }
+
+      console.log("ProductDetail: Fetching product with:", {
+        productId: params.id,
+        companyId: companyId,
+      })
 
       const { data, error } = await supabase
         .from("products")
@@ -70,19 +91,28 @@ export default function ProductDetailPage() {
         .eq("company_id", companyId)
         .single()
 
+      console.log("ProductDetail: Query result:", { data, error })
+
       if (error) {
         if (error.code === "PGRST116") {
           setError("Producto no encontrado")
         } else {
-          throw error
+          console.error("ProductDetail: Database error:", error)
+          setError(`Error de base de datos: ${error.message}`)
         }
         return
       }
 
+      if (!data) {
+        setError("Producto no encontrado")
+        return
+      }
+
+      console.log("ProductDetail: Product loaded successfully:", data.name)
       setProduct(data)
     } catch (error) {
-      console.error("Error fetching product:", error)
-      setError("Error al cargar el producto")
+      console.error("ProductDetail: Unexpected error:", error)
+      setError("Error inesperado al cargar el producto")
     } finally {
       setLoading(false)
     }
@@ -111,6 +141,27 @@ export default function ProductDetailPage() {
     return { label: "Disponible", variant: "default" as const, color: "text-green-600" }
   }
 
+  // Debug info
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/warehouse/products">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Link>
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-muted-foreground">Usuario no autenticado</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -124,7 +175,13 @@ export default function ProductDetailPage() {
         </div>
         <Card>
           <CardContent className="p-6">
-            <div className="text-center">Cargando producto...</div>
+            <div className="text-center">
+              <div>Cargando producto...</div>
+              <div className="text-xs text-muted-foreground mt-2">
+                Debug: User ID: {user?.id}, Company:{" "}
+                {user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -144,7 +201,18 @@ export default function ProductDetailPage() {
         </div>
         <Card>
           <CardContent className="p-6">
-            <div className="text-center text-muted-foreground">{error || "Producto no encontrado"}</div>
+            <div className="text-center text-muted-foreground">
+              <div>{error || "Producto no encontrado"}</div>
+              <div className="text-xs mt-2">
+                Debug Info:
+                <br />
+                Product ID: {params.id}
+                <br />
+                User Role: {user?.role}
+                <br />
+                Company ID: {user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
