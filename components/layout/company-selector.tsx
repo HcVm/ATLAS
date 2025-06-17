@@ -16,18 +16,23 @@ interface Company {
 }
 
 export function CompanySelector() {
-  const { user } = useAuth()
+  const { user, setSelectedCompanyId } = useAuth()
   const { allCompanies, selectedCompany, setSelectedCompany, refreshCompanies } = useCompany()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleCompanySelect = (company: Company | null) => {
+    console.log("COMPANY SELECTOR: Selecting company:", company)
+
+    // Actualizar en el contexto de empresa
     setSelectedCompany(company)
+
+    // Actualizar en el contexto de autenticación
+    setSelectedCompanyId(company?.id || null)
+
     if (company) {
-      localStorage.setItem("selectedCompanyId", company.id)
       toast.success(`Empresa seleccionada: ${company.name}`)
     } else {
-      localStorage.removeItem("selectedCompanyId")
       toast.success("Modo general activado - Todos los usuarios visibles")
     }
     setDialogOpen(false)
