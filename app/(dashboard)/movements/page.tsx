@@ -19,7 +19,6 @@ import { useCompany } from "@/lib/company-context"
 const STANDARD_DEPARTMENTS = [
   { id: "admin", name: "Administración", color: "#FF8C00" },
   { id: "almacen", name: "Almacén", color: "#20B2AA" },
-  { id: "asignar", name: "ASIGNAR", color: "#808080" },
   { id: "certificaciones", name: "Certificaciones", color: "#9370DB" },
   { id: "contabilidad", name: "Contabilidad", color: "#4169E1" },
   { id: "legal", name: "Legal", color: "#8A2BE2" },
