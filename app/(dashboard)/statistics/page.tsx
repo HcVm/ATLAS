@@ -15,6 +15,7 @@ import {
   Package,
   AlertTriangle,
   DollarSign,
+  Building2,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -36,10 +37,22 @@ import {
 import { useCompany } from "@/lib/company-context"
 
 interface StatisticsData {
-  documentsByDepartment: Array<{ name: string; value: number; color: string }>
+  documentsByDepartment: Array<{
+    name: string
+    value: number
+    color: string
+    company?: string
+    fullName?: string
+  }>
   documentsByStatus: Array<{ name: string; value: number; color: string }>
   documentsByMonth: Array<{ name: string; value: number; month: string }>
-  movementsByDepartment: Array<{ name: string; value: number; color: string }>
+  movementsByDepartment: Array<{
+    name: string
+    value: number
+    color: string
+    company?: string
+    fullName?: string
+  }>
   totalStats: {
     totalDocuments: number
     totalMovements: number
@@ -86,6 +99,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             {`${entry.name}: ${entry.value}`}
           </p>
         ))}
+      </div>
+    )
+  }
+  return null
+}
+
+// Componente para tooltip de departamentos con información de empresa
+const DepartmentTooltip = ({ active, payload }: any) => {
+  const { selectedCompany } = useCompany()
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-foreground">{data.fullName || data.name}</p>
+        {data.company && !selectedCompany && (
+          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+            <Building2 className="h-3 w-3" />
+            <span>{data.company}</span>
+          </div>
+        )}
+        <p className="text-sm mt-1" style={{ color: data.color }}>
+          {`Cantidad: ${data.value}`}
+        </p>
       </div>
     )
   }
@@ -204,7 +240,10 @@ export default function StatisticsPage() {
       try {
         let movementsQuery = supabase.from("document_movements").select(`
           id, to_department_id, created_at, company_id,
-          departments!document_movements_to_department_id_fkey (name, color)
+          departments!document_movements_to_department_id_fkey (
+            name, color,
+            companies (name)
+          )
         `)
 
         if (selectedCompany) {
@@ -313,16 +352,22 @@ export default function StatisticsPage() {
       users: totalUsers,
     })
 
-    // Documentos por departamento con colores modernos
+    // Documentos por departamento con colores modernos e información de empresa
     const modernColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16", "#EF4444"]
 
     const documentsByDepartment = departments
       .map((dept, index) => {
         const count = documents.filter((doc) => doc.current_department_id === dept.id).length
+        const companyName = dept.companies?.name
+        const displayName = selectedCompany ? dept.name : dept.name
+        const fullName = selectedCompany ? dept.name : `${dept.name} (${companyName || "Sin empresa"})`
+
         return {
-          name: dept.name,
+          name: displayName,
+          fullName: fullName,
           value: count,
           color: dept.color || modernColors[index % modernColors.length],
+          company: companyName,
         }
       })
       .filter((item) => item.value > 0)
@@ -870,7 +915,10 @@ export default function StatisticsPage() {
               <ArrowRightLeft className="h-5 w-5 text-orange-600" />
               Movimientos por Departamento
             </CardTitle>
-            <CardDescription>Distribución de movimientos por departamento destino</CardDescription>
+            <CardDescription>
+              Distribución de movimientos por departamento destino
+              {!selectedCompany && " (con información de empresa)"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {stats.movementsByDepartment.length > 0 ? (
@@ -880,7 +928,7 @@ export default function StatisticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
                   <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6b7280" />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} stroke="#6b7280" />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<DepartmentTooltip />} />
                   <Bar dataKey="value" name="Movimientos" radius={[0, 4, 4, 0]} fill="url(#barGradient)">
                     {stats.movementsByDepartment.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
