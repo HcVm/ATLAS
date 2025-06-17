@@ -176,8 +176,8 @@ export function AppSidebar() {
             <FileText className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">Sistema Docs</span>
-            <span className="text-xs text-muted-foreground">v2.0</span>
+            <span className="text-sm font-semibold">Sistema Docs Corp</span>
+            <span className="text-xs text-muted-foreground">v3.0</span>
           </div>
         </div>
       </SidebarHeader>
@@ -224,25 +224,6 @@ export function AppSidebar() {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>Sin rol asignado. Contacta al administrador.</AlertDescription>
               </Alert>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Debug section - solo mostrar si no es admin */}
-        {user.role !== "admin" && (
-          <SidebarGroup>
-            <SidebarGroupLabel>DIAGNÓSTICO</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <Link href="/user-debug" className="flex items-center gap-2">
-                      <Bug className="h-4 w-4" />
-                      <span>Diagnóstico Usuario</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}

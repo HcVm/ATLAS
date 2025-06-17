@@ -478,7 +478,7 @@ export default function DashboardPage() {
                                       ? `${movement.to_departments.color}20`
                                       : "#f3f4f6",
                                     color: movement.to_departments.color || "#6b7280",
-                                    ringColor: movement.to_departments.color || "#d1d5db",
+                                    borderColor: movement.to_departments.color || "#d1d5db",
                                   }}
                                 >
                                   {movement.to_departments.name}
