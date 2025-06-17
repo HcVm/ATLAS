@@ -15,7 +15,6 @@ import {
   Package,
   AlertTriangle,
   DollarSign,
-  Building2,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -88,47 +87,7 @@ interface WarehouseStats {
   topProducts: Array<{ name: string; value: number }>
 }
 
-// Componente personalizado para tooltips modernos
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-medium text-foreground">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {`${entry.name}: ${entry.value}`}
-          </p>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
-// Componente para tooltip de departamentos con información de empresa
-const DepartmentTooltip = ({ active, payload }: any) => {
-  const { selectedCompany } = useCompany()
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-medium text-foreground">{data.fullName || data.name}</p>
-        {data.company && !selectedCompany && (
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <Building2 className="h-3 w-3" />
-            <span>{data.company}</span>
-          </div>
-        )}
-        <p className="text-sm mt-1" style={{ color: data.color }}>
-          {`Cantidad: ${data.value}`}
-        </p>
-      </div>
-    )
-  }
-  return null
-}
-
-// Gradientes para los gráficos
+// Gradientes para los gráficos mejorados
 const renderGradients = () => (
   <defs>
     <linearGradient id="colorDocuments" x1="0" y1="0" x2="0" y2="1">
@@ -143,8 +102,89 @@ const renderGradients = () => (
       <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.8} />
       <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.6} />
     </linearGradient>
+    {/* Gradientes adicionales para efectos modernos */}
+    <linearGradient id="pieGradient1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#1E40AF" stopOpacity={0.7} />
+    </linearGradient>
+    <linearGradient id="pieGradient2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#5B21B6" stopOpacity={0.7} />
+    </linearGradient>
+    <linearGradient id="pieGradient3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#10B981" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#047857" stopOpacity={0.7} />
+    </linearGradient>
+    <linearGradient id="pieGradient4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#D97706" stopOpacity={0.7} />
+    </linearGradient>
+    <linearGradient id="pieGradient5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#EC4899" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#BE185D" stopOpacity={0.7} />
+    </linearGradient>
+    <linearGradient id="pieGradient6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#0891B2" stopOpacity={0.7} />
+    </linearGradient>
+    {/* Filtros para efectos de sombra */}
+    <filter id="dropshadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.1" />
+    </filter>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
 )
+
+// Componente personalizado para tooltips modernos con animaciones
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105">
+        <div className="space-y-2">
+          <p className="font-semibold text-foreground text-sm">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">{entry.name}:</span>
+                <span className="ml-1 font-semibold text-foreground">{entry.value}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
+const DepartmentTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-2xl transform transition-all duration-200 ease-out scale-105">
+        <div className="space-y-2">
+          <p className="font-semibold text-foreground text-sm">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">{entry.dataKey}:</span>
+                <span className="ml-1 font-semibold text-foreground">{entry.value}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function StatisticsPage() {
   const { user } = useAuth()
@@ -274,10 +314,10 @@ export default function StatisticsPage() {
       let productsQuery = supabase
         .from("products")
         .select(`
-        id, name, code, current_stock, minimum_stock, cost_price, sale_price, company_id,
-        brands (name, color),
-        product_categories (name, color)
-      `)
+      id, name, code, current_stock, minimum_stock, cost_price, sale_price, company_id,
+      brands (name, color),
+      product_categories (name, color)
+    `)
         .eq("is_active", true)
 
       if (selectedCompany) {
@@ -291,33 +331,148 @@ export default function StatisticsPage() {
       }
       console.log("Products found:", products?.length || 0)
 
-      // Obtener movimientos de inventario (con manejo de errores)
-      let inventoryMovements: any[] = []
-      try {
-        let inventoryMovementsQuery = supabase
-          .from("inventory_movements")
-          .select(`
-          id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
-          products (name, code)
-        `)
-          .order("created_at", { ascending: false })
-          .limit(1000)
+      // ===== DIAGNÓSTICO DETALLADO DE MOVIMIENTOS DE INVENTARIO =====
+      console.log("🔍 === INVENTORY MOVEMENTS DETAILED DIAGNOSIS ===")
 
-        if (selectedCompany) {
-          inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
-        }
+      // Paso 1: Verificar si la tabla existe y tiene datos
+      console.log("Step 1: Basic table check...")
+      const {
+        data: basicCheck,
+        error: basicError,
+        count,
+      } = await supabase.from("inventory_movements").select("*", { count: "exact" }).limit(1)
 
-        const { data: inventoryMovementsData, error: movementsError } = await inventoryMovementsQuery
-        if (movementsError) {
-          console.warn("Error fetching inventory movements (continuing without them):", movementsError)
-          // Continue without inventory movements data
-        } else {
-          inventoryMovements = inventoryMovementsData || []
-        }
-      } catch (error) {
-        console.warn("Failed to fetch inventory movements, continuing without them:", error)
+      console.log("Basic check result:", {
+        hasData: !!basicCheck?.length,
+        totalCount: count,
+        error: basicError?.message,
+      })
+
+      if (basicError) {
+        console.error("❌ Basic check failed:", basicError)
+        // Continuar sin movimientos
+        const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
+        setStats(processedStats)
+        const warehouseProcessed = processWarehouseStatistics(products || [], [])
+        setWarehouseStats(warehouseProcessed)
+        return
       }
-      console.log("Inventory movements found:", inventoryMovements.length)
+
+      if (!basicCheck?.length) {
+        console.warn("⚠️ No inventory movements found in database")
+        const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
+        setStats(processedStats)
+        const warehouseProcessed = processWarehouseStatistics(products || [], [])
+        setWarehouseStats(warehouseProcessed)
+        return
+      }
+
+      // Paso 2: Obtener muestra de datos sin filtros
+      console.log("Step 2: Sample data without filters...")
+      const { data: sampleData, error: sampleError } = await supabase.from("inventory_movements").select("*").limit(5)
+
+      console.log("Sample data:", sampleData)
+      console.log("Sample error:", sampleError?.message)
+
+      // Paso 3: Verificar estructura de datos
+      if (sampleData?.length) {
+        console.log("Step 3: Data structure analysis...")
+        const firstRecord = sampleData[0]
+        console.log("First record structure:", Object.keys(firstRecord))
+        console.log("Movement types in sample:", [...new Set(sampleData.map((m) => m.movement_type))])
+        console.log("Company IDs in sample:", [...new Set(sampleData.map((m) => m.company_id))])
+      }
+
+      // Paso 4: Aplicar filtro de empresa si existe
+      let inventoryMovements: any[] = []
+      if (selectedCompany) {
+        console.log("Step 4: Applying company filter for:", selectedCompany.id)
+        const { data: companyFiltered, error: companyError } = await supabase
+          .from("inventory_movements")
+          .select("*")
+          .eq("company_id", selectedCompany.id)
+
+        console.log("Company filtered result:", {
+          count: companyFiltered?.length,
+          error: companyError?.message,
+        })
+
+        if (companyError) {
+          console.error("❌ Company filter failed:", companyError)
+          inventoryMovements = sampleData || []
+        } else {
+          inventoryMovements = companyFiltered || []
+        }
+      } else {
+        console.log("Step 4: No company filter, using all data")
+        inventoryMovements = sampleData || []
+      }
+
+      // Paso 5: Intentar obtener con relaciones si tenemos datos
+      if (inventoryMovements.length > 0) {
+        console.log("Step 5: Attempting to get data with relations...")
+        try {
+          let fullQuery = supabase
+            .from("inventory_movements")
+            .select(`
+            id, movement_type, quantity, total_amount, movement_date, created_at, 
+            company_id, product_id, created_by,
+            products (name, code)
+          `)
+            .order("created_at", { ascending: false })
+            .limit(1000)
+
+          if (selectedCompany) {
+            fullQuery = fullQuery.eq("company_id", selectedCompany.id)
+          }
+
+          const { data: fullData, error: fullError } = await fullQuery
+
+          console.log("Full query result:", {
+            count: fullData?.length,
+            error: fullError?.message,
+          })
+
+          if (fullError) {
+            console.warn("⚠️ Full query failed, using basic data:", fullError)
+            // Usar datos básicos sin relaciones
+          } else if (fullData) {
+            inventoryMovements = fullData
+            console.log("✅ Successfully got data with relations")
+          }
+        } catch (relationError) {
+          console.warn("⚠️ Relations query threw error:", relationError)
+        }
+      }
+
+      // Paso 6: Análisis final de datos
+      console.log("Step 6: Final data analysis...")
+      console.log("Final inventory movements count:", inventoryMovements.length)
+
+      if (inventoryMovements.length > 0) {
+        console.log(
+          "Movement types distribution:",
+          inventoryMovements.reduce((acc, m) => {
+            acc[m.movement_type] = (acc[m.movement_type] || 0) + 1
+            return acc
+          }, {}),
+        )
+
+        console.log("Date range:", {
+          earliest: inventoryMovements.reduce(
+            (min, m) => (m.created_at < min ? m.created_at : min),
+            inventoryMovements[0].created_at,
+          ),
+          latest: inventoryMovements.reduce(
+            (max, m) => (m.created_at > max ? m.created_at : max),
+            inventoryMovements[0].created_at,
+          ),
+        })
+
+        console.log("Sample records for processing:", inventoryMovements.slice(0, 3))
+      }
+
+      console.log("🔍 === END INVENTORY MOVEMENTS DIAGNOSIS ===")
 
       console.log("=== PROCESSING STATISTICS ===")
 
@@ -328,6 +483,9 @@ export default function StatisticsPage() {
 
       const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements)
       console.log("Processed warehouse stats:", warehouseProcessed.inventoryValue)
+      console.log("Warehouse movements by type:", warehouseProcessed.movementsByType)
+      console.log("Warehouse movements by month:", warehouseProcessed.movementsByMonth)
+      console.log("Warehouse top products:", warehouseProcessed.topProducts)
       setWarehouseStats(warehouseProcessed)
 
       console.log("=== STATISTICS COMPLETE ===")
@@ -493,10 +651,8 @@ export default function StatisticsPage() {
   }
 
   const processWarehouseStatistics = (products: any[], movements: any[]) => {
-    console.log("Processing warehouse statistics with:", {
-      products: products.length,
-      movements: movements.length,
-    })
+    console.log("🏭 === PROCESSING WAREHOUSE STATISTICS ===")
+    console.log("Input data:", { products: products.length, movements: movements.length })
 
     // Process products by category
     const categoryStats = {}
@@ -546,21 +702,40 @@ export default function StatisticsPage() {
       }
     })
 
-    // Process movements by type
+    console.log("Products processed:", {
+      categories: Object.keys(categoryStats).length,
+      brands: Object.keys(brandStats).length,
+    })
+
+    // Process movements by type - CON LOGGING DETALLADO
+    // Process movements by type - CORREGIDO PARA ESPAÑOL
     const movementTypes = {
-      entry: { name: "Entradas", value: 0, color: "#10B981" },
-      exit: { name: "Salidas", value: 0, color: "#EF4444" },
-      adjustment: { name: "Ajustes", value: 0, color: "#F59E0B" },
-      transfer: { name: "Transferencias", value: 0, color: "#8B5CF6" },
+      entrada: { name: "Entradas", value: 0, color: "#10B981" },
+      salida: { name: "Salidas", value: 0, color: "#EF4444" },
+      ajuste: { name: "Ajustes", value: 0, color: "#F59E0B" },
+      transferencia: { name: "Transferencias", value: 0, color: "#8B5CF6" },
     }
 
-    movements.forEach((movement) => {
-      if (movementTypes[movement.movement_type]) {
-        movementTypes[movement.movement_type].value++
+    console.log("Processing movements by type...")
+    movements.forEach((movement, index) => {
+      const movementType = movement.movement_type
+      console.log(`Movement ${index + 1}:`, {
+        type: movementType,
+        date: movement.created_at || movement.movement_date,
+        product: movement.products?.name || movement.product_id,
+      })
+
+      if (movementTypes[movementType]) {
+        movementTypes[movementType].value++
+        console.log(`✅ Incremented ${movementType} to ${movementTypes[movementType].value}`)
+      } else {
+        console.log(`❌ Unknown movement type: ${movementType}`)
       }
     })
 
-    // Process movements by month (last 6 months)
+    console.log("Final movement types:", movementTypes)
+
+    // Process movements by month (last 6 months) - CON LOGGING DETALLADO
     const now = new Date()
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -575,30 +750,61 @@ export default function StatisticsPage() {
       })
     }
 
-    movements.forEach((movement) => {
+    console.log("Processing movements by month...")
+    console.log(
+      "Target months:",
+      months.map((m) => `${m.name} (${m.month}/${m.year})`),
+    )
+
+    movements.forEach((movement, index) => {
       const movDate = new Date(movement.movement_date || movement.created_at)
       const monthData = months.find((m) => m.month === movDate.getMonth() && m.year === movDate.getFullYear())
+
+      console.log(`Movement ${index + 1}:`, {
+        date: movDate.toISOString().split("T")[0],
+        month: movDate.getMonth(),
+        year: movDate.getFullYear(),
+        type: movement.movement_type,
+        matchedMonth: monthData?.name || "NO MATCH",
+      })
+
       if (monthData) {
-        if (movement.movement_type === "entry") monthData.entries++
-        else if (movement.movement_type === "exit") monthData.exits++
-        else if (movement.movement_type === "adjustment") monthData.adjustments++
+        if (movement.movement_type === "entrada") {
+          monthData.entries++
+          console.log(`✅ Entry added to ${monthData.name}: ${monthData.entries}`)
+        } else if (movement.movement_type === "salida") {
+          monthData.exits++
+          console.log(`✅ Exit added to ${monthData.name}: ${monthData.exits}`)
+        } else if (movement.movement_type === "ajuste") {
+          monthData.adjustments++
+          console.log(`✅ Adjustment added to ${monthData.name}: ${monthData.adjustments}`)
+        }
       }
     })
 
-    // Top products by movement frequency
+    console.log("Final movements by month:", months)
+
+    // Top products by movement frequency - CON LOGGING DETALLADO
     const productMovements = {}
-    movements.forEach((movement) => {
-      const productName = movement.products?.name || "Producto Desconocido"
+    console.log("Processing top products...")
+    movements.forEach((movement, index) => {
+      const productName = movement.products?.name || `Producto ID: ${movement.product_id || "Desconocido"}`
+      console.log(`Movement ${index + 1}: product = ${productName}`)
+
       if (!productMovements[productName]) {
         productMovements[productName] = 0
       }
       productMovements[productName]++
     })
 
+    console.log("Product movements summary:", productMovements)
+
     const topProducts = Object.entries(productMovements)
       .map(([name, count]) => ({ name, value: count }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
+
+    console.log("Final top products:", topProducts)
 
     const result = {
       productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
@@ -615,7 +821,15 @@ export default function StatisticsPage() {
       topProducts,
     }
 
-    console.log("Final warehouse stats:", result.inventoryValue)
+    console.log("🏭 === WAREHOUSE STATISTICS PROCESSING COMPLETE ===")
+    console.log("Final result summary:", {
+      categories: result.productsByCategory.length,
+      brands: result.productsByBrand.length,
+      movementTypes: result.movementsByType.length,
+      monthsWithData: result.movementsByMonth.filter((m) => m.entries + m.exits + m.adjustments > 0).length,
+      topProducts: result.topProducts.length,
+    })
+
     return result
   }
 
@@ -785,16 +999,18 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Charts Grid Modernos */}
+      {/* Charts Grid Modernos con Animaciones */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos por Departamento */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-blue-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <PieChart className="h-5 w-5 text-blue-600" />
+              </div>
               Documentos por Departamento
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm opacity-70">
               Distribución de documentos por departamento
               {!selectedCompany && " (con información de empresa)"}
             </CardDescription>
@@ -803,31 +1019,44 @@ export default function StatisticsPage() {
             {stats.documentsByDepartment.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
+                  {renderGradients()}
                   <Pie
                     data={stats.documentsByDepartment}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={90}
+                    outerRadius={85}
+                    innerRadius={25}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    stroke="#fff"
+                    animationBegin={0}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
+                    label={({ name, percent }) => (percent > 5 ? `${name}: ${(percent * 100).toFixed(0)}%` : "")}
+                    stroke="rgba(255,255,255,0.8)"
                     strokeWidth={2}
+                    filter="url(#dropshadow)"
                   >
                     {stats.documentsByDepartment.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={`url(#pieGradient${(index % 6) + 1})`}
+                        className="hover:opacity-80 transition-opacity duration-300"
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<DepartmentTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <PieChart className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -835,43 +1064,61 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Documentos por Estado */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-green-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-green-50/30 dark:from-gray-900 dark:to-green-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <BarChart3 className="h-5 w-5 text-green-600" />
+              </div>
               Documentos por Estado
             </CardTitle>
-            <CardDescription>Distribución de documentos por estado</CardDescription>
+            <CardDescription className="text-sm opacity-70">Distribución de documentos por estado</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {stats.documentsByStatus.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
+                  {renderGradients()}
                   <Pie
                     data={stats.documentsByStatus}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={90}
+                    outerRadius={85}
+                    innerRadius={25}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    stroke="#fff"
+                    animationBegin={200}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
+                    label={({ name, percent }) => (percent > 8 ? `${(percent * 100).toFixed(0)}%` : "")}
+                    stroke="rgba(255,255,255,0.8)"
                     strokeWidth={2}
+                    filter="url(#dropshadow)"
                   >
                     {stats.documentsByStatus.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        className="hover:opacity-80 transition-opacity duration-300"
+                        style={{
+                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.1))",
+                        }}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <BarChart3 className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -879,29 +1126,46 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Documentos por Mes */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-purple-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
               Documentos por Mes
             </CardTitle>
-            <CardDescription>Documentos creados en los últimos 6 meses</CardDescription>
+            <CardDescription className="text-sm opacity-70">Documentos creados en los últimos 6 meses</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.documentsByMonth}>
+              <AreaChart data={stats.documentsByMonth} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 {renderGradients()}
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                  stroke="rgba(148, 163, 184, 0.5)"
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                  stroke="rgba(148, 163, 184, 0.5)"
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#3B82F6"
+                  stroke="#8B5CF6"
                   strokeWidth={3}
                   fill="url(#colorDocuments)"
                   name="Documentos"
+                  animationDuration={1500}
+                  animationEasing="ease-out"
+                  filter="url(#glow)"
+                  dot={{ fill: "#8B5CF6", strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: "#8B5CF6", strokeWidth: 2, fill: "#fff" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -909,13 +1173,15 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Movimientos por Departamento */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-orange-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+              </div>
               Movimientos por Departamento
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm opacity-70">
               Distribución de movimientos por departamento destino
               {!selectedCompany && " (con información de empresa)"}
             </CardDescription>
@@ -923,24 +1189,57 @@ export default function StatisticsPage() {
           <CardContent className="h-80">
             {stats.movementsByDepartment.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.movementsByDepartment} layout="vertical">
+                <BarChart
+                  data={stats.movementsByDepartment}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   {renderGradients()}
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} stroke="#6b7280" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    stroke="rgba(148, 163, 184, 0.5)"
+                    tickLine={false}
+                  />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={100}
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    stroke="rgba(148, 163, 184, 0.5)"
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip content={<DepartmentTooltip />} />
-                  <Bar dataKey="value" name="Movimientos" radius={[0, 4, 4, 0]} fill="url(#barGradient)">
+                  <Bar
+                    dataKey="value"
+                    name="Movimientos"
+                    radius={[0, 8, 8, 0]}
+                    animationDuration={1000}
+                    animationEasing="ease-out"
+                  >
                     {stats.movementsByDepartment.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        className="hover:opacity-80 transition-opacity duration-300"
+                        style={{
+                          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+                        }}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <ArrowRightLeft className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <ArrowRightLeft className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -948,46 +1247,64 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Warehouse Charts Grid */}
+      {/* Warehouse Charts Grid Mejorados */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Products by Category */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-emerald-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-emerald-50/30 dark:from-gray-900 dark:to-emerald-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <Package className="h-5 w-5 text-emerald-600" />
+              </div>
               Productos por Categoría
             </CardTitle>
-            <CardDescription>Distribución de productos por categoría</CardDescription>
+            <CardDescription className="text-sm opacity-70">Distribución de productos por categoría</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {warehouseStats.productsByCategory.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
+                  {renderGradients()}
                   <Pie
                     data={warehouseStats.productsByCategory}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={90}
+                    outerRadius={85}
+                    innerRadius={25}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    stroke="#fff"
+                    animationBegin={400}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
+                    label={({ name, percent }) => (percent > 5 ? `${name}: ${(percent * 100).toFixed(0)}%` : "")}
+                    stroke="rgba(255,255,255,0.8)"
                     strokeWidth={2}
+                    filter="url(#dropshadow)"
                   >
                     {warehouseStats.productsByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        className="hover:opacity-80 transition-opacity duration-300"
+                        style={{
+                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.1))",
+                        }}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <Package className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -995,43 +1312,61 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Movements by Type */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+              </div>
               Movimientos por Tipo
             </CardTitle>
-            <CardDescription>Distribución de movimientos de inventario</CardDescription>
+            <CardDescription className="text-sm opacity-70">Distribución de movimientos de inventario</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {warehouseStats.movementsByType.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
+                  {renderGradients()}
                   <Pie
                     data={warehouseStats.movementsByType}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={90}
+                    outerRadius={85}
+                    innerRadius={25}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    stroke="#fff"
+                    animationBegin={600}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
+                    label={({ name, percent }) => (percent > 8 ? `${(percent * 100).toFixed(0)}%` : "")}
+                    stroke="rgba(255,255,255,0.8)"
                     strokeWidth={2}
+                    filter="url(#dropshadow)"
                   >
                     {warehouseStats.movementsByType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        className="hover:opacity-80 transition-opacity duration-300"
+                        style={{
+                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.1))",
+                        }}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                 </RechartsPieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <ArrowRightLeft className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <ArrowRightLeft className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -1039,57 +1374,133 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Inventory Movements by Month */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-purple-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-purple-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="h-5 w-5 text-purple-600" />
+              </div>
               Movimientos por Mes
             </CardTitle>
-            <CardDescription>Movimientos de inventario en los últimos 6 meses</CardDescription>
+            <CardDescription className="text-sm opacity-70">
+              Movimientos de inventario en los últimos 6 meses
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={warehouseStats.movementsByMonth}>
+              <BarChart data={warehouseStats.movementsByMonth} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 {renderGradients()}
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                  stroke="rgba(148, 163, 184, 0.5)"
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#64748b" }}
+                  stroke="rgba(148, 163, 184, 0.5)"
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Bar dataKey="entries" name="Entradas" fill="#10B981" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="exits" name="Salidas" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="adjustments" name="Ajustes" fill="#F59E0B" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="entries"
+                  name="Entradas"
+                  fill="#10B981"
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
+                  style={{
+                    filter: "drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2))",
+                  }}
+                />
+                <Bar
+                  dataKey="exits"
+                  name="Salidas"
+                  fill="#EF4444"
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
+                  style={{
+                    filter: "drop-shadow(0 2px 4px rgba(239, 68, 68, 0.2))",
+                  }}
+                />
+                <Bar
+                  dataKey="adjustments"
+                  name="Ajustes"
+                  fill="#F59E0B"
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={1400}
+                  animationEasing="ease-out"
+                  style={{
+                    filter: "drop-shadow(0 2px 4px rgba(245, 158, 11, 0.2))",
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         {/* Top Products by Movement */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-orange-600" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-orange-950/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-orange-600" />
+              </div>
               Productos Más Movidos
             </CardTitle>
-            <CardDescription>Top 10 productos con más movimientos</CardDescription>
+            <CardDescription className="text-sm opacity-70">Top 10 productos con más movimientos</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {warehouseStats.topProducts.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={warehouseStats.topProducts} layout="vertical">
+                <BarChart
+                  data={warehouseStats.topProducts}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   {renderGradients()}
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#6b7280" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} stroke="#6b7280" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    stroke="rgba(148, 163, 184, 0.5)"
+                    tickLine={false}
+                  />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={120}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    stroke="rgba(148, 163, 184, 0.5)"
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" name="Movimientos" radius={[0, 4, 4, 0]} fill="url(#barGradient)" />
+                  <Bar
+                    dataKey="value"
+                    name="Movimientos"
+                    fill="url(#barGradient)"
+                    radius={[0, 8, 8, 0]}
+                    animationDuration={1600}
+                    animationEasing="ease-out"
+                    style={{
+                      filter: "drop-shadow(0 2px 4px rgba(139, 92, 246, 0.2))",
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos disponibles</p>
+                <div className="text-center space-y-3">
+                  <div className="relative">
+                    <TrendingUp className="h-16 w-16 mx-auto opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-yellow-400/20 rounded-full blur-xl"></div>
+                  </div>
+                  <p className="text-sm">No hay datos disponibles</p>
                 </div>
               </div>
             )}
@@ -1097,38 +1508,72 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Low Stock Alert */}
+      {/* Low Stock Alert Mejorado */}
       {warehouseStats.lowStockProducts.length > 0 && (
-        <Card className="hover:shadow-lg transition-shadow duration-300 border-red-200 dark:border-red-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-red-50/50 to-orange-50/30 dark:from-red-950/20 dark:to-orange-950/20 border-red-200/50 dark:border-red-800/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg text-red-600">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <AlertTriangle className="h-5 w-5 animate-pulse" />
+              </div>
               Productos con Stock Bajo
             </CardTitle>
-            <CardDescription>Productos que requieren reposición urgente</CardDescription>
+            <CardDescription className="text-sm opacity-70">Productos que requieren reposición urgente</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {warehouseStats.lowStockProducts.map((product, index) => (
                 <div
                   key={index}
-                  className="p-4 border rounded-lg bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                  className="group/item p-4 border rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200 dark:border-red-800 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                  style={{
+                    animationDelay: `${index * 100}ms`,
+                    animation: "fadeInUp 0.6s ease-out forwards",
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-sm">{product.name}</h4>
-                    <span className="text-xs text-muted-foreground">{product.code}</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 group-hover/item:text-red-600 transition-colors duration-300">
+                      {product.name}
+                    </h4>
+                    <span className="text-xs text-muted-foreground bg-white/50 dark:bg-gray-800/50 px-2 py-1 rounded-md">
+                      {product.code}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-red-600">Stock: {product.current}</span>
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-red-600 font-medium">Stock: {product.current}</span>
                     <span className="text-muted-foreground">Mín: {product.minimum}</span>
                   </div>
-                  <div className="mt-1 text-xs text-red-600 font-medium">Faltan: {product.difference} unidades</div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-red-100 dark:bg-red-900/30 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-1000 ease-out"
+                        style={{
+                          width: `${Math.max(10, (product.current / product.minimum) * 100)}%`,
+                          animationDelay: `${index * 200}ms`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-red-600 font-bold">Faltan: {product.difference}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
