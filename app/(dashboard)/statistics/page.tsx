@@ -291,33 +291,57 @@ export default function StatisticsPage() {
       }
       console.log("Products found:", products?.length || 0)
 
-      // Obtener movimientos de inventario (con manejo de errores)
+      // CORREGIR: Obtener movimientos de inventario correctamente
       let inventoryMovements: any[] = []
       try {
+        console.log("Fetching inventory movements...")
+
+        // Primero intentar con la consulta completa
         let inventoryMovementsQuery = supabase
           .from("inventory_movements")
           .select(`
-          id, movement_type, quantity, total_amount, movement_date, created_at, company_id,
-          products (name, code)
-        `)
+            id, movement_type, quantity, total_amount, movement_date, created_at, company_id, product_id,
+            products!inventory_movements_product_id_fkey (name, code)
+          `)
           .order("created_at", { ascending: false })
-          .limit(1000)
 
         if (selectedCompany) {
           inventoryMovementsQuery = inventoryMovementsQuery.eq("company_id", selectedCompany.id)
         }
 
         const { data: inventoryMovementsData, error: movementsError } = await inventoryMovementsQuery
+
         if (movementsError) {
-          console.warn("Error fetching inventory movements (continuing without them):", movementsError)
-          // Continue without inventory movements data
+          console.warn("Error with full inventory movements query:", movementsError)
+
+          // Intentar consulta más simple si falla la completa
+          console.log("Trying simple inventory movements query...")
+          let simpleQuery = supabase.from("inventory_movements").select("*").order("created_at", { ascending: false })
+
+          if (selectedCompany) {
+            simpleQuery = simpleQuery.eq("company_id", selectedCompany.id)
+          }
+
+          const { data: simpleMovements, error: simpleError } = await simpleQuery
+
+          if (simpleError) {
+            console.warn("Simple inventory movements query also failed:", simpleError)
+            inventoryMovements = []
+          } else {
+            inventoryMovements = simpleMovements || []
+            console.log("Using simple inventory movements query, found:", inventoryMovements.length)
+          }
         } else {
           inventoryMovements = inventoryMovementsData || []
+          console.log("Full inventory movements query successful, found:", inventoryMovements.length)
         }
       } catch (error) {
         console.warn("Failed to fetch inventory movements, continuing without them:", error)
+        inventoryMovements = []
       }
-      console.log("Inventory movements found:", inventoryMovements.length)
+
+      console.log("Final inventory movements count:", inventoryMovements.length)
+      console.log("Sample inventory movement:", inventoryMovements[0])
 
       console.log("=== PROCESSING STATISTICS ===")
 
@@ -546,7 +570,7 @@ export default function StatisticsPage() {
       }
     })
 
-    // Process movements by type
+    // Process movements by type - CORREGIDO CON LOGGING
     const movementTypes = {
       entry: { name: "Entradas", value: 0, color: "#10B981" },
       exit: { name: "Salidas", value: 0, color: "#EF4444" },
@@ -554,13 +578,22 @@ export default function StatisticsPage() {
       transfer: { name: "Transferencias", value: 0, color: "#8B5CF6" },
     }
 
-    movements.forEach((movement) => {
-      if (movementTypes[movement.movement_type]) {
-        movementTypes[movement.movement_type].value++
+    console.log("Processing movements by type. Total movements:", movements.length)
+    movements.forEach((movement, index) => {
+      const movementType = movement.movement_type
+      console.log(`Movement ${index + 1}: type = ${movementType}`)
+
+      if (movementTypes[movementType]) {
+        movementTypes[movementType].value++
+        console.log(`Incremented ${movementType} to ${movementTypes[movementType].value}`)
+      } else {
+        console.log(`Unknown movement type: ${movementType}`)
       }
     })
 
-    // Process movements by month (last 6 months)
+    console.log("Final movement types:", movementTypes)
+
+    // Process movements by month (last 6 months) - CORREGIDO CON LOGGING
     const now = new Date()
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -575,30 +608,56 @@ export default function StatisticsPage() {
       })
     }
 
-    movements.forEach((movement) => {
+    console.log(
+      "Processing movements by month. Months:",
+      months.map((m) => m.name),
+    )
+    movements.forEach((movement, index) => {
       const movDate = new Date(movement.movement_date || movement.created_at)
       const monthData = months.find((m) => m.month === movDate.getMonth() && m.year === movDate.getFullYear())
+
+      console.log(`Movement ${index + 1}: date = ${movDate.toISOString()}, type = ${movement.movement_type}`)
+
       if (monthData) {
-        if (movement.movement_type === "entry") monthData.entries++
-        else if (movement.movement_type === "exit") monthData.exits++
-        else if (movement.movement_type === "adjustment") monthData.adjustments++
+        console.log(`Found matching month: ${monthData.name}`)
+        if (movement.movement_type === "entry") {
+          monthData.entries++
+          console.log(`Incremented entries for ${monthData.name} to ${monthData.entries}`)
+        } else if (movement.movement_type === "exit") {
+          monthData.exits++
+          console.log(`Incremented exits for ${monthData.name} to ${monthData.exits}`)
+        } else if (movement.movement_type === "adjustment") {
+          monthData.adjustments++
+          console.log(`Incremented adjustments for ${monthData.name} to ${monthData.adjustments}`)
+        }
+      } else {
+        console.log(`No matching month found for date: ${movDate.toISOString()}`)
       }
     })
 
-    // Top products by movement frequency
+    console.log("Final movements by month:", months)
+
+    // Top products by movement frequency - CORREGIDO CON LOGGING
     const productMovements = {}
-    movements.forEach((movement) => {
-      const productName = movement.products?.name || "Producto Desconocido"
+    console.log("Processing top products...")
+    movements.forEach((movement, index) => {
+      const productName = movement.products?.name || `Producto ID: ${movement.product_id || "Desconocido"}`
+      console.log(`Movement ${index + 1}: product = ${productName}`)
+
       if (!productMovements[productName]) {
         productMovements[productName] = 0
       }
       productMovements[productName]++
     })
 
+    console.log("Product movements:", productMovements)
+
     const topProducts = Object.entries(productMovements)
       .map(([name, count]) => ({ name, value: count }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
+
+    console.log("Final top products:", topProducts)
 
     const result = {
       productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
