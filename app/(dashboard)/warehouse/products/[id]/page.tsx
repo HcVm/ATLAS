@@ -39,15 +39,25 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (params.id && user?.company_id) {
+    const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+
+    if (params.id && companyId) {
       fetchProduct()
     }
-  }, [params.id, user?.company_id])
+  }, [params.id, user?.company_id, user?.selectedCompanyId, user?.role])
 
   const fetchProduct = async () => {
     try {
       setLoading(true)
       setError(null)
+
+      // Determinar el company_id correcto
+      const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+
+      if (!companyId) {
+        setError("No se pudo determinar la empresa")
+        return
+      }
 
       const { data, error } = await supabase
         .from("products")
@@ -57,7 +67,7 @@ export default function ProductDetailPage() {
           product_categories!products_category_id_fkey (id, name, color)
         `)
         .eq("id", params.id)
-        .eq("company_id", user?.company_id)
+        .eq("company_id", companyId)
         .single()
 
       if (error) {

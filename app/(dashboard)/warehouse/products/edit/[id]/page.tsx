@@ -76,22 +76,32 @@ export default function EditProductPage() {
   })
 
   useEffect(() => {
-    if (params.id && user?.company_id) {
+    const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+
+    if (params.id && companyId) {
       fetchData()
     }
-  }, [params.id, user?.company_id])
+  }, [params.id, user?.company_id, user?.selectedCompanyId, user?.role])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       setError(null)
 
+      // Determinar el company_id correcto
+      const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+
+      if (!companyId) {
+        setError("No se pudo determinar la empresa")
+        return
+      }
+
       // Obtener producto
       const { data: productData, error: productError } = await supabase
         .from("products")
         .select("*")
         .eq("id", params.id)
-        .eq("company_id", user?.company_id)
+        .eq("company_id", companyId)
         .single()
 
       if (productError) {
@@ -107,7 +117,7 @@ export default function EditProductPage() {
       const { data: brandsData, error: brandsError } = await supabase
         .from("brands")
         .select("id, name, color")
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("name")
 
       if (brandsError) throw brandsError
@@ -116,7 +126,7 @@ export default function EditProductPage() {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("product_categories")
         .select("id, name, color")
-        .eq("company_id", user.company_id)
+        .eq("company_id", companyId)
         .order("name")
 
       if (categoriesError) throw categoriesError
@@ -164,6 +174,18 @@ export default function EditProductPage() {
     try {
       setSaving(true)
 
+      // Determinar el company_id correcto
+      const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
+
+      if (!companyId) {
+        toast({
+          title: "Error",
+          description: "No se pudo determinar la empresa",
+          variant: "destructive",
+        })
+        return
+      }
+
       const updateData = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -185,7 +207,7 @@ export default function EditProductPage() {
         .from("products")
         .update(updateData)
         .eq("id", params.id)
-        .eq("company_id", user?.company_id)
+        .eq("company_id", companyId)
 
       if (error) throw error
 
