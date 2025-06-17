@@ -338,7 +338,7 @@ export default function MovementsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
             {STANDARD_DEPARTMENTS.map((department) => (
               <DepartmentBadge key={`legend-${department.id}`} department={department} />
             ))}
