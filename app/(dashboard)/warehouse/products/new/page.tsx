@@ -74,15 +74,22 @@ export default function NewProductPage() {
 
   useEffect(() => {
     if (user?.company_id) {
+      console.log("User company_id:", user.company_id)
       fetchData()
+    } else {
+      console.log("No company_id found, user:", user)
     }
-  }, [user?.company_id])
+  }, [user]) // Updated to use the entire user object
 
   const fetchData = async () => {
-    if (!user?.company_id) return
+    if (!user?.company_id) {
+      console.log("No company_id available")
+      return
+    }
 
     try {
       setLoading(true)
+      console.log("Fetching data for company:", user.company_id)
 
       // Obtener marcas
       const { data: brandsData, error: brandsError } = await supabase
@@ -91,7 +98,12 @@ export default function NewProductPage() {
         .eq("company_id", user.company_id)
         .order("name")
 
-      if (brandsError) throw brandsError
+      console.log("Brands query result:", { brandsData, brandsError })
+
+      if (brandsError) {
+        console.error("Brands error:", brandsError)
+        throw brandsError
+      }
 
       // Obtener categorías
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -100,10 +112,16 @@ export default function NewProductPage() {
         .eq("company_id", user.company_id)
         .order("name")
 
-      if (categoriesError) throw categoriesError
+      console.log("Categories query result:", { categoriesData, categoriesError })
+
+      if (categoriesError) {
+        console.error("Categories error:", categoriesError)
+        throw categoriesError
+      }
 
       setBrands(brandsData || [])
       setCategories(categoriesData || [])
+      console.log("Set brands:", brandsData?.length || 0, "categories:", categoriesData?.length || 0)
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
@@ -329,6 +347,11 @@ export default function NewProductPage() {
                           </SelectItem>
                         ))}
                       </SelectContent>
+                      {brands.length === 0 && !loading && (
+                        <p className="text-sm text-muted-foreground">
+                          No hay marcas disponibles para esta empresa. Company ID: {user?.company_id}
+                        </p>
+                      )}
                     </Select>
                   </div>
                   <div className="space-y-2">

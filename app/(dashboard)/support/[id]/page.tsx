@@ -173,8 +173,7 @@ export default function SupportTicketDetailPage() {
       setLoading(true)
 
       // Verificar permisos simples
-      setCanManageTicket(user?.role === "admin" || user?.departments?.name === "Tecnología")
-
+      // setCanManageTicket(user?.role === "admin" || user?.departments?.name === "Tecnología")
       // Fetch ticket
       const { data: ticketData, error: ticketError } = await supabase
         .from("support_tickets")
@@ -202,6 +201,11 @@ export default function SupportTicketDetailPage() {
       setTicket(ticketData)
       setNewStatus(ticketData.status)
       setAssigningTo(ticketData.assigned_to || "none")
+
+      // Verificar permisos simples
+      setCanManageTicket(
+        (user?.role === "admin" || user?.departments?.name === "Tecnología") && ticketData.status !== "closed",
+      )
 
       // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
@@ -284,7 +288,7 @@ export default function SupportTicketDetailPage() {
   }
 
   const handleStatusUpdate = async () => {
-    if (ticket.status === "closed") {
+    if (!ticket || !canManageTicket || ticket.status === "closed") {
       toast.error("No se puede modificar un ticket cerrado")
       return
     }
@@ -623,18 +627,20 @@ export default function SupportTicketDetailPage() {
                     </Badge>
                   </div>
 
-                  {canManageTicket && ticket.status !== "closed" && (
+                  {canManageTicket && (
                     <Button size="sm" variant="outline" onClick={() => setEditingStatus(true)} className="w-full">
                       <Edit className="h-4 w-4 mr-2" />
                       Gestionar Ticket
                     </Button>
                   )}
 
-                  {canManageTicket && ticket.status === "closed" && (
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">Este ticket está cerrado y no se puede editar</p>
-                    </div>
-                  )}
+                  {(user?.role === "admin" || user?.departments?.name === "Tecnología") &&
+                    ticket.status === "closed" && (
+                      <div className="text-center p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600 font-medium">🔒 Ticket Cerrado</p>
+                        <p className="text-xs text-red-500 mt-1">Este ticket no se puede modificar</p>
+                      </div>
+                    )}
 
                   {!canManageTicket && (
                     <p className="text-xs text-muted-foreground">
