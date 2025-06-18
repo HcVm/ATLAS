@@ -54,6 +54,36 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "No se puede modificar un ticket cerrado" }, { status: 403 })
     }
 
+    // Verificar permisos del usuario que intenta hacer el cambio
+    if (updated_by) {
+      const { data: userProfile, error: userError } = await supabase
+        .from("profiles")
+        .select(`
+          role,
+          departments!profiles_department_id_fkey (
+            name
+          )
+        `)
+        .eq("id", updated_by)
+        .single()
+
+      if (userError || !userProfile) {
+        return NextResponse.json({ error: "Usuario no autorizado" }, { status: 403 })
+      }
+
+      // Solo admin y tecnología pueden cambiar estado
+      const canManage = userProfile.role === "admin" || userProfile.departments?.name === "Tecnología"
+
+      if (!canManage) {
+        return NextResponse.json(
+          {
+            error: "Solo administradores y personal de tecnología pueden gestionar tickets",
+          },
+          { status: 403 },
+        )
+      }
+    }
+
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }

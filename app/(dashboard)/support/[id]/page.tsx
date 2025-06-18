@@ -203,9 +203,9 @@ export default function SupportTicketDetailPage() {
       setAssigningTo(ticketData.assigned_to || "none")
 
       // Verificar permisos simples
-      setCanManageTicket(
-        (user?.role === "admin" || user?.departments?.name === "Tecnología") && ticketData.status !== "closed",
-      )
+      const canManage =
+        (user?.role === "admin" || user?.departments?.name === "Tecnología") && ticketData.status !== "closed"
+      setCanManageTicket(canManage)
 
       // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
@@ -642,11 +642,20 @@ export default function SupportTicketDetailPage() {
                       </div>
                     )}
 
-                  {!canManageTicket && (
-                    <p className="text-xs text-muted-foreground">
-                      Solo el personal de Tecnología puede gestionar tickets
-                    </p>
+                  {user?.role !== "admin" && user?.departments?.name !== "Tecnología" && (
+                    <div className="text-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-600 font-medium">👁️ Solo Lectura</p>
+                      <p className="text-xs text-blue-500 mt-1">Puedes ver detalles y agregar comentarios</p>
+                    </div>
                   )}
+
+                  {!canManageTicket &&
+                    (user?.role === "admin" || user?.departments?.name === "Tecnología") &&
+                    ticket.status !== "closed" && (
+                      <p className="text-xs text-muted-foreground">
+                        Solo el personal de Tecnología puede gestionar tickets
+                      </p>
+                    )}
                 </div>
               )}
             </CardContent>
