@@ -1,7 +1,6 @@
 "use client"
 
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 
 import { useState, useEffect } from "react"
 import { Plus, Search, Building2, Edit, Trash2, Users } from "lucide-react"
@@ -52,7 +51,7 @@ export default function DepartmentsPage() {
 
       let query = supabase.from("departments").select(`
         *,
-        companies!inner(
+        companies(
           id,
           name,
           code
@@ -67,6 +66,17 @@ export default function DepartmentsPage() {
       const { data: departmentsData, error: deptError } = await query.order("name")
 
       if (deptError) throw deptError
+
+      console.log(
+        "Departments with companies:",
+        departmentsData?.map((d) => ({
+          name: d.name,
+          hasCompanies: !!d.companies,
+          companyName: d.companies?.name,
+        })),
+      )
+      console.log("Departments data:", departmentsData)
+      console.log("Sample department:", departmentsData?.[0])
 
       // Then get user counts for each department
       const departmentsWithCounts = await Promise.all(
@@ -249,9 +259,7 @@ export default function DepartmentsPage() {
                     <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Departamento</TableHead>
                       {selectedCompany?.code === "general" && (
-                        <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
-                          Empresa
-                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Empresa</TableHead>
                       )}
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
                         Descripción
@@ -289,15 +297,14 @@ export default function DepartmentsPage() {
                                 <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
                                   {dept.name}
                                 </div>
-                                {/* Show company badge only in general view */}
-                                {selectedCompany?.code === "general" && dept.companies && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-purple-100"
-                                  >
-                                    {dept.companies.name}
-                                  </Badge>
-                                )}
+                                {/* Show company badge only in general view and not for "Sin empresa" department */}
+                                {selectedCompany?.code === "general" &&
+                                  dept.name !== "Sin empresa" &&
+                                  dept.companies && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                      {dept.companies.name || dept.companies.code || "Sin empresa"}
+                                    </span>
+                                  )}
                               </div>
                               <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
                                 {dept.description || "Sin descripción"}
@@ -306,14 +313,18 @@ export default function DepartmentsPage() {
                           </div>
                         </TableCell>
                         {selectedCompany?.code === "general" && (
-                          <TableCell className="hidden lg:table-cell p-2 sm:p-4">
+                          <TableCell className="p-2 sm:p-4">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100">
                                 <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                               </div>
-                              <div>
-                                <div className="font-medium text-gray-900 text-sm">{dept.companies?.name}</div>
-                                <div className="text-xs text-muted-foreground">{dept.companies?.code}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-gray-900 text-sm truncate">
+                                  {dept.companies?.name || "Sin empresa"}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {dept.companies?.code || "N/A"}
+                                </div>
                               </div>
                             </div>
                           </TableCell>
