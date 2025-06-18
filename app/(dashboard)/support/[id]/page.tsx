@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -75,6 +76,8 @@ interface TechUser {
   full_name: string
   email: string
   avatar_url?: string
+  role?: string
+  department_name?: string
 }
 
 const statusConfig = {
@@ -104,6 +107,7 @@ export default function SupportTicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [ticket, setTicket] = useState<SupportTicket | null>(null)
   const [comments, setComments] = useState<SupportComment[]>([])
   const [attachments, setAttachments] = useState<SupportAttachment[]>([])
@@ -122,44 +126,94 @@ export default function SupportTicketDetailPage() {
   useEffect(() => {
     if (user && ticketId) {
       fetchTicketDetails()
-      fetchTechUsers()
     }
   }, [user, ticketId])
 
+  useEffect(() => {
+    if (user && (selectedCompany || user.company_id)) {
+      fetchTechUsers()
+    }
+  }, [user, selectedCompany])
+
   const fetchTechUsers = async () => {
-    if (!user?.company_id) return
+    const companyId = selectedCompany?.id || user?.company_id
+    if (!companyId) {
+      console.log("No company ID available for fetching tech users")
+      return
+    }
 
     try {
-      // Intentar función RPC simple
-      const { data: rpcData, error: rpcError } = await supabase.rpc("get_tech_users_simple", {
-        company_uuid: user.company_id,
-      })
+      console.log("🔍 Fetching tech users for company:", companyId)
+      setTechUsers([]) // Reset
 
-      if (!rpcError && rpcData) {
-        setTechUsers(rpcData)
+      // Consulta directa más simple y robusta
+      const { data: allUsers, error: usersError } = await supabase
+        .from("profiles")
+        .select(`
+          id, 
+          full_name, 
+          email, 
+          avatar_url, 
+          role,
+          department_id,
+          departments!profiles_department_id_fkey (
+            id,
+            name
+          )
+        `)
+        .eq("company_id", companyId)
+
+      if (usersError) {
+        console.error("❌ Error fetching users:", usersError)
         return
       }
 
-      // Fallback a consulta directa
-      const { data: directData, error: directError } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, avatar_url, role, department_id")
-        .eq("company_id", user.company_id)
+      console.log("📊 All users found:", allUsers?.length || 0)
+      console.log("👥 Users data:", allUsers)
 
-      if (!directError && directData) {
-        // Filtrar usuarios admin o de tecnología
-        const techUsers = directData.filter((u) => u.role === "admin")
-        setTechUsers(
-          techUsers.map((u) => ({
-            id: u.id,
-            full_name: u.full_name || u.email,
-            email: u.email,
-            avatar_url: u.avatar_url,
-          })),
-        )
+      if (!allUsers || allUsers.length === 0) {
+        console.log("⚠️ No users found for company")
+        toast.error("No se encontraron usuarios en la empresa")
+        return
+      }
+
+      // Filtrar usuarios técnicos
+      const techUsers = allUsers.filter((user) => {
+        const isAdmin = user.role === "admin"
+        const isTech = user.departments?.name === "Tecnología"
+
+        console.log(`👤 ${user.full_name || user.email}:`, {
+          role: user.role,
+          department: user.departments?.name,
+          isAdmin,
+          isTech,
+          qualifies: isAdmin || isTech,
+        })
+
+        return isAdmin || isTech
+      })
+
+      console.log("🔧 Tech users filtered:", techUsers.length)
+
+      const formattedUsers: TechUser[] = techUsers.map((user) => ({
+        id: user.id,
+        full_name: user.full_name || user.email,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        role: user.role,
+        department_name: user.departments?.name,
+      }))
+
+      console.log("✅ Final tech users:", formattedUsers)
+      setTechUsers(formattedUsers)
+
+      if (formattedUsers.length === 0) {
+        toast.error("No se encontraron usuarios de tecnología en esta empresa")
       }
     } catch (error) {
-      console.error("Error fetching tech users:", error)
+      console.error("💥 Error in fetchTechUsers:", error)
+      toast.error("Error al cargar usuarios de tecnología")
+      setTechUsers([])
     }
   }
 
@@ -172,8 +226,6 @@ export default function SupportTicketDetailPage() {
     try {
       setLoading(true)
 
-      // Verificar permisos simples
-      // setCanManageTicket(user?.role === "admin" || user?.departments?.name === "Tecnología")
       // Fetch ticket
       const { data: ticketData, error: ticketError } = await supabase
         .from("support_tickets")
@@ -202,7 +254,7 @@ export default function SupportTicketDetailPage() {
       setNewStatus(ticketData.status)
       setAssigningTo(ticketData.assigned_to || "none")
 
-      // Verificar permisos simples
+      // Verificar permisos
       const canManage =
         (user?.role === "admin" || user?.departments?.name === "Tecnología") && ticketData.status !== "closed"
       setCanManageTicket(canManage)
@@ -293,29 +345,11 @@ export default function SupportTicketDetailPage() {
       return
     }
 
-    if (!ticket || !canManageTicket) return
-
     try {
       setUpdatingTicket(true)
 
       const assignedToValue = assigningTo === "none" ? null : assigningTo
 
-      // Intentar función RPC
-      const { data: rpcResult, error: rpcError } = await supabase.rpc("update_support_ticket", {
-        ticket_uuid: ticketId,
-        new_status: newStatus,
-        new_assigned_to: assignedToValue,
-        user_uuid: user?.id,
-      })
-
-      if (!rpcError && rpcResult) {
-        toast.success("Ticket actualizado correctamente")
-        setEditingStatus(false)
-        await fetchTicketDetails()
-        return
-      }
-
-      // Fallback a actualización directa
       const updateData: any = {
         status: newStatus,
         assigned_to: assignedToValue,
@@ -558,6 +592,22 @@ export default function SupportTicketDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Debug Info */}
+          {process.env.NODE_ENV === "development" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Debug Info</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs space-y-1">
+                <div>Company: {selectedCompany?.name || user?.company_id}</div>
+                <div>Tech Users: {techUsers.length}</div>
+                <div>Can Manage: {canManageTicket ? "Yes" : "No"}</div>
+                <div>User Role: {user?.role}</div>
+                <div>User Dept: {user?.departments?.name}</div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Status & Assignment */}
           <Card>
             <CardHeader>
@@ -591,11 +641,19 @@ export default function SupportTicketDetailPage() {
                         <SelectItem value="none">Sin asignar</SelectItem>
                         {techUsers.map((techUser) => (
                           <SelectItem key={techUser.id} value={techUser.id}>
-                            {techUser.full_name}
+                            <div className="flex items-center gap-2">
+                              <span>{techUser.full_name}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {techUser.role === "admin" ? "Admin" : techUser.department_name}
+                              </Badge>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {techUsers.length === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">No hay usuarios de tecnología disponibles</p>
+                    )}
                   </div>
 
                   <div className="flex gap-2">
