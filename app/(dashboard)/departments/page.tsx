@@ -51,7 +51,7 @@ export default function DepartmentsPage() {
 
       let query = supabase.from("departments").select(`
         *,
-        companies(
+        companies!inner(
           id,
           name,
           code
@@ -66,6 +66,15 @@ export default function DepartmentsPage() {
       const { data: departmentsData, error: deptError } = await query.order("name")
 
       if (deptError) throw deptError
+
+      console.log("=== DEBUG BADGES ===")
+      console.log("Selected company code:", selectedCompany?.code)
+      console.log("Is general view:", selectedCompany?.code === "general")
+      console.log("Sample department with company:", {
+        name: departmentsData?.[0]?.name,
+        hasCompanies: !!departmentsData?.[0]?.companies,
+        companyData: departmentsData?.[0]?.companies,
+      })
 
       console.log(
         "Departments with companies:",
@@ -297,13 +306,13 @@ export default function DepartmentsPage() {
                                 <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
                                   {dept.name}
                                 </div>
-                                {/* Show company badge only in general view and not for "Sin empresa" department */}
+                                {/* BADGE FORZADO - Solo en vista general y no para "Sin empresa" */}
                                 {selectedCompany?.code === "general" &&
                                   dept.name !== "Sin empresa" &&
-                                  dept.companies && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                      {dept.companies.name || dept.companies.code || "Sin empresa"}
-                                    </span>
+                                  dept.name !== "ASIGNAR" && (
+                                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200 ml-2">
+                                      {dept.companies?.name || dept.companies?.code || "Empresa"}
+                                    </div>
                                   )}
                               </div>
                               <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
