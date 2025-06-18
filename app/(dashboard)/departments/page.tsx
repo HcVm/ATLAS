@@ -1,9 +1,18 @@
 "use client"
 
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Building2, Edit, Trash2, Users } from "lucide-react"
+import { Plus, Search, Building2, Edit, Trash2, Users, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,6 +47,9 @@ export default function DepartmentsPage() {
   const router = useRouter()
   const { selectedCompany } = useCompany()
 
+  // Determinar si estamos en vista general
+  const isGeneralView = !selectedCompany || selectedCompany.code === "general" || !selectedCompany.id
+
   useEffect(() => {
     if (user && user.role === "admin") {
       fetchDepartments()
@@ -51,7 +63,7 @@ export default function DepartmentsPage() {
 
       let query = supabase.from("departments").select(`
         *,
-        companies!inner(
+        companies(
           id,
           name,
           code
@@ -59,7 +71,7 @@ export default function DepartmentsPage() {
       `)
 
       // Filter by company if a specific company is selected
-      if (currentCompanyId && selectedCompany?.code !== "general") {
+      if (currentCompanyId && !isGeneralView) {
         query = query.eq("company_id", currentCompanyId)
       }
 
@@ -68,24 +80,13 @@ export default function DepartmentsPage() {
       if (deptError) throw deptError
 
       console.log("=== DEBUG BADGES ===")
-      console.log("Selected company code:", selectedCompany?.code)
-      console.log("Is general view:", selectedCompany?.code === "general")
+      console.log("Selected company:", selectedCompany)
+      console.log("Is general view:", isGeneralView)
       console.log("Sample department with company:", {
         name: departmentsData?.[0]?.name,
         hasCompanies: !!departmentsData?.[0]?.companies,
         companyData: departmentsData?.[0]?.companies,
       })
-
-      console.log(
-        "Departments with companies:",
-        departmentsData?.map((d) => ({
-          name: d.name,
-          hasCompanies: !!d.companies,
-          companyName: d.companies?.name,
-        })),
-      )
-      console.log("Departments data:", departmentsData)
-      console.log("Sample department:", departmentsData?.[0])
 
       // Then get user counts for each department
       const departmentsWithCounts = await Promise.all(
@@ -96,7 +97,7 @@ export default function DepartmentsPage() {
             .eq("department_id", dept.id)
 
           // Also filter user count by company if specific company is selected
-          if (currentCompanyId && selectedCompany?.code !== "general") {
+          if (currentCompanyId && !isGeneralView) {
             countQuery = countQuery.eq("company_id", currentCompanyId)
           }
 
@@ -212,13 +213,44 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+      {/* Breadcrumbs */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              Dashboard
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Departamentos
+              {isGeneralView && (
+                <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                  Vista General
+                </Badge>
+              )}
+              {!isGeneralView && selectedCompany && (
+                <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                  {selectedCompany.name}
+                </Badge>
+              )}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
             Departamentos
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Gestiona todos los departamentos de la organización
+            {isGeneralView
+              ? "Gestiona todos los departamentos de todas las empresas"
+              : `Gestiona los departamentos de ${selectedCompany?.name || "la empresa seleccionada"}`}
           </p>
         </div>
         <Button
@@ -267,9 +299,6 @@ export default function DepartmentsPage() {
                   <TableHeader>
                     <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Departamento</TableHead>
-                      {selectedCompany?.code === "general" && (
-                        <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Empresa</TableHead>
-                      )}
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
                         Descripción
                       </TableHead>
@@ -306,13 +335,17 @@ export default function DepartmentsPage() {
                                 <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
                                   {dept.name}
                                 </div>
-                                {/* BADGE FORZADO - Solo en vista general y no para "Sin empresa" */}
-                                {selectedCompany?.code === "general" &&
+                                {/* BADGE DEFINITIVO - Solo en vista general y no para departamentos temporales */}
+                                {isGeneralView &&
                                   dept.name !== "Sin empresa" &&
-                                  dept.name !== "ASIGNAR" && (
-                                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200 ml-2">
-                                      {dept.companies?.name || dept.companies?.code || "Empresa"}
-                                    </div>
+                                  dept.name !== "ASIGNAR" &&
+                                  dept.companies && (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+                                    >
+                                      {dept.companies.name || dept.companies.code || "Empresa"}
+                                    </Badge>
                                   )}
                               </div>
                               <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
@@ -321,23 +354,6 @@ export default function DepartmentsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        {selectedCompany?.code === "general" && (
-                          <TableCell className="p-2 sm:p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100">
-                                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="font-medium text-gray-900 text-sm truncate">
-                                  {dept.companies?.name || "Sin empresa"}
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {dept.companies?.code || "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                        )}
                         <TableCell className="text-gray-600 text-sm hidden md:table-cell p-2 sm:p-4">
                           {dept.description || "Sin descripción"}
                         </TableCell>
