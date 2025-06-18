@@ -27,9 +27,7 @@ const formSchema = z.object({
     message: "El título debe tener al menos 3 caracteres.",
   }),
   description: z.string().optional(),
-  document_number: z.string().min(1, {
-    message: "El número de documento es requerido.",
-  }),
+  document_number: z.string().optional(),
   department_id: z.string().min(1, {
     message: "El departamento es requerido.",
   }),
@@ -224,7 +222,7 @@ export default function NewDocumentPage() {
         .insert({
           title: values.title,
           description: values.description || null,
-          document_number: values.document_number,
+          document_number: values.document_number || undefined, // Permitir undefined para generación automática
           status: "pending",
           created_by: user.id,
           company_id: companyToUse, // Use determined company
@@ -271,7 +269,7 @@ export default function NewDocumentPage() {
         await createNotification({
           userId: user.id,
           title: "Documento creado con éxito",
-          message: `Has creado el documento "${values.title}" con número ${values.document_number}`,
+          message: `Has creado el documento "${values.title}" con número ${document.document_number || "generado automáticamente"}`,
           type: "document_created",
           relatedId: document.id,
         })
@@ -393,17 +391,18 @@ export default function NewDocumentPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                          Número de Documento
+                          Número de Documento (Opcional)
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Ej: DOC-2023-001"
+                            placeholder="Se generará automáticamente si se deja vacío"
                             {...field}
                             className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
                           />
                         </FormControl>
                         <FormDescription className="text-xs sm:text-sm">
-                          Identificador único del documento.
+                          Si no especificas un número, se generará automáticamente con el formato:
+                          EMPRESA-DEPTO-INICIALES-AÑO-NÚMERO
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
