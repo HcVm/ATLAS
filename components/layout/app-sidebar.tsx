@@ -14,12 +14,12 @@ import {
   User,
   Settings,
   LogOut,
-  Bug,
   AlertTriangle,
   MapPin,
   Package,
   Box,
   ClipboardList,
+  Headphones,
 } from "lucide-react"
 
 import {
@@ -64,6 +64,12 @@ const menuItems = [
     title: "Movimientos",
     url: "/movements",
     icon: MapPin,
+    roles: ["admin", "supervisor", "user"],
+  },
+  {
+    title: "Soporte",
+    url: "/support",
+    icon: Headphones,
     roles: ["admin", "supervisor", "user"],
   },
   {

@@ -1,6 +1,7 @@
 "use client"
 
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 
 import { useState, useEffect } from "react"
 import { Plus, Search, Building2, Edit, Trash2, Users } from "lucide-react"
@@ -49,7 +50,14 @@ export default function DepartmentsPage() {
       // Get current company from context
       const currentCompanyId = selectedCompany?.id
 
-      let query = supabase.from("departments").select("*")
+      let query = supabase.from("departments").select(`
+        *,
+        companies!inner(
+          id,
+          name,
+          code
+        )
+      `)
 
       // Filter by company if a specific company is selected
       if (currentCompanyId && selectedCompany?.code !== "general") {
@@ -240,6 +248,11 @@ export default function DepartmentsPage() {
                   <TableHeader>
                     <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Departamento</TableHead>
+                      {selectedCompany?.code === "general" && (
+                        <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                          Empresa
+                        </TableHead>
+                      )}
                       <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
                         Descripción
                       </TableHead>
@@ -272,13 +285,39 @@ export default function DepartmentsPage() {
                               <Building2 className="h-3 w-3 sm:h-5 sm:w-5" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{dept.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                                  {dept.name}
+                                </div>
+                                {/* Show company badge only in general view */}
+                                {selectedCompany?.code === "general" && dept.companies && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-purple-100"
+                                  >
+                                    {dept.companies.name}
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="md:hidden text-xs text-muted-foreground mt-1 truncate">
                                 {dept.description || "Sin descripción"}
                               </div>
                             </div>
                           </div>
                         </TableCell>
+                        {selectedCompany?.code === "general" && (
+                          <TableCell className="hidden lg:table-cell p-2 sm:p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-100 to-purple-100">
+                                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">{dept.companies?.name}</div>
+                                <div className="text-xs text-muted-foreground">{dept.companies?.code}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="text-gray-600 text-sm hidden md:table-cell p-2 sm:p-4">
                           {dept.description || "Sin descripción"}
                         </TableCell>

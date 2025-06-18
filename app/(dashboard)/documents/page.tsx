@@ -54,12 +54,6 @@ export default function DocumentsPage() {
       fetchDocuments()
       fetchDepartments()
     }
-  }, [user])
-
-  useEffect(() => {
-    if (user) {
-      fetchDocuments()
-    }
   }, [user, selectedCompany])
 
   const fetchDocuments = async (isRefresh = false) => {
@@ -162,7 +156,18 @@ export default function DocumentsPage() {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("*").order("name")
+      let query = supabase.from("departments").select("*").order("name")
+
+      // Filtrar por empresa seleccionada si el usuario es admin
+      if (user?.role === "admin" && selectedCompany) {
+        query = query.eq("company_id", selectedCompany.id)
+      }
+      // Si no es admin, filtrar por la empresa del usuario
+      else if (user && user.role !== "admin" && user.company_id) {
+        query = query.eq("company_id", user.company_id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setDepartments(data || [])

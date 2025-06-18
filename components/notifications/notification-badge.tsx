@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import { getUnreadNotificationsCount } from "@/lib/notifications"
 
 export function NotificationBadge() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -18,7 +20,9 @@ export function NotificationBadge() {
 
     const fetchUnreadCount = async () => {
       try {
-        const count = await getUnreadNotificationsCount(user.id)
+        // Para admins, usar la empresa seleccionada
+        const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
+        const count = await getUnreadNotificationsCount(user.id, companyId)
         setUnreadCount(count)
       } catch (error) {
         console.error("Error fetching unread notifications count:", error)
@@ -31,7 +35,7 @@ export function NotificationBadge() {
     const interval = setInterval(fetchUnreadCount, 30000)
 
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, selectedCompany])
 
   const handleClick = () => {
     router.push("/notifications")

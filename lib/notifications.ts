@@ -6,6 +6,7 @@ export interface CreateNotificationParams {
   message: string
   type?: string
   relatedId?: string
+  companyId?: string // Agregar company_id para contexto
 }
 
 export async function createNotification(params: CreateNotificationParams) {
@@ -16,6 +17,7 @@ export async function createNotification(params: CreateNotificationParams) {
       message: params.message,
       type: params.type || "system",
       related_id: params.relatedId || null,
+      company_id: params.companyId || null, // Incluir company_id
       read: false,
     })
 
@@ -31,13 +33,20 @@ export async function createNotification(params: CreateNotificationParams) {
   }
 }
 
-export async function getUnreadNotificationsCount(userId: string): Promise<number> {
+export async function getUnreadNotificationsCount(userId: string, companyId?: string): Promise<number> {
   try {
-    const { count, error } = await supabase
+    let query = supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("read", false)
+
+    // Filtrar por empresa si se proporciona (para admins)
+    if (companyId) {
+      query = query.eq("company_id", companyId)
+    }
+
+    const { count, error } = await query
 
     if (error) {
       console.error("Error getting unread notifications count:", error)
@@ -83,13 +92,22 @@ export async function deleteNotification(notificationId: string) {
   }
 }
 
-export async function getUserNotifications(userId: string, filter: "all" | "unread" | "read" = "all") {
+export async function getUserNotifications(
+  userId: string,
+  filter: "all" | "unread" | "read" = "all",
+  companyId?: string,
+) {
   try {
     let query = supabase
       .from("notifications")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
+
+    // Filtrar por empresa si se proporciona (para admins)
+    if (companyId) {
+      query = query.eq("company_id", companyId)
+    }
 
     if (filter === "unread") {
       query = query.eq("read", false)
@@ -111,13 +129,16 @@ export async function getUserNotifications(userId: string, filter: "all" | "unre
   }
 }
 
-export async function markAllNotificationsAsRead(userId: string) {
+export async function markAllNotificationsAsRead(userId: string, companyId?: string) {
   try {
-    const { error } = await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", userId)
-      .eq("read", false)
+    let query = supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false)
+
+    // Filtrar por empresa si se proporciona (para admins)
+    if (companyId) {
+      query = query.eq("company_id", companyId)
+    }
+
+    const { error } = await query
 
     if (error) {
       console.error("Error marking all notifications as read:", error)
