@@ -284,6 +284,11 @@ export default function SupportTicketDetailPage() {
   }
 
   const handleStatusUpdate = async () => {
+    if (ticket.status === "closed") {
+      toast.error("No se puede modificar un ticket cerrado")
+      return
+    }
+
     if (!ticket || !canManageTicket) return
 
     try {
@@ -505,34 +510,44 @@ export default function SupportTicketDetailPage() {
               )}
 
               {/* Add Comment */}
-              <div className="border-t pt-4">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar_url || ""} />
-                    <AvatarFallback>
-                      {user?.full_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <Textarea
-                      placeholder="Agregar un comentario..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      rows={3}
-                    />
-                    <div className="flex justify-end">
-                      <Button onClick={handleAddComment} disabled={!newComment.trim() || submittingComment} size="sm">
-                        <Send className="h-4 w-4 mr-2" />
-                        {submittingComment ? "Enviando..." : "Comentar"}
-                      </Button>
+              {ticket.status !== "closed" ? (
+                <div className="border-t pt-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatar_url || ""} />
+                      <AvatarFallback>
+                        {user?.full_name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                      <Textarea
+                        placeholder="Agregar un comentario..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-end">
+                        <Button onClick={handleAddComment} disabled={!newComment.trim() || submittingComment} size="sm">
+                          <Send className="h-4 w-4 mr-2" />
+                          {submittingComment ? "Enviando..." : "Comentar"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="border-t pt-4">
+                  <div className="text-center p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Este ticket está cerrado. No se pueden agregar más comentarios.
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -608,11 +623,17 @@ export default function SupportTicketDetailPage() {
                     </Badge>
                   </div>
 
-                  {canManageTicket && (
+                  {canManageTicket && ticket.status !== "closed" && (
                     <Button size="sm" variant="outline" onClick={() => setEditingStatus(true)} className="w-full">
                       <Edit className="h-4 w-4 mr-2" />
                       Gestionar Ticket
                     </Button>
+                  )}
+
+                  {canManageTicket && ticket.status === "closed" && (
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">Este ticket está cerrado y no se puede editar</p>
+                    </div>
                   )}
 
                   {!canManageTicket && (

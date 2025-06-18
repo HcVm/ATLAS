@@ -37,6 +37,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { status, assigned_to, updated_by } = body
 
+    // Verificar si el ticket existe y su estado actual
+    const { data: currentTicket, error: fetchError } = await supabase
+      .from("support_tickets")
+      .select("status")
+      .eq("id", params.id)
+      .single()
+
+    if (fetchError) {
+      console.error("Error fetching current ticket:", fetchError)
+      return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
+    }
+
+    // Prevenir edición de tickets cerrados
+    if (currentTicket.status === "closed") {
+      return NextResponse.json({ error: "No se puede modificar un ticket cerrado" }, { status: 403 })
+    }
+
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }
