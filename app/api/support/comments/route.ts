@@ -1,21 +1,49 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { z } from "zod"
+import { type NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
-const commentSchema = z.object({
-  ticket_id: z.string().uuid(),
-  content: z.string().min(1),
-})
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const ticketId = searchParams.get("ticketId")
 
-export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
+    if (!ticketId) {
+      return NextResponse.json({ error: "ticketId es requerido" }, { status: 400 })
+    }
 
+    const { data, error } = await supabase
+      .from("support_comments")
+      .select(`
+        *,
+        profiles (
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching comments:", error)
+      return NextResponse.json({ error: "Error al obtener comentarios" }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("Error:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { ticket_id, content } = commentSchema.parse(body)
+    const { ticket_id, user_id, content, is_internal = false } = body
 
-    // Verificar si el ticket está cerrado
+    if (!ticket_id || !user_id || !content) {
+      return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
+    }
+
+    // Verificar si el ticket está cerrado ANTES de crear el comentario
     const { data: ticketData, error: ticketError } = await supabase
       .from("support_tickets")
       .select("status")
@@ -23,6 +51,7 @@ export async function POST(request: Request) {
       .single()
 
     if (ticketError) {
+      console.error("Error fetching ticket:", ticketError)
       return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
     }
 
@@ -30,21 +59,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No se pueden agregar comentarios a un ticket cerrado" }, { status: 403 })
     }
 
-    const { data, error } = await supabase.from("support_comments").insert([{ ticket_id, content }]).select().single()
+    const { data, error } = await supabase
+      .from("support_comments")
+      .insert({
+        ticket_id,
+        user_id,
+        content: content.trim(),
+        is_internal,
+      })
+      .select(`
+        *,
+        profiles (
+          full_name,
+          avatar_url
+        )
+      `)
+      .single()
 
     if (error) {
-      console.error(error)
-      return NextResponse.json({ error: "Error creating comment" }, { status: 500 })
+      console.error("Error creating comment:", error)
+      return NextResponse.json({ error: "Error al crear comentario" }, { status: 500 })
     }
 
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error(error)
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues }, { status: 400 })
-    }
-
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) {
+    console.error("Error:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
