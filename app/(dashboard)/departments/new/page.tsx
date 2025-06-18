@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Building2, ArrowLeft, Loader2, Palette } from "lucide-react"
+import { Building2, ArrowLeft, Loader2, Palette, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
 
@@ -48,6 +49,10 @@ export default function NewDepartmentPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
+
+  // Determinar si estamos en vista general
+  const isGeneralView = !selectedCompany || selectedCompany.code === "general" || !selectedCompany.id
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,6 +62,18 @@ export default function NewDepartmentPage() {
       color: "#3B82F6", // Azul por defecto
     },
   })
+
+  // Verificar permisos al cargar la página
+  useEffect(() => {
+    if (isGeneralView) {
+      toast({
+        title: "Empresa requerida",
+        description: "Debes seleccionar una empresa específica para crear departamentos.",
+        variant: "destructive",
+      })
+      router.push("/departments")
+    }
+  }, [isGeneralView, router, toast])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || user.role !== "admin") {
@@ -68,15 +85,25 @@ export default function NewDepartmentPage() {
       return
     }
 
+    if (isGeneralView || !selectedCompany?.id) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar una empresa específica para crear departamentos.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
-      // Crear departamento con color
+      // Crear departamento vinculado a la empresa seleccionada
       const { data: department, error } = await supabase
         .from("departments")
         .insert({
           name: values.name,
           description: values.description || null,
           color: values.color,
+          company_id: selectedCompany.id, // VINCULACIÓN AUTOMÁTICA
         })
         .select()
         .single()
@@ -87,14 +114,15 @@ export default function NewDepartmentPage() {
       await createNotification({
         userId: user.id,
         title: "Departamento creado con éxito",
-        message: `Has creado el departamento "${values.name}" con color ${values.color}`,
+        message: `Has creado el departamento "${values.name}" para ${selectedCompany.name}`,
         type: "department_created",
         relatedId: department.id,
+        companyId: selectedCompany.id,
       })
 
       toast({
         title: "Departamento creado",
-        description: "El departamento se ha creado correctamente con su color asignado.",
+        description: `El departamento "${values.name}" se ha creado correctamente para ${selectedCompany.name}.`,
       })
 
       router.push("/departments")
@@ -110,6 +138,35 @@ export default function NewDepartmentPage() {
     }
   }
 
+  // Si estamos en vista general, mostrar mensaje de error
+  if (isGeneralView) {
+    return (
+      <div className="min-h-screen">
+        <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-8 w-8 text-red-600 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-semibold text-red-800">Empresa requerida</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    Para crear departamentos, debes seleccionar una empresa específica en el selector de empresas.
+                  </p>
+                  <Button asChild className="mt-4" variant="outline">
+                    <Link href="/departments">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Volver a Departamentos
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
@@ -123,10 +180,25 @@ export default function NewDepartmentPage() {
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold">Crear Nuevo Departamento</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Completa el formulario para crear un nuevo departamento
+              Crear departamento para <span className="font-semibold text-blue-600">{selectedCompany?.name}</span>
             </p>
           </div>
         </div>
+
+        {/* Información de la empresa */}
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Empresa seleccionada: {selectedCompany?.name}</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  El departamento se creará automáticamente vinculado a esta empresa.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Form Card - Responsive */}
         <Card className="shadow-lg">
@@ -136,7 +208,7 @@ export default function NewDepartmentPage() {
               <span>Información del Departamento</span>
             </CardTitle>
             <CardDescription className="text-sm sm:text-base mt-2">
-              Ingresa los detalles del nuevo departamento que deseas registrar en el sistema.
+              Ingresa los detalles del nuevo departamento para {selectedCompany?.name}.
             </CardDescription>
           </CardHeader>
 

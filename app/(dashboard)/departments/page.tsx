@@ -10,9 +10,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Building2, Edit, Trash2, Users, Home } from "lucide-react"
+import { Plus, Search, Building2, Edit, Trash2, Users, Home, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ export default function DepartmentsPage() {
 
   // Determinar si estamos en vista general
   const isGeneralView = !selectedCompany || selectedCompany.code === "general" || !selectedCompany.id
+  const canCreateDepartment = !isGeneralView && selectedCompany?.id
 
   useEffect(() => {
     if (user && user.role === "admin") {
@@ -82,11 +84,7 @@ export default function DepartmentsPage() {
       console.log("=== DEBUG BADGES ===")
       console.log("Selected company:", selectedCompany)
       console.log("Is general view:", isGeneralView)
-      console.log("Sample department with company:", {
-        name: departmentsData?.[0]?.name,
-        hasCompanies: !!departmentsData?.[0]?.companies,
-        companyData: departmentsData?.[0]?.companies,
-      })
+      console.log("Can create department:", canCreateDepartment)
 
       // Then get user counts for each department
       const departmentsWithCounts = await Promise.all(
@@ -118,6 +116,18 @@ export default function DepartmentsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCreateDepartment = () => {
+    if (!canCreateDepartment) {
+      toast({
+        title: "Selecciona una empresa",
+        description: "Debes seleccionar una empresa específica para crear departamentos.",
+        variant: "destructive",
+      })
+      return
+    }
+    router.push("/departments/new")
   }
 
   const handleDeleteClick = (department: any) => {
@@ -253,15 +263,53 @@ export default function DepartmentsPage() {
               : `Gestiona los departamentos de ${selectedCompany?.name || "la empresa seleccionada"}`}
           </p>
         </div>
-        <Button
-          onClick={() => router.push("/departments/new")}
-          className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          <span className="sm:hidden">Nuevo Depto</span>
-          <span className="hidden sm:inline">Nuevo Departamento</span>
-        </Button>
+
+        {/* Botón de crear con validación */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  onClick={handleCreateDepartment}
+                  disabled={!canCreateDepartment}
+                  className={`w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 ${
+                    canCreateDepartment
+                      ? "bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white hover:scale-105"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {!canCreateDepartment && <AlertCircle className="h-4 w-4 mr-2" />}
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="sm:hidden">Nuevo Depto</span>
+                  <span className="hidden sm:inline">Nuevo Departamento</span>
+                </Button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {canCreateDepartment
+                ? `Crear nuevo departamento para ${selectedCompany?.name}`
+                : "Selecciona una empresa específica para crear departamentos"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+
+      {/* Mensaje informativo en vista general */}
+      {isGeneralView && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Vista General Activa</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Para crear departamentos, selecciona una empresa específica en el selector de empresas.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 sm:p-6">
@@ -289,7 +337,9 @@ export default function DepartmentsPage() {
               </div>
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
               <p className="text-sm sm:text-base text-muted-foreground">
-                No se encontraron departamentos en el sistema.
+                {isGeneralView
+                  ? "No se encontraron departamentos en el sistema."
+                  : `No hay departamentos para ${selectedCompany?.name || "esta empresa"}.`}
               </p>
             </div>
           ) : (
