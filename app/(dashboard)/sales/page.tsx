@@ -17,7 +17,7 @@ import {
 import { Plus, Search, FileText, DollarSign, TrendingUp, Package } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
-import { createClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -61,8 +61,6 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showNewSaleDialog, setShowNewSaleDialog] = useState(false)
-
-  const supabase = createClient()
 
   // Verificar permisos de acceso basado en departamento y rol
   const hasAccess =

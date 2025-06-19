@@ -20,6 +20,7 @@ import {
   Box,
   ClipboardList,
   Headphones,
+  ShoppingCart,
 } from "lucide-react"
 
 import {
@@ -71,6 +72,13 @@ const menuItems = [
     url: "/support",
     icon: Headphones,
     roles: ["admin", "supervisor", "user"],
+  },
+  {
+    title: "Ventas",
+    url: "/sales",
+    icon: ShoppingCart,
+    roles: ["admin", "supervisor", "user"],
+    departments: ["ventas", "administración", "operaciones"],
   },
   {
     title: "Almacén",
@@ -162,12 +170,20 @@ export function AppSidebar() {
     ? menuItems.filter((item) => {
         // Check if user role is in the allowed roles
         if (item.roles.includes(user.role)) {
-          return true
-        }
+          // For items with department restrictions, check department access
+          if (item.departments && user.role === "user") {
+            return (
+              user.departments?.name &&
+              item.departments.some((dept) => dept.toLowerCase() === user.departments.name.toLowerCase())
+            )
+          }
 
-        // For warehouse items, also check if user's department allows access
-        if (item.url.includes("/warehouse") && user.departments?.name) {
-          return user.departments.name === "Almacén" || user.departments.name === "Contabilidad"
+          // For warehouse items, also check if user's department allows access
+          if (item.url.includes("/warehouse") && user.departments?.name) {
+            return user.departments.name === "Almacén" || user.departments.name === "Contabilidad"
+          }
+
+          return true
         }
 
         return false

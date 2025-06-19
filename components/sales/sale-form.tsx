@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
-import { createClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -93,8 +93,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
   const [stockWarning, setStockWarning] = useState("")
   const [totalSale, setTotalSale] = useState(0)
-
-  const supabase = createClient()
 
   useEffect(() => {
     if (selectedCompany) {
