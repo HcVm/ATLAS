@@ -158,29 +158,48 @@ export default function ProfilePage() {
         throw new Error("La imagen debe ser menor a 5MB.")
       }
 
+      // Crear nombre de archivo con estructura que funcione con RLS
       const fileExt = file.name.split(".").pop()
-      const fileName = `${user?.id}-${Math.random()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      const timestamp = Date.now()
+      const fileName = `${user?.id}/avatar-${timestamp}.${fileExt}`
+
+      console.log("Uploading file:", fileName)
+      console.log("User ID:", user?.id)
+
+      // Eliminar avatar anterior si existe
+      if (profile.avatar_url) {
+        try {
+          const oldPath = profile.avatar_url.split("/").pop()
+          if (oldPath) {
+            await supabase.storage.from("avatars").remove([`${user?.id}/${oldPath}`])
+          }
+        } catch (error) {
+          console.log("Could not delete old avatar:", error)
+        }
+      }
 
       // Subir archivo a Supabase Storage
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
+      const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
         cacheControl: "3600",
         upsert: true,
       })
 
       if (uploadError) {
+        console.error("Upload error:", uploadError)
         throw uploadError
       }
 
+      console.log("Upload successful:", uploadData)
+
       // Obtener URL pública
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
       const publicUrl = data.publicUrl
 
       if (!publicUrl) {
         throw new Error("No se pudo obtener la URL de la imagen")
       }
 
-      console.log("Avatar uploaded successfully:", publicUrl)
+      console.log("Public URL:", publicUrl)
 
       // Actualizar perfil con nueva URL
       const { error: updateError } = await supabase
@@ -189,6 +208,7 @@ export default function ProfilePage() {
         .eq("id", user?.id)
 
       if (updateError) {
+        console.error("Profile update error:", updateError)
         throw updateError
       }
 
@@ -209,6 +229,9 @@ export default function ProfilePage() {
       })
     } finally {
       setUploading(false)
+      // Limpiar el input file
+      const input = document.getElementById("avatar-upload") as HTMLInputElement
+      if (input) input.value = ""
     }
   }
 
@@ -263,15 +286,12 @@ export default function ProfilePage() {
                   className="h-8 w-8 rounded-full bg-white shadow-lg hover:scale-110 transition-all duration-300"
                   onClick={() => document.getElementById("avatar-upload")?.click()}
                   disabled={uploading}
-                  asChild
                 >
-                  <label htmlFor="avatar-upload" className="cursor-pointer flex items-center justify-center">
-                    {uploading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                    ) : (
-                      <Camera className="h-4 w-4" />
-                    )}
-                  </label>
+                  {uploading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
