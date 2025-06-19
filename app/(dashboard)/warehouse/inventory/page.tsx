@@ -676,7 +676,11 @@ export default function InventoryPage() {
               <div className="text-sm text-muted-foreground">
                 Mostrando {filteredMovements.length} de {movements.length} movimientos
               </div>
+<<<<<<< HEAD
               <div className="flex gap-2">
+=======
+              <div className="flex gap-2 h-20">
+>>>>>>> d35d3b43d0117aad4cd185e719f4ef3bd7bc39b2
                 <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredMovements.length === 0}>
                   <Download className="h-4 w-4 mr-2" />
                   Exportar CSV
