@@ -27,7 +27,6 @@ const formSchema = z.object({
     message: "El título debe tener al menos 3 caracteres.",
   }),
   description: z.string().optional(),
-  document_number: z.string().optional(),
   department_id: z.string().min(1, {
     message: "El departamento es requerido.",
   }),
@@ -52,7 +51,6 @@ export default function NewDocumentPage() {
     defaultValues: {
       title: "",
       description: "",
-      document_number: "",
       department_id: "",
       is_public: false,
     },
@@ -207,7 +205,6 @@ export default function NewDocumentPage() {
       console.log("Creating document with data:", {
         title: values.title,
         description: values.description || null,
-        document_number: values.document_number,
         status: "pending",
         created_by: user.id,
         current_department_id: values.department_id,
@@ -216,13 +213,13 @@ export default function NewDocumentPage() {
         company_id: companyToUse,
       })
 
-      // Crear documento - USANDO company_id determinado
+      // Crear documento - El número se generará automáticamente por el trigger
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
           title: values.title,
           description: values.description || null,
-          document_number: values.document_number || undefined, // Permitir undefined para generación automática
+          // document_number se omite para que el trigger lo genere automáticamente
           status: "pending",
           created_by: user.id,
           company_id: companyToUse, // Use determined company
@@ -269,7 +266,7 @@ export default function NewDocumentPage() {
         await createNotification({
           userId: user.id,
           title: "Documento creado con éxito",
-          message: `Has creado el documento "${values.title}" con número ${document.document_number || "generado automáticamente"}`,
+          message: `Has creado el documento "${values.title}" con número ${document.document_number}`,
           type: "document_created",
           relatedId: document.id,
         })
@@ -293,7 +290,7 @@ export default function NewDocumentPage() {
 
       toast({
         title: "Documento creado",
-        description: `El documento se ha creado correctamente${values.is_public ? " y está disponible públicamente" : ""}.`,
+        description: `El documento "${document.document_number}" se ha creado correctamente${values.is_public ? " y está disponible públicamente" : ""}.`,
       })
 
       router.push(`/documents/${document.id}`)
@@ -338,7 +335,7 @@ export default function NewDocumentPage() {
               </p>
             )}
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Completa el formulario para crear un nuevo documento
+              Completa el formulario para crear un nuevo documento. El número se generará automáticamente.
             </p>
           </div>
         </div>
@@ -353,62 +350,38 @@ export default function NewDocumentPage() {
               <span>Información del Documento</span>
             </CardTitle>
             <CardDescription className="text-sm sm:text-base mt-2">
-              Ingresa los detalles del nuevo documento que deseas registrar en el sistema.
+              Ingresa los detalles del nuevo documento. El número se generará automáticamente con el formato:
+              <br />
+              <code className="text-xs bg-muted px-2 py-1 rounded mt-1 inline-block">
+                EMPRESA-DEPARTAMENTO-INICIALES-AÑO-NÚMERO
+              </code>
             </CardDescription>
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 lg:p-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                {/* Title and Document Number - Responsive Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">
-                          Título
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Título del documento"
-                            {...field}
-                            className="border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs sm:text-sm">
-                          Nombre descriptivo del documento.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="document_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                          Número de Documento (Opcional)
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Se generará automáticamente si se deja vacío"
-                            {...field}
-                            className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs sm:text-sm">
-                          Si no especificas un número, se generará automáticamente con el formato:
-                          EMPRESA-DEPTO-INICIALES-AÑO-NÚMERO
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                {/* Title - Full Width */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Título</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Título del documento"
+                          {...field}
+                          className="border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs sm:text-sm">
+                        Nombre descriptivo del documento.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Department - Full Width */}
                 <FormField
@@ -445,7 +418,7 @@ export default function NewDocumentPage() {
                         </SelectContent>
                       </Select>
                       <FormDescription className="text-xs sm:text-sm">
-                        Departamento al que pertenece el documento.
+                        Departamento al que pertenece el documento. Esto afectará la numeración automática.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
