@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -31,6 +33,7 @@ export default function ProfilePage() {
     movementsMade: 0,
   })
   const [department, setDepartment] = useState<any>(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -135,6 +138,103 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true)
+
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Debes seleccionar una imagen para subir.")
+      }
+
+      const file = event.target.files[0]
+
+      // Validar tipo de archivo
+      if (!file.type.startsWith("image/")) {
+        throw new Error("El archivo debe ser una imagen.")
+      }
+
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("La imagen debe ser menor a 5MB.")
+      }
+
+      // Crear nombre de archivo con estructura que funcione con RLS
+      const fileExt = file.name.split(".").pop()
+      const timestamp = Date.now()
+      const fileName = `${user?.id}/avatar-${timestamp}.${fileExt}`
+
+      console.log("Uploading file:", fileName)
+      console.log("User ID:", user?.id)
+
+      // Eliminar avatar anterior si existe
+      if (profile.avatar_url) {
+        try {
+          const oldPath = profile.avatar_url.split("/").pop()
+          if (oldPath) {
+            await supabase.storage.from("avatars").remove([`${user?.id}/${oldPath}`])
+          }
+        } catch (error) {
+          console.log("Could not delete old avatar:", error)
+        }
+      }
+
+      // Subir archivo a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      })
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        throw uploadError
+      }
+
+      console.log("Upload successful:", uploadData)
+
+      // Obtener URL pública
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
+      const publicUrl = data.publicUrl
+
+      if (!publicUrl) {
+        throw new Error("No se pudo obtener la URL de la imagen")
+      }
+
+      console.log("Public URL:", publicUrl)
+
+      // Actualizar perfil con nueva URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user?.id)
+
+      if (updateError) {
+        console.error("Profile update error:", updateError)
+        throw updateError
+      }
+
+      // Actualizar estado local
+      setProfile({ ...profile, avatar_url: publicUrl })
+      await refreshUser()
+
+      toast({
+        title: "Foto actualizada",
+        description: "Tu foto de perfil ha sido actualizada correctamente.",
+      })
+    } catch (error: any) {
+      console.error("Error uploading avatar:", error)
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo subir la imagen.",
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+      // Limpiar el input file
+      const input = document.getElementById("avatar-upload") as HTMLInputElement
+      if (input) input.value = ""
+    }
+  }
+
   if (!user) {
     return (
       <div className="p-3 sm:p-4 lg:p-6">
@@ -172,13 +272,28 @@ export default function ProfilePage() {
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Button
-                size="icon"
-                variant="outline"
-                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-white shadow-lg hover:scale-110 transition-all duration-300"
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
+              <div className="absolute -bottom-2 -right-2">
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 rounded-full bg-white shadow-lg hover:scale-110 transition-all duration-300"
+                  onClick={() => document.getElementById("avatar-upload")?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 text-center sm:text-left space-y-2">

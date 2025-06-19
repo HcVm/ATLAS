@@ -67,6 +67,7 @@
     "vaul": "latest",
     "vue": "latest",
     "vue-router": "latest",
+    "xlsx": "latest",
     "zod": "latest"
   },
   "devDependencies": {
