@@ -17,6 +17,8 @@ import {
   Paperclip,
   Download,
   Settings,
+  X,
+  Calendar,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -24,6 +26,8 @@ import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
 import { MovementAttachmentsDialog } from "@/components/warehouse/movement-attachments-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
+import { Label } from "@/components/ui/label"
+import * as XLSX from "xlsx"
 
 interface InventoryMovement {
   id: string
@@ -76,6 +80,9 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("all")
+  const [dateFrom, setDateFrom] = useState<string>("")
+  const [dateTo, setDateTo] = useState<string>("")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [showMovementForm, setShowMovementForm] = useState(false)
   const [showAttachmentsDialog, setShowAttachmentsDialog] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<InventoryMovement | null>(null)
@@ -212,14 +219,22 @@ export default function InventoryPage() {
     const movementDate = new Date(movement.movement_date)
     let matchesDate = true
 
-    if (dateFilter === "today") {
-      matchesDate = movementDate.toDateString() === now.toDateString()
-    } else if (dateFilter === "week") {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      matchesDate = movementDate >= weekAgo
-    } else if (dateFilter === "month") {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      matchesDate = movementDate >= monthAgo
+    // Filtros de fecha específicos tienen prioridad
+    if (dateFrom || dateTo) {
+      const fromDate = dateFrom ? new Date(dateFrom) : new Date("1900-01-01")
+      const toDate = dateTo ? new Date(dateTo + "T23:59:59") : new Date("2100-12-31")
+      matchesDate = movementDate >= fromDate && movementDate <= toDate
+    } else if (dateFilter !== "all") {
+      // Filtros rápidos solo si no hay fechas específicas
+      if (dateFilter === "today") {
+        matchesDate = movementDate.toDateString() === now.toDateString()
+      } else if (dateFilter === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        matchesDate = movementDate >= weekAgo
+      } else if (dateFilter === "month") {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        matchesDate = movementDate >= monthAgo
+      }
     }
 
     return matchesSearch && matchesType && matchesDate
@@ -231,6 +246,108 @@ export default function InventoryPage() {
       style: "currency",
       currency: "PEN",
     }).format(amount)
+  }
+
+  const exportToExcel = () => {
+    const dataToExport = filteredMovements.map((movement) => ({
+      Fecha: formatDate(movement.movement_date),
+      Producto: movement.products?.name || "Producto eliminado",
+      Código: movement.products?.code || "N/A",
+      "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
+      Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
+      Unidad: movement.products?.unit_of_measure || "unidades",
+      "Precio Unitario": movement.sale_price ? formatCurrency(movement.sale_price) : "-",
+      Total: movement.total_amount ? formatCurrency(movement.total_amount) : "-",
+      "Orden de Compra": movement.purchase_order_number || "-",
+      "Cliente/Entidad": movement.destination_entity_name || "-",
+      "Dirección Destino": movement.destination_address || "-",
+      "Departamento Destino": movement.peru_departments?.name || "-",
+      Proveedor: movement.supplier || "-",
+      Motivo: movement.reason || "-",
+      Notas: movement.notes || "-",
+      Usuario: movement.profiles?.full_name || "Usuario eliminado",
+      "Archivos Adjuntos": attachments[movement.id]?.length || 0,
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Movimientos de Inventario")
+
+    // Ajustar ancho de columnas
+    const colWidths = [
+      { wch: 15 }, // Fecha
+      { wch: 25 }, // Producto
+      { wch: 15 }, // Código
+      { wch: 15 }, // Tipo
+      { wch: 12 }, // Cantidad
+      { wch: 10 }, // Unidad
+      { wch: 15 }, // Precio
+      { wch: 15 }, // Total
+      { wch: 20 }, // OC
+      { wch: 25 }, // Cliente
+      { wch: 30 }, // Dirección
+      { wch: 15 }, // Departamento
+      { wch: 20 }, // Proveedor
+      { wch: 20 }, // Motivo
+      { wch: 30 }, // Notas
+      { wch: 20 }, // Usuario
+      { wch: 10 }, // Adjuntos
+    ]
+    ws["!cols"] = colWidths
+
+    const fileName = `movimientos_inventario_${new Date().toISOString().split("T")[0]}.xlsx`
+    XLSX.writeFile(wb, fileName)
+
+    toast({
+      title: "Exportación exitosa",
+      description: `Se exportaron ${dataToExport.length} movimientos a Excel.`,
+    })
+  }
+
+  const exportToCSV = () => {
+    const dataToExport = filteredMovements.map((movement) => ({
+      Fecha: formatDate(movement.movement_date),
+      Producto: movement.products?.name || "Producto eliminado",
+      Código: movement.products?.code || "N/A",
+      "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
+      Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
+      Unidad: movement.products?.unit_of_measure || "unidades",
+      "Precio Unitario": movement.sale_price || 0,
+      Total: movement.total_amount || 0,
+      "Orden de Compra": movement.purchase_order_number || "",
+      "Cliente/Entidad": movement.destination_entity_name || "",
+      "Dirección Destino": movement.destination_address || "",
+      "Departamento Destino": movement.peru_departments?.name || "",
+      Proveedor: movement.supplier || "",
+      Motivo: movement.reason || "",
+      Notas: movement.notes || "",
+      Usuario: movement.profiles?.full_name || "Usuario eliminado",
+      "Archivos Adjuntos": attachments[movement.id]?.length || 0,
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const csv = XLSX.utils.sheet_to_csv(ws)
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `movimientos_inventario_${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast({
+      title: "Exportación exitosa",
+      description: `Se exportaron ${dataToExport.length} movimientos a CSV.`,
+    })
+  }
+
+  const clearDateFilters = () => {
+    setDateFrom("")
+    setDateTo("")
+    setDateFilter("all")
   }
 
   const formatDate = (dateString: string) => {
@@ -461,41 +578,115 @@ export default function InventoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Filtros */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar por producto, orden, entidad..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          {/* Filtros mejorados */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por producto, orden, entidad..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Tipo de movimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="entrada">Entradas</SelectItem>
+                  <SelectItem value="salida">Salidas</SelectItem>
+                  <SelectItem value="ajuste">Ajustes</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="w-full sm:w-auto"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                {showAdvancedFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
+              </Button>
+            </div>
+
+            {/* Filtros avanzados */}
+            {showAdvancedFilters && (
+              <Card className="p-4">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="h-4 w-4" />
+                    <Label className="font-medium">Filtros de Fecha</Label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="date-from" className="text-sm">
+                        Desde
+                      </Label>
+                      <Input
+                        id="date-from"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="date-to" className="text-sm">
+                        Hasta
+                      </Label>
+                      <Input id="date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Filtros Rápidos</Label>
+                      <Select value={dateFilter} onValueChange={setDateFilter} disabled={!!(dateFrom || dateTo)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los períodos</SelectItem>
+                          <SelectItem value="today">Hoy</SelectItem>
+                          <SelectItem value="week">Última semana</SelectItem>
+                          <SelectItem value="month">Último mes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button variant="outline" onClick={clearDateFilters} className="w-full">
+                        <X className="h-4 w-4 mr-2" />
+                        Limpiar Fechas
+                      </Button>
+                    </div>
+                  </div>
+
+                  {(dateFrom || dateTo) && (
+                    <div className="text-sm text-muted-foreground">
+                      <strong>Rango seleccionado:</strong> {dateFrom || "Inicio"} → {dateTo || "Fin"}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Botones de exportación */}
+            <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {filteredMovements.length} de {movements.length} movimientos
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredMovements.length === 0}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportToExcel} disabled={filteredMovements.length === 0}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Excel
+                </Button>
               </div>
             </div>
-            <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Tipo de movimiento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="entrada">Entradas</SelectItem>
-                <SelectItem value="salida">Salidas</SelectItem>
-                <SelectItem value="ajuste">Ajustes</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los períodos</SelectItem>
-                <SelectItem value="today">Hoy</SelectItem>
-                <SelectItem value="week">Última semana</SelectItem>
-                <SelectItem value="month">Último mes</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Tabla de movimientos */}
