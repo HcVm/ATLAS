@@ -1,104 +1,114 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Download, FileSpreadsheet, FileText } from "lucide-react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase"
 import { useCompany } from "@/lib/company-context"
-import { type ExportOptions, type SaleExportData, generateCSVData, downloadFile } from "@/lib/export-utils"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
+import { exportToExcel, exportToCSV, formatSalesDataForExport } from "@/lib/export-utils"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface SalesExportDialogProps {
-  children?: React.ReactNode
+  onExport?: () => void
 }
 
-export function SalesExportDialog({ children }: SalesExportDialogProps) {
+export default function SalesExportDialog({ onExport }: SalesExportDialogProps) {
+  const { selectedCompany } = useCompany()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [options, setOptions] = useState<ExportOptions>({
-    format: "excel",
-    includeDetails: true,
-  })
-
-  const { currentCompany } = useCompany()
+  const [exportFormat, setExportFormat] = useState<"excel" | "csv">("excel")
+  const [dateFrom, setDateFrom] = useState<Date>()
+  const [dateTo, setDateTo] = useState<Date>()
 
   const handleExport = async () => {
-    if (!currentCompany) {
+    if (!selectedCompany) {
       toast.error("No hay empresa seleccionada")
       return
     }
 
-    setLoading(true)
-    try {
-      const supabase = createClient()
+    if (!dateFrom || !dateTo) {
+      toast.error("Por favor selecciona un rango de fechas")
+      return
+    }
 
-      // Construir query con filtros
-      let query = supabase
+    if (dateFrom > dateTo) {
+      toast.error("La fecha de inicio debe ser anterior a la fecha final")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      // Construir query con filtros de fecha
+      const query = supabase
         .from("sales")
         .select(`
-          *,
-          quotations!left(quotation_number),
-          profiles!inner(full_name)
+          sale_number, sale_date, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, quantity, product_name, product_code,
+          product_description, product_brand, ocam, physical_order,
+          project_meta, final_destination, warehouse_manager, payment_method,
+          unit_price_with_tax, total_sale, delivery_date, delivery_term,
+          observations, sale_status, created_at,
+          profiles!sales_created_by_fkey (full_name)
         `)
-        .eq("company_id", currentCompany.id)
+        .eq("company_id", selectedCompany.id)
+        .gte("sale_date", format(dateFrom, "yyyy-MM-dd"))
+        .lte("sale_date", format(dateTo, "yyyy-MM-dd"))
+        .order("sale_date", { ascending: false })
 
-      // Aplicar filtros de fecha
-      if (options.startDate) {
-        query = query.gte("sale_date", options.startDate)
-      }
-      if (options.endDate) {
-        query = query.lte("sale_date", options.endDate)
-      }
-
-      const { data: sales, error } = await query.order("sale_date", { ascending: false })
+      const { data, error } = await query
 
       if (error) throw error
 
-      if (!sales || sales.length === 0) {
-        toast.error("No hay datos para exportar")
+      if (!data || data.length === 0) {
+        toast.error("No se encontraron ventas en el rango de fechas seleccionado")
         return
       }
 
-      // Transformar datos para exportación
-      const exportData: SaleExportData[] = sales.map((sale) => ({
-        sale_number: sale.sale_number || "N/A",
-        entity_name: sale.entity_name,
-        sale_date: sale.sale_date,
-        product_name: sale.product_name,
-        quantity: sale.quantity,
-        unit_price: sale.unit_price,
-        total_amount: sale.total_amount,
-        status: sale.status,
-        quotation_number: sale.quotations?.quotation_number,
-        created_by: sale.profiles?.full_name || "N/A",
-      }))
+      // Formatear datos para exportación
+      const formattedData = formatSalesDataForExport(data)
 
-      // Generar archivo según formato
-      const timestamp = new Date().toISOString().split("T")[0]
+      // Generar nombre de archivo
+      const fromStr = format(dateFrom, "yyyy-MM-dd")
+      const toStr = format(dateTo, "yyyy-MM-dd")
+      const filename = `ventas_${selectedCompany.name.replace(/[^a-zA-Z0-9]/g, "_")}_${fromStr}_${toStr}`
 
-      if (options.format === "excel") {
-        // Para Excel necesitarías una librería como xlsx
-        // Por ahora exportamos como CSV con extensión .xlsx
-        const csvContent = generateCSVData(exportData)
-        downloadFile(csvContent, `ventas_${timestamp}.csv`, "text/csv")
-        toast.success("Archivo CSV exportado exitosamente")
+      // Exportar según el formato seleccionado
+      let success = false
+      if (exportFormat === "excel") {
+        success = exportToExcel(formattedData, {
+          filename,
+          sheetName: "Ventas",
+        })
       } else {
-        const csvContent = generateCSVData(exportData)
-        downloadFile(csvContent, `ventas_${timestamp}.csv`, "text/csv")
-        toast.success("Archivo CSV exportado exitosamente")
+        success = exportToCSV(formattedData, {
+          filename,
+        })
       }
 
-      setOpen(false)
-    } catch (error) {
-      console.error("Error al exportar:", error)
-      toast.error("Error al exportar los datos")
+      if (success) {
+        toast.success(`Archivo ${exportFormat.toUpperCase()} descargado exitosamente`)
+        setOpen(false)
+        onExport?.()
+      } else {
+        toast.error("Error al generar el archivo de exportación")
+      }
+    } catch (error: any) {
+      console.error("Error exporting sales:", error)
+      toast.error("Error al exportar las ventas: " + error.message)
     } finally {
       setLoading(false)
     }
@@ -107,64 +117,35 @@ export function SalesExportDialog({ children }: SalesExportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {children || (
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-        )}
+        <Button variant="outline">
+          <Download className="h-4 w-4 mr-2" />
+          Exportar
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Exportar Ventas
-          </DialogTitle>
+          <DialogTitle>Exportar Ventas</DialogTitle>
+          <DialogDescription>Exporta las ventas en formato Excel o CSV por rango de fechas</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Rango de fechas */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Fecha inicio</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={options.startDate || ""}
-                onChange={(e) => setOptions((prev) => ({ ...prev, startDate: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Fecha fin</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={options.endDate || ""}
-                onChange={(e) => setOptions((prev) => ({ ...prev, endDate: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          {/* Formato */}
-          <div className="space-y-2">
-            <Label>Formato de exportación</Label>
-            <Select
-              value={options.format}
-              onValueChange={(value: "excel" | "csv") => setOptions((prev) => ({ ...prev, format: value }))}
-            >
+          {/* Formato de exportación */}
+          <div>
+            <Label htmlFor="export_format">Formato de Exportación</Label>
+            <Select value={exportFormat} onValueChange={(value: "excel" | "csv") => setExportFormat(value)}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar formato" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="excel">
                   <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
+                    <FileSpreadsheet className="h-4 w-4 text-green-600" />
                     Excel (.xlsx)
                   </div>
                 </SelectItem>
                 <SelectItem value="csv">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-4 w-4 text-blue-600" />
                     CSV (.csv)
                   </div>
                 </SelectItem>
@@ -172,34 +153,39 @@ export function SalesExportDialog({ children }: SalesExportDialogProps) {
             </Select>
           </div>
 
-          {/* Opciones adicionales */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="includeDetails"
-              checked={options.includeDetails}
-              onCheckedChange={(checked) => setOptions((prev) => ({ ...prev, includeDetails: !!checked }))}
-            />
-            <Label htmlFor="includeDetails" className="text-sm">
-              Incluir detalles completos
-            </Label>
+          {/* Rango de fechas */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Fecha Desde</Label>
+              <DatePicker date={dateFrom} setDate={setDateFrom} placeholder="Fecha inicio" />
+            </div>
+            <div>
+              <Label>Fecha Hasta</Label>
+              <DatePicker date={dateTo} setDate={setDateTo} placeholder="Fecha fin" />
+            </div>
           </div>
 
-          {/* Botones */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
-              Cancelar
-            </Button>
-            <Button onClick={handleExport} disabled={loading}>
-              {loading ? (
-                "Exportando..."
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Información del rango */}
+          {dateFrom && dateTo && (
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Rango seleccionado:</strong>
+                <br />
+                Desde: {format(dateFrom, "dd/MM/yyyy", { locale: es })}
+                <br />
+                Hasta: {format(dateTo, "dd/MM/yyyy", { locale: es })}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-2 mt-6">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleExport} disabled={loading || !dateFrom || !dateTo}>
+            {loading ? "Exportando..." : "Exportar"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
