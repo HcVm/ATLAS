@@ -12,11 +12,19 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Calculator } from "lucide-react"
+import { Search, Calculator, Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 interface Product {
   id: string
@@ -78,6 +86,13 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
     offer_total_with_tax: 0,
   })
 
+  const [showNewEntityDialog, setShowNewEntityDialog] = useState(false)
+  const [newEntity, setNewEntity] = useState({
+    name: "",
+    ruc: "",
+    executing_unit: "",
+  })
+
   useEffect(() => {
     if (selectedCompany) {
       fetchEntities()
@@ -122,18 +137,22 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
   }
 
   const searchProductByCode = async () => {
-    if (!formData.unique_code || !selectedCompany) return
+    if (!selectedCompany || !formData.unique_code.trim()) {
+      toast.error("Ingresa un código de producto")
+      return
+    }
 
     setSearchingProduct(true)
+
     try {
       const { data, error } = await supabase
         .from("products")
         .select(`
-          id, code, name, description, sale_price, current_stock, image_url,
-          brands (name)
-        `)
+        id, code, name, description, sale_price, current_stock, image_url,
+        brands (name)
+      `)
         .eq("company_id", selectedCompany.id)
-        .eq("code", formData.unique_code)
+        .eq("code", formData.unique_code.trim())
         .eq("is_active", true)
         .single()
 
@@ -141,7 +160,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         if (error.code === "PGRST116") {
           toast.error("No se encontró un producto con ese código")
         } else {
-          throw error
+          console.error("Error searching product:", error)
+          toast.error("Error al buscar el producto: " + error.message)
         }
         return
       }
@@ -159,7 +179,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
       toast.success("Producto encontrado y cargado automáticamente")
     } catch (error: any) {
       console.error("Error searching product:", error)
-      toast.error("Error al buscar el producto")
+      toast.error("Error al buscar el producto: " + (error.message || "Error desconocido"))
     } finally {
       setSearchingProduct(false)
     }
@@ -174,6 +194,39 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         entity_name: entity.name,
         entity_ruc: entity.ruc,
       }))
+    }
+  }
+
+  const handleCreateEntity = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedCompany) return
+
+    try {
+      const { data, error } = await supabase
+        .from("sales_entities")
+        .insert([
+          {
+            name: newEntity.name,
+            ruc: newEntity.ruc,
+            executing_unit: newEntity.executing_unit || null,
+            company_id: selectedCompany.id,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      toast.success("Entidad creada exitosamente")
+      setNewEntity({ name: "", ruc: "", executing_unit: "" })
+      setShowNewEntityDialog(false)
+      fetchEntities()
+
+      // Seleccionar la nueva entidad
+      handleEntitySelect(data.id)
+    } catch (error: any) {
+      console.error("Error creating entity:", error)
+      toast.error("Error al crear la entidad: " + error.message)
     }
   }
 
@@ -259,7 +312,58 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
       {/* Información del Cliente */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Información del Cliente</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Información del Cliente</h3>
+          <Dialog open={showNewEntityDialog} onOpenChange={setShowNewEntityDialog}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Entidad
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Crear Nueva Entidad</DialogTitle>
+                <DialogDescription>Registra una nueva entidad (cliente) en el sistema</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateEntity} className="space-y-4">
+                <div>
+                  <Label htmlFor="new_entity_name">Nombre de la Entidad *</Label>
+                  <Input
+                    id="new_entity_name"
+                    value={newEntity.name}
+                    onChange={(e) => setNewEntity((prev) => ({ ...prev, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new_entity_ruc">RUC *</Label>
+                  <Input
+                    id="new_entity_ruc"
+                    value={newEntity.ruc}
+                    onChange={(e) => setNewEntity((prev) => ({ ...prev, ruc: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new_entity_executing_unit">Unidad Ejecutora (Opcional)</Label>
+                  <Input
+                    id="new_entity_executing_unit"
+                    value={newEntity.executing_unit}
+                    onChange={(e) => setNewEntity((prev) => ({ ...prev, executing_unit: e.target.value }))}
+                    placeholder="Ej: 001, 002, etc."
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setShowNewEntityDialog(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Crear Entidad</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="entity">Entidad (Cliente) *</Label>

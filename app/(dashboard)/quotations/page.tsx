@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Clock } from "lucide-react"
+import { Plus, Search, FileText, DollarSign, TrendingUp, Clock, Eye } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -22,6 +22,9 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import QuotationForm from "@/components/quotations/quotation-form"
+import { Edit } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 interface Quotation {
   id: string
@@ -73,6 +76,11 @@ export default function QuotationsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showNewQuotationDialog, setShowNewQuotationDialog] = useState(false)
+  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null)
+  const [showEditStatusDialog, setShowEditStatusDialog] = useState(false)
+  const [newStatus, setNewStatus] = useState("")
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   // Verificar permisos de acceso basado en departamento y rol
   const hasAccess =
@@ -165,6 +173,26 @@ export default function QuotationsPage() {
       quotation.product_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.entity_ruc.includes(searchTerm),
   )
+
+  const updateQuotationStatus = async () => {
+    if (!editingQuotation || !newStatus) return
+
+    try {
+      const { error } = await supabase.from("quotations").update({ status: newStatus }).eq("id", editingQuotation.id)
+
+      if (error) throw error
+
+      toast.success("Estado actualizado exitosamente")
+      setShowEditStatusDialog(false)
+      setEditingQuotation(null)
+      setNewStatus("")
+      fetchQuotations()
+      fetchStats()
+    } catch (error: any) {
+      console.error("Error updating status:", error)
+      toast.error("Error al actualizar el estado")
+    }
+  }
 
   if (!hasAccess) {
     return (
@@ -325,12 +353,13 @@ export default function QuotationsPage() {
                   <TableHead>Estado</TableHead>
                   <TableHead>Válida Hasta</TableHead>
                   <TableHead>Creado Por</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredQuotations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={17} className="text-center py-8">
+                    <TableCell colSpan={18} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm
                           ? "No se encontraron cotizaciones que coincidan con la búsqueda"
@@ -389,6 +418,31 @@ export default function QuotationsPage() {
                           : "-"}
                       </TableCell>
                       <TableCell>{quotation.profiles?.full_name || "N/A"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedQuotation(quotation)
+                              setShowDetailsDialog(true)
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingQuotation(quotation)
+                              setNewStatus(quotation.status)
+                              setShowEditStatusDialog(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -397,6 +451,42 @@ export default function QuotationsPage() {
           </div>
         </CardContent>
       </Card>
+      {/* Edit Status Dialog */}
+      <Dialog open={showEditStatusDialog} onOpenChange={setShowEditStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Estado de Cotización</DialogTitle>
+            <DialogDescription>Actualiza el estado de la cotización: {editingQuotation?.unique_code}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Estado Actual</Label>
+              <div className="mt-1">{editingQuotation && getStatusBadge(editingQuotation.status)}</div>
+            </div>
+            <div>
+              <Label htmlFor="new_status">Nuevo Estado</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar nuevo estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Borrador</SelectItem>
+                  <SelectItem value="sent">Enviada</SelectItem>
+                  <SelectItem value="approved">Aprobada</SelectItem>
+                  <SelectItem value="rejected">Rechazada</SelectItem>
+                  <SelectItem value="expired">Expirada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={() => setShowEditStatusDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={updateQuotationStatus}>Actualizar Estado</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
