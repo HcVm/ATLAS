@@ -342,7 +342,7 @@ export default function ProductsPage() {
                   <TableHead>Código</TableHead>
                   <TableHead>Marca/Categoría</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>Precio</TableHead>
+                  <TableHead>Precios</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -419,6 +419,9 @@ export default function ProductsPage() {
                         <TableCell>
                           <div className="text-right">
                             <div className="font-medium">{formatCurrency(product.sale_price)}</div>
+                            <div className="text-xs text-green-600">
+                              Con IGV: {formatCurrency(product.sale_price * 1.18)}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               Costo: {formatCurrency(product.cost_price)}
                             </div>

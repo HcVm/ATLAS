@@ -266,7 +266,7 @@ export default function ProductDetailPage() {
               <img
                 src={product.image_url || "/placeholder.svg"}
                 alt={product.name}
-                className="w-full h-64 object-cover rounded-lg border"
+                className="w-full h-64 object-contain rounded-lg border bg-gray-50"
               />
             </CardContent>
           </Card>
@@ -383,16 +383,26 @@ export default function ProductDetailPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Precio de venta</label>
+                <label className="text-sm font-medium text-muted-foreground">Precio de venta (sin IGV)</label>
                 <p className="text-xl font-semibold text-green-600">{formatCurrency(product.sale_price)}</p>
+                <p className="text-sm text-green-700 font-medium">
+                  Con IGV (18%): {formatCurrency(product.sale_price * 1.18)}
+                </p>
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Margen de ganancia</label>
-              <p className="text-lg font-semibold">
-                {(((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)}%
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Margen de ganancia</label>
+                <p className="text-lg font-semibold">
+                  {(((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)}%
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">IGV (18%)</label>
+                <p className="text-lg font-semibold text-blue-600">{formatCurrency(product.sale_price * 0.18)}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
