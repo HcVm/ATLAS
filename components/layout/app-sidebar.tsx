@@ -42,103 +42,139 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
 
-const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-    roles: ["admin", "supervisor", "user"],
+// Organizamos los elementos del menú por secciones
+const menuSections = {
+  main: {
+    title: "PRINCIPAL",
+    items: [
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Notificaciones",
+        url: "/notifications",
+        icon: Bell,
+        roles: ["admin", "supervisor", "user"],
+      },
+    ],
   },
-  {
-    title: "Documentos",
-    url: "/documents",
-    icon: FileText,
-    roles: ["admin", "supervisor", "user"],
+  documents: {
+    title: "DOCUMENTOS",
+    items: [
+      {
+        title: "Documentos",
+        url: "/documents",
+        icon: FileText,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Crear Documento",
+        url: "/documents/new",
+        icon: Plus,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Movimientos",
+        url: "/movements",
+        icon: MapPin,
+        roles: ["admin", "supervisor", "user"],
+      },
+    ],
   },
-  {
-    title: "Crear Documento",
-    url: "/documents/new",
-    icon: Plus,
-    roles: ["admin", "supervisor", "user"],
+  sales: {
+    title: "VENTAS",
+    items: [
+      {
+        title: "Ventas",
+        url: "/sales",
+        icon: ShoppingCart,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["ventas", "administración", "administracion", "operaciones"],
+      },
+      {
+        title: "Cotizaciones",
+        url: "/quotations",
+        icon: FileText,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["ventas", "administración", "administracion", "operaciones"],
+      },
+    ],
   },
-  {
-    title: "Movimientos",
-    url: "/movements",
-    icon: MapPin,
-    roles: ["admin", "supervisor", "user"],
+  warehouse: {
+    title: "ALMACÉN",
+    items: [
+      {
+        title: "Almacén",
+        url: "/warehouse",
+        icon: Package,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+      },
+      {
+        title: "Productos",
+        url: "/warehouse/products",
+        icon: Box,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+      },
+      {
+        title: "Inventario",
+        url: "/warehouse/inventory",
+        icon: ClipboardList,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+      },
+    ],
   },
-  {
-    title: "Soporte",
-    url: "/support",
-    icon: Headphones,
-    roles: ["admin", "supervisor", "user"],
+  support: {
+    title: "SOPORTE",
+    items: [
+      {
+        title: "Soporte",
+        url: "/support",
+        icon: Headphones,
+        roles: ["admin", "supervisor", "user"],
+      },
+    ],
   },
-  {
-    title: "Ventas",
-    url: "/sales",
-    icon: ShoppingCart,
-    roles: ["admin", "supervisor", "user"],
-    departments: ["ventas", "administración", "administracion", "operaciones"],
+  analytics: {
+    title: "ANÁLISIS",
+    items: [
+      {
+        title: "Estadísticas",
+        url: "/statistics",
+        icon: BarChart3,
+        roles: ["admin", "supervisor"],
+      },
+    ],
   },
-  {
-    title: "Cotizaciones",
-    url: "/quotations",
-    icon: FileText,
-    roles: ["admin", "supervisor", "user"],
-    departments: ["ventas", "administración", "administracion", "operaciones"],
+  admin: {
+    title: "ADMINISTRACIÓN",
+    items: [
+      {
+        title: "Usuarios",
+        url: "/users",
+        icon: Users,
+        roles: ["admin"],
+      },
+      {
+        title: "Departamentos",
+        url: "/departments",
+        icon: Building2,
+        roles: ["admin"],
+      },
+      {
+        title: "Noticias",
+        url: "/news",
+        icon: Newspaper,
+        roles: ["admin", "supervisor"],
+      },
+    ],
   },
-  {
-    title: "Almacén",
-    url: "/warehouse",
-    icon: Package,
-    roles: ["admin", "supervisor", "user"],
-    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
-  },
-  {
-    title: "Productos",
-    url: "/warehouse/products",
-    icon: Box,
-    roles: ["admin", "supervisor", "user"],
-    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
-  },
-  {
-    title: "Inventario",
-    url: "/warehouse/inventory",
-    icon: ClipboardList,
-    roles: ["admin", "supervisor", "user"],
-    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
-  },
-  {
-    title: "Notificaciones",
-    url: "/notifications",
-    icon: Bell,
-    roles: ["admin", "supervisor", "user"],
-  },
-  {
-    title: "Estadísticas",
-    url: "/statistics",
-    icon: BarChart3,
-    roles: ["admin", "supervisor"],
-  },
-  {
-    title: "Usuarios",
-    url: "/users",
-    icon: Users,
-    roles: ["admin"],
-  },
-  {
-    title: "Departamentos",
-    url: "/departments",
-    icon: Building2,
-    roles: ["admin"],
-  },
-  {
-    title: "Noticias",
-    url: "/news",
-    icon: Newspaper,
-    roles: ["admin", "supervisor"],
-  },
-]
+}
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -186,27 +222,28 @@ export function AppSidebar() {
     )
   }
 
-  const filteredMenuItems = user.role
-    ? menuItems.filter((item) => {
-        // Admin y supervisor tienen acceso a todo
-        if (user.role === "admin" || user.role === "supervisor") {
-          return item.roles.includes(user.role)
-        }
+  // Función para filtrar items de una sección
+  const filterSectionItems = (items: any[]) => {
+    return items.filter((item) => {
+      // Admin y supervisor tienen acceso a todo
+      if (user.role === "admin" || user.role === "supervisor") {
+        return item.roles.includes(user.role)
+      }
 
-        // Para usuarios regulares, verificar roles permitidos
-        if (!item.roles.includes(user.role)) {
-          return false
-        }
+      // Para usuarios regulares, verificar roles permitidos
+      if (!item.roles.includes(user.role)) {
+        return false
+      }
 
-        // Si el item tiene restricciones de departamento, verificarlas
-        if (item.departments) {
-          return hasAccessByDepartment(item.departments)
-        }
+      // Si el item tiene restricciones de departamento, verificarlas
+      if (item.departments) {
+        return hasAccessByDepartment(item.departments)
+      }
 
-        // Si no hay restricciones de departamento, permitir acceso
-        return true
-      })
-    : []
+      // Si no hay restricciones de departamento, permitir acceso
+      return true
+    })
+  }
 
   return (
     <Sidebar>
@@ -224,39 +261,53 @@ export function AppSidebar() {
 
       <SidebarContent>
         {user.role ? (
-          <SidebarGroup>
-            <SidebarGroupLabel>NAVEGACIÓN</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={pathname === item.url}>
-                      <Link
-                        href={item.url}
-                        className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-300 hover:bg-primary/10 group"
-                      >
-                        <div
-                          className={`flex h-8 w-8 items-center justify-center rounded-md ${pathname === item.url ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"} transition-colors duration-300`}
-                        >
-                          <item.icon className="h-4 w-4" />
-                        </div>
-                        <span
-                          className={`${pathname === item.url ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground"} transition-colors duration-300`}
-                        >
-                          {item.title}
-                        </span>
-                        {item.title === "Notificaciones" && (
-                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                            <Bell className="h-4 w-4" />
-                          </span>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            {/* Renderizar cada sección */}
+            {Object.entries(menuSections).map(([sectionKey, section]) => {
+              const filteredItems = filterSectionItems(section.items)
+
+              // Solo mostrar la sección si tiene items visibles
+              if (filteredItems.length === 0) return null
+
+              return (
+                <SidebarGroup key={sectionKey}>
+                  <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 px-3 py-2">
+                    {section.title}
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {filteredItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild isActive={pathname === item.url}>
+                            <Link
+                              href={item.url}
+                              className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-300 hover:bg-primary/10 group"
+                            >
+                              <div
+                                className={`flex h-8 w-8 items-center justify-center rounded-md ${pathname === item.url ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"} transition-colors duration-300`}
+                              >
+                                <item.icon className="h-4 w-4" />
+                              </div>
+                              <span
+                                className={`${pathname === item.url ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground"} transition-colors duration-300`}
+                              >
+                                {item.title}
+                              </span>
+                              {item.title === "Notificaciones" && (
+                                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                                  <Bell className="h-4 w-4" />
+                                </span>
+                              )}
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )
+            })}
+          </>
         ) : (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -267,27 +318,15 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
-        {/* Debug info - remover en producción */}
-        {process.env.NODE_ENV === "development" && user && (
-          <SidebarGroup>
-            <SidebarGroupLabel>DEBUG INFO</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <div className="text-xs text-muted-foreground p-2">
-                <div>Rol: {user.role}</div>
-                <div>Departamento: {user.departments?.name || "Sin departamento"}</div>
-                <div>Items visibles: {filteredMenuItems.length}</div>
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarSeparator />
 
       <SidebarFooter className="p-4">
         <SidebarGroup>
-          <SidebarGroupLabel>USUARIO</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 px-3 py-2">
+            USUARIO
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
