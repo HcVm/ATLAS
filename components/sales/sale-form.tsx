@@ -185,7 +185,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, product_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("status", "approved")
@@ -211,7 +211,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, product_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("quotation_number", formData.quotation_search.trim())
@@ -236,7 +236,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         entity_name: data.entity_name,
         entity_ruc: data.entity_ruc,
         product_description: data.product_description,
-        product_code: data.product_code || "",
+        product_code: data.unique_code || "",
         product_name: data.product_name || "",
         product_brand: data.product_brand || "",
         quantity: data.quantity.toString(),
