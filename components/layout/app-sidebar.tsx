@@ -78,25 +78,28 @@ const menuItems = [
     url: "/sales",
     icon: ShoppingCart,
     roles: ["admin", "supervisor", "user"],
-    departments: ["ventas", "administración", "operaciones"],
+    departments: ["ventas", "administración", "administracion", "operaciones"],
   },
   {
     title: "Almacén",
     url: "/warehouse",
     icon: Package,
-    roles: ["admin", "supervisor", "almacen", "contabilidad"],
+    roles: ["admin", "supervisor", "user"],
+    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
   },
   {
     title: "Productos",
     url: "/warehouse/products",
     icon: Box,
-    roles: ["admin", "supervisor", "almacen", "contabilidad"],
+    roles: ["admin", "supervisor", "user"],
+    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
   },
   {
     title: "Inventario",
     url: "/warehouse/inventory",
     icon: ClipboardList,
-    roles: ["admin", "supervisor", "almacen", "contabilidad"],
+    roles: ["admin", "supervisor", "user"],
+    departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
   },
   {
     title: "Notificaciones",
@@ -166,27 +169,35 @@ export function AppSidebar() {
     )
   }
 
+  // Función para verificar acceso por departamento
+  const hasAccessByDepartment = (allowedDepartments: string[]) => {
+    if (!user.departments?.name) return false
+
+    const userDepartment = user.departments.name.toLowerCase()
+    return allowedDepartments.some(
+      (dept) => userDepartment.includes(dept.toLowerCase()) || dept.toLowerCase().includes(userDepartment),
+    )
+  }
+
   const filteredMenuItems = user.role
     ? menuItems.filter((item) => {
-        // Check if user role is in the allowed roles
-        if (item.roles.includes(user.role)) {
-          // For items with department restrictions, check department access
-          if (item.departments && user.role === "user") {
-            return (
-              user.departments?.name &&
-              item.departments.some((dept) => dept.toLowerCase() === user.departments.name.toLowerCase())
-            )
-          }
-
-          // For warehouse items, also check if user's department allows access
-          if (item.url.includes("/warehouse") && user.departments?.name) {
-            return user.departments.name === "Almacén" || user.departments.name === "Contabilidad"
-          }
-
-          return true
+        // Admin y supervisor tienen acceso a todo
+        if (user.role === "admin" || user.role === "supervisor") {
+          return item.roles.includes(user.role)
         }
 
-        return false
+        // Para usuarios regulares, verificar roles permitidos
+        if (!item.roles.includes(user.role)) {
+          return false
+        }
+
+        // Si el item tiene restricciones de departamento, verificarlas
+        if (item.departments) {
+          return hasAccessByDepartment(item.departments)
+        }
+
+        // Si no hay restricciones de departamento, permitir acceso
+        return true
       })
     : []
 
@@ -246,6 +257,20 @@ export function AppSidebar() {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>Sin rol asignado. Contacta al administrador.</AlertDescription>
               </Alert>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Debug info - remover en producción */}
+        {process.env.NODE_ENV === "development" && user && (
+          <SidebarGroup>
+            <SidebarGroupLabel>DEBUG INFO</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="text-xs text-muted-foreground p-2">
+                <div>Rol: {user.role}</div>
+                <div>Departamento: {user.departments?.name || "Sin departamento"}</div>
+                <div>Items visibles: {filteredMenuItems.length}</div>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
