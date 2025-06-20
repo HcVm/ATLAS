@@ -370,20 +370,11 @@ export default function QuotationsPage() {
                   <TableHead>N° Cotización</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>RUC</TableHead>
-                  <TableHead>Lugar Entrega</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Producto</TableHead>
-                  <TableHead>Marca</TableHead>
                   <TableHead>Cantidad</TableHead>
-                  <TableHead>P. Plataforma</TableHead>
-                  <TableHead>P. Proveedor</TableHead>
-                  <TableHead>P. Oferta</TableHead>
                   <TableHead>Total Ofertado</TableHead>
-                  <TableHead>P. Final</TableHead>
-                  <TableHead>Techo Presup.</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Válida Hasta</TableHead>
-                  <TableHead>Creado Por</TableHead>
                   <TableHead>Ruta</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -408,51 +399,17 @@ export default function QuotationsPage() {
                       </TableCell>
                       <TableCell className="font-medium">{quotation.entity_name}</TableCell>
                       <TableCell>{quotation.entity_ruc}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={quotation.delivery_location}>
-                        {quotation.delivery_location}
-                      </TableCell>
                       <TableCell className="font-medium">{quotation.unique_code}</TableCell>
                       <TableCell className="max-w-xs truncate" title={quotation.product_description}>
                         {quotation.product_description}
                       </TableCell>
-                      <TableCell>{quotation.product_brand || "-"}</TableCell>
                       <TableCell>{quotation.quantity.toLocaleString()}</TableCell>
-                      <TableCell>
-                        S/{" "}
-                        {quotation.platform_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        {quotation.supplier_unit_price_with_tax
-                          ? `S/ ${quotation.supplier_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {quotation.offer_unit_price_with_tax
-                          ? `S/ ${quotation.offer_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
                       <TableCell className="font-medium">
                         {quotation.offer_total_with_tax
                           ? `S/ ${quotation.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
                           : "-"}
                       </TableCell>
-                      <TableCell>
-                        {quotation.final_unit_price_with_tax
-                          ? `S/ ${quotation.final_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {quotation.budget_ceiling
-                          ? `S/ ${quotation.budget_ceiling.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
                       <TableCell>{getStatusBadge(quotation.status)}</TableCell>
-                      <TableCell>
-                        {quotation.valid_until
-                          ? format(new Date(quotation.valid_until), "dd/MM/yyyy", { locale: es })
-                          : "-"}
-                      </TableCell>
-                      <TableCell>{quotation.profiles?.full_name || "N/A"}</TableCell>
                       <TableCell>
                         {quotation.route_distance_km ? (
                           <div className="flex items-center gap-1">

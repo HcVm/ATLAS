@@ -19,6 +19,7 @@ import { es } from "date-fns/locale"
 import SaleForm from "@/components/sales/sale-form"
 import SaleEditForm from "@/components/sales/sale-edit-form"
 import SalesExportDialog from "@/components/sales/sales-export-dialog"
+import { Label } from "@/components/ui/label"
 
 interface Sale {
   id: string
@@ -415,104 +416,234 @@ export default function SalesPage() {
             <DialogDescription>Información completa de la venta seleccionada</DialogDescription>
           </DialogHeader>
           {selectedSale && (
-            <div className="grid gap-4">
-              <div>
-                <h3 className="text-lg font-semibold">Información General</h3>
-                <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-6">
+              {/* Header con información clave */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <strong>N° Venta:</strong> {selectedSale.sale_number || "N/A"}
+                    <h3 className="text-2xl font-bold text-gray-900">Venta #{selectedSale.sale_number || "N/A"}</h3>
+                    <p className="text-gray-600">
+                      {format(new Date(selectedSale.sale_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                    </p>
                   </div>
-                  <div>
-                    <strong>Fecha:</strong> {format(new Date(selectedSale.sale_date), "dd/MM/yyyy", { locale: es })}
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Total de la Venta</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
-                  <div>
-                    <strong>Cliente:</strong> {selectedSale.entity_name}
-                  </div>
-                  <div>
-                    <strong>RUC:</strong> {selectedSale.entity_ruc}
-                  </div>
-                  <div>
-                    <strong>Unidad Ejecutora:</strong> {selectedSale.entity_executing_unit || "N/A"}
-                  </div>
-                  <div>
-                    <strong>N° Cotización:</strong> {selectedSale.quotation_code}
-                  </div>
-                  <div>
-                    <strong>Vendedor:</strong> {selectedSale.profiles?.full_name || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Estado:</strong> {selectedSale.sale_status?.toUpperCase() || "PENDIENTE"}
-                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Badge
+                    variant={
+                      selectedSale.sale_status === "conformidad"
+                        ? "default"
+                        : selectedSale.sale_status === "devengado"
+                          ? "secondary"
+                          : selectedSale.sale_status === "girado"
+                            ? "destructive"
+                            : "outline"
+                    }
+                    className="text-sm px-3 py-1"
+                  >
+                    {selectedSale.sale_status?.toUpperCase() || "PENDIENTE"}
+                  </Badge>
+                  <span className="text-sm text-gray-600">Vendedor: {selectedSale.profiles?.full_name || "N/A"}</span>
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold">Información del Producto</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <strong>Producto:</strong> {selectedSale.product_name}
-                  </div>
-                  <div>
-                    <strong>Cantidad:</strong> {selectedSale.quantity.toLocaleString()}
-                  </div>
-                  <div>
-                    <strong>Precio Unitario:</strong> S/{" "}
-                    {selectedSale.unit_price_with_tax?.toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Total:</strong> S/{" "}
-                    {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </div>
-                  <div>
-                    <strong>Código Producto:</strong> {selectedSale.product_code || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Descripción Producto:</strong> {selectedSale.product_description || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Marca Producto:</strong> {selectedSale.product_brand || "N/A"}
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Información del Cliente */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      Cliente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Razón Social</Label>
+                      <p className="text-sm font-semibold text-gray-900">{selectedSale.entity_name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">RUC</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.entity_ruc}</p>
+                    </div>
+                    {selectedSale.entity_executing_unit && (
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Unidad Ejecutora
+                        </Label>
+                        <Badge variant="outline" className="text-xs">
+                          {selectedSale.entity_executing_unit}
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Información del Producto */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      Producto
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</Label>
+                      <p className="text-sm font-semibold text-gray-900">{selectedSale.product_name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Código</Label>
+                        <p className="text-sm text-gray-700">{selectedSale.product_code || "N/A"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Marca</Label>
+                        <p className="text-sm text-gray-700">{selectedSale.product_brand || "N/A"}</p>
+                      </div>
+                    </div>
+                    {selectedSale.product_description && (
+                      <div>
+                        <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Descripción</Label>
+                        <p className="text-sm text-gray-700">{selectedSale.product_description}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold">Información Adicional</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <strong>Método de Pago:</strong> {selectedSale.payment_method}
+              {/* Información Financiera */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    Información Financiera
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">Cantidad</p>
+                      <p className="text-2xl font-bold text-blue-600">{selectedSale.quantity.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">unidades</p>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">Precio Unitario</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        S/{" "}
+                        {selectedSale.unit_price_with_tax?.toLocaleString("es-PE", { minimumFractionDigits: 2 }) ||
+                          "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500">con IGV</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">Total</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-gray-500">monto final</p>
+                    </div>
                   </div>
-                  <div>
-                    <strong>Fecha de Entrega:</strong>{" "}
-                    {selectedSale.delivery_date
-                      ? format(new Date(selectedSale.delivery_date), "dd/MM/yyyy", { locale: es })
-                      : "N/A"}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600">Método de Pago:</span>
+                      <Badge variant={selectedSale.payment_method === "CONTADO" ? "default" : "secondary"}>
+                        {selectedSale.payment_method}
+                      </Badge>
+                    </div>
                   </div>
-                  <div>
-                    <strong>Exp SIAF:</strong> {selectedSale.exp_siaf || "N/A"}
-                  </div>
-                  <div>
-                    <strong>OCAM:</strong> {selectedSale.ocam || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Orden Física:</strong> {selectedSale.physical_order || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Meta Proyecto:</strong> {selectedSale.project_meta || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Destino Final:</strong> {selectedSale.final_destination || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Almacenero:</strong> {selectedSale.warehouse_manager || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Término de Entrega:</strong> {selectedSale.delivery_term || "N/A"}
-                  </div>
-                  <div>
-                    <strong>Observaciones:</strong> {selectedSale.observations || "N/A"}
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* Información de Entrega y Documentos */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Package className="w-5 h-5 text-orange-600" />
+                      Entrega
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Fecha de Entrega
+                      </Label>
+                      <p className="text-sm text-gray-700">
+                        {selectedSale.delivery_date
+                          ? format(new Date(selectedSale.delivery_date), "dd/MM/yyyy", { locale: es })
+                          : "No especificada"}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Término de Entrega
+                      </Label>
+                      <p className="text-sm text-gray-700">{selectedSale.delivery_term || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Destino Final</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.final_destination || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Almacenero</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.warehouse_manager || "N/A"}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="w-5 h-5 text-indigo-600" />
+                      Documentos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">N° Cotización</Label>
+                      <p className="text-sm font-semibold text-indigo-600">{selectedSale.quotation_code}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Exp SIAF</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.exp_siaf || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">OCAM</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.ocam || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Orden Física</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.physical_order || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Meta Proyecto</Label>
+                      <p className="text-sm text-gray-700">{selectedSale.project_meta || "N/A"}</p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
+
+              {/* Observaciones */}
+              {selectedSale.observations && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      Observaciones
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700 bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-400">
+                      {selectedSale.observations}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </DialogContent>
