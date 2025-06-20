@@ -7,6 +7,7 @@ export interface Database {
         Row: {
           id: string
           name: string
+          ruc: string
           code: string
           description: string | null
           logo_url: string | null
@@ -17,6 +18,7 @@ export interface Database {
         Insert: {
           id?: string
           name: string
+          ruc: string
           code: string
           description?: string | null
           logo_url?: string | null
@@ -27,6 +29,7 @@ export interface Database {
         Update: {
           id?: string
           name?: string
+          ruc?: string
           code?: string
           description?: string | null
           logo_url?: string | null
@@ -93,6 +96,7 @@ export interface Database {
             id: string
             name: string
             code: string
+            ruc: string
             color: string
           } | null
         }
@@ -632,7 +636,7 @@ export interface Database {
           created_at: string
           product_id?: string | null
           profile_id?: string | null
-          peru_department_id?: string | null  
+          peru_department_id?: string | null
         }
         Update: {
           id: string

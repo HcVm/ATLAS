@@ -36,6 +36,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import QuotationForm from "@/components/quotations/quotation-form"
 import RoutePlanner from "@/components/quotations/route-planner"
+import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 import { Edit } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -62,6 +63,7 @@ interface Quotation {
   status: string
   valid_until: string | null
   created_by: string
+  observations: string | null
   // Campos de ruta simplificados
   route_origin_address?: string | null
   route_destination_address?: string | null
@@ -148,9 +150,9 @@ export default function QuotationsPage() {
       const { data, error } = await supabase
         .from("quotations")
         .select(`
-        *,
-        profiles!quotations_created_by_fkey (full_name)
-      `)
+       *,
+       profiles!quotations_created_by_fkey (full_name)
+     `)
         .eq("company_id", companyId)
         .order("quotation_date", { ascending: false })
 
@@ -868,6 +870,18 @@ export default function QuotationsPage() {
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
               Cerrar
             </Button>
+            {selectedQuotation && selectedCompany && (
+              <QuotationPDFGenerator
+                quotation={selectedQuotation}
+                companyInfo={{
+                  name: selectedCompany.name,
+                  ruc: selectedCompany.ruc || "",
+                  address: selectedCompany.address,
+                  phone: selectedCompany.phone,
+                  email: selectedCompany.email,
+                }}
+              />
+            )}
             <Button
               onClick={() => {
                 setShowDetailsDialog(false)

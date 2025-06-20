@@ -1,49 +1,176 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { ArrowRight } from "lucide-react"
+import { useEffect, useRef } from "react"
+
+// Componente de partículas animadas minimalista
+function ParticlesBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    // Configurar canvas
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resizeCanvas()
+    window.addEventListener("resize", resizeCanvas)
+
+    // Partículas más sutiles
+    const particles: Array<{
+      x: number
+      y: number
+      vx: number
+      vy: number
+      size: number
+      opacity: number
+    }> = []
+
+    // Crear menos partículas para look minimalista
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        size: Math.random() * 2 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1,
+      })
+    }
+
+    // Animar partículas
+    function animate() {
+      if (!ctx || !canvas) return
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      particles.forEach((particle, index) => {
+        // Actualizar posición
+        particle.x += particle.vx
+        particle.y += particle.vy
+
+        // Rebotar en los bordes
+        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1
+        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1
+
+        // Dibujar partícula más sutil
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(148, 163, 184, ${particle.opacity})`
+        ctx.fill()
+
+        // Conectar partículas cercanas con líneas muy sutiles
+        particles.slice(index + 1).forEach((otherParticle) => {
+          const dx = particle.x - otherParticle.x
+          const dy = particle.y - otherParticle.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < 120) {
+            ctx.beginPath()
+            ctx.moveTo(particle.x, particle.y)
+            ctx.lineTo(otherParticle.x, otherParticle.y)
+            ctx.strokeStyle = `rgba(148, 163, 184, ${0.05 * (1 - distance / 120)})`
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+          }
+        })
+      })
+
+      requestAnimationFrame(animate)
+    }
+
+    animate()
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full"
+      style={{ background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)" }}
+    />
+  )
+}
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4">
-      <div className="max-w-3xl text-center">
-        <div className="flex justify-center mb-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="lucide lucide-file-text"
-            >
-              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-              <path d="M10 9H8" />
-              <path d="M16 13H8" />
-              <path d="M16 17H8" />
-            </svg>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Fondo minimalista */}
+      <ParticlesBackground />
+
+      {/* Contenido principal */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="text-center max-w-2xl mx-auto">
+          {/* Logo/Icono con efecto glass */}
+          <div className="flex justify-center mb-12">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/40 rounded-3xl blur-xl" />
+              <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white/20 backdrop-blur-xl border border-white/30 shadow-2xl">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-slate-700"
+                >
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                  <path d="M10 9H8" />
+                  <path d="M16 13H8" />
+                  <path d="M16 17H8" />
+                </svg>
+              </div>
+            </div>
           </div>
-        </div>
-        <h1 className="text-4xl font-bold mb-4">Sistema de Seguimiento de Documentos</h1>
-        <p className="text-lg text-gray-600 mb-8">
-          Gestione y haga seguimiento a sus documentos de manera eficiente y segura.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+          {/* Título */}
+          <h1 className="text-5xl md:text-7xl font-bold text-slate-800 mb-6 tracking-tight">
+            Sistema de
+            <br />
+            <span className="bg-gradient-to-r from-slate-600 to-slate-800 bg-clip-text text-transparent">Gestión</span>
+          </h1>
+
+          {/* Subtítulo */}
+          <p className="text-xl md:text-2xl text-slate-600 mb-16 font-light">
+            Plataforma integral para empresas modernas
+          </p>
+
+          {/* Botón de acceso con efecto glass */}
           <Button
             asChild
             size="lg"
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            className="bg-white/30 hover:bg-white/40 text-slate-700 border border-white/40 backdrop-blur-xl px-10 py-6 text-lg font-semibold shadow-2xl hover:shadow-3xl transition-all duration-300 group hover:scale-105 rounded-2xl"
           >
-            <Link href="/login">Iniciar Sesión</Link>
+            <Link href="/login" className="flex items-center gap-3">
+              Iniciar Sesión
+              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/register">Registrarse</Link>
-          </Button>
+
+          {/* Texto informativo */}
+          <p className="text-slate-500 text-sm mt-8 font-medium">Acceso seguro para usuarios autorizados</p>
         </div>
       </div>
+
+      {/* Efectos de luz sutil */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-white/20 to-transparent rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-slate-200/30 to-transparent rounded-full blur-3xl" />
     </div>
   )
 }
