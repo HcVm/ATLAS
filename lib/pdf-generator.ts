@@ -116,7 +116,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
   return `
     <div style="padding: 20px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4;">
       <!-- Header -->
-      <table style="width: 100%; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px;">
+      <table style="width: 100%; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 10px;">
         <tr>
           <td style="vertical-align: top; width: 60%;">
             <h1 style="color: #2563eb; font-size: 24px; font-weight: bold; margin: 0 0 5px 0;">
@@ -137,10 +137,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
       </table>
       
       <!-- Información de la Cotización -->
-      <table style="width: 100%; margin-bottom: 30px;">
+      <table style="width: 100%; margin-bottom: 10px;">
         <tr>
           <td style="vertical-align: top; width: 48%; padding-right: 2%;">
-            <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+            <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
               INFORMACIÓN DEL CLIENTE
             </h3>
             <div style="background: #f9fafb; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
@@ -256,7 +256,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         data.observations
           ? `
       <!-- Observaciones -->
-      <div style="margin-bottom: 30px;">
+      <div style="margin-bottom: 10px;">
         <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           OBSERVACIONES
         </h3>
@@ -269,7 +269,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
       }
       
       <!-- Footer -->
-      <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 40px; text-align: center; color: #6b7280; font-size: 11px;">
+      <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 15px; text-align: center; color: #6b7280; font-size: 11px;">
         <p style="margin: 0 0 5px 0;">Esta cotización es válida por el período especificado y está sujeta a disponibilidad de stock.</p>
         <p style="margin: 0;">Documento generado automáticamente el ${new Date().toLocaleDateString("es-PE")} a las ${new Date().toLocaleTimeString("es-PE")}</p>
       </div>
