@@ -10,43 +10,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2, Building2, Mail } from "lucide-react"
+import Image from "next/image"
 
 // Configuración de empresas por dominio - colores minimalistas
 const COMPANY_DOMAINS = {
   agle: {
     name: "AGLE",
     logo: "/logos/agle-logo.png",
-    color: "from-slate-600 to-slate-700",
     bgColor: "bg-slate-50",
     accent: "text-slate-600",
+    borderColor: "border-slate-200",
   },
   arm: {
     name: "ARM",
     logo: "/logos/arm-logo.png",
-    color: "from-gray-600 to-gray-700",
     bgColor: "bg-gray-50",
     accent: "text-gray-600",
+    borderColor: "border-gray-200",
   },
   galur: {
     name: "GALUR",
     logo: "/logos/galur-logo.png",
-    color: "from-zinc-600 to-zinc-700",
     bgColor: "bg-zinc-50",
     accent: "text-zinc-600",
+    borderColor: "border-zinc-200",
   },
   gmc: {
     name: "GMC",
     logo: "/logos/gmc-logo.png",
-    color: "from-stone-600 to-stone-700",
     bgColor: "bg-stone-50",
     accent: "text-stone-600",
+    borderColor: "border-stone-200",
   },
   amco: {
     name: "AMCO",
     logo: "/logos/amco-logo.png",
-    color: "from-neutral-600 to-neutral-700",
     bgColor: "bg-neutral-50",
     accent: "text-neutral-600",
+    borderColor: "border-neutral-200",
   },
 } as const
 
@@ -71,6 +72,7 @@ export default function LoginPageClient() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [detectedCompany, setDetectedCompany] = useState<CompanyKey | null>(null)
+  const [logoError, setLogoError] = useState(false)
   const router = useRouter()
   const { signIn } = useAuth()
 
@@ -79,8 +81,10 @@ export default function LoginPageClient() {
     if (email.includes("@")) {
       const company = detectCompanyFromEmail(email)
       setDetectedCompany(company)
+      setLogoError(false) // Reset logo error when company changes
     } else {
       setDetectedCompany(null)
+      setLogoError(false)
     }
   }, [email])
 
@@ -117,13 +121,30 @@ export default function LoginPageClient() {
     >
       <div className="w-full max-w-md">
         <Card className="shadow-2xl border-0 overflow-hidden bg-white/80 backdrop-blur-xl">
-          {/* Header minimalista */}
+          {/* Header con logo de empresa */}
           <CardHeader className="space-y-1 text-center bg-white/50 backdrop-blur-xl border-b border-gray-100">
             <div className="flex justify-center mb-4">
               {companyConfig ? (
                 <div className="flex flex-col items-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/60 backdrop-blur-xl border border-gray-200 mb-3 shadow-lg">
-                    <Building2 className={`h-8 w-8 ${companyConfig.accent}`} />
+                  <div
+                    className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white/80 backdrop-blur-xl border ${companyConfig.borderColor} mb-3 shadow-lg overflow-hidden`}
+                  >
+                    {!logoError ? (
+                      <Image
+                        src={companyConfig.logo || "/placeholder.svg"}
+                        alt={`Logo ${companyConfig.name}`}
+                        width={64}
+                        height={64}
+                        className="object-contain w-full h-full p-2"
+                        onError={() => setLogoError(true)}
+                        priority
+                      />
+                    ) : (
+                      // Fallback si la imagen no carga
+                      <div className={`flex items-center justify-center w-full h-full ${companyConfig.accent}`}>
+                        <Building2 className="h-8 w-8" />
+                      </div>
+                    )}
                   </div>
                   <div className={`text-sm font-semibold ${companyConfig.accent}`}>{companyConfig.name}</div>
                 </div>
@@ -182,9 +203,13 @@ export default function LoginPageClient() {
                   />
                 </div>
                 {detectedCompany && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 mt-2 bg-white/40 backdrop-blur-xl rounded-lg px-3 py-2 border border-gray-200">
+                  <div
+                    className={`flex items-center gap-2 text-sm mt-2 bg-white/40 backdrop-blur-xl rounded-lg px-3 py-2 border ${companyConfig?.borderColor || "border-gray-200"}`}
+                  >
                     <Building2 className="h-4 w-4" />
-                    <span>Empresa detectada: {COMPANY_DOMAINS[detectedCompany].name}</span>
+                    <span className={companyConfig?.accent || "text-slate-600"}>
+                      Empresa detectada: {COMPANY_DOMAINS[detectedCompany].name}
+                    </span>
                   </div>
                 )}
               </div>
