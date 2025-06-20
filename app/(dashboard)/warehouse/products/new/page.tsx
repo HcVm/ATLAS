@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, Save, Package } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import ProductImageUpload from "@/components/warehouse/product-image-upload"
 
@@ -51,7 +51,6 @@ interface ProductForm {
 export default function NewProductPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
@@ -127,11 +126,7 @@ export default function NewProductPage() {
       console.log("Set brands:", brandsData?.length || 0, "categories:", categoriesData?.length || 0)
     } catch (error) {
       console.error("Error fetching data:", error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los datos necesarios",
-        variant: "destructive",
-      })
+      toast.error("No se pudieron cargar los datos necesarios")
     } finally {
       setLoading(false)
     }
@@ -141,20 +136,12 @@ export default function NewProductPage() {
     e.preventDefault()
 
     if (!user?.company_id) {
-      toast({
-        title: "Error",
-        description: "No se pudo identificar la empresa",
-        variant: "destructive",
-      })
+      toast.error("No se pudo identificar la empresa")
       return
     }
 
     if (!form.name.trim() || !form.code.trim()) {
-      toast({
-        title: "Error",
-        description: "El nombre y código del producto son obligatorios",
-        variant: "destructive",
-      })
+      toast.error("El nombre y código del producto son obligatorios")
       return
     }
 
@@ -189,29 +176,17 @@ export default function NewProductPage() {
       if (error) {
         console.error("Supabase error:", error)
         if (error.code === "23505") {
-          toast({
-            title: "Error",
-            description: "Ya existe un producto con ese código",
-            variant: "destructive",
-          })
+          toast.error("Ya existe un producto con ese código")
           return
         }
         throw error
       }
 
-      toast({
-        title: "Éxito",
-        description: "Producto creado correctamente",
-      })
-
+      toast.success("Producto creado correctamente")
       router.push("/warehouse/products")
     } catch (error) {
       console.error("Error creating product:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo crear el producto. Verifica que todos los campos estén correctos.",
-        variant: "destructive",
-      })
+      toast.error("No se pudo crear el producto. Verifica que todos los campos estén correctos.")
     } finally {
       setSaving(false)
     }
@@ -351,12 +326,10 @@ export default function NewProductPage() {
                           </SelectItem>
                         ))}
                       </SelectContent>
-                      {brands.length === 0 && !loading && (
-                        <p className="text-sm text-muted-foreground">
-                          No hay marcas disponibles para esta empresa. Company ID: {user?.company_id}
-                        </p>
-                      )}
                     </Select>
+                    {brands.length === 0 && !loading && (
+                      <p className="text-sm text-muted-foreground">No hay marcas disponibles para esta empresa.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
@@ -479,7 +452,7 @@ export default function NewProductPage() {
             <ProductImageUpload
               currentImageUrl={form.image_url}
               onImageChange={(imageUrl) => updateForm("image_url", imageUrl)}
-              productCode={form.code}
+              productCode={form.code || "TEMP"}
             />
 
             <Card>

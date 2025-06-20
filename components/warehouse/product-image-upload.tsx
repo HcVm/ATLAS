@@ -4,43 +4,43 @@ import type React from "react"
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Upload, X, ImageIcon } from "lucide-react"
-import { createClient } from "@/lib/supabase"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Upload, X, ImageIcon, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 interface ProductImageUploadProps {
-  value?: string
-  onChange: (url: string | null) => void
+  currentImageUrl?: string | null
+  onImageChange: (imageUrl: string | null) => void
   productCode?: string
   disabled?: boolean
 }
 
-export function ProductImageUpload({
-  value,
-  onChange,
-  productCode = "TEMP",
+export default function ProductImageUpload({
+  currentImageUrl,
+  onImageChange,
+  productCode,
   disabled = false,
 }: ProductImageUploadProps) {
+  const { user } = useAuth()
   const [uploading, setUploading] = useState(false)
-  const [dragActive, setDragActive] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
 
-  const handleFileUpload = async (file: File) => {
-    if (!file) return
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !user) return
 
     // Validar tipo de archivo
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Tipo de archivo no permitido. Use JPG, PNG, GIF o WebP.")
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor selecciona un archivo de imagen válido")
       return
     }
 
-    // Validar tamaño (5MB máximo)
+    // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("El archivo es demasiado grande. Máximo 5MB.")
+      toast.error("La imagen no puede ser mayor a 5MB")
       return
     }
 
@@ -49,177 +49,190 @@ export function ProductImageUpload({
     try {
       // Generar nombre único para el archivo
       const timestamp = Date.now()
-      const fileExtension = file.name.split(".").pop()
-      const fileName = `${productCode}-${timestamp}.${fileExtension}`
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${productCode || "product"}-${timestamp}.${fileExt}`
       const filePath = `products/${fileName}`
 
-      // Subir archivo a Supabase Storage
+      // Eliminar imagen anterior si existe
+      if (currentImageUrl) {
+        const oldPath = currentImageUrl.split("/").pop()
+        if (oldPath) {
+          await supabase.storage.from("images").remove([`products/${oldPath}`])
+        }
+      }
+
+      // Subir nueva imagen
       const { data, error } = await supabase.storage.from("images").upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
       })
 
-      if (error) {
-        console.error("Error uploading file:", error)
-        toast.error("Error al subir la imagen: " + error.message)
-        return
-      }
+      if (error) throw error
 
       // Obtener URL pública
       const {
         data: { publicUrl },
       } = supabase.storage.from("images").getPublicUrl(filePath)
 
-      onChange(filePath) // Guardamos el path, no la URL completa
+      setPreviewUrl(publicUrl)
+      onImageChange(publicUrl)
       toast.success("Imagen subida exitosamente")
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Error inesperado al subir la imagen")
+    } catch (error: any) {
+      console.error("Error uploading image:", error)
+      toast.error("Error al subir la imagen: " + error.message)
     } finally {
       setUploading(false)
+      // Limpiar input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
   }
 
   const handleRemoveImage = async () => {
-    if (!value) return
+    if (!currentImageUrl) return
 
     try {
-      // Eliminar archivo del storage
-      const { error } = await supabase.storage.from("images").remove([value])
+      // Extraer path del archivo de la URL
+      const urlParts = currentImageUrl.split("/")
+      const fileName = urlParts[urlParts.length - 1]
+      const filePath = `products/${fileName}`
 
-      if (error) {
-        console.error("Error removing file:", error)
-        // No mostramos error si el archivo no existe
-      }
+      // Eliminar del storage
+      const { error } = await supabase.storage.from("images").remove([filePath])
 
-      onChange(null)
-      toast.success("Imagen eliminada")
-    } catch (error) {
-      console.error("Error:", error)
-      toast.error("Error al eliminar la imagen")
+      if (error) throw error
+
+      setPreviewUrl(null)
+      onImageChange(null)
+      toast.success("Imagen eliminada exitosamente")
+    } catch (error: any) {
+      console.error("Error removing image:", error)
+      toast.error("Error al eliminar la imagen: " + error.message)
     }
   }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setDragActive(false)
 
     if (disabled || uploading) return
 
     const files = e.dataTransfer.files
     if (files && files[0]) {
-      handleFileUpload(files[0])
+      // Simular evento de input para reutilizar la lógica
+      const mockEvent = {
+        target: { files: [files[0]] },
+      } as React.ChangeEvent<HTMLInputElement>
+
+      handleFileSelect(mockEvent)
     }
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files[0]) {
-      handleFileUpload(files[0])
-    }
-  }
-
-  const getImageUrl = (path: string) => {
-    if (!path) return null
-
-    // Si ya es una URL completa, devolverla tal como está
-    if (path.startsWith("http")) return path
-
-    // Si es un path, construir la URL pública
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("images").getPublicUrl(path)
-
-    return publicUrl
   }
 
   return (
-    <div className="space-y-4">
-      <Label>Imagen del Producto</Label>
-
-      {value ? (
-        <Card>
-          <CardContent className="p-4">
-            <div className="relative">
-              <img
-                src={getImageUrl(value) || "/placeholder.svg?height=200&width=200"}
-                alt="Imagen del producto"
-                className="w-full h-48 object-cover rounded-lg"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.src = "/placeholder.svg?height=200&width=200"
-                }}
-              />
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ImageIcon className="h-4 w-4" />
+          Imagen del Producto
+        </CardTitle>
+        <CardDescription>Sube una imagen para el producto (máximo 5MB)</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Preview de la imagen */}
+        {previewUrl && (
+          <div className="relative">
+            <img
+              src={previewUrl || "/placeholder.svg"}
+              alt="Preview del producto"
+              className="w-full h-48 object-cover rounded-lg border"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = "/placeholder.svg?height=200&width=200"
+              }}
+            />
+            {!disabled && (
               <Button
                 type="button"
                 variant="destructive"
                 size="sm"
                 className="absolute top-2 right-2"
                 onClick={handleRemoveImage}
-                disabled={disabled || uploading}
+                disabled={uploading}
               >
                 <X className="h-4 w-4" />
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card
-          className={`border-2 border-dashed transition-colors ${
-            dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"
-          }`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <CardContent className="p-8">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="p-4 bg-muted rounded-full">
-                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            )}
+          </div>
+        )}
+
+        {/* Área de subida */}
+        {!previewUrl && (
+          <div
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
+            onDragOver={handleDrag}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+          >
+            <div className="space-y-4">
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <ImageIcon className="h-6 w-6 text-gray-400" />
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Subir imagen del producto</h3>
-                <p className="text-sm text-muted-foreground">
-                  Arrastra y suelta una imagen aquí, o haz clic para seleccionar
-                </p>
-                <p className="text-xs text-muted-foreground">JPG, PNG, GIF o WebP (máx. 5MB)</p>
+              <div>
+                <p className="text-sm font-medium">Arrastra una imagen aquí o</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={disabled || uploading}
+                  className="mt-2"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Subiendo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Seleccionar archivo
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || uploading}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {uploading ? "Subiendo..." : "Seleccionar imagen"}
-              </Button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleFileSelect}
-                className="hidden"
-                disabled={disabled || uploading}
-              />
+              <p className="text-xs text-gray-500">JPG, PNG, GIF o WebP (máx. 5MB)</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+
+        {/* Input oculto */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={disabled || uploading}
+        />
+
+        {/* Información adicional */}
+        {!disabled && (
+          <div className="text-xs text-muted-foreground">
+            <p>• Formatos soportados: JPG, PNG, GIF, WebP</p>
+            <p>• Tamaño máximo: 5MB</p>
+            <p>• La imagen se redimensionará automáticamente</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
