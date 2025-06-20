@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye } from "lucide-react"
+import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -81,50 +81,61 @@ export default function SalesPage() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
-  // Verificar permisos de acceso basado en departamento y rol
-  const hasAccess =
-    user &&
-    (user.role === "admin" ||
-      user.role === "supervisor" ||
-      (user.departments?.name &&
-        ["ventas", "administración", "operaciones"].includes(user.departments.name.toLowerCase())))
+  // Check if user has sales access - igual que warehouse
+  const hasSalesAccess =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Ventas" ||
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Operaciones"
+
+  // Get the company to use - igual que warehouse
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   useEffect(() => {
-    if (hasAccess) {
-      fetchSales()
-      fetchStats()
-    }
-  }, [selectedCompany, hasAccess])
+    // Check if user has sales access - igual que warehouse
+    const hasSalesAccess =
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      user?.departments?.name === "Ventas" ||
+      user?.departments?.name === "Administración" ||
+      user?.departments?.name === "Operaciones"
 
-  const fetchSales = async () => {
-    // Determinar qué empresa usar - igual que en warehouse/products
+    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-    if (!companyId) {
-      console.log("No hay empresa disponible para cargar ventas")
-      setSales([])
+    if (companyId && hasSalesAccess) {
+      fetchSales(companyId)
+      fetchStats(companyId)
+    } else {
       setLoading(false)
-      return
     }
+  }, [user, selectedCompany])
 
+  const fetchSales = async (companyId: string) => {
     try {
+      setLoading(true)
       console.log("Cargando ventas para empresa:", companyId)
 
       const { data, error } = await supabase
         .from("sales")
         .select(`
-          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
-          quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
-          product_description, product_brand, ocam, physical_order,
-          project_meta, final_destination, warehouse_manager, payment_method,
-          unit_price_with_tax, total_sale, delivery_date, delivery_term,
-          observations, sale_status, created_at,
-          profiles!sales_created_by_fkey (full_name)
-        `)
+        id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+        quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
+        product_description, product_brand, ocam, physical_order,
+        project_meta, final_destination, warehouse_manager, payment_method,
+        unit_price_with_tax, total_sale, delivery_date, delivery_term,
+        observations, sale_status, created_at,
+        profiles!sales_created_by_fkey (full_name)
+      `)
         .eq("company_id", companyId)
         .order("sale_date", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("Sales error:", error)
+        throw error
+      }
+
       console.log("Ventas cargadas:", data?.length || 0)
       setSales(data || [])
     } catch (error: any) {
@@ -135,20 +146,7 @@ export default function SalesPage() {
     }
   }
 
-  const fetchStats = async () => {
-    // Determinar qué empresa usar - igual que en warehouse/products
-    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-
-    if (!companyId) {
-      setStats({
-        totalSales: 0,
-        totalAmount: 0,
-        averageTicket: 0,
-        pendingDeliveries: 0,
-      })
-      return
-    }
-
+  const fetchStats = async (companyId: string) => {
     try {
       const { data, error } = await supabase
         .from("sales")
@@ -182,8 +180,8 @@ export default function SalesPage() {
   const handleEditSuccess = () => {
     setShowEditDialog(false)
     setEditingSale(null)
-    fetchSales()
-    fetchStats()
+    fetchSales(companyToUse?.id || "")
+    fetchStats(companyToUse?.id || "")
   }
 
   const handleViewDetails = (sale: Sale) => {
@@ -200,19 +198,20 @@ export default function SalesPage() {
       (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
-  if (!hasAccess) {
+  if (!hasSalesAccess) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Ventas</h1>
+            <p className="text-muted-foreground">Gestión de ventas</p>
+          </div>
+        </div>
         <Card>
-          <CardContent className="flex items-center justify-center py-12">
+          <CardContent className="p-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso Restringido</h2>
-              <p className="text-gray-600">
-                Solo usuarios de los departamentos de Ventas, Administración y Operaciones, o usuarios con rol de
-                Supervisor/Admin pueden acceder al módulo de ventas.
-                <br />
-                Contacta al administrador si necesitas acceso.
-              </p>
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No tienes permisos para acceder a las ventas.</p>
             </div>
           </CardContent>
         </Card>
@@ -220,16 +219,23 @@ export default function SalesPage() {
     )
   }
 
-  // Mensaje para administradores sin empresa seleccionada
-  if (user?.role === "admin" && !selectedCompany) {
+  if (!companyToUse) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Ventas</h1>
+            <p className="text-muted-foreground">Gestión de ventas</p>
+          </div>
+        </div>
         <Card>
-          <CardContent className="flex items-center justify-center py-12">
+          <CardContent className="p-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Selecciona una Empresa</h2>
-              <p className="text-gray-600">
-                Para ver las ventas, selecciona una empresa específica usando el selector en la parte superior.
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {user?.role === "admin"
+                  ? "Selecciona una empresa para ver sus ventas."
+                  : "No tienes una empresa asignada. Contacta al administrador."}
               </p>
             </div>
           </CardContent>
@@ -282,8 +288,8 @@ export default function SalesPage() {
               <SaleForm
                 onSuccess={() => {
                   setShowNewSaleDialog(false)
-                  fetchSales()
-                  fetchStats()
+                  fetchSales(companyToUse?.id || "")
+                  fetchStats(companyToUse?.id || "")
                 }}
               />
             </DialogContent>

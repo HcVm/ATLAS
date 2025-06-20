@@ -15,7 +15,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Clock, Eye, Route, MapPin } from "lucide-react"
+import {
+  Plus,
+  Search,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Clock,
+  Eye,
+  Route,
+  MapPin,
+  AlertTriangle,
+  Package,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -93,48 +105,60 @@ export default function QuotationsPage() {
   const [newStatus, setNewStatus] = useState("")
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [companyId, setCompanyId] = useState<string | null>(null)
 
-  // Verificar permisos de acceso basado en departamento y rol
-  const hasAccess =
-    user &&
-    (user.role === "admin" ||
-      user.role === "supervisor" ||
-      (user.departments?.name &&
-        ["ventas", "administración", "operaciones"].some((dept) =>
-          user.departments.name.toLowerCase().includes(dept.toLowerCase()),
-        )))
+  // Check if user has quotations access - igual que warehouse
+  const hasQuotationsAccess =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Ventas" ||
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Operaciones"
+
+  // Get the company to use - igual que warehouse
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   useEffect(() => {
-    if (hasAccess) {
-      fetchQuotations()
-      fetchStats()
-    }
-  }, [selectedCompany, hasAccess])
+    // Check if user has quotations access - igual que warehouse
+    const hasQuotationsAccess =
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      user?.departments?.name === "Ventas" ||
+      user?.departments?.name === "Administración" ||
+      user?.departments?.name === "Operaciones"
 
-  const fetchQuotations = async () => {
-    // Determinar qué empresa usar - igual que en warehouse/products
+    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-    if (!companyId) {
-      console.log("No hay empresa disponible para cargar cotizaciones")
-      setQuotations([])
-      setLoading(false)
-      return
-    }
+    setCompanyId(companyId)
 
+    if (companyId && hasQuotationsAccess) {
+      fetchQuotations(companyId)
+      fetchStats(companyId)
+    } else {
+      setLoading(false)
+    }
+  }, [user, selectedCompany])
+
+  const fetchQuotations = async (companyId: string) => {
     try {
+      setLoading(true)
       console.log("Cargando cotizaciones para empresa:", companyId)
 
       const { data, error } = await supabase
         .from("quotations")
         .select(`
-          *,
-          profiles!quotations_created_by_fkey (full_name)
-        `)
+        *,
+        profiles!quotations_created_by_fkey (full_name)
+      `)
         .eq("company_id", companyId)
         .order("quotation_date", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("Quotations error:", error)
+        throw error
+      }
+
       console.log("Cotizaciones cargadas:", data?.length || 0)
       setQuotations(data || [])
     } catch (error: any) {
@@ -145,22 +169,7 @@ export default function QuotationsPage() {
     }
   }
 
-  const fetchStats = async () => {
-    // Determinar qué empresa usar - igual que en warehouse/products
-    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-
-    if (!companyId) {
-      setStats({
-        totalQuotations: 0,
-        draftQuotations: 0,
-        sentQuotations: 0,
-        approvedQuotations: 0,
-        totalQuotedAmount: 0,
-        averageQuotation: 0,
-      })
-      return
-    }
-
+  const fetchStats = async (companyId: string) => {
     try {
       const { data, error } = await supabase
         .from("quotations")
@@ -223,8 +232,10 @@ export default function QuotationsPage() {
       setShowEditStatusDialog(false)
       setEditingQuotation(null)
       setNewStatus("")
-      fetchQuotations()
-      fetchStats()
+      if (companyId) {
+        fetchQuotations(companyId)
+        fetchStats(companyId)
+      }
     } catch (error: any) {
       console.error("Error updating status:", error)
       toast.error("Error al actualizar el estado")
@@ -234,7 +245,9 @@ export default function QuotationsPage() {
   const handleRouteUpdated = () => {
     // Refrescar la cotización seleccionada para mostrar la nueva información de ruta
     if (selectedQuotation) {
-      fetchQuotations()
+      if (companyId) {
+        fetchQuotations(companyId)
+      }
       // Actualizar la cotización seleccionada con los nuevos datos
       supabase
         .from("quotations")
@@ -249,18 +262,44 @@ export default function QuotationsPage() {
     }
   }
 
-  if (!hasAccess) {
+  if (!hasQuotationsAccess) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Cotizaciones</h1>
+            <p className="text-muted-foreground">Gestión de cotizaciones</p>
+          </div>
+        </div>
         <Card>
-          <CardContent className="flex items-center justify-center py-12">
+          <CardContent className="p-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso Restringido</h2>
-              <p className="text-gray-600">
-                Solo usuarios de los departamentos de Ventas, Administración y Operaciones, o usuarios con rol de
-                Supervisor/Admin pueden acceder al módulo de cotizaciones.
-                <br />
-                Contacta al administrador si necesitas acceso.
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No tienes permisos para acceder a las cotizaciones.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!companyToUse) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Cotizaciones</h1>
+            <p className="text-muted-foreground">Gestión de cotizaciones</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {user?.role === "admin"
+                  ? "Selecciona una empresa para ver sus cotizaciones."
+                  : "No tienes una empresa asignada. Contacta al administrador."}
               </p>
             </div>
           </CardContent>
@@ -270,23 +309,6 @@ export default function QuotationsPage() {
   }
 
   // Mensaje para administradores sin empresa seleccionada
-  if (user?.role === "admin" && !selectedCompany) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Selecciona una Empresa</h2>
-              <p className="text-gray-600">
-                Para ver las cotizaciones, selecciona una empresa específica usando el selector en la parte superior.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="container mx-auto py-8">
@@ -329,8 +351,10 @@ export default function QuotationsPage() {
             <QuotationForm
               onSuccess={() => {
                 setShowNewQuotationDialog(false)
-                fetchQuotations()
-                fetchStats()
+                if (companyId) {
+                  fetchQuotations(companyId)
+                  fetchStats(companyId)
+                }
               }}
             />
           </DialogContent>
