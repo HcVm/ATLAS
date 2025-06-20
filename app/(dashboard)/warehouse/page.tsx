@@ -50,7 +50,10 @@ export default function WarehousePage() {
       user?.role === "admin" ||
       user?.role === "supervisor" ||
       user?.departments?.name === "Almacén" ||
-      user?.departments?.name === "Contabilidad"
+      user?.departments?.name === "Contabilidad" ||
+      user?.departments?.name === "Operaciones" ||
+      user?.departments?.name === "Acuerdos Marco" ||
+      user?.departments?.name === "Administración"
 
     // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
