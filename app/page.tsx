@@ -104,8 +104,8 @@ function ParticlesBackground() {
   )
 }
 
-// Componente del carrusel de logos
-function CompanyLogosCarousel() {
+// Componente de logos estáticos
+function CompanyLogos() {
   const companies = [
     {
       name: "AGLE",
@@ -135,59 +135,37 @@ function CompanyLogosCarousel() {
   ]
 
   return (
-    <div className="w-full overflow-hidden py-8">
-      <div className="flex animate-scroll">
-        {/* Primera serie de logos */}
-        {companies.map((company, index) => (
-          <div key={`first-${index}`} className="flex-shrink-0 mx-8 flex items-center justify-center">
-            <div className="w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg flex items-center justify-center p-3 hover:scale-105 transition-transform duration-300">
-              <div className="relative w-full h-full">
-                <Image
-                  src={company.logo || "/placeholder.svg"}
-                  alt={`${company.name} Logo`}
-                  fill
-                  className="object-contain"
-                  onError={(e) => {
-                    // Fallback si la imagen no carga
-                    const target = e.target as HTMLImageElement
-                    target.style.display = "none"
-                    const parent = target.parentElement?.parentElement
-                    if (parent) {
-                      parent.className = `w-24 h-24 rounded-2xl bg-gradient-to-r ${company.fallbackColor} flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300`
-                      parent.innerHTML = `<span class="text-white font-bold text-lg">${company.name}</span>`
-                    }
-                  }}
-                />
-              </div>
+    <div className="flex flex-wrap justify-center items-center gap-6 py-8 max-w-2xl mx-auto">
+      {companies.map((company, index) => (
+        <div
+          key={company.name}
+          className="flex-shrink-0 group"
+          style={{
+            animationDelay: `${index * 0.1}s`,
+          }}
+        >
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg flex items-center justify-center p-3 hover:scale-105 hover:shadow-xl transition-all duration-300 animate-fade-in-up">
+            <div className="relative w-full h-full">
+              <Image
+                src={company.logo || "/placeholder.svg"}
+                alt={`${company.name} Logo`}
+                fill
+                className="object-contain"
+                onError={(e) => {
+                  // Fallback si la imagen no carga
+                  const target = e.target as HTMLImageElement
+                  target.style.display = "none"
+                  const parent = target.parentElement?.parentElement
+                  if (parent) {
+                    parent.className = `w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-r ${company.fallbackColor} flex items-center justify-center shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-300`
+                    parent.innerHTML = `<span class="text-white font-bold text-sm md:text-lg">${company.name}</span>`
+                  }
+                }}
+              />
             </div>
           </div>
-        ))}
-        {/* Segunda serie de logos para continuidad */}
-        {companies.map((company, index) => (
-          <div key={`second-${index}`} className="flex-shrink-0 mx-8 flex items-center justify-center">
-            <div className="w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg flex items-center justify-center p-3 hover:scale-105 transition-transform duration-300">
-              <div className="relative w-full h-full">
-                <Image
-                  src={company.logo || "/placeholder.svg"}
-                  alt={`${company.name} Logo`}
-                  fill
-                  className="object-contain"
-                  onError={(e) => {
-                    // Fallback si la imagen no carga
-                    const target = e.target as HTMLImageElement
-                    target.style.display = "none"
-                    const parent = target.parentElement?.parentElement
-                    if (parent) {
-                      parent.className = `w-24 h-24 rounded-2xl bg-gradient-to-r ${company.fallbackColor} flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300`
-                      parent.innerHTML = `<span class="text-white font-bold text-lg">${company.name}</span>`
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -200,7 +178,7 @@ export default function HomePage() {
 
       {/* Contenido principal */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <div className="text-center max-w-2xl mx-auto">
+        <div className="text-center max-w-4xl mx-auto">
           {/* Logo/Icono con efecto glass */}
           <div className="flex justify-center mb-12">
             <div className="relative">
@@ -243,9 +221,9 @@ export default function HomePage() {
             <ArrowDown className="h-6 w-6 text-slate-500 animate-bounce" />
           </div>
 
-          {/* Carrusel de logos de empresas */}
+          {/* Logos de empresas estáticos */}
           <div className="mb-12">
-            <CompanyLogosCarousel />
+            <CompanyLogos />
           </div>
 
           {/* Botón de acceso con efecto glass */}
@@ -270,16 +248,18 @@ export default function HomePage() {
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-slate-200/30 to-transparent rounded-full blur-3xl" />
 
       <style jsx>{`
-        @keyframes scroll {
+        @keyframes fade-in-up {
           0% {
-            transform: translateX(0);
+            opacity: 0;
+            transform: translateY(20px);
           }
           100% {
-            transform: translateX(-50%);
+            opacity: 1;
+            transform: translateY(0);
           }
         }
-        .animate-scroll {
-          animation: scroll 15s linear infinite;
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out forwards;
         }
       `}</style>
     </div>
