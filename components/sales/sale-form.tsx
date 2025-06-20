@@ -783,6 +783,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="procesando">En Proceso de Atención</SelectItem>
                 <SelectItem value="conformidad">Conformidad</SelectItem>
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>
