@@ -61,6 +61,7 @@ interface Quotation {
   profiles?: {
     full_name: string
   }
+  reference_image_url: string | null
 }
 
 interface QuotationsStats {
@@ -582,6 +583,21 @@ export default function QuotationsPage() {
                           <p className="text-sm">{selectedQuotation.product_brand || "No especificada"}</p>
                         </div>
                       </div>
+                      {selectedQuotation.reference_image_url && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Imagen Referencial</Label>
+                          <div className="mt-2 w-full max-w-md">
+                            <img
+                              src={selectedQuotation.reference_image_url || "/placeholder.svg"}
+                              alt={selectedQuotation.product_description}
+                              className="w-full h-48 object-contain bg-gray-50 rounded-lg border"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none"
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Cantidad</Label>
                         <p className="text-lg font-bold">{selectedQuotation.quantity.toLocaleString()} unidades</p>
