@@ -246,7 +246,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
       const quotationData = {
         company_id: selectedCompany.id,
         company_name: selectedCompany.name,
-        company_ruc: selectedCompany.ruc || selectedCompany.tax_id || "",
+        company_ruc: selectedCompany.ruc || "",
         entity_id: formData.entity_id,
         entity_name: formData.entity_name,
         entity_ruc: formData.entity_ruc,
@@ -303,7 +303,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
           </div>
           <div>
             <Label>RUC Empresa</Label>
-            <Input value={selectedCompany?.ruc || selectedCompany?.tax_id || ""} disabled />
+            <Input value={selectedCompany?.ruc || ""} disabled />
           </div>
         </div>
       </div>

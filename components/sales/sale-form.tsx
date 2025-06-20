@@ -12,7 +12,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Plus } from "lucide-react"
+import { AlertTriangle, Plus, Search } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -65,10 +65,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
   const [entities, setEntities] = useState<SalesEntity[]>([])
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [showNewEntityDialog, setShowNewEntityDialog] = useState(false)
+  const [searchingProduct, setSearchingProduct] = useState(false)
+  const [searchingQuotation, setSearchingQuotation] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -78,10 +79,12 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     entity_executing_unit: "",
     quotation_id: "",
     quotation_code: "",
+    quotation_search: "",
     exp_siaf: "",
     quantity: "",
     product_id: "",
     product_code: "",
+    product_search: "",
     product_name: "",
     product_description: "",
     product_brand: "",
@@ -110,7 +113,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
   useEffect(() => {
     if (selectedCompany) {
-      fetchProducts()
       fetchEntities()
       fetchQuotations()
     }
@@ -126,38 +128,32 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   // Verificar stock cuando cambia la cantidad
   useEffect(() => {
     if (formData.product_id && formData.quantity) {
-      const product = products.find((p) => p.id === formData.product_id)
-      const requestedQuantity = Number.parseFloat(formData.quantity)
+      checkProductStock()
+    }
+  }, [formData.product_id, formData.quantity])
 
-      if (product && requestedQuantity > product.current_stock) {
+  const checkProductStock = async () => {
+    if (!selectedCompany || !formData.product_id) return
+
+    try {
+      const { data: product, error } = await supabase
+        .from("products")
+        .select("current_stock, unit_of_measure")
+        .eq("id", formData.product_id)
+        .single()
+
+      if (error) throw error
+
+      const requestedQuantity = Number.parseFloat(formData.quantity)
+      if (requestedQuantity > product.current_stock) {
         setStockWarning(
           `⚠️ Stock insuficiente. Disponible: ${product.current_stock} ${product.unit_of_measure}. Se necesita comprar ${requestedQuantity - product.current_stock} unidades adicionales.`,
         )
       } else {
         setStockWarning("")
       }
-    }
-  }, [formData.product_id, formData.quantity, products])
-
-  const fetchProducts = async () => {
-    if (!selectedCompany) return
-
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure,
-          brands (name)
-        `)
-        .eq("company_id", selectedCompany.id)
-        .eq("is_active", true)
-        .order("name")
-
-      if (error) throw error
-      setProducts(data || [])
     } catch (error: any) {
-      console.error("Error fetching products:", error)
-      toast.error("Error al cargar productos")
+      console.error("Error checking stock:", error)
     }
   }
 
@@ -200,38 +196,103 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     }
   }
 
-  const handleQuotationSelect = (quotationId: string) => {
-    const quotation = quotations.find((q) => q.id === quotationId)
-    if (quotation) {
+  const searchQuotationByCode = async () => {
+    if (!selectedCompany || !formData.quotation_search.trim()) {
+      toast.error("Ingresa un código de cotización")
+      return
+    }
+
+    setSearchingQuotation(true)
+
+    try {
+      const { data, error } = await supabase
+        .from("quotations")
+        .select(
+          "id, quotation_number, entity_name, entity_ruc, product_description, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+        )
+        .eq("company_id", selectedCompany.id)
+        .eq("quotation_number", formData.quotation_search.trim())
+        .eq("status", "approved")
+        .single()
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          toast.error("No se encontró una cotización aprobada con ese código")
+        } else {
+          console.error("Error searching quotation:", error)
+          toast.error("Error al buscar la cotización: " + error.message)
+        }
+        return
+      }
+
+      // Llenar automáticamente los campos de la cotización
       setFormData((prev) => ({
         ...prev,
-        quotation_id: quotationId,
-        quotation_code: quotation.quotation_number,
-        entity_name: quotation.entity_name,
-        entity_ruc: quotation.entity_ruc,
-        product_description: quotation.product_description,
-        quantity: quotation.quantity.toString(),
-        unit_price_with_tax: (
-          quotation.final_unit_price_with_tax ||
-          quotation.offer_unit_price_with_tax ||
-          0
-        ).toString(),
+        quotation_id: data.id,
+        quotation_code: data.quotation_number,
+        entity_name: data.entity_name,
+        entity_ruc: data.entity_ruc,
+        product_description: data.product_description,
+        quantity: data.quantity.toString(),
+        unit_price_with_tax: (data.final_unit_price_with_tax || data.offer_unit_price_with_tax || 0).toString(),
       }))
+
+      toast.success("Cotización encontrada y vinculada automáticamente")
+    } catch (error: any) {
+      console.error("Error searching quotation:", error)
+      toast.error("Error al buscar la cotización: " + (error.message || "Error desconocido"))
+    } finally {
+      setSearchingQuotation(false)
     }
   }
 
-  const handleProductSelect = (productId: string) => {
-    const product = products.find((p) => p.id === productId)
-    if (product) {
+  const searchProductByCode = async () => {
+    if (!selectedCompany || !formData.product_search.trim()) {
+      toast.error("Ingresa un código de producto")
+      return
+    }
+
+    setSearchingProduct(true)
+
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id, code, name, description, sale_price, current_stock, unit_of_measure,
+          brands (name)
+        `)
+        .eq("company_id", selectedCompany.id)
+        .eq("code", formData.product_search.trim())
+        .eq("is_active", true)
+        .single()
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          toast.error("No se encontró un producto con ese código")
+        } else {
+          console.error("Error searching product:", error)
+          toast.error("Error al buscar el producto: " + error.message)
+        }
+        return
+      }
+
+      // Llenar automáticamente los campos del producto
       setFormData((prev) => ({
         ...prev,
-        product_id: productId,
-        product_code: product.code,
-        product_name: product.name,
-        product_description: product.description || "",
-        product_brand: product.brands?.name || "",
-        unit_price_with_tax: product.sale_price.toString(),
+        product_id: data.id,
+        product_code: data.code,
+        product_name: data.name,
+        product_description: data.description || "",
+        product_brand: data.brands?.name || "",
+        unit_price_with_tax: data.sale_price.toString(),
       }))
+
+      toast.success("Producto encontrado y cargado automáticamente")
+    } catch (error: any) {
+      console.error("Error searching product:", error)
+      toast.error("Error al buscar el producto: " + (error.message || "Error desconocido"))
+    } finally {
+      setSearchingProduct(false)
     }
   }
 
@@ -352,7 +413,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
           </div>
           <div>
             <Label>RUC Empresa</Label>
-            <Input value={selectedCompany?.ruc || selectedCompany?.tax_id || ""} disabled />
+            <Input value={selectedCompany?.ruc || ""} disabled />
           </div>
         </div>
       </div>
@@ -363,27 +424,28 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Vincular con Cotización (Opcional)</h3>
         <div>
-          <Label htmlFor="quotation">Seleccionar Cotización Aprobada</Label>
-          <Select value={formData.quotation_id} onValueChange={handleQuotationSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Buscar cotización por número..." />
-            </SelectTrigger>
-            <SelectContent>
-              {quotations.map((quotation) => (
-                <SelectItem key={quotation.id} value={quotation.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{quotation.quotation_number}</span>
-                    <span className="text-sm text-gray-500">
-                      {quotation.entity_name} - {quotation.product_description}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="quotation_search">Buscar Cotización por Código</Label>
+          <div className="flex gap-2">
+            <Input
+              id="quotation_search"
+              value={formData.quotation_search}
+              onChange={(e) => setFormData((prev) => ({ ...prev, quotation_search: e.target.value }))}
+              placeholder="Ej: COT-2024-0001"
+            />
+            <Button
+              type="button"
+              onClick={searchQuotationByCode}
+              disabled={searchingQuotation || !formData.quotation_search}
+            >
+              {searchingQuotation ? "Buscando..." : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ingresa el código de cotización y presiona buscar para vincular automáticamente
+          </p>
           {formData.quotation_id && (
             <p className="text-sm text-green-600 mt-1">
-              ✓ Cotización vinculada. Los datos se han pre-cargado automáticamente.
+              ✓ Cotización {formData.quotation_code} vinculada. Los datos se han pre-cargado automáticamente.
             </p>
           )}
         </div>
@@ -513,21 +575,28 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       {/* Información del Producto */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Producto</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="product">Producto *</Label>
-            <Select value={formData.product_id} onValueChange={handleProductSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar producto" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.code} - {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2">
+            <Label htmlFor="product_search">Buscar Producto por Código *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="product_search"
+                value={formData.product_search}
+                onChange={(e) => setFormData((prev) => ({ ...prev, product_search: e.target.value }))}
+                placeholder="Ingresa el código del producto"
+                required
+              />
+              <Button
+                type="button"
+                onClick={searchProductByCode}
+                disabled={searchingProduct || !formData.product_search}
+              >
+                {searchingProduct ? "Buscando..." : <Search className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ingresa el código y presiona buscar para cargar automáticamente los datos del producto
+            </p>
           </div>
           <div>
             <Label htmlFor="quantity">Cantidad *</Label>
