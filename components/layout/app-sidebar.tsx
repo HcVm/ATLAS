@@ -118,7 +118,7 @@ const menuSections = {
         url: "/warehouse/products",
         icon: Box,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "acuerdos marco", "acuerdos"],
       },
       {
         title: "Inventario",
