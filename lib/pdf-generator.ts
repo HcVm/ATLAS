@@ -158,7 +158,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
               <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${formatDate(data.quotationDate)}</p>
               ${data.validUntil ? `<p style="margin: 0 0 8px 0;"><strong>Válida hasta:</strong> ${formatDate(data.validUntil)}</p>` : ""}
               <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> 
-                <span style="background: #1d4ed8; color: white; padding: 4px 4px; margin: 0 0 8px 0; border-radius: 12px; font-size: 11px;">
+                <span style="color: #2563eb ; padding: 4px 4px; margin: 0 0 8px 0; border-radius: 12px; font-size: 11px;">
                   ${data.status.toUpperCase()}
                 </span>
               </p>
@@ -169,8 +169,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
       </table>
       
       <!-- Información del Producto -->
-      <div style="margin-bottom: 30px;">
-        <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+      <div style="margin-bottom: 10px;">
+        <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           DETALLE DEL PRODUCTO
         </h3>
         <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
@@ -202,7 +202,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         </div>
         
         <!-- Total destacado -->
-        <div style="margin-top: 15px; text-align: right;">
+        <div style="margin-top: 10px; text-align: right;">
           <div style=" padding: 15px 25px; border-radius: 8px; display: inline-block;">
             <p style="margin: 0; font-size: 11px; opacity: 0.9;">TOTAL COTIZADO (INC. IGV)</p>
             <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold;">${formatCurrency(data.totalPrice)}</p>
@@ -214,7 +214,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         data.routeInfo
           ? `
       <!-- Información de Ruta -->
-      <div style="margin-bottom: 30px;">
+      <div style="margin-bottom: 10px;">
         <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           INFORMACIÓN DE TRANSPORTE TERRESTRE
         </h3>
