@@ -208,42 +208,75 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     setSearchingQuotation(true)
 
     try {
-      const { data, error } = await supabase
+      // Primero buscar la cotización y obtener solo los datos que existen en la tabla quotations
+      const { data: quotationData, error: quotationError } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("quotation_number", formData.quotation_search.trim())
         .eq("status", "approved")
         .single()
 
-      if (error) {
-        if (error.code === "PGRST116") {
+      if (quotationError) {
+        if (quotationError.code === "PGRST116") {
           toast.error("No se encontró una cotización aprobada con ese código")
         } else {
-          console.error("Error searching quotation:", error)
-          toast.error("Error al buscar la cotización: " + error.message)
+          console.error("Error searching quotation:", quotationError)
+          toast.error("Error al buscar la cotización: " + quotationError.message)
         }
         return
       }
 
-      // Llenar automáticamente los campos de la cotización Y del producto
+      // Ahora buscar el producto usando el unique_code de la cotización
+      let productData = null
+      if (quotationData.unique_code) {
+        const { data: product, error: productError } = await supabase
+          .from("products")
+          .select(`
+          id, code, name, description, sale_price, current_stock, unit_of_measure,
+          brands (name)
+        `)
+          .eq("company_id", selectedCompany.id)
+          .eq("code", quotationData.unique_code)
+          .eq("is_active", true)
+          .single()
+
+        if (!productError && product) {
+          productData = product
+        }
+      }
+
+      // Llenar automáticamente los campos de la cotización
       setFormData((prev) => ({
         ...prev,
-        quotation_id: data.id,
-        quotation_code: data.quotation_number,
-        entity_name: data.entity_name,
-        entity_ruc: data.entity_ruc,
-        product_description: data.product_description,
-        product_code: data.unique_code || "",
-        product_name: data.product_name || "",
-        product_brand: data.product_brand || "",
-        quantity: data.quantity.toString(),
-        unit_price_with_tax: (data.final_unit_price_with_tax || data.offer_unit_price_with_tax || 0).toString(),
+        quotation_id: quotationData.id,
+        quotation_code: quotationData.quotation_number,
+        entity_name: quotationData.entity_name,
+        entity_ruc: quotationData.entity_ruc,
+        product_description: quotationData.product_description,
+        product_code: quotationData.unique_code || "",
+        quantity: quotationData.quantity.toString(),
+        unit_price_with_tax: (
+          quotationData.final_unit_price_with_tax ||
+          quotationData.offer_unit_price_with_tax ||
+          0
+        ).toString(),
+        // Si encontramos el producto, llenar también sus datos
+        ...(productData && {
+          product_id: productData.id,
+          product_name: productData.name,
+          product_brand: productData.brands?.name || "",
+          unit_price_with_tax: productData.sale_price.toString(), // Usar el precio del producto si está disponible
+        }),
       }))
 
-      toast.success("Cotización encontrada y datos del producto cargados automáticamente")
+      if (productData) {
+        toast.success("Cotización encontrada y datos del producto cargados automáticamente")
+      } else {
+        toast.success("Cotización encontrada. Los datos del producto deben completarse manualmente")
+      }
     } catch (error: any) {
       console.error("Error searching quotation:", error)
       toast.error("Error al buscar la cotización: " + (error.message || "Error desconocido"))
