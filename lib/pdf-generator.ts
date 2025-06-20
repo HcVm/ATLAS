@@ -158,7 +158,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
               <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${formatDate(data.quotationDate)}</p>
               ${data.validUntil ? `<p style="margin: 0 0 8px 0;"><strong>Válida hasta:</strong> ${formatDate(data.validUntil)}</p>` : ""}
               <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> 
-                <span style="background: #dbeafe; color: #1d4ed8; margin: 0 0 15px 0; padding: 4px 4px; border-radius: 12px; font-size: 11px;">
+                <span style="background: #1d4ed8; color: white; padding: 4px 4px; margin: 0 0 8px 0; border-radius: 12px; font-size: 11px;">
                   ${data.status.toUpperCase()}
                 </span>
               </p>
@@ -215,11 +215,11 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           ? `
       <!-- Información de Ruta -->
       <div style="margin-bottom: 30px;">
-        <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+        <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           INFORMACIÓN DE TRANSPORTE TERRESTRE
         </h3>
         <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px;">
-          <table style="width: 100%; margin-bottom: 20px;">
+          <table style="width: 100%; margin-bottom: 15px;">
             <tr>
               <td style="vertical-align: top; width: 50%; padding-right: 10px;">
                 <p style="margin: 0 0 10px 0;"><strong>🚛 Origen:</strong> ${data.routeInfo.origin}</p>
@@ -235,7 +235,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           ${
             data.routeInfo.mapImageUrl
               ? `
-          <div style="text-align: center; margin-top: 15px;">
+          <div style="text-align: center; margin-top: 5px;">
             <img src="${data.routeInfo.mapImageUrl}" alt="Mapa de ruta" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);" crossorigin="anonymous" />
             <p style="margin: 10px 0 0 0; font-size: 11px; color: #6b7280; font-style: italic;">Ruta calculada para transporte terrestre</p>
           </div>
