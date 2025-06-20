@@ -158,7 +158,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
               <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${formatDate(data.quotationDate)}</p>
               ${data.validUntil ? `<p style="margin: 0 0 8px 0;"><strong>Válida hasta:</strong> ${formatDate(data.validUntil)}</p>` : ""}
               <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> 
-                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 4px; border-radius: 12px; font-size: 11px;">
+                <span style="background: #dbeafe; color: #1d4ed8; margin: 0 0 15px 0; padding: 4px 4px; border-radius: 12px; font-size: 11px;">
                   ${data.status.toUpperCase()}
                 </span>
               </p>
