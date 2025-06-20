@@ -105,26 +105,44 @@ export default function QuotationsPage() {
         )))
 
   useEffect(() => {
-    if (hasAccess && selectedCompany) {
+    if (hasAccess) {
       fetchQuotations()
       fetchStats()
     }
   }, [selectedCompany, hasAccess])
 
   const fetchQuotations = async () => {
-    if (!selectedCompany) return
+    // Para administradores, requiere que haya una empresa seleccionada
+    if (user?.role === "admin" && !selectedCompany) {
+      console.log("Admin sin empresa seleccionada, no cargando cotizaciones")
+      setQuotations([])
+      setLoading(false)
+      return
+    }
+
+    // Para usuarios normales, usar su empresa asignada
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      console.log("No hay empresa disponible para cargar cotizaciones")
+      setQuotations([])
+      setLoading(false)
+      return
+    }
 
     try {
+      console.log("Cargando cotizaciones para empresa:", companyId)
       const { data, error } = await supabase
         .from("quotations")
         .select(`
           *,
           profiles!quotations_created_by_fkey (full_name)
         `)
-        .eq("company_id", selectedCompany.id)
+        .eq("company_id", companyId)
         .order("quotation_date", { ascending: false })
 
       if (error) throw error
+      console.log("Cotizaciones cargadas:", data?.length || 0)
       setQuotations(data || [])
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
@@ -135,13 +153,39 @@ export default function QuotationsPage() {
   }
 
   const fetchStats = async () => {
-    if (!selectedCompany) return
+    // Para administradores, requiere que haya una empresa seleccionada
+    if (user?.role === "admin" && !selectedCompany) {
+      setStats({
+        totalQuotations: 0,
+        draftQuotations: 0,
+        sentQuotations: 0,
+        approvedQuotations: 0,
+        totalQuotedAmount: 0,
+        averageQuotation: 0,
+      })
+      return
+    }
+
+    // Para usuarios normales, usar su empresa asignada
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      setStats({
+        totalQuotations: 0,
+        draftQuotations: 0,
+        sentQuotations: 0,
+        approvedQuotations: 0,
+        totalQuotedAmount: 0,
+        averageQuotation: 0,
+      })
+      return
+    }
 
     try {
       const { data, error } = await supabase
         .from("quotations")
         .select("status, offer_total_with_tax")
-        .eq("company_id", selectedCompany.id)
+        .eq("company_id", companyId)
 
       if (error) throw error
 
@@ -245,6 +289,24 @@ export default function QuotationsPage() {
     )
   }
 
+  // Mensaje para administradores sin empresa seleccionada
+  if (user?.role === "admin" && !selectedCompany) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Selecciona una Empresa</h2>
+              <p className="text-gray-600">
+                Para ver las cotizaciones, selecciona una empresa específica usando el selector en la parte superior.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto py-8">
@@ -267,7 +329,10 @@ export default function QuotationsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Cotizaciones y Proformas</h1>
-          <p className="text-gray-600">Gestiona y crea cotizaciones para tus clientes</p>
+          <p className="text-gray-600">
+            Gestiona y crea cotizaciones para tus clientes
+            {selectedCompany && <span className="ml-2 text-blue-600 font-medium">- {selectedCompany.name}</span>}
+          </p>
         </div>
         <Dialog open={showNewQuotationDialog} onOpenChange={setShowNewQuotationDialog}>
           <DialogTrigger asChild>

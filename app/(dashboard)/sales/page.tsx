@@ -90,16 +90,33 @@ export default function SalesPage() {
         ["ventas", "administración", "operaciones"].includes(user.departments.name.toLowerCase())))
 
   useEffect(() => {
-    if (hasAccess && selectedCompany) {
+    if (hasAccess) {
       fetchSales()
       fetchStats()
     }
   }, [selectedCompany, hasAccess])
 
   const fetchSales = async () => {
-    if (!selectedCompany) return
+    // Para administradores, requiere que haya una empresa seleccionada
+    if (user?.role === "admin" && !selectedCompany) {
+      console.log("Admin sin empresa seleccionada, no cargando ventas")
+      setSales([])
+      setLoading(false)
+      return
+    }
+
+    // Para usuarios normales, usar su empresa asignada
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      console.log("No hay empresa disponible para cargar ventas")
+      setSales([])
+      setLoading(false)
+      return
+    }
 
     try {
+      console.log("Cargando ventas para empresa:", companyId)
       const { data, error } = await supabase
         .from("sales")
         .select(`
@@ -111,10 +128,11 @@ export default function SalesPage() {
           observations, sale_status, created_at,
           profiles!sales_created_by_fkey (full_name)
         `)
-        .eq("company_id", selectedCompany.id)
+        .eq("company_id", companyId)
         .order("sale_date", { ascending: false })
 
       if (error) throw error
+      console.log("Ventas cargadas:", data?.length || 0)
       setSales(data || [])
     } catch (error: any) {
       console.error("Error fetching sales:", error)
@@ -125,13 +143,35 @@ export default function SalesPage() {
   }
 
   const fetchStats = async () => {
-    if (!selectedCompany) return
+    // Para administradores, requiere que haya una empresa seleccionada
+    if (user?.role === "admin" && !selectedCompany) {
+      setStats({
+        totalSales: 0,
+        totalAmount: 0,
+        averageTicket: 0,
+        pendingDeliveries: 0,
+      })
+      return
+    }
+
+    // Para usuarios normales, usar su empresa asignada
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      setStats({
+        totalSales: 0,
+        totalAmount: 0,
+        averageTicket: 0,
+        pendingDeliveries: 0,
+      })
+      return
+    }
 
     try {
       const { data, error } = await supabase
         .from("sales")
         .select("total_sale, delivery_date")
-        .eq("company_id", selectedCompany.id)
+        .eq("company_id", companyId)
 
       if (error) throw error
 
@@ -198,6 +238,24 @@ export default function SalesPage() {
     )
   }
 
+  // Mensaje para administradores sin empresa seleccionada
+  if (user?.role === "admin" && !selectedCompany) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Selecciona una Empresa</h2>
+              <p className="text-gray-600">
+                Para ver las ventas, selecciona una empresa específica usando el selector en la parte superior.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto py-8">
@@ -220,7 +278,10 @@ export default function SalesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Módulo de Ventas</h1>
-          <p className="text-gray-600">Gestiona y registra todas las ventas de la empresa</p>
+          <p className="text-gray-600">
+            Gestiona y registra todas las ventas de la empresa
+            {selectedCompany && <span className="ml-2 text-blue-600 font-medium">- {selectedCompany.name}</span>}
+          </p>
         </div>
         <div className="flex gap-2">
           <SalesExportDialog onExport={() => toast.success("Exportación completada")} />
