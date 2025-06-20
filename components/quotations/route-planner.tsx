@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { MapPin, Navigation, Clock, Fuel, DollarSign, Route, ExternalLink, Save, Loader2 } from "lucide-react"
+import { MapPin, Navigation, Clock, Route, ExternalLink, Save, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -36,8 +35,6 @@ export default function RoutePlanner({
   const { user } = useAuth()
   const [origin, setOrigin] = useState(initialOrigin)
   const [destination, setDestination] = useState(initialDestination)
-  const [waypoints, setWaypoints] = useState<string[]>([])
-  const [newWaypoint, setNewWaypoint] = useState("")
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -71,7 +68,7 @@ export default function RoutePlanner({
   const initializeMap = () => {
     if (!mapRef.current || !window.google) return
 
-    mapInstance.current = new google.maps.Map(mapRef.current, {
+    mapInstance.current = new window.google.maps.Map(mapRef.current, {
       center: { lat: -12.0464, lng: -77.0428 }, // Lima, Perú
       zoom: 6,
       mapTypeControl: true,
@@ -79,7 +76,7 @@ export default function RoutePlanner({
       fullscreenControl: true,
     })
 
-    directionsRenderer.current = new google.maps.DirectionsRenderer({
+    directionsRenderer.current = new window.google.maps.DirectionsRenderer({
       draggable: true,
       panel: null,
     })
@@ -104,7 +101,6 @@ export default function RoutePlanner({
       const routeResult = await calculateRoute({
         origin: origin.trim(),
         destination: destination.trim(),
-        waypoints: waypoints.filter((w) => w.trim()),
         travelMode: "DRIVING",
         avoidTolls,
         avoidHighways,
@@ -116,19 +112,18 @@ export default function RoutePlanner({
 
         // Mostrar ruta en el mapa
         if (directionsRenderer.current && mapInstance.current) {
-          const directionsService = new google.maps.DirectionsService()
+          const directionsService = new window.google.maps.DirectionsService()
 
           directionsService.route(
             {
               origin: origin.trim(),
               destination: destination.trim(),
-              waypoints: waypoints.filter((w) => w.trim()).map((w) => ({ location: w, stopover: true })),
-              travelMode: google.maps.TravelMode.DRIVING,
+              travelMode: window.google.maps.TravelMode.DRIVING,
               avoidTolls,
               avoidHighways,
             },
             (result, status) => {
-              if (status === google.maps.DirectionsStatus.OK && result) {
+              if (status === window.google.maps.DirectionsStatus.OK && result) {
                 directionsRenderer.current!.setDirections(result)
               }
             },
@@ -163,10 +158,7 @@ export default function RoutePlanner({
           route_destination_address: routeInfo.destination,
           route_distance_km: routeInfo.distance.value / 1000,
           route_duration_minutes: Math.round(routeInfo.duration.value / 60),
-          route_toll_cost: routeInfo.tollCost,
-          route_fuel_cost: routeInfo.fuelCost,
           route_google_maps_url: routeInfo.googleMapsUrl,
-          route_waypoints: waypoints.length > 0 ? waypoints : null,
           route_created_at: new Date().toISOString(),
           route_created_by: user.id,
         })
@@ -181,19 +173,6 @@ export default function RoutePlanner({
     } finally {
       setSaving(false)
     }
-  }
-
-  // Agregar punto intermedio
-  const addWaypoint = () => {
-    if (newWaypoint.trim() && waypoints.length < 8) {
-      setWaypoints([...waypoints, newWaypoint.trim()])
-      setNewWaypoint("")
-    }
-  }
-
-  // Remover punto intermedio
-  const removeWaypoint = (index: number) => {
-    setWaypoints(waypoints.filter((_, i) => i !== index))
   }
 
   return (
@@ -236,39 +215,6 @@ export default function RoutePlanner({
                 />
               </div>
             </div>
-          </div>
-
-          {/* Puntos Intermedios */}
-          <div>
-            <Label>Puntos Intermedios (Opcional)</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                value={newWaypoint}
-                onChange={(e) => setNewWaypoint(e.target.value)}
-                placeholder="Agregar punto intermedio..."
-                onKeyPress={(e) => e.key === "Enter" && addWaypoint()}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addWaypoint}
-                disabled={!newWaypoint.trim() || waypoints.length >= 8}
-              >
-                Agregar
-              </Button>
-            </div>
-            {waypoints.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {waypoints.map((waypoint, index) => (
-                  <Badge key={index} variant="secondary" className="cursor-pointer">
-                    {waypoint}
-                    <button onClick={() => removeWaypoint(index)} className="ml-2 text-red-500 hover:text-red-700">
-                      ×
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Opciones de Ruta */}
@@ -346,63 +292,35 @@ export default function RoutePlanner({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                <Route className="h-8 w-8 text-blue-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+                <Route className="h-10 w-10 text-blue-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Distancia</p>
-                  <p className="font-bold text-blue-600">{formatDistance(routeInfo.distance.value)}</p>
+                  <p className="text-sm text-gray-600">Distancia Total</p>
+                  <p className="text-xl font-bold text-blue-600">{formatDistance(routeInfo.distance.value)}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <Clock className="h-8 w-8 text-green-600" />
+              <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+                <Clock className="h-10 w-10 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Duración</p>
-                  <p className="font-bold text-green-600">{formatDuration(routeInfo.duration.value)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-                <Fuel className="h-8 w-8 text-orange-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Combustible</p>
-                  <p className="font-bold text-orange-600">S/ {routeInfo.fuelCost?.toFixed(2) || "0.00"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                <DollarSign className="h-8 w-8 text-purple-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Peajes</p>
-                  <p className="font-bold text-purple-600">S/ {routeInfo.tollCost?.toFixed(2) || "0.00"}</p>
+                  <p className="text-sm text-gray-600">Duración Estimada</p>
+                  <p className="text-xl font-bold text-green-600">{formatDuration(routeInfo.duration.value)}</p>
                 </div>
               </div>
             </div>
 
             <Separator className="my-4" />
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
                 <Label className="text-sm font-medium text-gray-600">Origen</Label>
-                <p className="text-sm">{routeInfo.origin}</p>
+                <p className="text-sm bg-gray-50 p-2 rounded">{routeInfo.origin}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-600">Destino</Label>
-                <p className="text-sm">{routeInfo.destination}</p>
+                <p className="text-sm bg-gray-50 p-2 rounded">{routeInfo.destination}</p>
               </div>
-              {waypoints.length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Puntos Intermedios</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {waypoints.map((waypoint, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {waypoint}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

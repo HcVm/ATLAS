@@ -49,15 +49,12 @@ interface Quotation {
   status: string
   valid_until: string | null
   created_by: string
-  // Campos de ruta
+  // Campos de ruta simplificados
   route_origin_address?: string | null
   route_destination_address?: string | null
   route_distance_km?: number | null
   route_duration_minutes?: number | null
-  route_toll_cost?: number | null
-  route_fuel_cost?: number | null
   route_google_maps_url?: string | null
-  route_waypoints?: string[] | null
   route_created_at?: string | null
   route_created_by?: string | null
   profiles?: {
@@ -731,45 +728,25 @@ export default function QuotationsPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                            <Route className="h-8 w-8 text-blue-600" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+                            <Route className="h-10 w-10 text-blue-600" />
                             <div>
-                              <p className="text-sm text-gray-600">Distancia</p>
-                              <p className="font-bold text-blue-600">
+                              <p className="text-sm text-gray-600">Distancia Total</p>
+                              <p className="text-xl font-bold text-blue-600">
                                 {selectedQuotation.route_distance_km.toFixed(1)} km
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                            <Clock className="h-8 w-8 text-green-600" />
+                          <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+                            <Clock className="h-10 w-10 text-green-600" />
                             <div>
-                              <p className="text-sm text-gray-600">Duración</p>
-                              <p className="font-bold text-green-600">
+                              <p className="text-sm text-gray-600">Duración Estimada</p>
+                              <p className="text-xl font-bold text-green-600">
                                 {selectedQuotation.route_duration_minutes
                                   ? `${Math.floor(selectedQuotation.route_duration_minutes / 60)}h ${selectedQuotation.route_duration_minutes % 60}m`
                                   : "N/A"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-                            <DollarSign className="h-8 w-8 text-orange-600" />
-                            <div>
-                              <p className="text-sm text-gray-600">Combustible</p>
-                              <p className="font-bold text-orange-600">
-                                S/ {selectedQuotation.route_fuel_cost?.toFixed(2) || "0.00"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                            <DollarSign className="h-8 w-8 text-purple-600" />
-                            <div>
-                              <p className="text-sm text-gray-600">Peajes</p>
-                              <p className="font-bold text-purple-600">
-                                S/ {selectedQuotation.route_toll_cost?.toFixed(2) || "0.00"}
                               </p>
                             </div>
                           </div>
