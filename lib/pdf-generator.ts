@@ -114,7 +114,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
   }
 
   return `
-    <div style="padding: 20px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4;">
+    <div style="padding: 10px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4;">
       <!-- Header -->
       <table style="width: 100%; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 10px;">
         <tr>
@@ -143,18 +143,18 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
               INFORMACIÓN DEL CLIENTE
             </h3>
-            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
-              <p style="margin: 0 0 8px 0;"><strong>Razón Social:</strong> ${data.clientName}</p>
-              <p style="margin: 0 0 8px 0;"><strong>RUC:</strong> ${data.clientRuc}</p>
+            <div style="background: #f9fafb; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;">
+              <p style="margin: 0 0 7px 0;"><strong>Razón Social:</strong> ${data.clientName}</p>
+              <p style="margin: 0 0 7px 0;"><strong>RUC:</strong> ${data.clientRuc}</p>
               <p style="margin: 0;"><strong>Lugar de Entrega:</strong> ${data.deliveryLocation}</p>
             </div>
           </td>
           
           <td style="vertical-align: top; width: 48%; padding-left: 2%;">
-            <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+            <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
               DETALLES DE LA COTIZACIÓN
             </h3>
-            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+            <div style="background: #f9fafb; padding: 10px; border-radius: 8px; border-left: 4px solid #10b981;">
               <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${formatDate(data.quotationDate)}</p>
               ${data.validUntil ? `<p style="margin: 0 0 8px 0;"><strong>Válida hasta:</strong> ${formatDate(data.validUntil)}</p>` : ""}
               <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> 
@@ -202,8 +202,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         </div>
         
         <!-- Total destacado -->
-        <div style="margin-top: 10px; text-align: right;">
-          <div style=" padding: 15px 25px; border-radius: 8px; display: inline-block;">
+        <div style="margin-top: 5px; text-align: right;">
+          <div style=" padding: 10px 25px; border-radius: 8px; display: inline-block;">
             <p style="margin: 0; font-size: 11px; opacity: 0.9;">TOTAL COTIZADO (INC. IGV)</p>
             <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold;">${formatCurrency(data.totalPrice)}</p>
           </div>
@@ -214,12 +214,12 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         data.routeInfo
           ? `
       <!-- Información de Ruta -->
-      <div style="margin-bottom: 10px;">
+      <div style="margin-bottom: 8px;">
         <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           INFORMACIÓN DE TRANSPORTE TERRESTRE
         </h3>
         <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px;">
-          <table style="width: 100%; margin-bottom: 15px;">
+          <table style="width: 100%; margin-bottom: 8px;">
             <tr>
               <td style="vertical-align: top; width: 50%; padding-right: 10px;">
                 <p style="margin: 0 0 10px 0;"><strong>🚛 Origen:</strong> ${data.routeInfo.origin}</p>
@@ -237,11 +237,11 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
               ? `
           <div style="text-align: center; margin-top: 5px;">
             <img src="${data.routeInfo.mapImageUrl}" alt="Mapa de ruta" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);" crossorigin="anonymous" />
-            <p style="margin: 10px 0 0 0; font-size: 11px; color: #6b7280; font-style: italic;">Ruta calculada para transporte terrestre</p>
+            <p style="margin: 7px 0 0 0; font-size: 11px; color: #6b7280; font-style: italic;">Ruta calculada para transporte terrestre</p>
           </div>
           `
               : `
-          <div style="text-align: center; margin-top: 15px; padding: 40px; background: #f3f4f6; border-radius: 8px; color: #6b7280;">
+          <div style="text-align: center; margin-top: 7px; padding: 40px; background: #f3f4f6; border-radius: 8px; color: #6b7280;">
             <p style="margin: 0; font-style: italic;">Mapa no disponible</p>
           </div>
           `
@@ -256,7 +256,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         data.observations
           ? `
       <!-- Observaciones -->
-      <div style="margin-bottom: 10px;">
+      <div style="margin-bottom: 8px;">
         <h3 style="color: #374151; font-size: 14px; font-weight: bold; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
           OBSERVACIONES
         </h3>
@@ -269,7 +269,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
       }
       
       <!-- Footer -->
-      <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 15px; text-align: center; color: #6b7280; font-size: 11px;">
+      <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 5px; text-align: center; color: #6b7280; font-size: 11px;">
         <p style="margin: 0 0 5px 0;">Esta cotización es válida por el período especificado y está sujeta a disponibilidad de stock.</p>
         <p style="margin: 0;">Documento generado automáticamente el ${new Date().toLocaleDateString("es-PE")} a las ${new Date().toLocaleTimeString("es-PE")}</p>
       </div>
