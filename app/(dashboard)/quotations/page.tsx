@@ -132,21 +132,54 @@ export default function QuotationsPage() {
 
     try {
       console.log("Cargando cotizaciones para empresa:", companyId)
-      const { data, error } = await supabase
-        .from("quotations")
-        .select(`
-          *,
-          profiles!quotations_created_by_fkey (full_name)
-        `)
-        .eq("company_id", companyId)
-        .order("quotation_date", { ascending: false })
 
-      if (error) throw error
-      console.log("Cotizaciones cargadas:", data?.length || 0)
-      setQuotations(data || [])
+      // Para administradores, usar una consulta que bypasse RLS si es necesario
+      const query = supabase.from("quotations")
+
+      if (user?.role === "admin") {
+        // Para admins, usar rpc para obtener datos específicos de empresa
+        const { data, error } = await supabase.rpc("get_quotations_by_company", {
+          target_company_id: companyId,
+        })
+
+        if (error) {
+          console.error("Error con RPC, intentando consulta directa:", error)
+          // Fallback a consulta directa
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("quotations")
+            .select(`
+              *,
+              profiles!quotations_created_by_fkey (full_name)
+            `)
+            .eq("company_id", companyId)
+            .order("quotation_date", { ascending: false })
+
+          if (fallbackError) throw fallbackError
+          console.log("Cotizaciones cargadas (fallback):", fallbackData?.length || 0)
+          setQuotations(fallbackData || [])
+          return
+        }
+
+        console.log("Cotizaciones cargadas (RPC):", data?.length || 0)
+        setQuotations(data || [])
+      } else {
+        // Para usuarios normales, consulta estándar
+        const { data, error } = await supabase
+          .from("quotations")
+          .select(`
+            *,
+            profiles!quotations_created_by_fkey (full_name)
+          `)
+          .eq("company_id", companyId)
+          .order("quotation_date", { ascending: false })
+
+        if (error) throw error
+        console.log("Cotizaciones cargadas:", data?.length || 0)
+        setQuotations(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
-      toast.error("Error al cargar las cotizaciones")
+      toast.error("Error al cargar las cotizaciones: " + error.message)
     } finally {
       setLoading(false)
     }

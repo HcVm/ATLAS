@@ -117,26 +117,64 @@ export default function SalesPage() {
 
     try {
       console.log("Cargando ventas para empresa:", companyId)
-      const { data, error } = await supabase
-        .from("sales")
-        .select(`
-          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
-          quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
-          product_description, product_brand, ocam, physical_order,
-          project_meta, final_destination, warehouse_manager, payment_method,
-          unit_price_with_tax, total_sale, delivery_date, delivery_term,
-          observations, sale_status, created_at,
-          profiles!sales_created_by_fkey (full_name)
-        `)
-        .eq("company_id", companyId)
-        .order("sale_date", { ascending: false })
 
-      if (error) throw error
-      console.log("Ventas cargadas:", data?.length || 0)
-      setSales(data || [])
+      // Para administradores, usar una consulta que bypasse RLS si es necesario
+      const query = supabase.from("sales")
+
+      if (user?.role === "admin") {
+        // Para admins, usar rpc para obtener datos específicos de empresa
+        const { data, error } = await supabase.rpc("get_sales_by_company", {
+          target_company_id: companyId,
+        })
+
+        if (error) {
+          console.error("Error con RPC, intentando consulta directa:", error)
+          // Fallback a consulta directa
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("sales")
+            .select(`
+              id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+              quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
+              product_description, product_brand, ocam, physical_order,
+              project_meta, final_destination, warehouse_manager, payment_method,
+              unit_price_with_tax, total_sale, delivery_date, delivery_term,
+              observations, sale_status, created_at,
+              profiles!sales_created_by_fkey (full_name)
+            `)
+            .eq("company_id", companyId)
+            .order("sale_date", { ascending: false })
+
+          if (fallbackError) throw fallbackError
+          console.log("Ventas cargadas (fallback):", fallbackData?.length || 0)
+          setSales(fallbackData || [])
+          return
+        }
+
+        console.log("Ventas cargadas (RPC):", data?.length || 0)
+        setSales(data || [])
+      } else {
+        // Para usuarios normales, consulta estándar
+        const { data, error } = await supabase
+          .from("sales")
+          .select(`
+            id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+            quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
+            product_description, product_brand, ocam, physical_order,
+            project_meta, final_destination, warehouse_manager, payment_method,
+            unit_price_with_tax, total_sale, delivery_date, delivery_term,
+            observations, sale_status, created_at,
+            profiles!sales_created_by_fkey (full_name)
+          `)
+          .eq("company_id", companyId)
+          .order("sale_date", { ascending: false })
+
+        if (error) throw error
+        console.log("Ventas cargadas:", data?.length || 0)
+        setSales(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching sales:", error)
-      toast.error("Error al cargar las ventas")
+      toast.error("Error al cargar las ventas: " + error.message)
     } finally {
       setLoading(false)
     }
