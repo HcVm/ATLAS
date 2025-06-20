@@ -146,7 +146,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             <div style="background: #f9fafb; padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;">
               <p style="margin: 0 0 7px 0;"><strong>Razón Social:</strong> ${data.clientName}</p>
               <p style="margin: 0 0 7px 0;"><strong>RUC:</strong> ${data.clientRuc}</p>
-              <p style="margin: 0;"><strong>Lugar de Entrega:</strong> ${data.deliveryLocation}</p>
+              <p style="margin: 0 0 7px 0;"><strong>Lugar de Entrega:</strong> ${data.deliveryLocation}</p>
             </div>
           </td>
           
