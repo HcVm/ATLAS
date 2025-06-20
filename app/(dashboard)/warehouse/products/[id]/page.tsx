@@ -40,6 +40,12 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Si el ID es "new", redirigir a la página de nuevo producto
+    if (params.id === "new") {
+      router.replace("/warehouse/products/new")
+      return
+    }
+
     console.log("ProductDetail: User data:", {
       userId: user?.id,
       role: user?.role,
@@ -53,7 +59,7 @@ export default function ProductDetailPage() {
     } else {
       console.log("ProductDetail: Missing params.id or user")
     }
-  }, [params.id, user])
+  }, [params.id, user, router])
 
   const fetchProduct = async () => {
     try {
