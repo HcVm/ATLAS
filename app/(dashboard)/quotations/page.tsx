@@ -112,15 +112,7 @@ export default function QuotationsPage() {
   }, [selectedCompany, hasAccess])
 
   const fetchQuotations = async () => {
-    // Para administradores, requiere que haya una empresa seleccionada
-    if (user?.role === "admin" && !selectedCompany) {
-      console.log("Admin sin empresa seleccionada, no cargando cotizaciones")
-      setQuotations([])
-      setLoading(false)
-      return
-    }
-
-    // Para usuarios normales, usar su empresa asignada
+    // Determinar qué empresa usar - igual que en warehouse/products
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (!companyId) {
@@ -133,50 +125,18 @@ export default function QuotationsPage() {
     try {
       console.log("Cargando cotizaciones para empresa:", companyId)
 
-      // Para administradores, usar una consulta que bypasse RLS si es necesario
-      const query = supabase.from("quotations")
+      const { data, error } = await supabase
+        .from("quotations")
+        .select(`
+          *,
+          profiles!quotations_created_by_fkey (full_name)
+        `)
+        .eq("company_id", companyId)
+        .order("quotation_date", { ascending: false })
 
-      if (user?.role === "admin") {
-        // Para admins, usar rpc para obtener datos específicos de empresa
-        const { data, error } = await supabase.rpc("get_quotations_by_company", {
-          target_company_id: companyId,
-        })
-
-        if (error) {
-          console.error("Error con RPC, intentando consulta directa:", error)
-          // Fallback a consulta directa
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("quotations")
-            .select(`
-              *,
-              profiles!quotations_created_by_fkey (full_name)
-            `)
-            .eq("company_id", companyId)
-            .order("quotation_date", { ascending: false })
-
-          if (fallbackError) throw fallbackError
-          console.log("Cotizaciones cargadas (fallback):", fallbackData?.length || 0)
-          setQuotations(fallbackData || [])
-          return
-        }
-
-        console.log("Cotizaciones cargadas (RPC):", data?.length || 0)
-        setQuotations(data || [])
-      } else {
-        // Para usuarios normales, consulta estándar
-        const { data, error } = await supabase
-          .from("quotations")
-          .select(`
-            *,
-            profiles!quotations_created_by_fkey (full_name)
-          `)
-          .eq("company_id", companyId)
-          .order("quotation_date", { ascending: false })
-
-        if (error) throw error
-        console.log("Cotizaciones cargadas:", data?.length || 0)
-        setQuotations(data || [])
-      }
+      if (error) throw error
+      console.log("Cotizaciones cargadas:", data?.length || 0)
+      setQuotations(data || [])
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
       toast.error("Error al cargar las cotizaciones: " + error.message)
@@ -186,20 +146,7 @@ export default function QuotationsPage() {
   }
 
   const fetchStats = async () => {
-    // Para administradores, requiere que haya una empresa seleccionada
-    if (user?.role === "admin" && !selectedCompany) {
-      setStats({
-        totalQuotations: 0,
-        draftQuotations: 0,
-        sentQuotations: 0,
-        approvedQuotations: 0,
-        totalQuotedAmount: 0,
-        averageQuotation: 0,
-      })
-      return
-    }
-
-    // Para usuarios normales, usar su empresa asignada
+    // Determinar qué empresa usar - igual que en warehouse/products
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (!companyId) {
