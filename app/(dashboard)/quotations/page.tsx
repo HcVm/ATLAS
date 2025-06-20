@@ -487,6 +487,227 @@ export default function QuotationsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles de Cotización</DialogTitle>
+            <DialogDescription>
+              Información completa de la cotización {selectedQuotation?.unique_code}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedQuotation && (
+            <div className="space-y-6">
+              {/* Header Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Código</Label>
+                  <p className="text-lg font-bold">{selectedQuotation.unique_code}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Estado</Label>
+                  <div className="mt-1">{getStatusBadge(selectedQuotation.status)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Fecha</Label>
+                  <p className="text-sm">
+                    {format(new Date(selectedQuotation.quotation_date), "dd/MM/yyyy", { locale: es })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Client Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Información del Cliente</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Razón Social</Label>
+                    <p className="text-sm font-medium">{selectedQuotation.entity_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">RUC</Label>
+                    <p className="text-sm">{selectedQuotation.entity_ruc}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-sm font-medium text-gray-600">Lugar de Entrega</Label>
+                    <p className="text-sm">{selectedQuotation.delivery_location}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Product Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Información del Producto</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Descripción</Label>
+                      <p className="text-sm">{selectedQuotation.product_description}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Marca</Label>
+                      <p className="text-sm">{selectedQuotation.product_brand || "No especificada"}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Cantidad</Label>
+                    <p className="text-lg font-bold">{selectedQuotation.quantity.toLocaleString()} unidades</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pricing Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Información de Precios</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead>Precio Unitario</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">Precio Plataforma</TableCell>
+                          <TableCell>
+                            S/{" "}
+                            {selectedQuotation.platform_unit_price_with_tax.toLocaleString("es-PE", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            S/ {selectedQuotation.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                        </TableRow>
+
+                        {selectedQuotation.supplier_unit_price_with_tax && (
+                          <TableRow>
+                            <TableCell className="font-medium">Precio Proveedor</TableCell>
+                            <TableCell>
+                              S/{" "}
+                              {selectedQuotation.supplier_unit_price_with_tax.toLocaleString("es-PE", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              S/{" "}
+                              {selectedQuotation.supplier_total?.toLocaleString("es-PE", {
+                                minimumFractionDigits: 2,
+                              }) || "0.00"}
+                            </TableCell>
+                          </TableRow>
+                        )}
+
+                        {selectedQuotation.offer_unit_price_with_tax && (
+                          <TableRow className="bg-blue-50">
+                            <TableCell className="font-bold">Precio Oferta</TableCell>
+                            <TableCell className="font-bold">
+                              S/{" "}
+                              {selectedQuotation.offer_unit_price_with_tax.toLocaleString("es-PE", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </TableCell>
+                            <TableCell className="font-bold text-blue-600">
+                              S/{" "}
+                              {selectedQuotation.offer_total_with_tax?.toLocaleString("es-PE", {
+                                minimumFractionDigits: 2,
+                              }) || "0.00"}
+                            </TableCell>
+                          </TableRow>
+                        )}
+
+                        {selectedQuotation.final_unit_price_with_tax && (
+                          <TableRow className="bg-green-50">
+                            <TableCell className="font-bold">Precio Final</TableCell>
+                            <TableCell className="font-bold">
+                              S/{" "}
+                              {selectedQuotation.final_unit_price_with_tax.toLocaleString("es-PE", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </TableCell>
+                            <TableCell className="font-bold text-green-600">
+                              S/{" "}
+                              {(
+                                selectedQuotation.final_unit_price_with_tax * selectedQuotation.quantity
+                              ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {selectedQuotation.budget_ceiling && (
+                    <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                      <Label className="text-sm font-medium text-gray-600">Techo Presupuestal</Label>
+                      <p className="text-lg font-bold text-yellow-700">
+                        S/ {selectedQuotation.budget_ceiling.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Additional Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Información Adicional</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Creado por</Label>
+                    <p className="text-sm">{selectedQuotation.profiles?.full_name || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Fecha de Creación</Label>
+                    <p className="text-sm">
+                      {format(new Date(selectedQuotation.quotation_date), "dd/MM/yyyy HH:mm", { locale: es })}
+                    </p>
+                  </div>
+                  {selectedQuotation.valid_until && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Válida hasta</Label>
+                      <p className="text-sm">
+                        {format(new Date(selectedQuotation.valid_until), "dd/MM/yyyy", { locale: es })}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Estado Actual</Label>
+                    <div className="mt-1">{getStatusBadge(selectedQuotation.status)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDetailsDialog(false)
+                setEditingQuotation(selectedQuotation)
+                setNewStatus(selectedQuotation?.status || "")
+                setShowEditStatusDialog(true)
+              }}
+            >
+              Cambiar Estado
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
