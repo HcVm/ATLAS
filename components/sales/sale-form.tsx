@@ -46,6 +46,17 @@ interface SalesEntity {
   executing_unit: string | null
 }
 
+interface Quotation {
+  id: string
+  quotation_number: string
+  entity_name: string
+  entity_ruc: string
+  product_description: string
+  quantity: number
+  offer_unit_price_with_tax: number | null
+  final_unit_price_with_tax: number | null
+}
+
 interface SaleFormProps {
   onSuccess: () => void
 }
@@ -56,6 +67,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const [loading, setLoading] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [entities, setEntities] = useState<SalesEntity[]>([])
+  const [quotations, setQuotations] = useState<Quotation[]>([])
   const [showNewEntityDialog, setShowNewEntityDialog] = useState(false)
 
   // Form state
@@ -64,6 +76,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     entity_name: "",
     entity_ruc: "",
     entity_executing_unit: "",
+    quotation_id: "",
     quotation_code: "",
     exp_siaf: "",
     quantity: "",
@@ -99,6 +112,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     if (selectedCompany) {
       fetchProducts()
       fetchEntities()
+      fetchQuotations()
     }
   }, [selectedCompany])
 
@@ -162,6 +176,47 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     } catch (error: any) {
       console.error("Error fetching entities:", error)
       toast.error("Error al cargar entidades")
+    }
+  }
+
+  const fetchQuotations = async () => {
+    if (!selectedCompany) return
+
+    try {
+      const { data, error } = await supabase
+        .from("quotations")
+        .select(
+          "id, quotation_number, entity_name, entity_ruc, product_description, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+        )
+        .eq("company_id", selectedCompany.id)
+        .eq("status", "approved")
+        .order("quotation_date", { ascending: false })
+
+      if (error) throw error
+      setQuotations(data || [])
+    } catch (error: any) {
+      console.error("Error fetching quotations:", error)
+      toast.error("Error al cargar cotizaciones")
+    }
+  }
+
+  const handleQuotationSelect = (quotationId: string) => {
+    const quotation = quotations.find((q) => q.id === quotationId)
+    if (quotation) {
+      setFormData((prev) => ({
+        ...prev,
+        quotation_id: quotationId,
+        quotation_code: quotation.quotation_number,
+        entity_name: quotation.entity_name,
+        entity_ruc: quotation.entity_ruc,
+        product_description: quotation.product_description,
+        quantity: quotation.quantity.toString(),
+        unit_price_with_tax: (
+          quotation.final_unit_price_with_tax ||
+          quotation.offer_unit_price_with_tax ||
+          0
+        ).toString(),
+      }))
     }
   }
 
@@ -247,6 +302,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         entity_name: formData.entity_name,
         entity_ruc: formData.entity_ruc,
         entity_executing_unit: formData.entity_executing_unit || null,
+        quotation_id: formData.quotation_id || null,
         quotation_code: formData.quotation_code,
         exp_siaf: formData.exp_siaf,
         quantity: Number.parseInt(formData.quantity),
@@ -298,6 +354,38 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <Label>RUC Empresa</Label>
             <Input value={selectedCompany?.ruc || selectedCompany?.tax_id || ""} disabled />
           </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Vinculación con Cotización */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Vincular con Cotización (Opcional)</h3>
+        <div>
+          <Label htmlFor="quotation">Seleccionar Cotización Aprobada</Label>
+          <Select value={formData.quotation_id} onValueChange={handleQuotationSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="Buscar cotización por número..." />
+            </SelectTrigger>
+            <SelectContent>
+              {quotations.map((quotation) => (
+                <SelectItem key={quotation.id} value={quotation.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{quotation.quotation_number}</span>
+                    <span className="text-sm text-gray-500">
+                      {quotation.entity_name} - {quotation.product_description}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {formData.quotation_id && (
+            <p className="text-sm text-green-600 mt-1">
+              ✓ Cotización vinculada. Los datos se han pre-cargado automáticamente.
+            </p>
+          )}
         </div>
       </div>
 
@@ -405,7 +493,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
               id="quotation_code"
               value={formData.quotation_code}
               onChange={(e) => setFormData((prev) => ({ ...prev, quotation_code: e.target.value }))}
-              placeholder="Ej: COT-2024-001"
+              placeholder="Ej: COT-2024-0001"
               required
             />
           </div>

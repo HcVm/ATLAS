@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package } from "lucide-react"
+import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -22,15 +22,20 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import SaleForm from "@/components/sales/sale-form"
+import SaleEditForm from "@/components/sales/sale-edit-form"
+import SalesExportDialog from "@/components/sales/sales-export-dialog"
 
 interface Sale {
   id: string
+  sale_number?: string
   sale_date: string
+  entity_id: string
   entity_name: string
   entity_ruc: string
   entity_executing_unit: string | null
   quotation_code: string
   quantity: number
+  product_id: string
   product_name: string
   total_sale: number
   payment_method: string
@@ -75,6 +80,8 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showNewSaleDialog, setShowNewSaleDialog] = useState(false)
+  const [editingSale, setEditingSale] = useState<Sale | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   // Verificar permisos de acceso basado en departamento y rol
   const hasAccess =
@@ -98,8 +105,8 @@ export default function SalesPage() {
       const { data, error } = await supabase
         .from("sales")
         .select(`
-          id, sale_date, entity_name, entity_ruc, entity_executing_unit,
-          quotation_code, exp_siaf, quantity, product_name, product_code,
+          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
           product_description, product_brand, ocam, physical_order,
           project_meta, final_destination, warehouse_manager, payment_method,
           unit_price_with_tax, total_sale, delivery_date, delivery_term,
@@ -147,12 +154,25 @@ export default function SalesPage() {
     }
   }
 
+  const handleEditSale = (sale: Sale) => {
+    setEditingSale(sale)
+    setShowEditDialog(true)
+  }
+
+  const handleEditSuccess = () => {
+    setShowEditDialog(false)
+    setEditingSale(null)
+    fetchSales()
+    fetchStats()
+  }
+
   const filteredSales = sales.filter(
     (sale) =>
       sale.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.quotation_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.entity_ruc.includes(searchTerm),
+      sale.entity_ruc.includes(searchTerm) ||
+      (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   if (!hasAccess) {
@@ -199,27 +219,30 @@ export default function SalesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Módulo de Ventas</h1>
           <p className="text-gray-600">Gestiona y registra todas las ventas de la empresa</p>
         </div>
-        <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Venta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Registrar Nueva Venta</DialogTitle>
-              <DialogDescription>Completa todos los campos para registrar una nueva venta</DialogDescription>
-            </DialogHeader>
-            <SaleForm
-              onSuccess={() => {
-                setShowNewSaleDialog(false)
-                fetchSales()
-                fetchStats()
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <SalesExportDialog onExport={() => toast.success("Exportación completada")} />
+          <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Venta
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Registrar Nueva Venta</DialogTitle>
+                <DialogDescription>Completa todos los campos para registrar una nueva venta</DialogDescription>
+              </DialogHeader>
+              <SaleForm
+                onSuccess={() => {
+                  setShowNewSaleDialog(false)
+                  fetchSales()
+                  fetchStats()
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -284,7 +307,7 @@ export default function SalesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente, RUC, cotización o producto..."
+                placeholder="Buscar por cliente, RUC, cotización, producto o número de venta..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -297,11 +320,12 @@ export default function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>N° Venta</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>RUC</TableHead>
                   <TableHead>U.E.</TableHead>
-                  <TableHead>Cotización</TableHead>
+                  <TableHead>N° Cotización</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Total</TableHead>
@@ -309,20 +333,13 @@ export default function SalesPage() {
                   <TableHead>Entrega</TableHead>
                   <TableHead>Vendedor</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>EXP. SIAF</TableHead>
-                  <TableHead>OCAM</TableHead>
-                  <TableHead>Orden Física</TableHead>
-                  <TableHead>Proyecto Meta</TableHead>
-                  <TableHead>Destino Final</TableHead>
-                  <TableHead>Encargado Almacén</TableHead>
-                  <TableHead>Plazo Entrega</TableHead>
-                  <TableHead>Observaciones</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSales.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8">
+                    <TableCell colSpan={14} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm
                           ? "No se encontraron ventas que coincidan con la búsqueda"
@@ -333,6 +350,7 @@ export default function SalesPage() {
                 ) : (
                   filteredSales.map((sale) => (
                     <TableRow key={sale.id}>
+                      <TableCell className="font-medium">{sale.sale_number || "N/A"}</TableCell>
                       <TableCell>{format(new Date(sale.sale_date), "dd/MM/yyyy", { locale: es })}</TableCell>
                       <TableCell className="font-medium">{sale.entity_name}</TableCell>
                       <TableCell>{sale.entity_ruc}</TableCell>
@@ -375,17 +393,10 @@ export default function SalesPage() {
                           {sale.sale_status?.toUpperCase() || "PENDIENTE"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{sale.exp_siaf || "-"}</TableCell>
-                      <TableCell>{sale.ocam || "-"}</TableCell>
-                      <TableCell>{sale.physical_order || "-"}</TableCell>
-                      <TableCell>{sale.project_meta || "-"}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={sale.final_destination}>
-                        {sale.final_destination || "-"}
-                      </TableCell>
-                      <TableCell>{sale.warehouse_manager || "-"}</TableCell>
-                      <TableCell>{sale.delivery_term || "-"}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={sale.observations}>
-                        {sale.observations || "-"}
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => handleEditSale(sale)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -395,6 +406,19 @@ export default function SalesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Sale Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Venta</DialogTitle>
+            <DialogDescription>Modifica los datos de la venta seleccionada</DialogDescription>
+          </DialogHeader>
+          {editingSale && (
+            <SaleEditForm sale={editingSale} onSuccess={handleEditSuccess} onCancel={() => setShowEditDialog(false)} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
