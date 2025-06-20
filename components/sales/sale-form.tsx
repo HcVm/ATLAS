@@ -268,7 +268,12 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
           product_id: productData.id,
           product_name: productData.name,
           product_brand: productData.brands?.name || "",
-          unit_price_with_tax: productData.sale_price.toString(), // Usar el precio del producto si está disponible
+          // Usar el precio final de la cotización, no el precio base del producto
+          unit_price_with_tax: (
+            quotationData.final_unit_price_with_tax ||
+            quotationData.offer_unit_price_with_tax ||
+            (productData ? productData.sale_price * 1.18 : 0)
+          ).toString(),
         }),
       }))
 
@@ -783,7 +788,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="procesando">En Proceso de Atención</SelectItem>
                 <SelectItem value="conformidad">Conformidad</SelectItem>
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>

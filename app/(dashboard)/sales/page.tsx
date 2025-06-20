@@ -1,20 +1,15 @@
 "use client"
 
+import { DialogTrigger } from "@/components/ui/dialog"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -82,6 +77,8 @@ export default function SalesPage() {
   const [showNewSaleDialog, setShowNewSaleDialog] = useState(false)
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   // Verificar permisos de acceso basado en departamento y rol
   const hasAccess =
@@ -164,6 +161,11 @@ export default function SalesPage() {
     setEditingSale(null)
     fetchSales()
     fetchStats()
+  }
+
+  const handleViewDetails = (sale: Sale) => {
+    setSelectedSale(sale)
+    setShowDetailsDialog(true)
   }
 
   const filteredSales = sales.filter(
@@ -324,14 +326,10 @@ export default function SalesPage() {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>RUC</TableHead>
-                  <TableHead>U.E.</TableHead>
                   <TableHead>N° Cotización</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Pago</TableHead>
-                  <TableHead>Entrega</TableHead>
-                  <TableHead>Vendedor</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -339,7 +337,7 @@ export default function SalesPage() {
               <TableBody>
                 {filteredSales.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="text-center py-8">
+                    <TableCell colSpan={10} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm
                           ? "No se encontraron ventas que coincidan con la búsqueda"
@@ -354,13 +352,6 @@ export default function SalesPage() {
                       <TableCell>{format(new Date(sale.sale_date), "dd/MM/yyyy", { locale: es })}</TableCell>
                       <TableCell className="font-medium">{sale.entity_name}</TableCell>
                       <TableCell>{sale.entity_ruc}</TableCell>
-                      <TableCell>
-                        {sale.entity_executing_unit ? (
-                          <Badge variant="outline">{sale.entity_executing_unit}</Badge>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
                       <TableCell className="font-medium">{sale.quotation_code}</TableCell>
                       <TableCell className="max-w-xs truncate" title={sale.product_name}>
                         {sale.product_name}
@@ -369,15 +360,6 @@ export default function SalesPage() {
                       <TableCell className="font-medium">
                         S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={sale.payment_method === "CONTADO" ? "default" : "secondary"}>
-                          {sale.payment_method}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {sale.delivery_date ? format(new Date(sale.delivery_date), "dd/MM/yyyy", { locale: es }) : "-"}
-                      </TableCell>
-                      <TableCell>{sale.profiles?.full_name || "N/A"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -394,9 +376,14 @@ export default function SalesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleEditSale(sale)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(sale)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleEditSale(sale)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -416,6 +403,117 @@ export default function SalesPage() {
           </DialogHeader>
           {editingSale && (
             <SaleEditForm sale={editingSale} onSuccess={handleEditSuccess} onCancel={() => setShowEditDialog(false)} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Sale Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={() => setShowDetailsDialog(false)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles de la Venta</DialogTitle>
+            <DialogDescription>Información completa de la venta seleccionada</DialogDescription>
+          </DialogHeader>
+          {selectedSale && (
+            <div className="grid gap-4">
+              <div>
+                <h3 className="text-lg font-semibold">Información General</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <strong>N° Venta:</strong> {selectedSale.sale_number || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Fecha:</strong> {format(new Date(selectedSale.sale_date), "dd/MM/yyyy", { locale: es })}
+                  </div>
+                  <div>
+                    <strong>Cliente:</strong> {selectedSale.entity_name}
+                  </div>
+                  <div>
+                    <strong>RUC:</strong> {selectedSale.entity_ruc}
+                  </div>
+                  <div>
+                    <strong>Unidad Ejecutora:</strong> {selectedSale.entity_executing_unit || "N/A"}
+                  </div>
+                  <div>
+                    <strong>N° Cotización:</strong> {selectedSale.quotation_code}
+                  </div>
+                  <div>
+                    <strong>Vendedor:</strong> {selectedSale.profiles?.full_name || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Estado:</strong> {selectedSale.sale_status?.toUpperCase() || "PENDIENTE"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">Información del Producto</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <strong>Producto:</strong> {selectedSale.product_name}
+                  </div>
+                  <div>
+                    <strong>Cantidad:</strong> {selectedSale.quantity.toLocaleString()}
+                  </div>
+                  <div>
+                    <strong>Precio Unitario:</strong> S/{" "}
+                    {selectedSale.unit_price_with_tax?.toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Total:</strong> S/{" "}
+                    {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </div>
+                  <div>
+                    <strong>Código Producto:</strong> {selectedSale.product_code || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Descripción Producto:</strong> {selectedSale.product_description || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Marca Producto:</strong> {selectedSale.product_brand || "N/A"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">Información Adicional</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <strong>Método de Pago:</strong> {selectedSale.payment_method}
+                  </div>
+                  <div>
+                    <strong>Fecha de Entrega:</strong>{" "}
+                    {selectedSale.delivery_date
+                      ? format(new Date(selectedSale.delivery_date), "dd/MM/yyyy", { locale: es })
+                      : "N/A"}
+                  </div>
+                  <div>
+                    <strong>Exp SIAF:</strong> {selectedSale.exp_siaf || "N/A"}
+                  </div>
+                  <div>
+                    <strong>OCAM:</strong> {selectedSale.ocam || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Orden Física:</strong> {selectedSale.physical_order || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Meta Proyecto:</strong> {selectedSale.project_meta || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Destino Final:</strong> {selectedSale.final_destination || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Almacenero:</strong> {selectedSale.warehouse_manager || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Término de Entrega:</strong> {selectedSale.delivery_term || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Observaciones:</strong> {selectedSale.observations || "N/A"}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

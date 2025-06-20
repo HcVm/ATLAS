@@ -166,13 +166,16 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         return
       }
 
+      // Calcular precio con IGV (18%)
+      const priceWithTax = data.sale_price * 1.18
+
       // Llenar automáticamente los campos del producto
       setFormData((prev) => ({
         ...prev,
         product_id: data.id,
         product_description: data.description || data.name,
         product_brand: data.brands?.name || "",
-        platform_unit_price_with_tax: data.sale_price.toString(),
+        platform_unit_price_with_tax: priceWithTax.toFixed(2),
         reference_image_url: data.image_url || "",
       }))
 
