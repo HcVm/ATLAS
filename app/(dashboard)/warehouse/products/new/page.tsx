@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import ProductImageUpload from "@/components/warehouse/product-image-upload"
 
 interface Brand {
   id: string
@@ -44,6 +45,7 @@ interface ProductForm {
   location: string
   notes: string
   is_active: boolean
+  image_url: string | null
 }
 
 export default function NewProductPage() {
@@ -70,6 +72,7 @@ export default function NewProductPage() {
     location: "",
     notes: "",
     is_active: true,
+    image_url: null,
   })
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function NewProductPage() {
     } else {
       console.log("No company_id found, user:", user)
     }
-  }, [user]) // Updated to use the entire user object
+  }, [user])
 
   const fetchData = async () => {
     if (!user?.company_id) {
@@ -174,6 +177,7 @@ export default function NewProductPage() {
         location: form.location.trim() || null,
         notes: form.notes.trim() || null,
         is_active: form.is_active,
+        image_url: form.image_url,
         company_id: user.company_id,
         created_by: user.id,
       }
@@ -471,6 +475,13 @@ export default function NewProductPage() {
 
           {/* Panel lateral */}
           <div className="space-y-6">
+            {/* Imagen del producto */}
+            <ProductImageUpload
+              currentImageUrl={form.image_url}
+              onImageChange={(imageUrl) => updateForm("image_url", imageUrl)}
+              productCode={form.code}
+            />
+
             <Card>
               <CardHeader>
                 <CardTitle>Estado</CardTitle>

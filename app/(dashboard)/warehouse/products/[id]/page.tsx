@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Edit, Package, AlertTriangle, MapPin, Barcode, Hash } from "lucide-react"
+import { ArrowLeft, Edit, Package, AlertTriangle, MapPin, Barcode, Hash, ImageIcon } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
@@ -24,6 +24,7 @@ interface Product {
   sale_price: number
   location: string | null
   is_active: boolean
+  image_url: string | null
   created_at: string
   updated_at: string
   brands?: { id: string; name: string; color: string } | null
@@ -245,9 +246,28 @@ export default function ProductDetailPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Imagen del producto */}
+        {product.image_url && (
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Imagen del Producto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <img
+                src={product.image_url || "/placeholder.svg"}
+                alt={product.name}
+                className="w-full h-64 object-cover rounded-lg border"
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Información básica */}
-        <Card>
+        <Card className={product.image_url ? "md:col-span-2" : "md:col-span-3"}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -316,7 +336,7 @@ export default function ProductDetailPage() {
         </Card>
 
         {/* Stock y precios */}
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Stock y Precios</CardTitle>
           </CardHeader>
@@ -424,24 +444,26 @@ export default function ProductDetailPage() {
         </Card>
 
         {/* Información del sistema */}
-        <Card>
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Información del Sistema</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Fecha de creación</label>
-              <p className="text-sm">{formatDate(product.created_at)}</p>
-            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Fecha de creación</label>
+                <p className="text-sm">{formatDate(product.created_at)}</p>
+              </div>
 
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Última actualización</label>
-              <p className="text-sm">{formatDate(product.updated_at)}</p>
-            </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Última actualización</label>
+                <p className="text-sm">{formatDate(product.updated_at)}</p>
+              </div>
 
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">ID del producto</label>
-              <p className="text-xs font-mono text-muted-foreground">{product.id}</p>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">ID del producto</label>
+                <p className="text-xs font-mono text-muted-foreground">{product.id}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
