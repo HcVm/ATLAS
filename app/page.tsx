@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ArrowDown } from "lucide-react"
 import { useEffect, useRef } from "react"
+import Image from "next/image"
 
 // Componente de partículas animadas minimalista
 function ParticlesBackground() {
@@ -103,6 +104,94 @@ function ParticlesBackground() {
   )
 }
 
+// Componente del carrusel de logos
+function CompanyLogosCarousel() {
+  const companies = [
+    {
+      name: "AGLE",
+      logo: "/logos/agle-logo.png",
+      fallbackColor: "from-blue-500 to-blue-600",
+    },
+    {
+      name: "ARM",
+      logo: "/logos/arm-logo.png",
+      fallbackColor: "from-green-500 to-green-600",
+    },
+    {
+      name: "GALUR",
+      logo: "/logos/galur-logo.png",
+      fallbackColor: "from-purple-500 to-purple-600",
+    },
+    {
+      name: "GMC",
+      logo: "/logos/gmc-logo.png",
+      fallbackColor: "from-red-500 to-red-600",
+    },
+    {
+      name: "AMCO",
+      logo: "/logos/amco-logo.png",
+      fallbackColor: "from-orange-500 to-orange-600",
+    },
+  ]
+
+  return (
+    <div className="w-full overflow-hidden py-8">
+      <div className="flex animate-scroll">
+        {/* Primera serie de logos */}
+        {companies.map((company, index) => (
+          <div key={`first-${index}`} className="flex-shrink-0 mx-8 flex items-center justify-center">
+            <div className="w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg flex items-center justify-center p-3 hover:scale-105 transition-transform duration-300">
+              <div className="relative w-full h-full">
+                <Image
+                  src={company.logo || "/placeholder.svg"}
+                  alt={`${company.name} Logo`}
+                  fill
+                  className="object-contain"
+                  onError={(e) => {
+                    // Fallback si la imagen no carga
+                    const target = e.target as HTMLImageElement
+                    target.style.display = "none"
+                    const parent = target.parentElement?.parentElement
+                    if (parent) {
+                      parent.className = `w-24 h-24 rounded-2xl bg-gradient-to-r ${company.fallbackColor} flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300`
+                      parent.innerHTML = `<span class="text-white font-bold text-lg">${company.name}</span>`
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        {/* Segunda serie de logos para continuidad */}
+        {companies.map((company, index) => (
+          <div key={`second-${index}`} className="flex-shrink-0 mx-8 flex items-center justify-center">
+            <div className="w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg flex items-center justify-center p-3 hover:scale-105 transition-transform duration-300">
+              <div className="relative w-full h-full">
+                <Image
+                  src={company.logo || "/placeholder.svg"}
+                  alt={`${company.name} Logo`}
+                  fill
+                  className="object-contain"
+                  onError={(e) => {
+                    // Fallback si la imagen no carga
+                    const target = e.target as HTMLImageElement
+                    target.style.display = "none"
+                    const parent = target.parentElement?.parentElement
+                    if (parent) {
+                      parent.className = `w-24 h-24 rounded-2xl bg-gradient-to-r ${company.fallbackColor} flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300`
+                      parent.innerHTML = `<span class="text-white font-bold text-lg">${company.name}</span>`
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -147,9 +236,17 @@ export default function HomePage() {
           </h1>
 
           {/* Subtítulo */}
-          <p className="text-xl md:text-2xl text-slate-600 mb-16 font-light">
-            Plataforma integral para empresas modernas
-          </p>
+          <p className="text-xl md:text-2xl text-slate-600 mb-8 font-light">Plataforma integral para las empresas</p>
+
+          {/* Flecha hacia abajo animada */}
+          <div className="flex justify-center mb-4">
+            <ArrowDown className="h-6 w-6 text-slate-500 animate-bounce" />
+          </div>
+
+          {/* Carrusel de logos de empresas */}
+          <div className="mb-12">
+            <CompanyLogosCarousel />
+          </div>
 
           {/* Botón de acceso con efecto glass */}
           <Button
@@ -171,6 +268,20 @@ export default function HomePage() {
       {/* Efectos de luz sutil */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-white/20 to-transparent rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-slate-200/30 to-transparent rounded-full blur-3xl" />
+
+      <style jsx>{`
+        @keyframes scroll {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        .animate-scroll {
+          animation: scroll 15s linear infinite;
+        }
+      `}</style>
     </div>
   )
 }
