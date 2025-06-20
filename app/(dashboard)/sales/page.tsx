@@ -39,6 +39,20 @@ interface Sale {
   profiles?: {
     full_name: string
   }
+  sale_status: string
+  exp_siaf?: string | null
+  ocam?: string | null
+  physical_order?: string | null
+  project_meta?: string | null
+  final_destination?: string | null
+  warehouse_manager?: string | null
+  delivery_term?: string | null
+  observations?: string | null
+  product_code?: string | null
+  product_description?: string | null
+  product_brand?: string | null
+  unit_price_with_tax?: number | null
+  created_at?: string | null
 }
 
 interface SalesStats {
@@ -84,7 +98,12 @@ export default function SalesPage() {
       const { data, error } = await supabase
         .from("sales")
         .select(`
-          *,
+          id, sale_date, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, quantity, product_name, product_code,
+          product_description, product_brand, ocam, physical_order,
+          project_meta, final_destination, warehouse_manager, payment_method,
+          unit_price_with_tax, total_sale, delivery_date, delivery_term,
+          observations, sale_status, created_at,
           profiles!sales_created_by_fkey (full_name)
         `)
         .eq("company_id", selectedCompany.id)
@@ -289,6 +308,15 @@ export default function SalesPage() {
                   <TableHead>Pago</TableHead>
                   <TableHead>Entrega</TableHead>
                   <TableHead>Vendedor</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>EXP. SIAF</TableHead>
+                  <TableHead>OCAM</TableHead>
+                  <TableHead>Orden Física</TableHead>
+                  <TableHead>Proyecto Meta</TableHead>
+                  <TableHead>Destino Final</TableHead>
+                  <TableHead>Encargado Almacén</TableHead>
+                  <TableHead>Plazo Entrega</TableHead>
+                  <TableHead>Observaciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -332,6 +360,33 @@ export default function SalesPage() {
                         {sale.delivery_date ? format(new Date(sale.delivery_date), "dd/MM/yyyy", { locale: es }) : "-"}
                       </TableCell>
                       <TableCell>{sale.profiles?.full_name || "N/A"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            sale.sale_status === "conformidad"
+                              ? "default"
+                              : sale.sale_status === "devengado"
+                                ? "secondary"
+                                : sale.sale_status === "girado"
+                                  ? "destructive"
+                                  : "outline"
+                          }
+                        >
+                          {sale.sale_status?.toUpperCase() || "PENDIENTE"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{sale.exp_siaf || "-"}</TableCell>
+                      <TableCell>{sale.ocam || "-"}</TableCell>
+                      <TableCell>{sale.physical_order || "-"}</TableCell>
+                      <TableCell>{sale.project_meta || "-"}</TableCell>
+                      <TableCell className="max-w-xs truncate" title={sale.final_destination}>
+                        {sale.final_destination || "-"}
+                      </TableCell>
+                      <TableCell>{sale.warehouse_manager || "-"}</TableCell>
+                      <TableCell>{sale.delivery_term || "-"}</TableCell>
+                      <TableCell className="max-w-xs truncate" title={sale.observations}>
+                        {sale.observations || "-"}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

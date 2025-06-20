@@ -81,6 +81,13 @@ const menuItems = [
     departments: ["ventas", "administración", "administracion", "operaciones"],
   },
   {
+    title: "Cotizaciones",
+    url: "/quotations",
+    icon: FileText,
+    roles: ["admin", "supervisor", "user"],
+    departments: ["ventas", "administración", "administracion", "operaciones"],
+  },
+  {
     title: "Almacén",
     url: "/warehouse",
     icon: Package,

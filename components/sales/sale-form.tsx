@@ -82,6 +82,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     delivery_date: undefined as Date | undefined,
     delivery_term: "",
     observations: "",
+    sale_status: "",
   })
 
   // New entity form
@@ -266,6 +267,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         delivery_term: formData.delivery_term,
         observations: formData.observations,
         created_by: user.id,
+        sale_status: formData.sale_status,
       }
 
       const { error } = await supabase.from("sales").insert([saleData])
@@ -294,7 +296,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
           </div>
           <div>
             <Label>RUC Empresa</Label>
-            <Input value={selectedCompany?.ruc || ""} disabled />
+            <Input value={selectedCompany?.ruc || selectedCompany?.tax_id || ""} disabled />
           </div>
         </div>
       </div>
@@ -559,6 +561,22 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
               <SelectContent>
                 <SelectItem value="CONTADO">Contado</SelectItem>
                 <SelectItem value="CREDITO">Crédito</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="sale_status">Estado de la Venta *</Label>
+            <Select
+              value={formData.sale_status}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, sale_status: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="conformidad">Conformidad</SelectItem>
+                <SelectItem value="devengado">Devengado</SelectItem>
+                <SelectItem value="girado">Girado</SelectItem>
               </SelectContent>
             </Select>
           </div>
