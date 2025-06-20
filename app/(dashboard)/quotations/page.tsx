@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label"
 interface Quotation {
   id: string
   quotation_date: string
+  quotation_number: string
   entity_name: string
   entity_ruc: string
   delivery_location: string
@@ -179,6 +180,7 @@ export default function QuotationsPage() {
   const filteredQuotations = quotations.filter(
     (quotation) =>
       quotation.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      quotation.quotation_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.unique_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.product_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.entity_ruc.includes(searchTerm),
@@ -351,7 +353,7 @@ export default function QuotationsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente, RUC, código o producto..."
+                placeholder="Buscar por cliente, RUC, número de cotización o producto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -365,6 +367,7 @@ export default function QuotationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>N° Cotización</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>RUC</TableHead>
                   <TableHead>Lugar Entrega</TableHead>
@@ -388,7 +391,7 @@ export default function QuotationsPage() {
               <TableBody>
                 {filteredQuotations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={19} className="text-center py-8">
+                    <TableCell colSpan={20} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm
                           ? "No se encontraron cotizaciones que coincidan con la búsqueda"
@@ -400,6 +403,9 @@ export default function QuotationsPage() {
                   filteredQuotations.map((quotation) => (
                     <TableRow key={quotation.id}>
                       <TableCell>{format(new Date(quotation.quotation_date), "dd/MM/yyyy", { locale: es })}</TableCell>
+                      <TableCell className="font-medium text-blue-600">
+                        {quotation.quotation_number || quotation.unique_code}
+                      </TableCell>
                       <TableCell className="font-medium">{quotation.entity_name}</TableCell>
                       <TableCell>{quotation.entity_ruc}</TableCell>
                       <TableCell className="max-w-xs truncate" title={quotation.delivery_location}>
@@ -501,7 +507,10 @@ export default function QuotationsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cambiar Estado de Cotización</DialogTitle>
-            <DialogDescription>Actualiza el estado de la cotización: {editingQuotation?.unique_code}</DialogDescription>
+            <DialogDescription>
+              Actualiza el estado de la cotización:{" "}
+              {editingQuotation?.quotation_number || editingQuotation?.unique_code}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -539,7 +548,8 @@ export default function QuotationsPage() {
           <DialogHeader>
             <DialogTitle>Detalles de Cotización</DialogTitle>
             <DialogDescription>
-              Información completa de la cotización {selectedQuotation?.unique_code}
+              Información completa de la cotización{" "}
+              {selectedQuotation?.quotation_number || selectedQuotation?.unique_code}
             </DialogDescription>
           </DialogHeader>
 
@@ -561,8 +571,10 @@ export default function QuotationsPage() {
                   {/* Header Info */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Código</Label>
-                      <p className="text-lg font-bold">{selectedQuotation.unique_code}</p>
+                      <Label className="text-sm font-medium text-gray-600">Número</Label>
+                      <p className="text-lg font-bold text-blue-600">
+                        {selectedQuotation.quotation_number || selectedQuotation.unique_code}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Estado</Label>

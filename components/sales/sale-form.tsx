@@ -52,6 +52,9 @@ interface Quotation {
   entity_name: string
   entity_ruc: string
   product_description: string
+  product_code: string
+  product_name: string
+  product_brand: string
   quantity: number
   offer_unit_price_with_tax: number | null
   final_unit_price_with_tax: number | null
@@ -182,7 +185,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, product_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("status", "approved")
@@ -208,7 +211,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, product_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("quotation_number", formData.quotation_search.trim())
@@ -225,7 +228,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         return
       }
 
-      // Llenar automáticamente los campos de la cotización
+      // Llenar automáticamente los campos de la cotización Y del producto
       setFormData((prev) => ({
         ...prev,
         quotation_id: data.id,
@@ -233,11 +236,14 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         entity_name: data.entity_name,
         entity_ruc: data.entity_ruc,
         product_description: data.product_description,
+        product_code: data.product_code || "",
+        product_name: data.product_name || "",
+        product_brand: data.product_brand || "",
         quantity: data.quantity.toString(),
         unit_price_with_tax: (data.final_unit_price_with_tax || data.offer_unit_price_with_tax || 0).toString(),
       }))
 
-      toast.success("Cotización encontrada y vinculada automáticamente")
+      toast.success("Cotización encontrada y datos del producto cargados automáticamente")
     } catch (error: any) {
       console.error("Error searching quotation:", error)
       toast.error("Error al buscar la cotización: " + (error.message || "Error desconocido"))
@@ -350,7 +356,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
     try {
       // Validaciones
-      if (!formData.entity_id || !formData.product_id || !formData.quotation_code) {
+      if (!formData.entity_id || !formData.product_code || !formData.quotation_code) {
         toast.error("Por favor completa todos los campos obligatorios")
         return
       }
@@ -367,7 +373,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         quotation_code: formData.quotation_code,
         exp_siaf: formData.exp_siaf,
         quantity: Number.parseInt(formData.quantity),
-        product_id: formData.product_id,
+        product_id: formData.product_id || null,
         product_code: formData.product_code,
         product_name: formData.product_name,
         product_description: formData.product_description,
@@ -445,7 +451,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
           </p>
           {formData.quotation_id && (
             <p className="text-sm text-green-600 mt-1">
-              ✓ Cotización {formData.quotation_code} vinculada. Los datos se han pre-cargado automáticamente.
+              ✓ Cotización {formData.quotation_code} vinculada. Los datos del cliente y producto se han pre-cargado
+              automáticamente.
             </p>
           )}
         </div>
@@ -584,7 +591,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
                 value={formData.product_search}
                 onChange={(e) => setFormData((prev) => ({ ...prev, product_search: e.target.value }))}
                 placeholder="Ingresa el código del producto"
-                required
               />
               <Button
                 type="button"
@@ -620,6 +626,16 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
+            <Label htmlFor="product_code">Código del Producto *</Label>
+            <Input
+              id="product_code"
+              value={formData.product_code}
+              onChange={(e) => setFormData((prev) => ({ ...prev, product_code: e.target.value }))}
+              placeholder="Código del producto"
+              required
+            />
+          </div>
+          <div>
             <Label htmlFor="product_name">Nombre del Producto</Label>
             <Input
               id="product_name"
@@ -627,6 +643,9 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
               onChange={(e) => setFormData((prev) => ({ ...prev, product_name: e.target.value }))}
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="product_brand">Marca</Label>
             <Input
