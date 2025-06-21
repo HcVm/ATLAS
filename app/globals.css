@@ -50,38 +50,38 @@ body {
   }
 
   .dark {
-    --background: 222 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 84% 4.9%;
-    --secondary: 217 32% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 32% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217 32% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 32% 17.5%;
-    --input: 217 32% 17.5%;
-    --ring: 217 91% 60%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 222 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 84% 4.9%;
-    --sidebar-accent: 217 32% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 32% 17.5%;
-    --sidebar-ring: 217 91% 60%;
+    --background: 215 28% 7%;
+    --foreground: 210 20% 98%;
+    --card: 215 28% 9%;
+    --card-foreground: 210 20% 98%;
+    --popover: 215 28% 9%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 215 25% 27%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 25% 15%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 25% 15%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 215 25% 15%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
+    --ring: 215 25% 27%;
+    --chart-1: 220 70% 60%;
+    --chart-2: 160 60% 55%;
+    --chart-3: 30 80% 65%;
+    --chart-4: 280 65% 70%;
+    --chart-5: 340 75% 65%;
+    --sidebar-background: 215 28% 8%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 215 25% 27%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 215 25% 15%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 215 25% 18%;
+    --sidebar-ring: 215 25% 27%;
   }
 
   * {
@@ -117,9 +117,9 @@ body {
   }
 
   .dark .glass-card {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   .glass-card:hover {
@@ -129,8 +129,8 @@ body {
   }
 
   .dark .glass-card:hover {
-    background: rgba(30, 41, 59, 0.7);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    background: rgba(15, 23, 42, 0.9);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   }
 
   .sidebar-header-glass {
@@ -141,9 +141,9 @@ body {
   }
 
   .dark .sidebar-header-glass {
-    background: rgba(30, 41, 59, 0.8);
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(51, 65, 85, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
 
   .text-gradient-slate {
@@ -204,23 +204,24 @@ body {
 
   /* Aplicar estilos solo en modo oscuro */
   .dark .glass-effect {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(51, 65, 85, 0.3);
   }
 
   .dark .card-enhanced {
-    background-color: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    backdrop-filter: blur(8px);
+    background-color: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    backdrop-filter: blur(12px);
   }
 
   .dark .news-card {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.95) 100%);
     border: 1px solid rgba(51, 65, 85, 0.3);
     backdrop-filter: blur(12px);
   }
 
   .dark .sidebar-enhanced {
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(8, 15, 30, 0.98);
     backdrop-filter: blur(20px);
     border-right: 1px solid rgba(51, 65, 85, 0.3);
   }
