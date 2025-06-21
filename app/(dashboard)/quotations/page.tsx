@@ -35,11 +35,11 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import QuotationForm from "@/components/quotations/quotation-form"
-import RoutePlanner from "@/components/quotations/route-planner"
-import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 import { Edit } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import RoutePlanner from "@/components/quotations/route-planner"
+import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 
 interface Quotation {
   id: string
@@ -242,19 +242,30 @@ export default function QuotationsPage() {
     }
   }
 
-  const handleRouteUpdated = () => {
+  const handleRouteUpdated = async () => {
     if (selectedQuotation && companyId) {
-      fetchQuotations(companyId)
-      supabase
-        .from("quotations")
-        .select("*")
-        .eq("id", selectedQuotation.id)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            setSelectedQuotation(data)
-          }
-        })
+      // Solo actualizar la cotización específica sin recargar toda la lista
+      try {
+        const { data, error } = await supabase.from("quotations").select("*").eq("id", selectedQuotation.id).single()
+
+        if (error) {
+          console.error("Error updating selected quotation:", error)
+          return
+        }
+
+        if (data) {
+          // Actualizar solo la cotización seleccionada sin cerrar el diálogo
+          setSelectedQuotation(data)
+
+          // Actualizar la cotización en la lista sin recargar todo
+          setQuotations((prev) => prev.map((q) => (q.id === data.id ? data : q)))
+
+          // Actualizar stats solo si es necesario
+          fetchStats(companyId)
+        }
+      } catch (error) {
+        console.error("Error in handleRouteUpdated:", error)
+      }
     }
   }
 
@@ -897,6 +908,12 @@ export default function QuotationsPage() {
                           <Label className="text-sm font-medium text-slate-600">Estado Actual</Label>
                           <div className="mt-1">{getStatusBadge(selectedQuotation.status)}</div>
                         </div>
+                        {selectedQuotation.observations && (
+                          <div className="md:col-span-2">
+                            <Label className="text-sm font-medium text-slate-600">Observaciones</Label>
+                            <p className="text-sm text-slate-700">{selectedQuotation.observations}</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>

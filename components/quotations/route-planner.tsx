@@ -196,7 +196,14 @@ export default function RoutePlanner({
 
           // Llamar callback sin causar re-render del padre
           if (onRouteCalculated) {
-            setTimeout(() => onRouteCalculated(routeResult), 0)
+            // Usar setTimeout para evitar que el callback interfiera con el estado actual
+            setTimeout(() => {
+              try {
+                onRouteCalculated(routeResult)
+              } catch (error) {
+                console.error("Error in onRouteCalculated callback:", error)
+              }
+            }, 100)
           }
 
           // Mostrar ruta en el mapa
@@ -276,6 +283,17 @@ export default function RoutePlanner({
 
         console.log("✅ Ruta guardada exitosamente")
         toast.success("Información de ruta guardada exitosamente")
+
+        // Llamar callback después de guardar exitosamente
+        if (onRouteCalculated && routeInfo) {
+          setTimeout(() => {
+            try {
+              onRouteCalculated(routeInfo)
+            } catch (error) {
+              console.error("Error in callback after save:", error)
+            }
+          }, 200)
+        }
       } catch (error: any) {
         console.error("💥 Error guardando ruta:", error)
         toast.error("Error guardando la información de ruta: " + error.message)
@@ -283,7 +301,7 @@ export default function RoutePlanner({
         setSaving(false)
       }
     },
-    [routeInfo, user, quotationId],
+    [routeInfo, user, quotationId, onRouteCalculated],
   )
 
   // Manejar cambios en inputs sin causar re-renders
