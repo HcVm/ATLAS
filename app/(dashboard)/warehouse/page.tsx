@@ -158,23 +158,23 @@ export default function WarehousePage() {
 
   if (!hasWarehouseAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
                 Almacén
               </h1>
-              <p className="text-slate-600">Panel de control del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
             </div>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="h-8 w-8 text-slate-500" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-slate-500 dark:text-slate-400" />
                 </div>
-                <p className="text-slate-600">No tienes permisos para acceder al almacén.</p>
+                <p className="text-slate-600 dark:text-slate-300">No tienes permisos para acceder al almacén.</p>
               </div>
             </CardContent>
           </Card>
@@ -185,23 +185,23 @@ export default function WarehousePage() {
 
   if (!companyToUse) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
                 Almacén
               </h1>
-              <p className="text-slate-600">Panel de control del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
             </div>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
-                  <Package className="h-8 w-8 text-slate-500" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center">
+                  <Package className="h-8 w-8 text-slate-500 dark:text-slate-400" />
                 </div>
-                <p className="text-slate-600">
+                <p className="text-slate-600 dark:text-slate-300">
                   {user?.role === "admin"
                     ? "Selecciona una empresa para ver su inventario."
                     : "No tienes una empresa asignada. Contacta al administrador."}
@@ -216,23 +216,26 @@ export default function WarehousePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
                 Almacén
               </h1>
-              <p className="text-slate-600">Panel de control del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
             </div>
-            <Button disabled className="bg-slate-200 text-slate-500">
+            <Button disabled className="bg-slate-200 text-slate-500 dark:text-slate-400">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Button>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60">
+              <Card
+                key={i}
+                className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60"
+              >
                 <CardContent className="p-6">
                   <div className="animate-pulse">
                     <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
@@ -248,22 +251,26 @@ export default function WarehousePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
               Almacén
             </h1>
-            <p className="text-slate-600">
+            <p className="text-slate-600 dark:text-slate-300">
               Panel de control del inventario
               {user?.role === "admin" && selectedCompany && (
-                <span className="ml-2 text-slate-700 font-medium">- {selectedCompany.name}</span>
+                <span className="ml-2 text-slate-700 dark:text-slate-200 font-medium">- {selectedCompany.name}</span>
               )}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild className="border-slate-300 text-slate-700 hover:bg-slate-50">
+            <Button
+              variant="outline"
+              asChild
+              className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
               <Link href="/warehouse/inventory">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Ver Inventario
@@ -283,42 +290,44 @@ export default function WarehousePage() {
 
         {/* Estadísticas principales */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700">Total Productos</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                <Package className="h-4 w-4 text-slate-600" />
+              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Total Productos</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
+                <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-800">{stats.totalProducts}</div>
-              <p className="text-xs text-slate-500">productos activos</p>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.totalProducts}</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">productos activos</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700">Valor Total</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-slate-600" />
+              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Valor Total</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-slate-600 dark:text-slate-300" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalValue)}</div>
-              <p className="text-xs text-slate-500">valor del inventario</p>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatCurrency(stats.totalValue)}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">valor del inventario</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700">Stock Bajo</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Stock Bajo</CardTitle>
               <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
                 <AlertTriangle className="h-4 w-4 text-orange-600" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{stats.lowStockProducts}</div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 <Link href="/warehouse/products?filter=low-stock" className="hover:underline">
                   productos con stock bajo
                 </Link>
@@ -326,31 +335,33 @@ export default function WarehousePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700">Sin Stock</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Sin Stock</CardTitle>
               <div className="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-red-600" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">{stats.outOfStockProducts}</div>
-              <p className="text-xs text-slate-500">productos agotados</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">productos agotados</p>
             </CardContent>
           </Card>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {/* Productos con mayor stock */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                  <Package className="h-4 w-4 text-slate-600" />
+              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-md flex items-center justify-center">
+                  <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                 </div>
                 Productos con Mayor Stock
               </CardTitle>
-              <CardDescription className="text-slate-600">Top 5 productos por cantidad disponible</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-300">
+                Top 5 productos por cantidad disponible
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -358,40 +369,44 @@ export default function WarehousePage() {
                   stats.topProducts.map((product, index) => (
                     <div
                       key={product.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white border border-slate-200/50"
+                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white dark:from-slate-700 dark:to-slate-600 border-slate-200/50 dark:border-slate-600/50"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center text-sm font-medium">
                           {index + 1}
                         </div>
                         <div>
-                          <div className="font-medium text-slate-800">{product.name}</div>
-                          <div className="text-sm text-slate-500">{product.code}</div>
+                          <div className="font-medium text-slate-800 dark:text-slate-100">{product.name}</div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400">{product.code}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-slate-800">{product.current_stock}</div>
-                        <div className="text-sm text-slate-500">unidades</div>
+                        <div className="font-medium text-slate-800 dark:text-slate-100">{product.current_stock}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">unidades</div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center text-slate-500 py-8">No hay productos registrados</div>
+                  <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                    No hay productos registrados
+                  </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
           {/* Movimientos recientes */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-slate-600" />
+              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-md flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                 </div>
                 Movimientos Recientes
               </CardTitle>
-              <CardDescription className="text-slate-600">Últimos movimientos de inventario</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-300">
+                Últimos movimientos de inventario
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -399,7 +414,7 @@ export default function WarehousePage() {
                   stats.recentMovements.map((movement) => (
                     <div
                       key={movement.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white border border-slate-200/50"
+                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white dark:from-slate-700 dark:to-slate-600 border-slate-200/50 dark:border-slate-600/50"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -416,10 +431,10 @@ export default function WarehousePage() {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium text-slate-800">
+                          <div className="font-medium text-slate-800 dark:text-slate-100">
                             {movement.products?.name || "Producto eliminado"}
                           </div>
-                          <div className="text-sm text-slate-500">
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
                             {new Date(movement.movement_date).toLocaleDateString()}
                           </div>
                         </div>
@@ -427,7 +442,7 @@ export default function WarehousePage() {
                       <div className="text-right">
                         <Badge
                           variant={movement.movement_type === "entrada" ? "default" : "secondary"}
-                          className="bg-slate-100 text-slate-700 border-slate-300"
+                          className="bg-slate-100 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600"
                         >
                           {movement.movement_type === "entrada" ? "+" : "-"}
                           {movement.quantity}
@@ -436,7 +451,9 @@ export default function WarehousePage() {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center text-slate-500 py-8">No hay movimientos registrados</div>
+                  <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                    No hay movimientos registrados
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -444,10 +461,10 @@ export default function WarehousePage() {
         </div>
 
         {/* Acciones rápidas */}
-        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+        <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-slate-800">Acciones Rápidas</CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardTitle className="text-slate-800 dark:text-slate-100">Acciones Rápidas</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
               Accesos directos a las funciones más utilizadas
             </CardDescription>
           </CardHeader>
@@ -455,31 +472,31 @@ export default function WarehousePage() {
             <div className="grid gap-4 md:grid-cols-3">
               <Button
                 variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400"
                 asChild
               >
                 <Link href="/warehouse/products/new">
-                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                    <Plus className="h-5 w-5 text-slate-600" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
+                    <Plus className="h-5 w-5 text-slate-600 dark:text-slate-300" />
                   </div>
                   Nuevo Producto
                 </Link>
               </Button>
               <Button
                 variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400"
                 asChild
               >
                 <Link href="/warehouse/inventory">
-                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-slate-600" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
+                    <Eye className="h-5 w-5 text-slate-600 dark:text-slate-300" />
                   </div>
                   Ver Inventario
                 </Link>
               </Button>
               <Button
                 variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400"
                 asChild
               >
                 <Link href="/warehouse/products?filter=low-stock">

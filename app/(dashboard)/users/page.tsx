@@ -218,7 +218,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
@@ -233,14 +233,14 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300 border-slate-200/50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300 border-slate-200 dark:border-slate-700">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar usuarios..."
-                className="pl-8 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
+                className="pl-8 border-slate-200 dark:border-slate-700 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -248,7 +248,7 @@ export default function UsersPage() {
             <Button
               variant="outline"
               size="icon"
-              className="hover:bg-gray-100 transition-colors duration-200 flex-shrink-0"
+              className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 flex-shrink-0"
               onClick={fetchUsers}
             >
               <Filter className="h-4 w-4" />
@@ -262,10 +262,12 @@ export default function UsersPage() {
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
-                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600 dark:text-slate-300" />
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">
+                No hay usuarios
+              </h3>
               <p className="text-sm sm:text-base text-muted-foreground">
                 {searchTerm
                   ? "No se encontraron usuarios con ese criterio de búsqueda."
@@ -275,24 +277,30 @@ export default function UsersPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border border-gray-200 overflow-hidden">
+            <div className="rounded-md border border-gray-200 dark:border-slate-600 overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200">
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Usuario</TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden md:table-cell">
+                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200 dark:border-slate-700">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                        Usuario
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden md:table-cell">
                         Email
                       </TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden lg:table-cell">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden lg:table-cell">
                         Departamento
                       </TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Empresa</TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Rol</TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden sm:table-cell">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                        Empresa
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                        Rol
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden sm:table-cell">
                         Fecha de registro
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700 text-xs sm:text-sm">
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
                         Acciones
                       </TableHead>
                     </TableRow>
@@ -301,14 +309,14 @@ export default function UsersPage() {
                     {filteredUsers.map((userItem) => (
                       <TableRow
                         key={userItem.id}
-                        className="border-gray-100 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300"
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50 transition-all duration-300"
                       >
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center space-x-2 sm:space-x-3">
                             <div className="relative flex-shrink-0">
                               <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-white shadow-md">
                                 <AvatarImage src={userItem.avatar_url || ""} />
-                                <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 font-semibold text-xs sm:text-sm">
+                                <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm">
                                   {userItem.full_name
                                     ? userItem.full_name
                                         .split(" ")
@@ -321,7 +329,7 @@ export default function UsersPage() {
                               <div className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                              <div className="font-medium text-gray-900 dark:text-slate-100 text-sm sm:text-base truncate">
                                 {userItem.full_name || "Sin nombre"}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -339,7 +347,7 @@ export default function UsersPage() {
                             <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-cyan-100">
                               <Mail className="h-3 w-3 text-blue-600" />
                             </div>
-                            <span className="text-gray-600 text-sm truncate max-w-[150px] lg:max-w-none">
+                            <span className="text-gray-600 dark:text-slate-300 text-sm truncate max-w-[150px] lg:max-w-none">
                               {userItem.email}
                             </span>
                           </div>
@@ -363,9 +371,9 @@ export default function UsersPage() {
                         <TableCell className="hidden sm:table-cell p-2 sm:p-4">
                           <div className="flex items-center gap-2">
                             <div className="p-1 rounded-md bg-gradient-to-br from-gray-100 to-gray-200">
-                              <Calendar className="h-3 w-3 text-gray-600" />
+                              <Calendar className="h-3 w-3 text-gray-600 dark:text-slate-300" />
                             </div>
-                            <span className="text-gray-600 text-sm">
+                            <span className="text-gray-600 dark:text-slate-300 text-sm">
                               {new Date(userItem.created_at).toLocaleDateString("es-ES")}
                             </span>
                           </div>
@@ -376,7 +384,7 @@ export default function UsersPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="hover:bg-gray-100 transition-colors duration-200 h-8 w-8"
+                                className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 h-8 w-8"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -396,7 +404,10 @@ export default function UsersPage() {
                                 </svg>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                            <DropdownMenuContent
+                              align="end"
+                              className="shadow-lg border-gray-200 dark:border-slate-600"
+                            >
                               <DropdownMenuItem
                                 onClick={() => router.push(`/users/edit/${userItem.id}`)}
                                 className="hover:bg-blue-50 transition-colors duration-200"

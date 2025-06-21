@@ -714,9 +714,11 @@ export default function DocumentDetailsPage() {
       <div className="p-6">
         <Card>
           <CardContent className="p-6 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-            <h3 className="mt-4 text-lg font-medium">{error || "Documento no encontrado"}</h3>
-            <p className="text-muted-foreground mt-2">
+            <FileText className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto" />
+            <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">
+              {error || "Documento no encontrado"}
+            </h3>
+            <p className="text-muted-foreground dark:text-slate-400 mt-2">
               {error === "No tienes permisos para ver este documento"
                 ? "Este documento pertenece a otro departamento."
                 : "El documento que buscas no existe o ha sido eliminado."}
@@ -739,51 +741,61 @@ export default function DocumentDetailsPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{document.title}</h1>
-          <p className="text-muted-foreground">Documento #{document.document_number}</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{document.title}</h1>
+          <p className="text-muted-foreground dark:text-slate-400">Documento #{document.document_number}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card>
+          <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
-              <CardTitle>Información del Documento</CardTitle>
-              <CardDescription>Detalles completos del documento</CardDescription>
+              <CardTitle className="text-slate-800 dark:text-slate-100">Información del Documento</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-slate-400">
+                Detalles completos del documento
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Título</h3>
-                    <p className="mt-1">{document.title}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Título</h3>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">{document.title}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Número de Documento</h3>
-                    <p className="mt-1">{document.document_number}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">
+                      Número de Documento
+                    </h3>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">{document.document_number}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Estado</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Estado</h3>
                     <div className="mt-1">{getStatusBadge(document.status)}</div>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Departamento</h3>
-                    <p className="mt-1">{document.departments?.name || "Sin departamento"}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Departamento</h3>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">
+                      {document.departments?.name || "Sin departamento"}
+                    </p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Creado por</h3>
-                    <p className="mt-1">{document.profiles?.full_name}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Creado por</h3>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">{document.profiles?.full_name}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Fecha de Creación</h3>
-                    <p className="mt-1">{format(new Date(document.created_at), "PPP", { locale: es })}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Fecha de Creación</h3>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">
+                      {format(new Date(document.created_at), "PPP", { locale: es })}
+                    </p>
                   </div>
                 </div>
 
                 {document.description && (
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Descripción</h3>
-                    <p className="mt-1 whitespace-pre-line">{document.description}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Descripción</h3>
+                    <p className="mt-1 whitespace-pre-line text-slate-700 dark:text-slate-200">
+                      {document.description}
+                    </p>
                   </div>
                 )}
 
@@ -792,7 +804,9 @@ export default function DocumentDetailsPage() {
                   <>
                     <Separator />
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3">Información de Certificación</h3>
+                      <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-3">
+                        Información de Certificación
+                      </h3>
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -802,15 +816,15 @@ export default function DocumentDetailsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           {document.certified_by && (
                             <div>
-                              <span className="text-muted-foreground">Certificado por:</span>
-                              <p className="font-medium">{document.certified_by}</p>
+                              <span className="text-muted-foreground dark:text-slate-400">Certificado por:</span>
+                              <p className="font-medium text-slate-700 dark:text-slate-200">{document.certified_by}</p>
                             </div>
                           )}
 
                           {document.certified_at && (
                             <div>
-                              <span className="text-muted-foreground">Fecha de certificación:</span>
-                              <p className="font-medium">
+                              <span className="text-muted-foreground dark:text-slate-400">Fecha de certificación:</span>
+                              <p className="font-medium text-slate-700 dark:text-slate-200">
                                 {format(new Date(document.certified_at), "PPP 'a las' HH:mm", { locale: es })}
                               </p>
                             </div>
@@ -818,8 +832,8 @@ export default function DocumentDetailsPage() {
 
                           {document.verification_hash && (
                             <div className="md:col-span-2">
-                              <span className="text-muted-foreground">Hash de verificación:</span>
-                              <p className="font-mono text-xs bg-gray-100 p-2 rounded mt-1 break-all">
+                              <span className="text-muted-foreground dark:text-slate-400">Hash de verificación:</span>
+                              <p className="font-mono text-xs bg-gray-100 p-2 rounded mt-1 break-all text-slate-700 dark:text-slate-200">
                                 {document.verification_hash}
                               </p>
                             </div>
@@ -827,8 +841,10 @@ export default function DocumentDetailsPage() {
 
                           {document.certification_notes && (
                             <div className="md:col-span-2">
-                              <span className="text-muted-foreground">Notas de certificación:</span>
-                              <p className="mt-1 whitespace-pre-line">{document.certification_notes}</p>
+                              <span className="text-muted-foreground dark:text-slate-400">Notas de certificación:</span>
+                              <p className="mt-1 whitespace-pre-line text-slate-700 dark:text-slate-200">
+                                {document.certification_notes}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -840,17 +856,19 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
-              <CardTitle>Historial de Movimientos</CardTitle>
-              <CardDescription>Seguimiento completo de todos los movimientos del documento</CardDescription>
+              <CardTitle className="text-slate-800 dark:text-slate-100">Historial de Movimientos</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-slate-400">
+                Seguimiento completo de todos los movimientos del documento
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {movements.length === 0 ? (
                 <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <h3 className="mt-4 text-lg font-medium">Sin movimientos</h3>
-                  <p className="text-muted-foreground">Este documento no ha sido movido aún.</p>
+                  <FileText className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto" />
+                  <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">Sin movimientos</h3>
+                  <p className="text-muted-foreground dark:text-slate-400">Este documento no ha sido movido aún.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -864,7 +882,7 @@ export default function DocumentDetailsPage() {
                       <div className="flex gap-4">
                         {/* Indicador circular moderno */}
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/30 flex items-center justify-center shadow-md">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-md">
                             {movement.from_department_id === movement.to_department_id ? (
                               <CheckCircle className="h-5 w-5 text-primary" />
                             ) : (
@@ -878,7 +896,7 @@ export default function DocumentDetailsPage() {
 
                         {/* Contenido del movimiento */}
                         <div className="flex-1 min-w-0 pb-8">
-                          <div className="bg-card border rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-300">
+                          <div className="bg-card dark:bg-slate-800 border border-slate-100 dark:border-slate-600 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-300">
                             {/* Header del movimiento */}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-center gap-3">
@@ -888,7 +906,7 @@ export default function DocumentDetailsPage() {
                                 )}
 
                                 {movement.from_department_id !== movement.to_department_id && (
-                                  <MoveRight className="h-4 w-4 text-muted-foreground" />
+                                  <MoveRight className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
                                 )}
 
                                 {/* Departamento destino */}
@@ -899,10 +917,10 @@ export default function DocumentDetailsPage() {
                               </div>
 
                               <div className="text-right">
-                                <div className="text-sm font-medium">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
                                   {format(new Date(movement.created_at), "dd/MM/yyyy", { locale: es })}
                                 </div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-muted-foreground dark:text-slate-400">
                                   {format(new Date(movement.created_at), "HH:mm", { locale: es })}
                                 </div>
                               </div>
@@ -915,7 +933,7 @@ export default function DocumentDetailsPage() {
                                   {movement.profiles?.full_name?.charAt(0) || "?"}
                                 </span>
                               </div>
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-sm text-muted-foreground dark:text-slate-400">
                                 {movement.from_department_id === movement.to_department_id
                                   ? `Actualizado por ${movement.profiles?.full_name || "Usuario desconocido"}`
                                   : `Movido por ${movement.profiles?.full_name || "Usuario desconocido"}`}
@@ -924,16 +942,18 @@ export default function DocumentDetailsPage() {
 
                             {/* Notas del movimiento */}
                             {movement.notes && (
-                              <div className="bg-muted/50 rounded-md p-3 mb-3">
-                                <p className="text-sm font-medium mb-1">Notas:</p>
-                                <p className="text-sm whitespace-pre-line">{movement.notes}</p>
+                              <div className="bg-muted/50 dark:bg-slate-700/50 rounded-md p-3 mb-3">
+                                <p className="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Notas:</p>
+                                <p className="text-sm whitespace-pre-line text-slate-700 dark:text-slate-200">
+                                  {movement.notes}
+                                </p>
                               </div>
                             )}
 
                             {/* Archivos adjuntos del movimiento */}
                             {attachments.filter((att) => att.movement_id === movement.id).length > 0 && (
-                              <div className="border-t pt-3">
-                                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                              <div className="border-t pt-3 border-slate-100 dark:border-slate-600">
+                                <p className="text-sm font-medium mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-200">
                                   <Paperclip className="h-4 w-4" />
                                   Archivos adjuntos
                                 </p>
@@ -943,11 +963,13 @@ export default function DocumentDetailsPage() {
                                     .map((attachment) => (
                                       <div
                                         key={attachment.id}
-                                        className="flex items-center justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 transition-colors duration-200"
+                                        className="flex items-center justify-between p-2 bg-muted/30 dark:bg-slate-600/30 rounded hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors duration-200"
                                       >
                                         <div className="flex-1 min-w-0">
-                                          <div className="text-sm font-medium truncate">{attachment.file_name}</div>
-                                          <div className="text-xs text-muted-foreground">
+                                          <div className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">
+                                            {attachment.file_name}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground dark:text-slate-400">
                                             Subido por {attachment.profiles?.full_name}
                                           </div>
                                         </div>
@@ -973,27 +995,32 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
-              <CardTitle>Archivos Adjuntos Generales</CardTitle>
-              <CardDescription>Archivos secundarios del documento</CardDescription>
+              <CardTitle className="text-slate-800 dark:text-slate-100">Archivos Adjuntos Generales</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-slate-400">
+                Archivos secundarios del documento
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {attachments.filter((att) => !att.movement_id).length === 0 ? (
                 <div className="text-center py-6">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <h3 className="mt-4 text-lg font-medium">Sin archivos adjuntos</h3>
-                  <p className="text-muted-foreground">No hay archivos secundarios adjuntos.</p>
+                  <FileText className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto" />
+                  <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">Sin archivos adjuntos</h3>
+                  <p className="text-muted-foreground dark:text-slate-400">No hay archivos secundarios adjuntos.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {attachments
                     .filter((att) => !att.movement_id)
                     .map((attachment) => (
-                      <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between p-3 border border-slate-100 dark:border-slate-600 rounded-lg"
+                      >
                         <div className="flex-1">
-                          <div className="font-medium">{attachment.file_name}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="font-medium text-slate-700 dark:text-slate-200">{attachment.file_name}</div>
+                          <div className="text-sm text-muted-foreground dark:text-slate-400">
                             Subido por {attachment.profiles?.full_name} •
                             {format(new Date(attachment.created_at), "dd/MM/yyyy", { locale: es })}
                           </div>
@@ -1010,10 +1037,12 @@ export default function DocumentDetailsPage() {
         </div>
 
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
-              <CardTitle>Código QR</CardTitle>
-              <CardDescription>Escanee para acceder rápidamente</CardDescription>
+              <CardTitle className="text-slate-800 dark:text-slate-100">Código QR</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-slate-400">
+                Escanee para acceder rápidamente
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
               {document.qr_code ? (
@@ -1023,30 +1052,38 @@ export default function DocumentDetailsPage() {
                     alt="QR Code"
                     className="h-48 w-48 object-contain mx-auto"
                   />
-                  <p className="text-xs text-muted-foreground">Escanea para vista pública</p>
+                  <p className="text-xs text-muted-foreground dark:text-slate-400">Escanea para vista pública</p>
                 </div>
               ) : (
-                <div className="h-48 w-48 flex items-center justify-center bg-muted rounded-md">
-                  <p className="text-sm text-muted-foreground text-center">QR no generado</p>
+                <div className="h-48 w-48 flex items-center justify-center bg-muted/50 dark:bg-slate-700/50 rounded-md">
+                  <p className="text-sm text-muted-foreground dark:text-slate-400 text-center">QR no generado</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
-              <CardTitle>Acciones Rápidas</CardTitle>
+              <CardTitle className="text-slate-800 dark:text-slate-100">Acciones Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {canChangeStatus() && (
-                <Button className="w-full justify-start" variant="outline" onClick={() => setStatusDialogOpen(true)}>
+                <Button
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  variant="outline"
+                  onClick={() => setStatusDialogOpen(true)}
+                >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Cambiar Estado
                 </Button>
               )}
 
               {canEdit() ? (
-                <Button className="w-full justify-start" variant="outline" asChild>
+                <Button
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  variant="outline"
+                  asChild
+                >
                   <Link href={`/documents/edit/${document.id}`}>
                     <Edit className="h-4 w-4 mr-2" />
                     Editar Documento
@@ -1060,7 +1097,7 @@ export default function DocumentDetailsPage() {
               )}
 
               {!canEdit() && user?.id === document?.created_by && (
-                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                <div className="text-xs text-muted-foreground dark:text-slate-400 p-2 bg-muted/50 dark:bg-slate-700/50 rounded">
                   ℹ️ Solo puedes editar documentos que están en tu departamento
                 </div>
               )}
@@ -1068,7 +1105,7 @@ export default function DocumentDetailsPage() {
               {document.file_url && (
                 <>
                   <Button
-                    className="w-full justify-start"
+                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
                     variant="outline"
                     onClick={() => viewFile(document.file_url)}
                   >
@@ -1076,7 +1113,7 @@ export default function DocumentDetailsPage() {
                     Ver Archivo
                   </Button>
                   <Button
-                    className="w-full justify-start"
+                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
                     variant="outline"
                     onClick={() => downloadFile(document.file_url)}
                     disabled={downloadLoading}
@@ -1100,13 +1137,17 @@ export default function DocumentDetailsPage() {
               )}
 
               {!canMove() && user?.role !== "admin" && user?.role !== "supervisor" && (
-                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                <div className="text-xs text-muted-foreground dark:text-slate-400 p-2 bg-muted/50 dark:bg-slate-700/50 rounded">
                   ℹ️ Solo puedes mover documentos que están en tu departamento
                 </div>
               )}
 
               {user?.role === "admin" && (
-                <Button className="w-full justify-start" variant="outline" onClick={handleViewDownloadStats}>
+                <Button
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  variant="outline"
+                  onClick={handleViewDownloadStats}
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Ver Estadísticas
                 </Button>
@@ -1118,21 +1159,23 @@ export default function DocumentDetailsPage() {
 
       {/* Dialog para cambiar estado */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-white dark:bg-slate-800">
           <DialogHeader>
-            <DialogTitle>Cambiar Estado del Documento</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-slate-800 dark:text-slate-100">Cambiar Estado del Documento</DialogTitle>
+            <DialogDescription className="text-muted-foreground dark:text-slate-400">
               Seleccione el nuevo estado para este documento. Opcionalmente puede agregar notas sobre el cambio.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="status">Nuevo Estado</Label>
+              <Label htmlFor="status" className="text-slate-700 dark:text-slate-200">
+                Nuevo Estado
+              </Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
+                <SelectTrigger className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Seleccionar estado" className="text-slate-700 dark:text-slate-200" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -1142,13 +1185,16 @@ export default function DocumentDetailsPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Label htmlFor="notes" className="text-slate-700 dark:text-slate-200">
+                Notas (opcional)
+              </Label>
               <Textarea
                 id="notes"
                 placeholder="Agregar notas sobre el cambio de estado..."
                 value={statusNotes}
                 onChange={(e) => setStatusNotes(e.target.value)}
                 rows={3}
+                className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -1165,10 +1211,10 @@ export default function DocumentDetailsPage() {
 
       {/* Dialog para mover documento */}
       <Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-white dark:bg-slate-800">
           <DialogHeader>
-            <DialogTitle>Mover Documento</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-slate-800 dark:text-slate-100">Mover Documento</DialogTitle>
+            <DialogDescription className="text-muted-foreground dark:text-slate-400">
               Seleccione el departamento al que desea mover este documento y agregue archivos adjuntos si es necesario.
             </DialogDescription>
           </DialogHeader>
@@ -1182,17 +1228,19 @@ export default function DocumentDetailsPage() {
 
       {/* Dialog para estadísticas de descarga */}
       <Dialog open={downloadStatsOpen} onOpenChange={setDownloadStatsOpen}>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-800">
           <DialogHeader>
-            <DialogTitle>Estadísticas de Descarga</DialogTitle>
-            <DialogDescription>Historial completo de descargas de este documento</DialogDescription>
+            <DialogTitle className="text-slate-800 dark:text-slate-100">Estadísticas de Descarga</DialogTitle>
+            <DialogDescription className="text-muted-foreground dark:text-slate-400">
+              Historial completo de descargas de este documento
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {statsLoading ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Card key={i}>
+                    <Card key={i} className="bg-card dark:bg-slate-800">
                       <CardContent className="p-4">
                         <div className="h-8 bg-gray-200 animate-pulse rounded"></div>
                         <div className="h-4 bg-gray-200 animate-pulse rounded mt-2 w-3/4"></div>
@@ -1200,14 +1248,14 @@ export default function DocumentDetailsPage() {
                     </Card>
                   ))}
                 </div>
-                <Table>
+                <Table className="bg-white dark:bg-slate-800">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Archivo</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>IP</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">Usuario</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">Tipo</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">Archivo</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">IP</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1235,56 +1283,58 @@ export default function DocumentDetailsPage() {
               </div>
             ) : downloadStats.length === 0 ? (
               <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h3 className="mt-4 text-lg font-medium">Sin descargas registradas</h3>
-                <p className="text-muted-foreground">Este documento no ha sido descargado aún.</p>
+                <BarChart3 className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto" />
+                <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">
+                  Sin descargas registradas
+                </h3>
+                <p className="text-muted-foreground dark:text-slate-400">Este documento no ha sido descargado aún.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card>
+                  <Card className="bg-card dark:bg-slate-800">
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold text-blue-600">{downloadStats.length}</div>
-                      <p className="text-xs text-muted-foreground">Total de descargas</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">Total de descargas</p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="bg-card dark:bg-slate-800">
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold text-green-600">
                         {downloadStats.filter((s) => s.profiles).length}
                       </div>
-                      <p className="text-xs text-muted-foreground">Usuarios registrados</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">Usuarios registrados</p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="bg-card dark:bg-slate-800">
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold text-orange-600">
                         {downloadStats.filter((s) => !s.profiles && s.is_public_access).length}
                       </div>
-                      <p className="text-xs text-muted-foreground">Acceso público</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">Acceso público</p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="bg-card dark:bg-slate-800">
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold text-purple-600">
                         {new Set(downloadStats.filter((s) => s.profiles).map((s) => s.user_id)).size +
                           new Set(downloadStats.filter((s) => s.session_id).map((s) => s.session_id)).size}
                       </div>
-                      <p className="text-xs text-muted-foreground">Usuarios únicos</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">Usuarios únicos</p>
                     </CardContent>
                   </Card>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="bg-white dark:bg-slate-800">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="min-w-[200px]">Usuario</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Archivo</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Token</TableHead>
-                        <TableHead>IP</TableHead>
+                        <TableHead className="min-w-[200px] text-slate-700 dark:text-slate-200">Usuario</TableHead>
+                        <TableHead className="text-slate-700 dark:text-slate-200">Tipo</TableHead>
+                        <TableHead className="text-slate-700 dark:text-slate-200">Archivo</TableHead>
+                        <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
+                        <TableHead className="text-slate-700 dark:text-slate-200">Token</TableHead>
+                        <TableHead className="text-slate-700 dark:text-slate-200">IP</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1293,33 +1343,39 @@ export default function DocumentDetailsPage() {
                           <TableCell className="align-top">
                             {download.profiles ? (
                               <div>
-                                <div className="font-medium">{download.profiles?.full_name}</div>
-                                <div className="text-sm text-muted-foreground">{download.profiles?.email}</div>
+                                <div className="font-medium text-slate-700 dark:text-slate-200">
+                                  {download.profiles?.full_name}
+                                </div>
+                                <div className="text-sm text-muted-foreground dark:text-slate-400">
+                                  {download.profiles?.email}
+                                </div>
                               </div>
                             ) : (
                               <div className="space-y-1">
-                                <div className="font-medium text-muted-foreground">Usuario Anónimo</div>
+                                <div className="font-medium text-muted-foreground dark:text-slate-400">
+                                  Usuario Anónimo
+                                </div>
                                 {download.anonymous_name && (
-                                  <div className="text-sm">
+                                  <div className="text-sm text-slate-700 dark:text-slate-200">
                                     <span className="font-medium">Nombre:</span> {download.anonymous_name}
                                   </div>
                                 )}
                                 {download.anonymous_organization && (
-                                  <div className="text-sm">
+                                  <div className="text-sm text-slate-700 dark:text-slate-200">
                                     <span className="font-medium">Organización:</span> {download.anonymous_organization}
                                   </div>
                                 )}
                                 {download.anonymous_contact && (
-                                  <div className="text-sm">
+                                  <div className="text-sm text-slate-700 dark:text-slate-200">
                                     <span className="font-medium">Contacto:</span> {download.anonymous_contact}
                                   </div>
                                 )}
                                 {download.anonymous_purpose && (
-                                  <div className="text-sm">
+                                  <div className="text-sm text-slate-700 dark:text-slate-200">
                                     <span className="font-medium">Propósito:</span> {download.anonymous_purpose}
                                   </div>
                                 )}
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-muted-foreground dark:text-slate-400">
                                   {download.country && download.city
                                     ? `${download.city}, ${download.country}`
                                     : download.country
@@ -1327,7 +1383,7 @@ export default function DocumentDetailsPage() {
                                       : "Ubicación no disponible"}
                                 </div>
                                 {download.session_id && (
-                                  <div className="text-xs font-mono text-muted-foreground">
+                                  <div className="text-xs font-mono text-muted-foreground dark:text-slate-400">
                                     Sesión: {download.session_id.substring(0, 8)}...
                                   </div>
                                 )}
@@ -1340,10 +1396,12 @@ export default function DocumentDetailsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{download.file_name || "N/A"}</div>
+                            <div className="text-sm text-slate-700 dark:text-slate-200">
+                              {download.file_name || "N/A"}
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">
+                            <div className="text-sm text-slate-700 dark:text-slate-200">
                               {format(new Date(download.downloaded_at || download.created_at), "dd/MM/yyyy HH:mm", {
                                 locale: es,
                               })}
@@ -1352,17 +1410,19 @@ export default function DocumentDetailsPage() {
                           <TableCell>
                             {download.download_token ? (
                               <div
-                                className="text-sm font-mono bg-muted p-1 rounded overflow-x-auto max-w-[150px]"
+                                className="text-sm font-mono bg-muted/50 dark:bg-slate-700/50 p-1 rounded overflow-x-auto max-w-[150px]"
                                 title={download.download_token}
                               >
                                 {download.download_token}
                               </div>
                             ) : (
-                              <div className="text-sm text-muted-foreground">No disponible</div>
+                              <div className="text-sm text-muted-foreground dark:text-slate-400">No disponible</div>
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm font-mono">{download.ip_address || "N/A"}</div>
+                            <div className="text-sm font-mono text-slate-700 dark:text-slate-200">
+                              {download.ip_address || "N/A"}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1377,9 +1437,9 @@ export default function DocumentDetailsPage() {
 
       {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-white dark:bg-slate-800">
           <DialogHeader>
-            <DialogTitle>Vista previa del documento</DialogTitle>
+            <DialogTitle className="text-slate-800 dark:text-slate-100">Vista previa del documento</DialogTitle>
             <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
               <X className="h-4 w-4" />
             </Button>
@@ -1388,7 +1448,7 @@ export default function DocumentDetailsPage() {
             {viewerUrl && (
               <iframe
                 src={viewerUrl}
-                className="w-full h-[70vh] border rounded-md"
+                className="w-full h-[70vh] border border-slate-200 dark:border-slate-700 rounded-md"
                 title="Vista previa del documento"
               />
             )}

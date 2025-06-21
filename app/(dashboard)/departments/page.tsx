@@ -222,7 +222,7 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       {/* Breadcrumbs */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -311,14 +311,14 @@ export default function DepartmentsPage() {
         </Card>
       )}
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300 border-slate-200/50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300 border-slate-200 dark:border-slate-700">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar departamentos..."
-                className="pl-8 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
+                className="pl-8 border-slate-200 dark:border-slate-700 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -327,15 +327,17 @@ export default function DepartmentsPage() {
 
           {loading ? (
             <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-slate-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-slate-600 dark:border-slate-300 mx-auto"></div>
               <p className="mt-4 text-muted-foreground">Cargando departamentos...</p>
             </div>
           ) : filteredDepartments.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
-                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600 dark:text-slate-300" />
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">
+                No hay departamentos
+              </h3>
               <p className="text-sm sm:text-base text-muted-foreground">
                 {isGeneralView
                   ? "No se encontraron departamentos en el sistema."
@@ -343,23 +345,27 @@ export default function DepartmentsPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border border-gray-200 overflow-hidden">
+            <div className="rounded-md border border-gray-200 dark:border-slate-600 overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200">
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Departamento</TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden md:table-cell">
+                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200 dark:border-slate-700">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                        Departamento
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden md:table-cell">
                         Descripción
                       </TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden sm:table-cell">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden sm:table-cell">
                         Color
                       </TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Usuarios</TableHead>
-                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden lg:table-cell">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                        Usuarios
+                      </TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm hidden lg:table-cell">
                         Fecha de creación
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700 text-xs sm:text-sm">
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
                         Acciones
                       </TableHead>
                     </TableRow>
@@ -368,7 +374,7 @@ export default function DepartmentsPage() {
                     {filteredDepartments.map((dept) => (
                       <TableRow
                         key={dept.id}
-                        className="border-gray-100 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300"
+                        className="border-gray-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50 transition-all duration-300"
                       >
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center space-x-2 sm:space-x-3">
@@ -382,7 +388,7 @@ export default function DepartmentsPage() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                                <div className="font-medium text-gray-900 dark:text-slate-100 text-sm sm:text-base truncate">
                                   {dept.name}
                                 </div>
                                 {/* BADGE DEFINITIVO - Solo en vista general y no para departamentos temporales */}
@@ -404,7 +410,7 @@ export default function DepartmentsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600 text-sm hidden md:table-cell p-2 sm:p-4">
+                        <TableCell className="text-gray-600 dark:text-slate-300 text-sm hidden md:table-cell p-2 sm:p-4">
                           {dept.description || "Sin descripción"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell p-2 sm:p-4">
@@ -420,13 +426,15 @@ export default function DepartmentsPage() {
                         </TableCell>
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center gap-2">
-                            <div className="p-1 rounded-md bg-gradient-to-br from-slate-100 to-slate-200">
-                              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600" />
+                            <div className="p-1 rounded-md bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700">
+                              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-300" />
                             </div>
-                            <span className="font-medium text-gray-700 text-sm">{dept.userCount || 0}</span>
+                            <span className="font-medium text-gray-700 dark:text-slate-200 text-sm">
+                              {dept.userCount || 0}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600 text-sm hidden lg:table-cell p-2 sm:p-4">
+                        <TableCell className="text-gray-600 dark:text-slate-300 text-sm hidden lg:table-cell p-2 sm:p-4">
                           {new Date(dept.created_at).toLocaleDateString("es-ES")}
                         </TableCell>
                         <TableCell className="text-right p-2 sm:p-4">
@@ -435,7 +443,7 @@ export default function DepartmentsPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="hover:bg-gray-100 transition-colors duration-200 h-8 w-8"
+                                className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 h-8 w-8"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -455,7 +463,10 @@ export default function DepartmentsPage() {
                                 </svg>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="shadow-lg border-gray-200">
+                            <DropdownMenuContent
+                              align="end"
+                              className="shadow-lg border-gray-200 dark:border-slate-600"
+                            >
                               <DropdownMenuItem
                                 onClick={() => router.push(`/departments/edit/${dept.id}`)}
                                 className="hover:bg-blue-50 transition-colors duration-200"
