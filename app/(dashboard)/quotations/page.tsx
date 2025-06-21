@@ -109,7 +109,7 @@ export default function QuotationsPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [companyId, setCompanyId] = useState<string | null>(null)
 
-  // Check if user has quotations access - igual que warehouse
+  // Check if user has quotations access
   const hasQuotationsAccess =
     user?.role === "admin" ||
     user?.role === "supervisor" ||
@@ -117,11 +117,10 @@ export default function QuotationsPage() {
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones"
 
-  // Get the company to use - igual que warehouse
+  // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   useEffect(() => {
-    // Check if user has quotations access - igual que warehouse
     const hasQuotationsAccess =
       user?.role === "admin" ||
       user?.role === "supervisor" ||
@@ -129,7 +128,6 @@ export default function QuotationsPage() {
       user?.departments?.name === "Administración" ||
       user?.departments?.name === "Operaciones"
 
-    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     setCompanyId(companyId)
@@ -245,12 +243,8 @@ export default function QuotationsPage() {
   }
 
   const handleRouteUpdated = () => {
-    // Refrescar la cotización seleccionada para mostrar la nueva información de ruta
-    if (selectedQuotation) {
-      if (companyId) {
-        fetchQuotations(companyId)
-      }
-      // Actualizar la cotización seleccionada con los nuevos datos
+    if (selectedQuotation && companyId) {
+      fetchQuotations(companyId)
       supabase
         .from("quotations")
         .select("*")
@@ -322,7 +316,6 @@ export default function QuotationsPage() {
     )
   }
 
-  // Mensaje para administradores sin empresa seleccionada
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6">

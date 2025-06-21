@@ -18,6 +18,7 @@ import {
   loadGoogleMapsAPI,
   formatDuration,
   formatDistance,
+  isGoogleMapsAvailable,
   type RouteInfo,
 } from "@/lib/google-maps-utils"
 
@@ -46,6 +47,7 @@ export default function RoutePlanner({
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<google.maps.Map | null>(null)
   const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(null)
+  const isInitialized = useRef(false)
 
   // Cargar Google Maps API
   useEffect(() => {
@@ -55,45 +57,54 @@ export default function RoutePlanner({
       return
     }
 
+    if (isInitialized.current) return
+    isInitialized.current = true
+
     loadGoogleMapsAPI(apiKey)
       .then(() => {
         setMapsLoaded(true)
-        initializeMap()
+        setTimeout(initializeMap, 100) // Pequeño delay para asegurar que el DOM esté listo
       })
       .catch((error) => {
         console.error("Error cargando Google Maps:", error)
         toast.error("Error cargando Google Maps")
+        isInitialized.current = false
       })
   }, [])
 
   // Inicializar mapa
   const initializeMap = useCallback(() => {
-    if (!mapRef.current || !window.google) return
+    if (!mapRef.current || !isGoogleMapsAvailable()) return
 
-    mapInstance.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: -12.0464, lng: -77.0428 }, // Lima, Perú
-      zoom: 6,
-      mapTypeControl: true,
-      streetViewControl: false,
-      fullscreenControl: true,
-    })
+    try {
+      mapInstance.current = new window.google.maps.Map(mapRef.current, {
+        center: { lat: -12.0464, lng: -77.0428 }, // Lima, Perú
+        zoom: 6,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+      })
 
-    directionsRenderer.current = new window.google.maps.DirectionsRenderer({
-      draggable: true,
-      panel: null,
-    })
+      directionsRenderer.current = new window.google.maps.DirectionsRenderer({
+        draggable: false,
+        panel: null,
+      })
 
-    directionsRenderer.current.setMap(mapInstance.current)
+      directionsRenderer.current.setMap(mapInstance.current)
+    } catch (error) {
+      console.error("Error inicializando mapa:", error)
+      toast.error("Error inicializando el mapa")
+    }
   }, [])
 
-  // Calcular ruta - Función completamente aislada
+  // Calcular ruta
   const handleCalculateRoute = useCallback(async () => {
     if (!origin.trim() || !destination.trim()) {
       toast.error("Por favor ingresa origen y destino")
       return
     }
 
-    if (!mapsLoaded) {
+    if (!mapsLoaded || !isGoogleMapsAvailable()) {
       toast.error("Google Maps aún no está cargado")
       return
     }
@@ -144,7 +155,7 @@ export default function RoutePlanner({
     }
   }, [origin, destination, mapsLoaded, avoidTolls, avoidHighways, onRouteCalculated])
 
-  // Guardar información de ruta - Función completamente aislada
+  // Guardar información de ruta
   const handleSaveRoute = useCallback(async () => {
     if (!routeInfo || !user) {
       toast.error("No hay información de ruta para guardar")
@@ -177,43 +188,14 @@ export default function RoutePlanner({
     }
   }, [routeInfo, user, quotationId])
 
-  // Handler para el botón que previene completamente la propagación
-  const onCalculateClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      e.nativeEvent.stopImmediatePropagation()
-      handleCalculateRoute()
-    },
-    [handleCalculateRoute],
-  )
-
-  // Handler para el botón de guardar que previene completamente la propagación
-  const onSaveClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      e.nativeEvent.stopImmediatePropagation()
-      handleSaveRoute()
-    },
-    [handleSaveRoute],
-  )
-
-  // Handler para abrir Google Maps
-  const onOpenMapsClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      e.nativeEvent.stopImmediatePropagation()
-      if (routeInfo) {
-        window.open(routeInfo.googleMapsUrl, "_blank")
-      }
-    },
-    [routeInfo],
-  )
+  // Prevenir propagación de eventos
+  const stopPropagation = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
 
   return (
-    <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
+    <div className="space-y-6" onMouseDown={stopPropagation}>
       {/* Configuración de Ruta */}
       <Card>
         <CardHeader>
@@ -227,40 +209,28 @@ export default function RoutePlanner({
           {/* Origen y Destino */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="origin">Origen</Label>
+              <Label htmlFor="route-origin">Origen</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-500" />
                 <Input
-                  id="origin"
+                  id="route-origin"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Dirección de origen..."
                   className="pl-10"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }
-                  }}
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="destination">Destino</Label>
+              <Label htmlFor="route-destination">Destino</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-500" />
                 <Input
-                  id="destination"
+                  id="route-destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Dirección de destino..."
                   className="pl-10"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }
-                  }}
                 />
               </div>
             </div>
@@ -278,8 +248,16 @@ export default function RoutePlanner({
             </div>
           </div>
 
-          {/* Botón Calcular - Completamente aislado */}
-          <Button type="button" onClick={onCalculateClick} disabled={loading || !mapsLoaded} className="w-full">
+          {/* Botón Calcular */}
+          <Button
+            type="button"
+            onClick={(e) => {
+              stopPropagation(e)
+              handleCalculateRoute()
+            }}
+            disabled={loading || !mapsLoaded}
+            className="w-full"
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -320,11 +298,27 @@ export default function RoutePlanner({
             <CardTitle className="flex items-center justify-between">
               <span>Información de Ruta</span>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={onOpenMapsClick}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    stopPropagation(e)
+                    window.open(routeInfo.googleMapsUrl, "_blank")
+                  }}
+                >
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Ver en Maps
                 </Button>
-                <Button type="button" size="sm" onClick={onSaveClick} disabled={saving}>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    stopPropagation(e)
+                    handleSaveRoute()
+                  }}
+                  disabled={saving}
+                >
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />

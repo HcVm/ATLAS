@@ -1,6 +1,6 @@
 // ============================================================================
-// UTILIDADES PARA GOOGLE MAPS - VERSIÓN SIMPLIFICADA
-// Funciones para integración con Google Maps API (sin cálculos de costos)
+// UTILIDADES PARA GOOGLE MAPS - VERSIÓN CORREGIDA
+// Funciones para integración con Google Maps API
 // ============================================================================
 
 export interface RouteInfo {
@@ -25,6 +25,10 @@ export interface RouteRequest {
   avoidTolls?: boolean
   avoidHighways?: boolean
 }
+
+// Variable global para controlar si Google Maps ya está cargado
+let isGoogleMapsLoaded = false
+let googleMapsPromise: Promise<void> | null = null
 
 // Función para calcular ruta usando Google Maps Directions API
 export async function calculateRoute(request: RouteRequest): Promise<RouteInfo | null> {
@@ -104,24 +108,50 @@ export function formatDistance(meters: number): string {
   return `${meters} m`
 }
 
-// Cargar Google Maps API dinámicamente
+// Cargar Google Maps API dinámicamente con async
 export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.google && window.google.maps) {
-      resolve()
-      return
+  // Si ya está cargado, resolver inmediatamente
+  if (isGoogleMapsLoaded && window.google && window.google.maps) {
+    return Promise.resolve()
+  }
+
+  // Si ya hay una promesa en curso, devolverla
+  if (googleMapsPromise) {
+    return googleMapsPromise
+  }
+
+  // Crear nueva promesa de carga
+  googleMapsPromise = new Promise((resolve, reject) => {
+    // Verificar si ya existe el script
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+    if (existingScript) {
+      existingScript.remove()
     }
 
     const script = document.createElement("script")
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=es&region=PE`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=es&region=PE&loading=async`
     script.async = true
     script.defer = true
 
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Error cargando Google Maps API"))
+    script.onload = () => {
+      isGoogleMapsLoaded = true
+      resolve()
+    }
+
+    script.onerror = () => {
+      googleMapsPromise = null
+      reject(new Error("Error cargando Google Maps API"))
+    }
 
     document.head.appendChild(script)
   })
+
+  return googleMapsPromise
+}
+
+// Función para verificar si Google Maps está disponible
+export function isGoogleMapsAvailable(): boolean {
+  return isGoogleMapsLoaded && window.google && window.google.maps
 }
 
 // Declaración de tipos para Google Maps
