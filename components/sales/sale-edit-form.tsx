@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/ui/date-picker"
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -548,7 +548,7 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Fecha de Entrega</Label>
-            <DatePicker
+            <DatePickerImproved
               date={formData.delivery_date}
               setDate={(date) => setFormData((prev) => ({ ...prev, delivery_date: date }))}
               placeholder="Seleccionar fecha de entrega"

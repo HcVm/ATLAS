@@ -7,6 +7,7 @@ import { toast } from "sonner"
 
 export interface Company {
   id: string
+  ruc: string
   name: string
   code: string
   color: string

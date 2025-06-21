@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/ui/date-picker"
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -642,7 +642,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
           </div>
           <div>
             <Label>Válida Hasta</Label>
-            <DatePicker
+            <DatePickerImproved
               date={formData.valid_until}
               setDate={(date) => setFormData((prev) => ({ ...prev, valid_until: date }))}
               placeholder="Seleccionar fecha de vencimiento"

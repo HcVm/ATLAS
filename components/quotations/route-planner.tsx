@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -84,8 +86,14 @@ export default function RoutePlanner({
     directionsRenderer.current.setMap(mapInstance.current)
   }
 
-  // Calcular ruta
-  const handleCalculateRoute = async () => {
+  // Calcular ruta - Prevenir comportamiento de formulario
+  const handleCalculateRoute = async (e?: React.MouseEvent) => {
+    // Prevenir cualquier comportamiento de formulario
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
     if (!origin.trim() || !destination.trim()) {
       toast.error("Por favor ingresa origen y destino")
       return
@@ -142,8 +150,14 @@ export default function RoutePlanner({
     }
   }
 
-  // Guardar información de ruta
-  const handleSaveRoute = async () => {
+  // Guardar información de ruta - Prevenir comportamiento de formulario
+  const handleSaveRoute = async (e?: React.MouseEvent) => {
+    // Prevenir cualquier comportamiento de formulario
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
     if (!routeInfo || !user) {
       toast.error("No hay información de ruta para guardar")
       return
@@ -229,8 +243,8 @@ export default function RoutePlanner({
             </div>
           </div>
 
-          {/* Botón Calcular */}
-          <Button onClick={handleCalculateRoute} disabled={loading || !mapsLoaded} className="w-full">
+          {/* Botón Calcular - Asegurar que no sea tipo submit */}
+          <Button type="button" onClick={handleCalculateRoute} disabled={loading || !mapsLoaded} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -271,11 +285,16 @@ export default function RoutePlanner({
             <CardTitle className="flex items-center justify-between">
               <span>Información de Ruta</span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.open(routeInfo.googleMapsUrl, "_blank")}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(routeInfo.googleMapsUrl, "_blank")}
+                >
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Ver en Maps
                 </Button>
-                <Button size="sm" onClick={handleSaveRoute} disabled={saving}>
+                <Button type="button" size="sm" onClick={handleSaveRoute} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
