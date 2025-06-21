@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -67,7 +67,7 @@ export default function RoutePlanner({
   }, [])
 
   // Inicializar mapa
-  const initializeMap = () => {
+  const initializeMap = useCallback(() => {
     if (!mapRef.current || !window.google) return
 
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
@@ -84,16 +84,10 @@ export default function RoutePlanner({
     })
 
     directionsRenderer.current.setMap(mapInstance.current)
-  }
+  }, [])
 
-  // Calcular ruta - Prevenir comportamiento de formulario
-  const handleCalculateRoute = async (e?: React.MouseEvent) => {
-    // Prevenir cualquier comportamiento de formulario
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-
+  // Calcular ruta - Función completamente aislada
+  const handleCalculateRoute = useCallback(async () => {
     if (!origin.trim() || !destination.trim()) {
       toast.error("Por favor ingresa origen y destino")
       return
@@ -148,16 +142,10 @@ export default function RoutePlanner({
     } finally {
       setLoading(false)
     }
-  }
+  }, [origin, destination, mapsLoaded, avoidTolls, avoidHighways, onRouteCalculated])
 
-  // Guardar información de ruta - Prevenir comportamiento de formulario
-  const handleSaveRoute = async (e?: React.MouseEvent) => {
-    // Prevenir cualquier comportamiento de formulario
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-
+  // Guardar información de ruta - Función completamente aislada
+  const handleSaveRoute = useCallback(async () => {
     if (!routeInfo || !user) {
       toast.error("No hay información de ruta para guardar")
       return
@@ -187,10 +175,45 @@ export default function RoutePlanner({
     } finally {
       setSaving(false)
     }
-  }
+  }, [routeInfo, user, quotationId])
+
+  // Handler para el botón que previene completamente la propagación
+  const onCalculateClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.nativeEvent.stopImmediatePropagation()
+      handleCalculateRoute()
+    },
+    [handleCalculateRoute],
+  )
+
+  // Handler para el botón de guardar que previene completamente la propagación
+  const onSaveClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.nativeEvent.stopImmediatePropagation()
+      handleSaveRoute()
+    },
+    [handleSaveRoute],
+  )
+
+  // Handler para abrir Google Maps
+  const onOpenMapsClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.nativeEvent.stopImmediatePropagation()
+      if (routeInfo) {
+        window.open(routeInfo.googleMapsUrl, "_blank")
+      }
+    },
+    [routeInfo],
+  )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
       {/* Configuración de Ruta */}
       <Card>
         <CardHeader>
@@ -204,28 +227,40 @@ export default function RoutePlanner({
           {/* Origen y Destino */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="origin">Origen</Label>
+              <Label htmlFor="route-origin">Origen</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-500" />
                 <Input
-                  id="origin"
+                  id="route-origin"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Dirección de origen..."
                   className="pl-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }
+                  }}
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="destination">Destino</Label>
+              <Label htmlFor="route-destination">Destino</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-500" />
                 <Input
-                  id="destination"
+                  id="route-destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Dirección de destino..."
                   className="pl-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -243,8 +278,8 @@ export default function RoutePlanner({
             </div>
           </div>
 
-          {/* Botón Calcular - Asegurar que no sea tipo submit */}
-          <Button type="button" onClick={handleCalculateRoute} disabled={loading || !mapsLoaded} className="w-full">
+          {/* Botón Calcular - Completamente aislado */}
+          <Button type="button" onClick={onCalculateClick} disabled={loading || !mapsLoaded} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -285,16 +320,11 @@ export default function RoutePlanner({
             <CardTitle className="flex items-center justify-between">
               <span>Información de Ruta</span>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(routeInfo.googleMapsUrl, "_blank")}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={onOpenMapsClick}>
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Ver en Maps
                 </Button>
-                <Button type="button" size="sm" onClick={handleSaveRoute} disabled={saving}>
+                <Button type="button" size="sm" onClick={onSaveClick} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
