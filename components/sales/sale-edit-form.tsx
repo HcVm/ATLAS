@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { EntitySelector } from "@/components/ui/entity-selector"
 
 interface Product {
   id: string
@@ -79,9 +80,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
-  const [entities, setEntities] = useState<SalesEntity[]>([])
-
-  // Form state inicializado con datos de la venta
   const [formData, setFormData] = useState({
     entity_id: sale.entity_id,
     entity_name: sale.entity_name,
@@ -114,7 +112,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
   useEffect(() => {
     if (selectedCompany) {
       fetchProducts()
-      fetchEntities()
     }
   }, [selectedCompany])
 
@@ -163,24 +160,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
     }
   }
 
-  const fetchEntities = async () => {
-    if (!selectedCompany) return
-
-    try {
-      const { data, error } = await supabase
-        .from("sales_entities")
-        .select("id, name, ruc, executing_unit")
-        .eq("company_id", selectedCompany.id)
-        .order("name")
-
-      if (error) throw error
-      setEntities(data || [])
-    } catch (error: any) {
-      console.error("Error fetching entities:", error)
-      toast.error("Error al cargar entidades")
-    }
-  }
-
   const handleProductSelect = (productId: string) => {
     const product = products.find((p) => p.id === productId)
     if (product) {
@@ -192,19 +171,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         product_description: product.description || "",
         product_brand: product.brands?.name || "",
         unit_price_with_tax: product.sale_price.toString(),
-      }))
-    }
-  }
-
-  const handleEntitySelect = (entityId: string) => {
-    const entity = entities.find((e) => e.id === entityId)
-    if (entity) {
-      setFormData((prev) => ({
-        ...prev,
-        entity_id: entityId,
-        entity_name: entity.name,
-        entity_ruc: entity.ruc,
-        entity_executing_unit: entity.executing_unit || "",
       }))
     }
   }
@@ -296,30 +262,21 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
       {/* Información del Cliente */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Cliente</h3>
-        <div>
-          <Label htmlFor="entity">Entidad (Cliente) *</Label>
-          <Select value={formData.entity_id} onValueChange={handleEntitySelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar entidad" />
-            </SelectTrigger>
-            <SelectContent>
-              {entities.map((entity) => (
-                <SelectItem key={entity.id} value={entity.id}>
-                  <div className="flex items-center justify-between w-full">
-                    <span>
-                      {entity.name} - {entity.ruc}
-                    </span>
-                    {entity.executing_unit && (
-                      <Badge variant="outline" className="ml-2">
-                        U.E: {entity.executing_unit}
-                      </Badge>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <EntitySelector
+          value={formData.entity_id}
+          onSelect={(entity) => {
+            setFormData((prev) => ({
+              ...prev,
+              entity_id: entity.id,
+              entity_name: entity.name,
+              entity_ruc: entity.ruc,
+              entity_executing_unit: entity.executing_unit || "",
+            }))
+          }}
+          label="Entidad (Cliente)"
+          placeholder="Buscar entidad..."
+          required
+        />
 
         {formData.entity_executing_unit && (
           <div>

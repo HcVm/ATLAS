@@ -12,19 +12,12 @@ import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Plus, Search } from "lucide-react"
+import { AlertTriangle, Search } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { EntitySelector } from "@/components/ui/entity-selector"
 
 interface Product {
   id: string
@@ -68,9 +61,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
-  const [entities, setEntities] = useState<SalesEntity[]>([])
   const [quotations, setQuotations] = useState<Quotation[]>([])
-  const [showNewEntityDialog, setShowNewEntityDialog] = useState(false)
   const [searchingProduct, setSearchingProduct] = useState(false)
   const [searchingQuotation, setSearchingQuotation] = useState(false)
 
@@ -105,18 +96,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   })
 
   // New entity form
-  const [newEntity, setNewEntity] = useState({
-    name: "",
-    ruc: "",
-    executing_unit: "",
-  })
-
   const [stockWarning, setStockWarning] = useState("")
   const [totalSale, setTotalSale] = useState(0)
 
   useEffect(() => {
     if (selectedCompany) {
-      fetchEntities()
       fetchQuotations()
     }
   }, [selectedCompany])
@@ -157,24 +141,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       }
     } catch (error: any) {
       console.error("Error checking stock:", error)
-    }
-  }
-
-  const fetchEntities = async () => {
-    if (!selectedCompany) return
-
-    try {
-      const { data, error } = await supabase
-        .from("sales_entities")
-        .select("id, name, ruc, executing_unit")
-        .eq("company_id", selectedCompany.id)
-        .order("name")
-
-      if (error) throw error
-      setEntities(data || [])
-    } catch (error: any) {
-      console.error("Error fetching entities:", error)
-      toast.error("Error al cargar entidades")
     }
   }
 
@@ -340,52 +306,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     }
   }
 
-  const handleEntitySelect = (entityId: string) => {
-    const entity = entities.find((e) => e.id === entityId)
-    if (entity) {
-      setFormData((prev) => ({
-        ...prev,
-        entity_id: entityId,
-        entity_name: entity.name,
-        entity_ruc: entity.ruc,
-        entity_executing_unit: entity.executing_unit || "",
-      }))
-    }
-  }
-
-  const handleCreateEntity = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedCompany) return
-
-    try {
-      const { data, error } = await supabase
-        .from("sales_entities")
-        .insert([
-          {
-            name: newEntity.name,
-            ruc: newEntity.ruc,
-            executing_unit: newEntity.executing_unit || null,
-            company_id: selectedCompany.id,
-          },
-        ])
-        .select()
-        .single()
-
-      if (error) throw error
-
-      toast.success("Entidad creada exitosamente")
-      setNewEntity({ name: "", ruc: "", executing_unit: "" })
-      setShowNewEntityDialog(false)
-      fetchEntities()
-
-      // Seleccionar la nueva entidad
-      handleEntitySelect(data.id)
-    } catch (error: any) {
-      console.error("Error creating entity:", error)
-      toast.error("Error al crear la entidad: " + error.message)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCompany || !user) return
@@ -500,83 +420,22 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
       {/* Información del Cliente */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Información del Cliente</h3>
-          <Dialog open={showNewEntityDialog} onOpenChange={setShowNewEntityDialog}>
-            <DialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Entidad
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Crear Nueva Entidad</DialogTitle>
-                <DialogDescription>Registra una nueva entidad (cliente) en el sistema</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateEntity} className="space-y-4">
-                <div>
-                  <Label htmlFor="new_entity_name">Nombre de la Entidad *</Label>
-                  <Input
-                    id="new_entity_name"
-                    value={newEntity.name}
-                    onChange={(e) => setNewEntity((prev) => ({ ...prev, name: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new_entity_ruc">RUC *</Label>
-                  <Input
-                    id="new_entity_ruc"
-                    value={newEntity.ruc}
-                    onChange={(e) => setNewEntity((prev) => ({ ...prev, ruc: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new_entity_executing_unit">Unidad Ejecutora (Opcional)</Label>
-                  <Input
-                    id="new_entity_executing_unit"
-                    value={newEntity.executing_unit}
-                    onChange={(e) => setNewEntity((prev) => ({ ...prev, executing_unit: e.target.value }))}
-                    placeholder="Ej: 001, 002, etc."
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setShowNewEntityDialog(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">Crear Entidad</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <div>
-          <Label htmlFor="entity">Entidad (Cliente) *</Label>
-          <Select value={formData.entity_id} onValueChange={handleEntitySelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar entidad" />
-            </SelectTrigger>
-            <SelectContent>
-              {entities.map((entity) => (
-                <SelectItem key={entity.id} value={entity.id}>
-                  <div className="flex items-center justify-between w-full">
-                    <span>
-                      {entity.name} - {entity.ruc}
-                    </span>
-                    {entity.executing_unit && (
-                      <Badge variant="outline" className="ml-2">
-                        U.E: {entity.executing_unit}
-                      </Badge>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <h3 className="text-lg font-semibold">Información del Cliente</h3>
+        <EntitySelector
+          value={formData.entity_id}
+          onSelect={(entity) => {
+            setFormData((prev) => ({
+              ...prev,
+              entity_id: entity.id,
+              entity_name: entity.name,
+              entity_ruc: entity.ruc,
+              entity_executing_unit: entity.executing_unit || "",
+            }))
+          }}
+          label="Entidad (Cliente)"
+          placeholder="Buscar o crear entidad..."
+          required
+        />
 
         {formData.entity_executing_unit && (
           <div>
