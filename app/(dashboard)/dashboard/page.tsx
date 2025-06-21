@@ -162,7 +162,7 @@ export default function DashboardPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200 shadow-sm"
+            className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/50 dark:to-yellow-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 shadow-sm"
           >
             Pendiente
           </Badge>
@@ -171,7 +171,7 @@ export default function DashboardPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border-slate-200 shadow-sm"
+            className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 shadow-sm"
           >
             En Progreso
           </Badge>
@@ -180,7 +180,7 @@ export default function DashboardPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-200 shadow-sm"
+            className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/50 dark:to-green-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 shadow-sm"
           >
             Completado
           </Badge>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 shadow-sm"
+            className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/50 dark:to-rose-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 shadow-sm"
           >
             Cancelado
           </Badge>
@@ -219,11 +219,11 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-3 sm:p-4 lg:p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-3 sm:p-4 lg:p-6">
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
-            <p className="text-slate-600">Cargando dashboard...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600 dark:border-slate-400"></div>
+            <p className="text-slate-600 dark:text-slate-300">Cargando dashboard...</p>
           </div>
         </div>
       </div>
@@ -235,22 +235,28 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent">
             Dashboard
             {user?.role === "admin" && selectedCompany && (
-              <span className="text-lg font-normal text-slate-500 ml-2">- {selectedCompany.name}</span>
+              <span className="text-lg font-normal text-slate-500 dark:text-slate-400 ml-2">
+                - {selectedCompany.name}
+              </span>
             )}
             {user?.role === "admin" && !selectedCompany && (
-              <span className="text-lg font-normal text-slate-500 ml-2">- Vista General</span>
+              <span className="text-lg font-normal text-slate-500 dark:text-slate-400 ml-2">- Vista General</span>
             )}
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-1">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1">
             Bienvenido de vuelta, {user?.full_name || "Usuario"}
             {user?.role === "admin" && selectedCompany && (
-              <span className="block text-xs text-slate-500">Viendo datos de: {selectedCompany.name}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                Viendo datos de: {selectedCompany.name}
+              </span>
             )}
             {user?.role === "admin" && !selectedCompany && (
-              <span className="block text-xs text-slate-500">Viendo datos de todas las empresas</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                Viendo datos de todas las empresas
+              </span>
             )}
           </p>
         </div>
@@ -258,7 +264,7 @@ export default function DashboardPage() {
           variant="outline"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="w-full sm:w-auto bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:shadow-md transition-all duration-300 hover:scale-105"
+          className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 hover:scale-105"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
@@ -268,73 +274,93 @@ export default function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-slate-50 border-slate-200">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5 dark:from-slate-400/10 dark:to-slate-500/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Documentos</CardTitle>
-            <div className="p-1.5 sm:p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
-              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600" />
+            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200">
+              Total Documentos
+            </CardTitle>
+            <div className="p-1.5 sm:p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-700">{stats.totalDocuments}</div>
-            <p className="text-xs text-slate-500">Documentos en el sistema</p>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-700 dark:text-slate-200">
+              {stats.totalDocuments}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Documentos en el sistema</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-amber-50 border-amber-200">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-amber-600/5"></div>
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-amber-50 dark:from-slate-800 dark:to-amber-950/20 border-amber-200 dark:border-amber-800/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-400/10 dark:to-amber-500/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Pendientes</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200">
+              Pendientes
+            </CardTitle>
             <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-amber-700">{stats.pendingDocuments}</div>
-            <p className="text-xs text-slate-500">Documentos pendientes</p>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-amber-700 dark:text-amber-300">
+              {stats.pendingDocuments}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Documentos pendientes</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-emerald-50 border-emerald-200">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5"></div>
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-emerald-50 dark:from-slate-800 dark:to-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-400/10 dark:to-emerald-500/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Completados</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200">
+              Completados
+            </CardTitle>
             <div className="p-1.5 sm:p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-emerald-700">{stats.completedDocuments}</div>
-            <p className="text-xs text-slate-500">Documentos completados</p>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+              {stats.completedDocuments}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Documentos completados</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-slate-100 border-slate-200">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
+        <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5 dark:from-slate-400/10 dark:to-slate-500/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative p-3 sm:p-4 lg:p-6">
-            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Movimientos</CardTitle>
-            <div className="p-1.5 sm:p-2 bg-slate-200 dark:bg-slate-800/30 rounded-lg">
-              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600" />
+            <CardTitle className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200">
+              Movimientos
+            </CardTitle>
+            <div className="p-1.5 sm:p-2 bg-slate-200 dark:bg-slate-800 rounded-lg">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-4 lg:p-6 pt-0">
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-700">{stats.recentMovements}</div>
-            <p className="text-xs text-slate-500">Total de movimientos</p>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-700 dark:text-slate-200">
+              {stats.recentMovements}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Total de movimientos</p>
           </CardContent>
         </Card>
       </div>
 
       {/* News Carousel */}
-      <Card className="shadow-lg border-slate-200 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b border-slate-100 p-4 sm:p-6">
+      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-700 p-4 sm:p-6">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-400" />
             </div>
             <div>
-              <CardTitle className="text-base sm:text-lg text-slate-800">Noticias Recientes</CardTitle>
-              <CardDescription className="text-sm text-slate-600">Últimas actualizaciones y anuncios</CardDescription>
+              <CardTitle className="text-base sm:text-lg text-slate-800 dark:text-slate-200">
+                Noticias Recientes
+              </CardTitle>
+              <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
+                Últimas actualizaciones y anuncios
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -344,13 +370,13 @@ export default function DashboardPage() {
       </Card>
 
       {/* Main Content Tabs */}
-      <Card className="shadow-lg border-slate-200 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300">
+      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 sm:p-6">
           <Tabs defaultValue="documents" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-slate-100 to-slate-200">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
               <TabsTrigger
                 value="documents"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm text-slate-700"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm text-slate-700 dark:text-slate-300"
               >
                 <FileText className="h-4 w-4 mr-2" />
                 <span className="sm:hidden">Docs</span>
@@ -358,7 +384,7 @@ export default function DashboardPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="movements"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm text-slate-700"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-xs sm:text-sm text-slate-700 dark:text-slate-300"
               >
                 <ArrowRight className="h-4 w-4 mr-2" />
                 <span className="sm:hidden">Movs</span>
@@ -368,12 +394,14 @@ export default function DashboardPage() {
 
             <TabsContent value="documents" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-800">Documentos Recientes</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200">
+                  Documentos Recientes
+                </h3>
                 <Button
                   variant="outline"
                   size="sm"
                   asChild
-                  className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:scale-105 transition-all duration-300"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300"
                 >
                   <Link href="/documents">
                     <span className="sm:hidden">Ver todos</span>
@@ -384,26 +412,26 @@ export default function DashboardPage() {
 
               {recentDocuments.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <FileText className="h-8 w-8 text-slate-400" />
+                  <div className="p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-slate-500">No hay documentos recientes</p>
+                  <p className="text-slate-500 dark:text-slate-400">No hay documentos recientes</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {recentDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-slate-200 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300 hover:shadow-md"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-800/50 dark:hover:to-slate-700/50 transition-all duration-300 hover:shadow-md"
                     >
                       <div className="flex-1 min-w-0 mb-3 sm:mb-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium text-slate-800 truncate text-sm sm:text-base">
+                          <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate text-sm sm:text-base">
                             {doc.title || "Sin título"}
                           </h4>
                           {getStatusBadge(doc.status)}
                         </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs sm:text-sm text-slate-600">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                           <span>#{doc.document_number || "Sin número"}</span>
                           <span className="hidden sm:inline">•</span>
                           <span>Por {doc.profiles?.full_name || "Usuario desconocido"}</span>
@@ -416,7 +444,7 @@ export default function DashboardPage() {
                         variant="outline"
                         size="sm"
                         asChild
-                        className="w-full sm:w-auto bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:scale-105 transition-all duration-300"
+                        className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300"
                       >
                         <Link href={`/documents/${doc.id}`}>
                           <span className="sm:hidden">Ver</span>
@@ -431,12 +459,14 @@ export default function DashboardPage() {
 
             <TabsContent value="movements" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-800">Movimientos Recientes</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200">
+                  Movimientos Recientes
+                </h3>
                 <Button
                   variant="outline"
                   size="sm"
                   asChild
-                  className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:scale-105 transition-all duration-300"
+                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300"
                 >
                   <Link href="/movements">
                     <span className="sm:hidden">Ver todos</span>
@@ -447,21 +477,21 @@ export default function DashboardPage() {
 
               {recentMovements.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <ArrowRight className="h-8 w-8 text-slate-400" />
+                  <div className="p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <ArrowRight className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-slate-500">No hay movimientos recientes</p>
+                  <p className="text-slate-500 dark:text-slate-400">No hay movimientos recientes</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {recentMovements.map((movement) => (
                     <div
                       key={movement.id}
-                      className="p-4 rounded-lg border border-slate-200 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300 hover:shadow-md"
+                      className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-800/50 dark:hover:to-slate-700/50 transition-all duration-300 hover:shadow-md"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-slate-800 truncate text-sm sm:text-base">
+                          <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate text-sm sm:text-base">
                             {movement.documents?.title || "Documento eliminado"}
                           </h4>
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
@@ -479,7 +509,7 @@ export default function DashboardPage() {
                                   {movement.from_departments.name}
                                 </span>
                               )}
-                              <ArrowRight className="h-3 w-3 text-slate-500" />
+                              <ArrowRight className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                               {movement.to_departments && (
                                 <span
                                   className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-2 ring-offset-1"
@@ -496,7 +526,7 @@ export default function DashboardPage() {
                               )}
                             </div>
                           </div>
-                          <p className="text-xs sm:text-sm text-slate-600 mt-2">
+                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2">
                             Por {movement.profiles?.full_name || "Usuario desconocido"} •{" "}
                             {format(new Date(movement.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                           </p>
@@ -506,7 +536,7 @@ export default function DashboardPage() {
                             variant="outline"
                             size="sm"
                             asChild
-                            className="w-full sm:w-auto bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:scale-105 transition-all duration-300"
+                            className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300"
                           >
                             <Link href={`/documents/${movement.document_id}`}>
                               <span className="sm:hidden">Ver</span>

@@ -201,21 +201,23 @@ export function AppSidebar() {
         <SidebarHeader className="p-4">
           <div className="sidebar-header-glass rounded-xl p-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white shadow-lg">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 dark:bg-slate-600 text-white shadow-lg">
                 <FileText className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-slate-700">Sistema Docs</span>
-                <span className="text-xs text-slate-500">Cargando...</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sistema Docs</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Cargando...</span>
               </div>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
           <div className="p-4">
-            <Alert className="glass-card border-slate-200">
-              <AlertTriangle className="h-4 w-4 text-slate-600" />
-              <AlertDescription className="text-slate-600">Verificando autenticación...</AlertDescription>
+            <Alert className="glass-card border-slate-200 dark:border-slate-700">
+              <AlertTriangle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <AlertDescription className="text-slate-600 dark:text-slate-300">
+                Verificando autenticación...
+              </AlertDescription>
             </Alert>
           </div>
         </SidebarContent>
@@ -258,15 +260,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="glass-sidebar">
-      <SidebarHeader className="p-4 border-b border-slate-200/50">
+      <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50">
         <div className="sidebar-header-glass rounded-xl p-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
               <FileText className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-gradient-slate">Sistema Docs Corp</span>
-              <span className="text-xs text-slate-500">v3.0</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">v3.0</span>
             </div>
           </div>
         </div>
@@ -284,7 +286,7 @@ export function AppSidebar() {
 
               return (
                 <SidebarGroup key={sectionKey} className="py-2">
-                  <SidebarGroupLabel className="text-xs font-semibold text-slate-500 px-3 py-2 uppercase tracking-wider">
+                  <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider">
                     {section.title}
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
@@ -296,22 +298,22 @@ export function AppSidebar() {
                               href={item.url}
                               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group ${
                                 pathname === item.url
-                                  ? "bg-slate-200 text-slate-700 shadow-sm"
-                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                  ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm"
+                                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
                               }`}
                             >
                               <div
                                 className={`flex h-8 w-8 items-center justify-center rounded-md transition-all duration-300 ${
                                   pathname === item.url
-                                    ? "bg-slate-300 text-slate-700"
-                                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-700"
+                                    ? "bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-slate-700 dark:group-hover:text-slate-200"
                                 }`}
                               >
                                 <item.icon className="h-4 w-4" />
                               </div>
                               <span className="font-medium transition-colors duration-300">{item.title}</span>
                               {item.title === "Notificaciones" && (
-                                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 text-[10px] font-medium text-white shadow-sm">
+                                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 dark:bg-slate-600 text-[10px] font-medium text-white shadow-sm">
                                   <Bell className="h-3 w-3" />
                                 </span>
                               )}
@@ -337,11 +339,11 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarSeparator className="bg-slate-200/50" />
+      <SidebarSeparator className="bg-slate-200/50 dark:bg-slate-700/50" />
 
       <SidebarFooter className="p-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-slate-500 px-3 py-2 uppercase tracking-wider">
+          <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider">
             USUARIO
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -352,8 +354,8 @@ export function AppSidebar() {
                     href="/profile"
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
                       pathname === "/profile"
-                        ? "bg-slate-200 text-slate-700"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
                     }`}
                   >
                     <User className="h-4 w-4" />
@@ -367,8 +369,8 @@ export function AppSidebar() {
                     href="/settings"
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
                       pathname === "/settings"
-                        ? "bg-slate-200 text-slate-700"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
                     }`}
                   >
                     <Settings className="h-4 w-4" />
@@ -381,11 +383,11 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {user && (
-          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50">
+          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50 dark:border-slate-700/50">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 ring-2 ring-slate-200">
+              <Avatar className="h-10 w-10 ring-2 ring-slate-200 dark:ring-slate-700">
                 <AvatarImage src={user.avatar_url || ""} />
-                <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
+                <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold">
                   {user.full_name
                     .split(" ")
                     .map((n) => n[0])
@@ -394,16 +396,16 @@ export function AppSidebar() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate text-slate-700">{user.full_name}</p>
+                <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">{user.full_name}</p>
                 <div className="flex items-center gap-1">
                   <Badge
                     variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
                     className={`text-xs px-2 py-0 h-5 ${
                       user.role === "admin"
-                        ? "bg-slate-700 text-white"
+                        ? "bg-slate-700 dark:bg-slate-600 text-white"
                         : user.role === "supervisor"
-                          ? "bg-slate-100 text-slate-700"
-                          : "border-slate-300 text-slate-600"
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                          : "border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                     }`}
                   >
                     {user.role || "Sin rol"}
@@ -416,7 +418,7 @@ export function AppSidebar() {
 
         <Button
           variant="ghost"
-          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 mx-2 transition-all duration-300 font-medium"
+          className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 mx-2 transition-all duration-300 font-medium"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-2" />
