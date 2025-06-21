@@ -983,8 +983,8 @@ export default function StatisticsPage() {
       {/* Header con gradiente */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            <BarChart3 className="h-8 w-8 text-blue-600 animate-pulse" />
+          <h1 className="text-3xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+            <BarChart3 className="h-8 w-8 text-slate-600 animate-pulse" />
             Estadísticas
           </h1>
           <p className="text-muted-foreground">
@@ -996,7 +996,7 @@ export default function StatisticsPage() {
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="gap-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950 dark:hover:to-purple-950 transition-all duration-300"
+          className="gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : "animate-pulse"}`} />
           {refreshing ? "Actualizando..." : "Actualizar"}
@@ -1006,57 +1006,57 @@ export default function StatisticsPage() {
       {/* Stats Cards Mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5 animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5 animate-pulse"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600 animate-bounce" />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <FileText className="h-4 w-4 text-slate-600 animate-bounce" />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-blue-600 animate-pulse">{stats.totalStats.totalDocuments}</div>
+            <div className="text-2xl font-bold text-slate-600 animate-pulse">{stats.totalStats.totalDocuments}</div>
             <p className="text-xs text-muted-foreground">Documentos en el sistema</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Total Movimientos</CardTitle>
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <ArrowRightLeft className="h-4 w-4 text-green-600 animate-pulse" />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <ArrowRightLeft className="h-4 w-4 text-slate-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-green-600">{stats.totalStats.totalMovements}</div>
+            <div className="text-2xl font-bold text-slate-600">{stats.totalStats.totalMovements}</div>
             <p className="text-xs text-muted-foreground">Movimientos registrados</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Departamentos</CardTitle>
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <PieChart className="h-4 w-4 text-purple-600 animate-spin" style={{ animationDuration: "8s" }} />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <PieChart className="h-4 w-4 text-slate-600 animate-spin" style={{ animationDuration: "8s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-purple-600">{stats.totalStats.totalDepartments}</div>
+            <div className="text-2xl font-bold text-slate-600">{stats.totalStats.totalDepartments}</div>
             <p className="text-xs text-muted-foreground">Departamentos activos</p>
           </CardContent>
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <Users className="h-4 w-4 text-orange-600 animate-pulse" />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <Users className="h-4 w-4 text-slate-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-orange-600">{stats.totalStats.totalUsers}</div>
+            <div className="text-2xl font-bold text-slate-600">{stats.totalStats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">Usuarios registrados</p>
           </CardContent>
         </Card>
@@ -1065,15 +1065,15 @@ export default function StatisticsPage() {
       {/* Warehouse Stats Cards con Animaciones */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <Package className="h-4 w-4 text-emerald-600 animate-bounce" style={{ animationDelay: "0.5s" }} />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <Package className="h-4 w-4 text-slate-600 animate-bounce" style={{ animationDelay: "0.5s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-emerald-600">{warehouseStats.inventoryValue.totalProducts}</div>
+            <div className="text-2xl font-bold text-slate-600">{warehouseStats.inventoryValue.totalProducts}</div>
             <p className="text-xs text-muted-foreground">Productos en inventario</p>
           </CardContent>
         </Card>
@@ -1081,18 +1081,17 @@ export default function StatisticsPage() {
         <Card
           className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-400/80 to-red-300/80"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+            <CardTitle className="flex items-center gap-3 text-lg text-red-500/80 dark:text-red-400/80">
               <AlertTriangle
-                className={`h-4 w-4 text-red-600 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+                className={`h-4 w-4 text-red-500/80 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
               />
-            </div>
+            </CardTitle>
           </CardHeader>
           <CardContent className="relative">
             <div
-              className={`text-2xl font-bold text-red-600 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+              className={`text-2xl font-bold text-slate-600 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
             >
               {warehouseStats.inventoryValue.lowStockCount}
             </div>
@@ -1104,15 +1103,15 @@ export default function StatisticsPage() {
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Valor Costo</CardTitle>
-            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
-              <DollarSign className="h-4 w-4 text-cyan-600 animate-pulse" />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <DollarSign className="h-4 w-4 text-slate-600 animate-pulse" />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-cyan-600">
+            <div className="text-2xl font-bold text-slate-600">
               S/ {warehouseStats.inventoryValue.totalCostValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total a costo</p>
@@ -1120,15 +1119,15 @@ export default function StatisticsPage() {
         </Card>
 
         <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/5"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
             <CardTitle className="text-sm font-medium">Valor Venta</CardTitle>
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-indigo-600 animate-bounce" style={{ animationDelay: "1s" }} />
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-lg">
+              <TrendingUp className="h-4 w-4 text-slate-600 animate-bounce" style={{ animationDelay: "1s" }} />
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-indigo-600">
+            <div className="text-2xl font-bold text-slate-600">
               S/ {warehouseStats.inventoryValue.totalSaleValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total de venta</p>
@@ -1139,11 +1138,11 @@ export default function StatisticsPage() {
       {/* Charts Grid Modernos con Animaciones Permanentes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos por Departamento */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <PieChart className="h-5 w-5 text-blue-600 animate-spin" style={{ animationDuration: "10s" }} />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <PieChart className="h-5 w-5 text-slate-600 animate-spin" style={{ animationDuration: "10s" }} />
               </div>
               Documentos por Departamento
             </CardTitle>
@@ -1201,11 +1200,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Documentos por Estado */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-green-50/30 dark:from-gray-900 dark:to-green-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <BarChart3 className="h-5 w-5 text-green-600 animate-pulse" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <BarChart3 className="h-5 w-5 text-slate-600 animate-pulse" />
               </div>
               Documentos por Estado
             </CardTitle>
@@ -1263,11 +1262,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Documentos por Mes */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-purple-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <TrendingUp className="h-5 w-5 text-purple-600 animate-bounce" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-slate-600 animate-bounce" />
               </div>
               Documentos por Mes
             </CardTitle>
@@ -1310,11 +1309,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Movimientos por Departamento */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-orange-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <ArrowRightLeft className="h-5 w-5 text-orange-600 animate-pulse" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <ArrowRightLeft className="h-5 w-5 text-slate-600 animate-pulse" />
               </div>
               Movimientos por Departamento
             </CardTitle>
@@ -1387,11 +1386,11 @@ export default function StatisticsPage() {
       {/* Warehouse Charts Grid Mejorados */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Products by Category */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-emerald-50/30 dark:from-gray-900 dark:to-emerald-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <Package className="h-5 w-5 text-emerald-600 animate-bounce" style={{ animationDelay: "2s" }} />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <Package className="h-5 w-5 text-slate-600 animate-bounce" style={{ animationDelay: "2s" }} />
               </div>
               Productos por Categoría
             </CardTitle>
@@ -1449,11 +1448,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Movements by Type */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <ArrowRightLeft className="h-5 w-5 text-blue-600 animate-pulse" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <ArrowRightLeft className="h-5 w-5 text-slate-600 animate-pulse" />
               </div>
               Movimientos por Tipo
             </CardTitle>
@@ -1511,11 +1510,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Inventory Movements by Month */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-purple-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <Calendar className="h-5 w-5 text-purple-600 animate-pulse" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="h-5 w-5 text-slate-600 animate-pulse" />
               </div>
               Movimientos por Mes
             </CardTitle>
@@ -1581,11 +1580,11 @@ export default function StatisticsPage() {
         </Card>
 
         {/* Top Products by Movement */}
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-orange-950/30">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/30 dark:from-gray-900 dark:to-slate-950/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <TrendingUp className="h-5 w-5 text-orange-600 animate-bounce" style={{ animationDelay: "1.5s" }} />
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-slate-600 animate-bounce" style={{ animationDelay: "1.5s" }} />
               </div>
               Productos Más Movidos
             </CardTitle>
@@ -1647,10 +1646,10 @@ export default function StatisticsPage() {
 
       {/* Low Stock Alert Mejorado */}
       {warehouseStats.lowStockProducts.length > 0 && (
-        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-red-50/50 to-orange-50/30 dark:from-red-950/20 dark:to-orange-950/20 border-red-200/50 dark:border-red-800/50">
+        <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-red-50/30 to-red-50/10 dark:from-red-950/10 dark:to-red-950/5 border-red-200/30 dark:border-red-800/30">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-lg text-red-600">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <CardTitle className="flex items-center gap-3 text-lg text-red-500/80 dark:text-red-400/80">
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/30 rounded-xl group-hover:scale-110 transition-transform duration-300">
                 <AlertTriangle className="h-5 w-5 animate-pulse" />
               </div>
               Productos con Stock Bajo
@@ -1662,7 +1661,7 @@ export default function StatisticsPage() {
               {warehouseStats.lowStockProducts.map((product, index) => (
                 <div
                   key={index}
-                  className="group/item p-4 border rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200 dark:border-red-800 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                  className="group/item p-4 border rounded-xl bg-gradient-to-br from-red-50/50 to-red-50/20 dark:from-red-950/10 dark:to-red-950/5 border-red-200/50 dark:border-red-800/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                   style={{
                     animationDelay: `${index * 100}ms`,
                     animation: "fadeInUp 0.6s ease-out forwards",

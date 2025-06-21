@@ -352,9 +352,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            Mi Perfil
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona tu información personal</p>
         </div>
       </div>
@@ -366,7 +364,7 @@ export default function ProfilePage() {
             <div className="relative group">
               <Avatar className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-white shadow-xl">
                 <AvatarImage src={profile.avatar_url || "/placeholder.svg"} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 font-bold text-lg sm:text-xl">
+                <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-lg sm:text-xl">
                   {profile.full_name
                     .split(" ")
                     .map((n) => n[0])
@@ -390,7 +388,7 @@ export default function ProfilePage() {
                   disabled={uploading}
                 >
                   {uploading ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
                   ) : (
                     <Camera className="h-4 w-4" />
                   )}
@@ -430,10 +428,10 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Documentos Creados</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.documentsCreated}</p>
+                <p className="text-2xl font-bold text-slate-600">{stats.documentsCreated}</p>
               </div>
-              <div className="p-3 rounded-lg bg-blue-100">
-                <FileText className="h-6 w-6 text-blue-600" />
+              <div className="p-3 rounded-lg bg-slate-100">
+                <FileText className="h-6 w-6 text-slate-600" />
               </div>
             </div>
           </CardContent>
@@ -444,10 +442,10 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">En Mi Departamento</p>
-                <p className="text-2xl font-bold text-green-600">{stats.documentsInDepartment}</p>
+                <p className="text-2xl font-bold text-slate-600">{stats.documentsInDepartment}</p>
               </div>
-              <div className="p-3 rounded-lg bg-green-100">
-                <Building2 className="h-6 w-6 text-green-600" />
+              <div className="p-3 rounded-lg bg-slate-100">
+                <Building2 className="h-6 w-6 text-slate-600" />
               </div>
             </div>
           </CardContent>
@@ -458,10 +456,10 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Movimientos</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.movementsMade}</p>
+                <p className="text-2xl font-bold text-slate-600">{stats.movementsMade}</p>
               </div>
-              <div className="p-3 rounded-lg bg-purple-100">
-                <Activity className="h-6 w-6 text-purple-600" />
+              <div className="p-3 rounded-lg bg-slate-100">
+                <Activity className="h-6 w-6 text-slate-600" />
               </div>
             </div>
           </CardContent>
@@ -473,8 +471,8 @@ export default function ProfilePage() {
         <CardContent className="p-4 sm:p-6">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <User className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <User className="h-5 w-5 text-slate-600 dark:text-slate-300" />
               </div>
               <h3 className="text-lg font-semibold">Información Personal</h3>
             </div>
@@ -486,7 +484,7 @@ export default function ProfilePage() {
                   id="full_name"
                   value={profile.full_name}
                   onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
+                  className="border-gray-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 />
               </div>
               <div className="space-y-2">
@@ -501,7 +499,7 @@ export default function ProfilePage() {
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                   placeholder="Número de teléfono"
-                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-300"
+                  className="border-gray-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 />
               </div>
               <div className="space-y-2">
@@ -519,7 +517,7 @@ export default function ProfilePage() {
               <Button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {loading ? "Guardando..." : "Guardar Cambios"}
@@ -534,8 +532,8 @@ export default function ProfilePage() {
         <CardContent className="p-4 sm:p-6">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-100">
-                <Lock className="h-5 w-5 text-red-600" />
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <Lock className="h-5 w-5 text-slate-600 dark:text-slate-300" />
               </div>
               <h3 className="text-lg font-semibold">Cambiar Contraseña</h3>
             </div>
@@ -549,7 +547,7 @@ export default function ProfilePage() {
                     type={showPasswords.current ? "text" : "password"}
                     value={passwordForm.currentPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                    className="border-gray-200 focus:border-red-400 focus:ring-red-400/20 transition-all duration-300 pr-10"
+                    className="border-gray-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 pr-10"
                     placeholder="Ingresa tu contraseña actual"
                   />
                   <Button
@@ -572,7 +570,7 @@ export default function ProfilePage() {
                     type={showPasswords.new ? "text" : "password"}
                     value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    className="border-gray-200 focus:border-red-400 focus:ring-red-400/20 transition-all duration-300 pr-10"
+                    className="border-gray-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 pr-10"
                     placeholder="Ingresa tu nueva contraseña"
                   />
                   <Button
@@ -596,7 +594,7 @@ export default function ProfilePage() {
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwordForm.confirmPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                    className="border-gray-200 focus:border-red-400 focus:ring-red-400/20 transition-all duration-300 pr-10"
+                    className="border-gray-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 pr-10"
                     placeholder="Confirma tu nueva contraseña"
                   />
                   <Button
@@ -637,7 +635,7 @@ export default function ProfilePage() {
                   !passwordForm.newPassword ||
                   !passwordForm.confirmPassword
                 }
-                className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
                 <Lock className="h-4 w-4 mr-2" />
                 {changingPassword ? "Cambiando..." : "Cambiar Contraseña"}
