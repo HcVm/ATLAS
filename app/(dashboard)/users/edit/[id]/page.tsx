@@ -118,20 +118,22 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-6 max-w-6xl mx-auto p-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={() => router.push("/users")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Editar Usuario</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+            Editar Usuario
+          </h1>
           <p className="text-muted-foreground">Modifica la información del usuario</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
+        <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
           <CardHeader>
             <CardTitle>Foto de Perfil</CardTitle>
             <CardDescription>Imagen del usuario</CardDescription>
@@ -162,7 +164,11 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
           )}
 
           <div className="mb-4">
-            <Button variant="outline" onClick={fetchCompanies} className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={fetchCompanies}
+              className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
               <span>Recargar empresas</span>
             </Button>
           </div>

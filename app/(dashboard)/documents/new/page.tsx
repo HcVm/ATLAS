@@ -309,7 +309,7 @@ export default function NewDocumentPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
         {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -317,42 +317,42 @@ export default function NewDocumentPage() {
             variant="outline"
             size="icon"
             asChild
-            className="self-start hover:scale-105 transition-transform duration-300"
+            className="self-start bg-slate-50 border-slate-200 hover:bg-slate-100 hover:scale-105 transition-all duration-300"
           >
             <Link href="/documents">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 text-slate-600" />
             </Link>
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
               Crear Nuevo Documento
             </h1>
             {user?.role === "admin" && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 {selectedCompany
                   ? `Creando documento para: ${selectedCompany.name}`
                   : "Selecciona una empresa para crear documentos"}
               </p>
             )}
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            <p className="text-sm sm:text-base text-slate-500 mt-1">
               Completa el formulario para crear un nuevo documento. El número se generará automáticamente.
             </p>
           </div>
         </div>
 
         {/* Form Card - Responsive */}
-        <Card className="shadow-xl border-0 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
+        <Card className="shadow-xl border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
           <CardHeader className="p-4 sm:p-6 pb-3">
             <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg self-start">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg self-start">
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <span>Información del Documento</span>
+              <span className="text-slate-800">Información del Documento</span>
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base mt-2">
+            <CardDescription className="text-sm sm:text-base mt-2 text-slate-600">
               Ingresa los detalles del nuevo documento. El número se generará automáticamente con el formato:
               <br />
-              <code className="text-xs bg-muted px-2 py-1 rounded mt-1 inline-block">
+              <code className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded mt-1 inline-block">
                 EMPRESA-DEPARTAMENTO-INICIALES-AÑO-NÚMERO
               </code>
             </CardDescription>
@@ -367,15 +367,15 @@ export default function NewDocumentPage() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">Título</FormLabel>
+                      <FormLabel className="text-sm font-semibold text-slate-700">Título</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Título del documento"
                           {...field}
-                          className="border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300"
+                          className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                         />
                       </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
+                      <FormDescription className="text-xs sm:text-sm text-slate-500">
                         Nombre descriptivo del documento.
                       </FormDescription>
                       <FormMessage />
@@ -389,23 +389,21 @@ export default function NewDocumentPage() {
                   name="department_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                        Departamento
-                      </FormLabel>
+                      <FormLabel className="text-sm font-semibold text-slate-700">Departamento</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300">
+                          <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300">
                             <SelectValue placeholder="Selecciona un departamento" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {loadingDepartments ? (
                             <div className="flex items-center justify-center p-4">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-500" />
-                              <span className="text-sm">Cargando departamentos...</span>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2 text-slate-600" />
+                              <span className="text-sm text-slate-600">Cargando departamentos...</span>
                             </div>
                           ) : departments.length === 0 ? (
-                            <div className="p-2 text-center text-sm text-muted-foreground">
+                            <div className="p-2 text-center text-sm text-slate-500">
                               No hay departamentos disponibles
                             </div>
                           ) : (
@@ -417,7 +415,7 @@ export default function NewDocumentPage() {
                           )}
                         </SelectContent>
                       </Select>
-                      <FormDescription className="text-xs sm:text-sm">
+                      <FormDescription className="text-xs sm:text-sm text-slate-500">
                         Departamento al que pertenece el documento. Esto afectará la numeración automática.
                       </FormDescription>
                       <FormMessage />
@@ -431,17 +429,15 @@ export default function NewDocumentPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold text-green-700 dark:text-green-300">
-                        Descripción
-                      </FormLabel>
+                      <FormLabel className="text-sm font-semibold text-slate-700">Descripción</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Descripción detallada del documento"
-                          className="min-h-[100px] sm:min-h-[120px] border-green-200 focus:border-green-500 focus:ring-green-500/20 transition-all duration-300 resize-none"
+                          className="min-h-[100px] sm:min-h-[120px] border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 resize-none"
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
+                      <FormDescription className="text-xs sm:text-sm text-slate-500">
                         Información adicional sobre el documento (opcional).
                       </FormDescription>
                       <FormMessage />
@@ -454,19 +450,19 @@ export default function NewDocumentPage() {
                   control={form.control}
                   name="is_public"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 p-3 sm:p-4 transition-all duration-300 hover:shadow-md">
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50/50 to-slate-100/50 p-3 sm:p-4 transition-all duration-300 hover:shadow-md">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="border-emerald-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 mt-1"
+                          className="border-slate-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600 mt-1"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none flex-1">
-                        <FormLabel className="text-emerald-700 dark:text-emerald-300 font-semibold text-sm sm:text-base">
+                        <FormLabel className="text-slate-700 font-semibold text-sm sm:text-base">
                           Documento público
                         </FormLabel>
-                        <FormDescription className="text-xs sm:text-sm">
+                        <FormDescription className="text-xs sm:text-sm text-slate-500">
                           Permitir acceso público a este documento mediante código QR. El documento será visible para
                           cualquier persona que tenga el enlace.
                         </FormDescription>
@@ -481,7 +477,7 @@ export default function NewDocumentPage() {
                   name="file"
                   render={({ field: { onChange, value, ...field } }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                      <FormLabel className="text-sm font-semibold text-slate-700">
                         Archivo Principal (Opcional)
                       </FormLabel>
                       <FormControl>
@@ -490,18 +486,18 @@ export default function NewDocumentPage() {
                             type="file"
                             accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
                             onChange={(e) => onChange(e.target.files)}
-                            className="border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 text-sm"
+                            className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 text-sm"
                             {...field}
                           />
                           {uploading && (
-                            <div className="flex items-center gap-2 text-xs sm:text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-2 sm:p-3 rounded-lg">
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 bg-slate-50 p-2 sm:p-3 rounded-lg">
                               <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
                               <span>Subiendo archivo principal...</span>
                             </div>
                           )}
                         </div>
                       </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
+                      <FormDescription className="text-xs sm:text-sm text-slate-500">
                         Archivo principal del documento (PDF, DOC, DOCX, TXT, JPG, PNG, XLSX, XLS - máximo 10MB)
                       </FormDescription>
                       <FormMessage />
@@ -512,18 +508,16 @@ export default function NewDocumentPage() {
                 {/* Attachments Section - Responsive */}
                 <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                      Archivos Adjuntos (Opcional)
-                    </label>
+                    <label className="text-sm font-semibold text-slate-700">Archivos Adjuntos (Opcional)</label>
                     <div className="mt-2">
                       <Input
                         type="file"
                         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
                         multiple
                         onChange={handleAttachmentAdd}
-                        className="border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all duration-300 text-sm"
+                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300 text-sm"
                       />
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
                         Puedes seleccionar múltiples archivos para adjuntar al documento
                       </p>
                     </div>
@@ -532,22 +526,24 @@ export default function NewDocumentPage() {
                   {/* Selected Files List - Responsive */}
                   {attachments.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-semibold text-green-700 dark:text-green-300">
+                      <h4 className="text-sm font-semibold text-slate-700">
                         Archivos seleccionados ({attachments.length}):
                       </h4>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {attachments.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-2 sm:p-3 border border-green-200 rounded-lg bg-gradient-to-r from-green-50/50 to-emerald-50/50 dark:from-green-950/20 dark:to-emerald-950/20 transition-all duration-300 hover:shadow-md"
+                            className="flex items-center justify-between p-2 sm:p-3 border border-slate-200 rounded-lg bg-gradient-to-r from-slate-50/50 to-slate-100/50 transition-all duration-300 hover:shadow-md"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="p-1 sm:p-1.5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white flex-shrink-0">
+                              <div className="p-1 sm:p-1.5 rounded-md bg-gradient-to-br from-slate-600 to-slate-700 text-white flex-shrink-0">
                                 <File className="h-3 w-3 sm:h-4 sm:w-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-xs sm:text-sm truncate">{file.name}</div>
-                                <div className="text-xs text-muted-foreground">{formatFileSize(file.size)}</div>
+                                <div className="font-medium text-xs sm:text-sm truncate text-slate-700">
+                                  {file.name}
+                                </div>
+                                <div className="text-xs text-slate-500">{formatFileSize(file.size)}</div>
                               </div>
                             </div>
                             <Button
@@ -555,7 +551,7 @@ export default function NewDocumentPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => removeAttachment(index)}
-                              className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300 h-8 w-8 p-0 flex-shrink-0"
+                              className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300 h-8 w-8 p-0 flex-shrink-0 border-slate-200"
                             >
                               <X className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
@@ -563,7 +559,7 @@ export default function NewDocumentPage() {
                         ))}
                       </div>
                       {uploadingAttachments && (
-                        <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 p-2 sm:p-3 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 bg-slate-50 p-2 sm:p-3 rounded-lg">
                           <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
                           <span>Subiendo archivos adjuntos...</span>
                         </div>
@@ -577,14 +573,14 @@ export default function NewDocumentPage() {
                   <Button
                     variant="outline"
                     asChild
-                    className="w-full sm:w-auto hover:scale-105 transition-transform duration-300 order-2 sm:order-1"
+                    className="w-full sm:w-auto bg-slate-50 border-slate-200 hover:bg-slate-100 hover:scale-105 transition-all duration-300 order-2 sm:order-1"
                   >
                     <Link href="/documents">Cancelar</Link>
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading || uploading || uploadingAttachments}
-                    className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 order-1 sm:order-2"
+                    className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 order-1 sm:order-2"
                   >
                     {(loading || uploading || uploadingAttachments) && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

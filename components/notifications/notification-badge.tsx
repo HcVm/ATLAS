@@ -42,12 +42,17 @@ export function NotificationBadge() {
   }
 
   return (
-    <Button variant="ghost" size="icon" onClick={handleClick} className="relative">
-      <Bell className="h-5 w-5" />
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handleClick}
+      className="relative text-slate-600 hover:text-slate-700 hover:bg-slate-100"
+    >
+      <Bell className="h-5 w-5 text-slate-600" />
       {unreadCount > 0 && (
         <Badge
           variant="destructive"
-          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-slate-600 text-white"
         >
           {unreadCount > 99 ? "99+" : unreadCount}
         </Badge>

@@ -158,271 +158,341 @@ export default function WarehousePage() {
 
   if (!hasWarehouseAccess) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
-            <p className="text-muted-foreground">Panel de control del inventario</p>
-          </div>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No tienes permisos para acceder al almacén.</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+                Almacén
+              </h1>
+              <p className="text-slate-600">Panel de control del inventario</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-slate-500" />
+                </div>
+                <p className="text-slate-600">No tienes permisos para acceder al almacén.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   if (!companyToUse) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
-            <p className="text-muted-foreground">Panel de control del inventario</p>
-          </div>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {user?.role === "admin"
-                  ? "Selecciona una empresa para ver su inventario."
-                  : "No tienes una empresa asignada. Contacta al administrador."}
-              </p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+                Almacén
+              </h1>
+              <p className="text-slate-600">Panel de control del inventario</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
+                  <Package className="h-8 w-8 text-slate-500" />
+                </div>
+                <p className="text-slate-600">
+                  {user?.role === "admin"
+                    ? "Selecciona una empresa para ver su inventario."
+                    : "No tienes una empresa asignada. Contacta al administrador."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
-            <p className="text-muted-foreground">Panel de control del inventario</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+                Almacén
+              </h1>
+              <p className="text-slate-600">Panel de control del inventario</p>
+            </div>
+            <Button disabled className="bg-slate-200 text-slate-500">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Producto
+            </Button>
           </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60">
+                <CardContent className="p-6">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-8 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Almacén</h1>
-          <p className="text-muted-foreground">
-            Panel de control del inventario
-            {user?.role === "admin" && selectedCompany && (
-              <span className="ml-2 text-primary">- {selectedCompany.name}</span>
-            )}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/warehouse/inventory">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Ver Inventario
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/warehouse/products/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Estadísticas principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">productos activos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</div>
-            <p className="text-xs text-muted-foreground">valor del inventario</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.lowStockProducts}</div>
-            <p className="text-xs text-muted-foreground">
-              <Link href="/warehouse/products?filter=low-stock" className="hover:underline">
-                productos con stock bajo
-              </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              Almacén
+            </h1>
+            <p className="text-slate-600">
+              Panel de control del inventario
+              {user?.role === "admin" && selectedCompany && (
+                <span className="ml-2 text-slate-700 font-medium">- {selectedCompany.name}</span>
+              )}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sin Stock</CardTitle>
-            <TrendingUp className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.outOfStockProducts}</div>
-            <p className="text-xs text-muted-foreground">productos agotados</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Productos con mayor stock */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Productos con Mayor Stock
-            </CardTitle>
-            <CardDescription>Top 5 productos por cantidad disponible</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.topProducts.length > 0 ? (
-                stats.topProducts.map((product, index) => (
-                  <div key={product.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <div className="font-medium">{product.name}</div>
-                        <div className="text-sm text-muted-foreground">{product.code}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{product.current_stock}</div>
-                      <div className="text-sm text-muted-foreground">unidades</div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-4">No hay productos registrados</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Movimientos recientes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Movimientos Recientes
-            </CardTitle>
-            <CardDescription>Últimos movimientos de inventario</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.recentMovements.length > 0 ? (
-                stats.recentMovements.map((movement) => (
-                  <div key={movement.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          movement.movement_type === "entrada"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {movement.movement_type === "entrada" ? (
-                          <ArrowUpRight className="h-4 w-4" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{movement.products?.name || "Producto eliminado"}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(movement.movement_date).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={movement.movement_type === "entrada" ? "default" : "secondary"}>
-                        {movement.movement_type === "entrada" ? "+" : "-"}
-                        {movement.quantity}
-                      </Badge>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-4">No hay movimientos registrados</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Acciones rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Acciones Rápidas</CardTitle>
-          <CardDescription>Accesos directos a las funciones más utilizadas</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
-              <Link href="/warehouse/products/new">
-                <Plus className="h-6 w-6" />
-                Nuevo Producto
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild className="border-slate-300 text-slate-700 hover:bg-slate-50">
               <Link href="/warehouse/inventory">
-                <Eye className="h-6 w-6" />
+                <BarChart3 className="h-4 w-4 mr-2" />
                 Ver Inventario
               </Link>
             </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
-              <Link href="/warehouse/products?filter=low-stock">
-                <AlertTriangle className="h-6 w-6" />
-                Stock Bajo
+            <Button
+              asChild
+              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+            >
+              <Link href="/warehouse/products/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Producto
               </Link>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Estadísticas principales */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-700">Total Productos</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                <Package className="h-4 w-4 text-slate-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-800">{stats.totalProducts}</div>
+              <p className="text-xs text-slate-500">productos activos</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-700">Valor Total</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-slate-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalValue)}</div>
+              <p className="text-xs text-slate-500">valor del inventario</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-700">Stock Bajo</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{stats.lowStockProducts}</div>
+              <p className="text-xs text-slate-500">
+                <Link href="/warehouse/products?filter=low-stock" className="hover:underline">
+                  productos con stock bajo
+                </Link>
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-700">Sin Stock</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.outOfStockProducts}</div>
+              <p className="text-xs text-slate-500">productos agotados</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Productos con mayor stock */}
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-800">
+                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
+                  <Package className="h-4 w-4 text-slate-600" />
+                </div>
+                Productos con Mayor Stock
+              </CardTitle>
+              <CardDescription className="text-slate-600">Top 5 productos por cantidad disponible</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.topProducts.length > 0 ? (
+                  stats.topProducts.map((product, index) => (
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white border border-slate-200/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center text-sm font-medium">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-800">{product.name}</div>
+                          <div className="text-sm text-slate-500">{product.code}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-slate-800">{product.current_stock}</div>
+                        <div className="text-sm text-slate-500">unidades</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-slate-500 py-8">No hay productos registrados</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Movimientos recientes */}
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-800">
+                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-slate-600" />
+                </div>
+                Movimientos Recientes
+              </CardTitle>
+              <CardDescription className="text-slate-600">Últimos movimientos de inventario</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.recentMovements.length > 0 ? (
+                  stats.recentMovements.map((movement) => (
+                    <div
+                      key={movement.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white border border-slate-200/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            movement.movement_type === "entrada"
+                              ? "bg-gradient-to-br from-green-100 to-green-200"
+                              : "bg-gradient-to-br from-red-100 to-red-200"
+                          }`}
+                        >
+                          {movement.movement_type === "entrada" ? (
+                            <ArrowUpRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ArrowDownRight className="h-4 w-4 text-red-600" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-800">
+                            {movement.products?.name || "Producto eliminado"}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {new Date(movement.movement_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge
+                          variant={movement.movement_type === "entrada" ? "default" : "secondary"}
+                          className="bg-slate-100 text-slate-700 border-slate-300"
+                        >
+                          {movement.movement_type === "entrada" ? "+" : "-"}
+                          {movement.quantity}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-slate-500 py-8">No hay movimientos registrados</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Acciones rápidas */}
+        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-slate-800">Acciones Rápidas</CardTitle>
+            <CardDescription className="text-slate-600">
+              Accesos directos a las funciones más utilizadas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                asChild
+              >
+                <Link href="/warehouse/products/new">
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                    <Plus className="h-5 w-5 text-slate-600" />
+                  </div>
+                  Nuevo Producto
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                asChild
+              >
+                <Link href="/warehouse/inventory">
+                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                    <Eye className="h-5 w-5 text-slate-600" />
+                  </div>
+                  Ver Inventario
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                asChild
+              >
+                <Link href="/warehouse/products?filter=low-stock">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  </div>
+                  Stock Bajo
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

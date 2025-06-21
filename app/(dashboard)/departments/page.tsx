@@ -64,13 +64,13 @@ export default function DepartmentsPage() {
       const currentCompanyId = selectedCompany?.id
 
       let query = supabase.from("departments").select(`
-        *,
-        companies(
-          id,
-          name,
-          code
-        )
-      `)
+      *,
+      companies(
+        id,
+        name,
+        code
+      )
+    `)
 
       // Filter by company if a specific company is selected
       if (currentCompanyId && !isGeneralView) {
@@ -222,7 +222,7 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       {/* Breadcrumbs */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -254,7 +254,7 @@ export default function DepartmentsPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
             Departamentos
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
@@ -274,7 +274,7 @@ export default function DepartmentsPage() {
                   disabled={!canCreateDepartment}
                   className={`w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 ${
                     canCreateDepartment
-                      ? "bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white hover:scale-105"
+                      ? "bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white hover:scale-105"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
                 >
@@ -311,14 +311,14 @@ export default function DepartmentsPage() {
         </Card>
       )}
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300 border-slate-200/50">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar departamentos..."
-                className="pl-8 border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 transition-all duration-300"
+                className="pl-8 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -327,13 +327,13 @@ export default function DepartmentsPage() {
 
           {loading ? (
             <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-slate-600 mx-auto"></div>
               <p className="mt-4 text-muted-foreground">Cargando departamentos...</p>
             </div>
           ) : filteredDepartments.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-emerald-100 to-blue-100 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
-                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600" />
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
               </div>
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay departamentos</h3>
               <p className="text-sm sm:text-base text-muted-foreground">
@@ -347,19 +347,19 @@ export default function DepartmentsPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Departamento</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Departamento</TableHead>
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden md:table-cell">
                         Descripción
                       </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden sm:table-cell">
                         Color
                       </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Usuarios</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Usuarios</TableHead>
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden lg:table-cell">
                         Fecha de creación
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                      <TableHead className="text-right font-semibold text-slate-700 text-xs sm:text-sm">
                         Acciones
                       </TableHead>
                     </TableRow>
@@ -368,7 +368,7 @@ export default function DepartmentsPage() {
                     {filteredDepartments.map((dept) => (
                       <TableRow
                         key={dept.id}
-                        className="border-gray-100 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/50 transition-all duration-300"
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300"
                       >
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center space-x-2 sm:space-x-3">
@@ -420,8 +420,8 @@ export default function DepartmentsPage() {
                         </TableCell>
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center gap-2">
-                            <div className="p-1 rounded-md bg-gradient-to-br from-blue-100 to-purple-100">
-                              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
+                            <div className="p-1 rounded-md bg-gradient-to-br from-slate-100 to-slate-200">
+                              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600" />
                             </div>
                             <span className="font-medium text-gray-700 text-sm">{dept.userCount || 0}</span>
                           </div>

@@ -381,7 +381,7 @@ export default function InventoryPage() {
     switch (type) {
       case "entrada":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
+          <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
             Entrada
           </Badge>
         )
@@ -389,7 +389,7 @@ export default function InventoryPage() {
         return <Badge variant="destructive">Salida</Badge>
       case "ajuste":
         return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300">
             Ajuste
           </Badge>
         )
@@ -500,10 +500,10 @@ export default function InventoryPage() {
 
     return (
       <div className="mt-2 space-y-1">
-        <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos ({movementAttachments.length}):</p>
+        <p className="text-xs text-slate-500 font-medium">Documentos adjuntos ({movementAttachments.length}):</p>
         {movementAttachments.slice(0, 2).map((attachment) => (
           <div key={attachment.id} className="flex items-center gap-2 p-1">
-            <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <Paperclip className="h-3 w-3 text-slate-400 flex-shrink-0" />
             <a
               href={attachment.file_url}
               target="_blank"
@@ -513,11 +513,11 @@ export default function InventoryPage() {
             >
               {attachment.file_name}
             </a>
-            <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
+            <span className="text-xs text-slate-500">({formatFileSize(attachment.file_size)})</span>
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-slate-100"
               onClick={() => window.open(attachment.file_url, "_blank")}
               title="Descargar archivo"
             >
@@ -526,7 +526,7 @@ export default function InventoryPage() {
           </div>
         ))}
         {movementAttachments.length > 2 && (
-          <p className="text-xs text-muted-foreground">y {movementAttachments.length - 2} archivo(s) más...</p>
+          <p className="text-xs text-slate-500">y {movementAttachments.length - 2} archivo(s) más...</p>
         )}
       </div>
     )
@@ -534,309 +534,356 @@ export default function InventoryPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
-            <p className="text-muted-foreground">Historial de entradas, salidas y ajustes</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+                Movimientos de Inventario
+              </h1>
+              <p className="text-slate-600">Historial de entradas, salidas y ajustes</p>
+            </div>
+            <Button disabled className="bg-slate-200 text-slate-500">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Movimiento
+            </Button>
           </div>
-          <Button disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Movimiento
-          </Button>
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <CardContent className="p-6">
+              <div className="text-center text-slate-600">Cargando movimientos...</div>
+            </CardContent>
+          </Card>
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">Cargando movimientos...</div>
-          </CardContent>
-        </Card>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
-          <p className="text-muted-foreground">Historial de entradas, salidas y ajustes de inventario</p>
-        </div>
-        <Button onClick={() => setShowMovementForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Movimiento
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Historial de Movimientos
-          </CardTitle>
-          <CardDescription>
-            {filteredMovements.length} de {movements.length} movimientos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Filtros mejorados */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Buscar por producto, orden, entidad..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Tipo de movimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="entrada">Entradas</SelectItem>
-                  <SelectItem value="salida">Salidas</SelectItem>
-                  <SelectItem value="ajuste">Ajustes</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="w-full sm:w-auto"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                {showAdvancedFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
-              </Button>
-            </div>
-
-            {/* Filtros avanzados */}
-            {showAdvancedFilters && (
-              <Card className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="h-4 w-4" />
-                    <Label className="font-medium">Filtros de Fecha</Label>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <Label htmlFor="date-from" className="text-sm">
-                        Desde
-                      </Label>
-                      <Input
-                        id="date-from"
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="date-to" className="text-sm">
-                        Hasta
-                      </Label>
-                      <Input id="date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Filtros Rápidos</Label>
-                      <Select value={dateFilter} onValueChange={setDateFilter} disabled={!!(dateFrom || dateTo)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Período" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos los períodos</SelectItem>
-                          <SelectItem value="today">Hoy</SelectItem>
-                          <SelectItem value="week">Última semana</SelectItem>
-                          <SelectItem value="month">Último mes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-end">
-                      <Button variant="outline" onClick={clearDateFilters} className="w-full">
-                        <X className="h-4 w-4 mr-2" />
-                        Limpiar Fechas
-                      </Button>
-                    </div>
-                  </div>
-
-                  {(dateFrom || dateTo) && (
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Rango seleccionado:</strong> {dateFrom || "Inicio"} → {dateTo || "Fin"}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Botones de exportación */}
-            <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
-              <div className="text-sm text-muted-foreground">
-                Mostrando {filteredMovements.length} de {movements.length} movimientos
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredMovements.length === 0}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar CSV
-                </Button>
-                <Button variant="outline" size="sm" onClick={exportToExcel} disabled={filteredMovements.length === 0}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              Movimientos de Inventario
+            </h1>
+            <p className="text-slate-600">Historial de entradas, salidas y ajustes de inventario</p>
           </div>
+          <Button
+            onClick={() => setShowMovementForm(true)}
+            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Movimiento
+          </Button>
+        </div>
 
-          {/* Tabla de movimientos */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Cantidad</TableHead>
-                  <TableHead>Precio/Total</TableHead>
-                  <TableHead>Detalles</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Adjuntos</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMovements.length > 0 ? (
-                  filteredMovements.map((movement) => (
-                    <TableRow key={movement.id}>
-                      <TableCell>
-                        <div className="text-sm">{formatDate(movement.movement_date)}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{movement.products?.name || "Producto eliminado"}</div>
-                          <div className="text-sm text-muted-foreground">{movement.products?.code}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getMovementIcon(movement.movement_type)}
-                          {getMovementBadge(movement.movement_type)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          {movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}
-                          {movement.quantity} {movement.products?.unit_of_measure}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {movement.movement_type === "salida" && movement.sale_price ? (
-                          <div>
-                            <div className="text-sm">Precio: {formatCurrency(movement.sale_price)}</div>
-                            <div className="font-medium text-green-600">
-                              Total: {formatCurrency(movement.total_amount)}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm space-y-1">
-                          {movement.purchase_order_number && (
-                            <div>
-                              <span className="font-medium">OC:</span> {movement.purchase_order_number}
-                            </div>
-                          )}
-                          {movement.destination_entity_name && (
-                            <div>
-                              <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
-                              {movement.destination_address && (
-                                <div className="text-xs text-muted-foreground ml-2">{movement.destination_address}</div>
-                              )}
-                            </div>
-                          )}
-                          {movement.peru_departments?.name && (
-                            <div>
-                              <span className="font-medium">Destino:</span> {movement.peru_departments.name}
-                            </div>
-                          )}
-                          {movement.supplier && (
-                            <div>
-                              <span className="font-medium">Proveedor:</span> {movement.supplier}
-                            </div>
-                          )}
-                          {movement.reason && (
-                            <div>
-                              <span className="font-medium">Motivo:</span> {movement.reason}
-                            </div>
-                          )}
-                          {movement.notes && <div className="text-muted-foreground">{movement.notes}</div>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{movement.profiles?.full_name || "Usuario eliminado"}</div>
-                      </TableCell>
-                      <TableCell>
-                        <AttachmentsList movementId={movement.id} />
-                      </TableCell>
-                      <TableCell>
+        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
+                <FileText className="h-4 w-4 text-slate-600" />
+              </div>
+              Historial de Movimientos
+            </CardTitle>
+            <CardDescription className="text-slate-600">
+              {filteredMovements.length} de {movements.length} movimientos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Filtros mejorados */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Input
+                      placeholder="Buscar por producto, orden, entidad..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 border-slate-300 focus:border-slate-500 focus:ring-slate-500"
+                    />
+                  </div>
+                </div>
+                <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
+                  <SelectTrigger className="w-full sm:w-48 border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    <SelectValue placeholder="Tipo de movimiento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    <SelectItem value="entrada">Entradas</SelectItem>
+                    <SelectItem value="salida">Salidas</SelectItem>
+                    <SelectItem value="ajuste">Ajustes</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-slate-50"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  {showAdvancedFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
+                </Button>
+              </div>
+
+              {/* Filtros avanzados */}
+              {showAdvancedFilters && (
+                <Card className="p-4 bg-gradient-to-r from-slate-50 to-white border-slate-200">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="h-4 w-4 text-slate-600" />
+                      <Label className="font-medium text-slate-700">Filtros de Fecha</Label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="date-from" className="text-sm text-slate-700">
+                          Desde
+                        </Label>
+                        <Input
+                          id="date-from"
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                          className="border-slate-300 focus:border-slate-500"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="date-to" className="text-sm text-slate-700">
+                          Hasta
+                        </Label>
+                        <Input
+                          id="date-to"
+                          type="date"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                          className="border-slate-300 focus:border-slate-500"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm text-slate-700">Filtros Rápidos</Label>
+                        <Select value={dateFilter} onValueChange={setDateFilter} disabled={!!(dateFrom || dateTo)}>
+                          <SelectTrigger className="border-slate-300 focus:border-slate-500">
+                            <SelectValue placeholder="Período" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los períodos</SelectItem>
+                            <SelectItem value="today">Hoy</SelectItem>
+                            <SelectItem value="week">Última semana</SelectItem>
+                            <SelectItem value="month">Último mes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end">
                         <Button
                           variant="outline"
-                          size="sm"
-                          onClick={() => openAttachmentsDialog(movement)}
-                          title="Gestionar archivos adjuntos"
+                          onClick={clearDateFilters}
+                          className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"
                         >
-                          <Settings className="h-4 w-4" />
+                          <X className="h-4 w-4 mr-2" />
+                          Limpiar Fechas
                         </Button>
+                      </div>
+                    </div>
+
+                    {(dateFrom || dateTo) && (
+                      <div className="text-sm text-slate-600">
+                        <strong>Rango seleccionado:</strong> {dateFrom || "Inicio"} → {dateTo || "Fin"}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Botones de exportación */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
+                <div className="text-sm text-slate-600">
+                  Mostrando {filteredMovements.length} de {movements.length} movimientos
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportToCSV}
+                    disabled={filteredMovements.length === 0}
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportToExcel}
+                    disabled={filteredMovements.length === 0}
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar Excel
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabla de movimientos */}
+            <div className="rounded-md border border-slate-200 bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200">
+                    <TableHead className="text-slate-700 font-semibold">Fecha</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Producto</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Tipo</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Cantidad</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Precio/Total</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Detalles</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Usuario</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Adjuntos</TableHead>
+                    <TableHead className="text-slate-700 font-semibold">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMovements.length > 0 ? (
+                    filteredMovements.map((movement) => (
+                      <TableRow key={movement.id} className="hover:bg-slate-50/50 border-slate-200">
+                        <TableCell>
+                          <div className="text-sm text-slate-800">{formatDate(movement.movement_date)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-slate-800">
+                              {movement.products?.name || "Producto eliminado"}
+                            </div>
+                            <div className="text-sm text-slate-500">{movement.products?.code}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getMovementIcon(movement.movement_type)}
+                            {getMovementBadge(movement.movement_type)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-slate-800">
+                            {movement.movement_type === "entrada"
+                              ? "+"
+                              : movement.movement_type === "salida"
+                                ? "-"
+                                : "±"}
+                            {movement.quantity} {movement.products?.unit_of_measure}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {movement.movement_type === "salida" && movement.sale_price ? (
+                            <div>
+                              <div className="text-sm text-slate-600">
+                                Precio: {formatCurrency(movement.sale_price)}
+                              </div>
+                              <div className="font-medium text-green-600">
+                                Total: {formatCurrency(movement.total_amount)}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm space-y-1">
+                            {movement.purchase_order_number && (
+                              <div className="text-slate-700">
+                                <span className="font-medium">OC:</span> {movement.purchase_order_number}
+                              </div>
+                            )}
+                            {movement.destination_entity_name && (
+                              <div className="text-slate-700">
+                                <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
+                                {movement.destination_address && (
+                                  <div className="text-xs text-slate-500 ml-2">{movement.destination_address}</div>
+                                )}
+                              </div>
+                            )}
+                            {movement.peru_departments?.name && (
+                              <div className="text-slate-700">
+                                <span className="font-medium">Destino:</span> {movement.peru_departments.name}
+                              </div>
+                            )}
+                            {movement.supplier && (
+                              <div className="text-slate-700">
+                                <span className="font-medium">Proveedor:</span> {movement.supplier}
+                              </div>
+                            )}
+                            {movement.reason && (
+                              <div className="text-slate-700">
+                                <span className="font-medium">Motivo:</span> {movement.reason}
+                              </div>
+                            )}
+                            {movement.notes && <div className="text-slate-500">{movement.notes}</div>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-slate-700">
+                            {movement.profiles?.full_name || "Usuario eliminado"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <AttachmentsList movementId={movement.id} />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAttachmentsDialog(movement)}
+                            title="Gestionar archivos adjuntos"
+                            className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8">
+                        <div className="text-slate-500">
+                          {movements.length === 0
+                            ? "No hay movimientos registrados"
+                            : "No se encontraron movimientos con los filtros aplicados"}
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {movements.length === 0
-                          ? "No hay movimientos registrados"
-                          : "No se encontraron movimientos con los filtros aplicados"}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
-      {showMovementForm && (
-        <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
-      )}
+        {showMovementForm && (
+          <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
+        )}
 
-      {showAttachmentsDialog && selectedMovement && (
-        <MovementAttachmentsDialog
-          open={showAttachmentsDialog}
-          onClose={handleAttachmentsDialogClose}
-          movementId={selectedMovement.id}
-          movementInfo={{
-            movement_type: selectedMovement.movement_type,
-            quantity: selectedMovement.quantity,
-            movement_date: selectedMovement.movement_date,
-            sale_price: selectedMovement.sale_price,
-            total_amount: selectedMovement.total_amount,
-            purchase_order_number: selectedMovement.purchase_order_number,
-            destination_entity_name: selectedMovement.destination_entity_name,
-            destination_address: selectedMovement.destination_address,
-            supplier: selectedMovement.supplier,
-            reason: selectedMovement.reason,
-            notes: selectedMovement.notes,
-            products: selectedMovement.products,
-            profiles: selectedMovement.profiles,
-            peru_departments: selectedMovement.peru_departments,
-          }}
-        />
-      )}
+        {showAttachmentsDialog && selectedMovement && (
+          <MovementAttachmentsDialog
+            open={showAttachmentsDialog}
+            onClose={handleAttachmentsDialogClose}
+            movementId={selectedMovement.id}
+            movementInfo={{
+              movement_type: selectedMovement.movement_type,
+              quantity: selectedMovement.quantity,
+              movement_date: selectedMovement.movement_date,
+              sale_price: selectedMovement.sale_price,
+              total_amount: selectedMovement.total_amount,
+              purchase_order_number: selectedMovement.purchase_order_number,
+              destination_entity_name: selectedMovement.destination_entity_name,
+              destination_address: selectedMovement.destination_address,
+              supplier: selectedMovement.supplier,
+              reason: selectedMovement.reason,
+              notes: selectedMovement.notes,
+              products: selectedMovement.products,
+              profiles: selectedMovement.profiles,
+              peru_departments: selectedMovement.peru_departments,
+            }}
+          />
+        )}
+      </div>
     </div>
   )
 }

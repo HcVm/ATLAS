@@ -61,7 +61,11 @@ export function CompanySelector() {
   return (
     <>
       {/* Botón para abrir el selector visual */}
-      <Button variant="outline" className="flex items-center gap-2 pr-3" onClick={() => setDialogOpen(true)}>
+      <Button
+        variant="outline"
+        className="flex items-center gap-2 pr-3 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-300"
+        onClick={() => setDialogOpen(true)}
+      >
         {selectedCompany ? (
           <>
             <div
@@ -96,9 +100,7 @@ export function CompanySelector() {
               {/* Opción General */}
               <div
                 className={`relative rounded-lg border-2 ${
-                  selectedCompany === null
-                    ? "border-purple-500 bg-purple-50"
-                    : "border-gray-200 hover:border-purple-300"
+                  selectedCompany === null ? "border-slate-300 bg-slate-100" : "border-slate-200 hover:border-slate-300"
                 } p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center`}
                 onClick={() => handleCompanySelect(null)}
               >
@@ -109,7 +111,7 @@ export function CompanySelector() {
                 <p className="text-xs text-muted-foreground text-center">View all users</p>
                 {selectedCompany === null && (
                   <div className="absolute top-2 right-2">
-                    <Check className="h-5 w-5 text-purple-500" />
+                    <Check className="h-5 w-5 text-slate-600" />
                   </div>
                 )}
               </div>
@@ -120,8 +122,8 @@ export function CompanySelector() {
                   key={company.id}
                   className={`relative rounded-lg border-2 ${
                     selectedCompany?.id === company.id
-                      ? "border-purple-500 bg-purple-50"
-                      : "border-gray-200 hover:border-purple-300"
+                      ? "border-slate-300 bg-slate-100"
+                      : "border-slate-200 hover:border-slate-300"
                   } p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center`}
                   onClick={() => handleCompanySelect(company)}
                 >
@@ -135,7 +137,7 @@ export function CompanySelector() {
                   <p className="text-xs text-muted-foreground text-center truncate max-w-full">{company.name}</p>
                   {selectedCompany?.id === company.id && (
                     <div className="absolute top-2 right-2">
-                      <Check className="h-5 w-5 text-purple-500" />
+                      <Check className="h-5 w-5 text-slate-600" />
                     </div>
                   )}
                 </div>

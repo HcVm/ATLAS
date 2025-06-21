@@ -118,7 +118,16 @@ const menuSections = {
         url: "/warehouse/products",
         icon: Box,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "acuerdos marco", "acuerdos"],
+        departments: [
+          "almacén",
+          "almacen",
+          "contabilidad",
+          "administración",
+          "administracion",
+          "operaciones",
+          "acuerdos marco",
+          "acuerdos",
+        ],
       },
       {
         title: "Inventario",
@@ -188,23 +197,25 @@ export function AppSidebar() {
   // Si no hay usuario, mostrar sidebar básico
   if (!user) {
     return (
-      <Sidebar>
+      <Sidebar className="glass-sidebar">
         <SidebarHeader className="p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">Sistema Docs</span>
-              <span className="text-xs text-muted-foreground">Cargando...</span>
+          <div className="sidebar-header-glass rounded-xl p-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white shadow-lg">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-slate-700">Sistema Docs</span>
+                <span className="text-xs text-slate-500">Cargando...</span>
+              </div>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
           <div className="p-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>Verificando autenticación...</AlertDescription>
+            <Alert className="glass-card border-slate-200">
+              <AlertTriangle className="h-4 w-4 text-slate-600" />
+              <AlertDescription className="text-slate-600">Verificando autenticación...</AlertDescription>
             </Alert>
           </div>
         </SidebarContent>
@@ -246,20 +257,22 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <FileText className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold">Sistema Docs Corp</span>
-            <span className="text-xs text-muted-foreground">v3.0</span>
+    <Sidebar className="glass-sidebar">
+      <SidebarHeader className="p-4 border-b border-slate-200/50">
+        <div className="sidebar-header-glass rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gradient-slate">Sistema Docs Corp</span>
+              <span className="text-xs text-slate-500">v3.0</span>
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2">
         {user.role ? (
           <>
             {/* Renderizar cada sección */}
@@ -270,32 +283,36 @@ export function AppSidebar() {
               if (filteredItems.length === 0) return null
 
               return (
-                <SidebarGroup key={sectionKey}>
-                  <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 px-3 py-2">
+                <SidebarGroup key={sectionKey} className="py-2">
+                  <SidebarGroupLabel className="text-xs font-semibold text-slate-500 px-3 py-2 uppercase tracking-wider">
                     {section.title}
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
-                    <SidebarMenu>
+                    <SidebarMenu className="px-2">
                       {filteredItems.map((item) => (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton asChild isActive={pathname === item.url}>
                             <Link
                               href={item.url}
-                              className="flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-300 hover:bg-primary/10 group"
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group ${
+                                pathname === item.url
+                                  ? "bg-slate-200 text-slate-700 shadow-sm"
+                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                              }`}
                             >
                               <div
-                                className={`flex h-8 w-8 items-center justify-center rounded-md ${pathname === item.url ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"} transition-colors duration-300`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-md transition-all duration-300 ${
+                                  pathname === item.url
+                                    ? "bg-slate-300 text-slate-700"
+                                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-700"
+                                }`}
                               >
                                 <item.icon className="h-4 w-4" />
                               </div>
-                              <span
-                                className={`${pathname === item.url ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground"} transition-colors duration-300`}
-                              >
-                                {item.title}
-                              </span>
+                              <span className="font-medium transition-colors duration-300">{item.title}</span>
                               {item.title === "Notificaciones" && (
-                                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                                  <Bell className="h-4 w-4" />
+                                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 text-[10px] font-medium text-white shadow-sm">
+                                  <Bell className="h-3 w-3" />
                                 </span>
                               )}
                             </Link>
@@ -309,9 +326,9 @@ export function AppSidebar() {
             })}
           </>
         ) : (
-          <SidebarGroup>
+          <SidebarGroup className="px-4">
             <SidebarGroupContent>
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="glass-card">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>Sin rol asignado. Contacta al administrador.</AlertDescription>
               </Alert>
@@ -320,28 +337,42 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarSeparator />
+      <SidebarSeparator className="bg-slate-200/50" />
 
       <SidebarFooter className="p-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/70 px-3 py-2">
+          <SidebarGroupLabel className="text-xs font-semibold text-slate-500 px-3 py-2 uppercase tracking-wider">
             USUARIO
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="px-2">
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/profile"}>
-                  <Link href="/profile" className="flex items-center gap-2">
+                  <Link
+                    href="/profile"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
+                      pathname === "/profile"
+                        ? "bg-slate-200 text-slate-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                    }`}
+                  >
                     <User className="h-4 w-4" />
-                    <span>Perfil</span>
+                    <span className="font-medium">Perfil</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/settings"}>
-                  <Link href="/settings" className="flex items-center gap-2">
+                  <Link
+                    href="/settings"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
+                      pathname === "/settings"
+                        ? "bg-slate-200 text-slate-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                    }`}
+                  >
                     <Settings className="h-4 w-4" />
-                    <span>Configuración</span>
+                    <span className="font-medium">Configuración</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -350,26 +381,34 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {user && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-300 mt-4 border border-border/50">
-            <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-              <AvatarImage src={user.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {user.full_name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.full_name}</p>
-              <div className="flex items-center gap-1">
-                <Badge
-                  variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
-                  className="text-xs px-2 py-0 h-5"
-                >
-                  {user.role || "Sin rol"}
-                </Badge>
+          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-slate-200">
+                <AvatarImage src={user.avatar_url || ""} />
+                <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
+                  {user.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate text-slate-700">{user.full_name}</p>
+                <div className="flex items-center gap-1">
+                  <Badge
+                    variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
+                    className={`text-xs px-2 py-0 h-5 ${
+                      user.role === "admin"
+                        ? "bg-slate-700 text-white"
+                        : user.role === "supervisor"
+                          ? "bg-slate-100 text-slate-700"
+                          : "border-slate-300 text-slate-600"
+                    }`}
+                  >
+                    {user.role || "Sin rol"}
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
@@ -377,7 +416,7 @@ export function AppSidebar() {
 
         <Button
           variant="ghost"
-          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 transition-colors duration-300"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 mx-2 transition-all duration-300 font-medium"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-2" />

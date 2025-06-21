@@ -168,7 +168,7 @@ export default function NewDepartmentPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
         {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -178,7 +178,9 @@ export default function NewDepartmentPage() {
             </Link>
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold">Crear Nuevo Departamento</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              Crear Nuevo Departamento
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Crear departamento para <span className="font-semibold text-blue-600">{selectedCompany?.name}</span>
             </p>
@@ -201,13 +203,13 @@ export default function NewDepartmentPage() {
         </Card>
 
         {/* Form Card - Responsive */}
-        <Card className="shadow-lg">
+        <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl text-slate-700">
               <Building2 className="h-5 w-5 self-start sm:self-center" />
               <span>Información del Departamento</span>
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base mt-2">
+            <CardDescription className="text-sm sm:text-base mt-2 text-slate-600">
               Ingresa los detalles del nuevo departamento para {selectedCompany?.name}.
             </CardDescription>
           </CardHeader>
@@ -221,9 +223,13 @@ export default function NewDepartmentPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre</FormLabel>
+                      <FormLabel className="text-slate-700">Nombre</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nombre del departamento" {...field} />
+                        <Input
+                          placeholder="Nombre del departamento"
+                          {...field}
+                          className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                        />
                       </FormControl>
                       <FormDescription className="text-xs sm:text-sm">
                         Nombre descriptivo del departamento.
@@ -239,11 +245,11 @@ export default function NewDepartmentPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descripción</FormLabel>
+                      <FormLabel className="text-slate-700">Descripción</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Descripción detallada del departamento"
-                          className="min-h-[100px] sm:min-h-[120px] resize-none"
+                          className="min-h-[100px] sm:min-h-[120px] resize-none border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
                           {...field}
                         />
                       </FormControl>
@@ -261,7 +267,7 @@ export default function NewDepartmentPage() {
                   name="color"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
+                      <FormLabel className="flex items-center gap-2 text-slate-700">
                         <Palette className="h-4 w-4" />
                         Color del Departamento
                       </FormLabel>
@@ -269,8 +275,16 @@ export default function NewDepartmentPage() {
                         <div className="space-y-3 sm:space-y-4">
                           {/* Color Input Row - Responsive */}
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                            <Input type="color" className="w-16 h-10 p-1 border rounded flex-shrink-0" {...field} />
-                            <Input placeholder="#3B82F6" className="flex-1 min-w-0" {...field} />
+                            <Input
+                              type="color"
+                              className="w-16 h-10 p-1 border-slate-200 rounded flex-shrink-0"
+                              {...field}
+                            />
+                            <Input
+                              placeholder="#3B82F6"
+                              className="flex-1 min-w-0 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                              {...field}
+                            />
                             <div
                               className="w-10 h-10 rounded border-2 border-gray-300 flex-shrink-0"
                               style={{ backgroundColor: field.value }}
@@ -302,10 +316,18 @@ export default function NewDepartmentPage() {
 
                 {/* Action Buttons - Responsive */}
                 <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">
-                  <Button variant="outline" asChild className="w-full sm:w-auto order-2 sm:order-1">
+                  <Button
+                    variant="outline"
+                    asChild
+                    className="w-full sm:w-auto order-2 sm:order-1 border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
                     <Link href="/departments">Cancelar</Link>
                   </Button>
-                  <Button type="submit" disabled={loading} className="w-full sm:w-auto order-1 sm:order-2">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                  >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <span className="hidden sm:inline">Crear Departamento</span>
                     <span className="sm:hidden">Crear</span>

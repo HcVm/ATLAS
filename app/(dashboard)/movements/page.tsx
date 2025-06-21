@@ -260,14 +260,14 @@ export default function MovementsPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       {/* Header with gradient text */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent mb-2">
             {getPageTitle()}
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
+          <p className="text-sm sm:text-base text-slate-500">
             Historial de todos los movimientos de documentos entre departamentos
           </p>
         </div>
@@ -275,7 +275,7 @@ export default function MovementsPage() {
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-slate-200 hover:bg-slate-100 text-slate-700"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
@@ -284,10 +284,10 @@ export default function MovementsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="hover:shadow-lg transition-shadow duration-300">
+      <Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-slate-800">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
             Filtros de Búsqueda
           </CardTitle>
         </CardHeader>
@@ -297,13 +297,13 @@ export default function MovementsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar movimientos..."
-                className="pl-10"
+                className="pl-10 border-slate-200 focus:border-slate-400"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Select value={departmentFilter} onValueChange={(value) => setDepartmentFilter(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="border-slate-200 focus:border-slate-400">
                 <SelectValue placeholder="Filtrar por departamento" />
               </SelectTrigger>
               <SelectContent>
@@ -321,7 +321,7 @@ export default function MovementsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center justify-center bg-muted rounded-lg px-4 py-2 text-sm font-medium">
+            <div className="flex items-center justify-center bg-slate-100 rounded-lg px-4 py-2 text-sm font-medium text-slate-700">
               Total: {filteredMovements.length} movimientos
             </div>
           </div>
@@ -329,21 +329,21 @@ export default function MovementsPage() {
       </Card>
 
       {/* Leyenda de colores - Hardcodeada */}
-      <Card className="hover:shadow-lg transition-shadow duration-300">
+      <Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-green-500 rounded-full"></div>
+          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
+            <div className="w-3 h-3 bg-gradient-to-r from-slate-500 to-slate-600 rounded-full"></div>
             Leyenda de Departamentos ({STANDARD_DEPARTMENTS.length} departamentos)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {STANDARD_DEPARTMENTS.map((department) => (
               <DepartmentBadge key={`legend-${department.id}`} department={department} />
             ))}
           </div>
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-l-4 border-blue-500">
-            <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+          <div className="mt-4 p-3 bg-slate-50 border-l-4 border-l-slate-500 rounded-lg">
+            <p className="text-xs text-slate-700 flex items-center gap-2">
               <span>💡</span>
               <span>Los badges con 📍 indican el departamento de destino en los movimientos</span>
             </p>
@@ -356,12 +356,12 @@ export default function MovementsPage() {
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="p-4 sm:p-6">
-                <div className="h-4 sm:h-5 bg-muted rounded w-1/3"></div>
-                <div className="h-3 sm:h-4 bg-muted rounded w-1/4"></div>
+                <div className="h-4 sm:h-5 bg-slate-200 rounded w-1/3"></div>
+                <div className="h-3 sm:h-4 bg-slate-200 rounded w-1/4"></div>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="h-3 sm:h-4 bg-muted rounded w-full mb-2"></div>
-                <div className="h-3 sm:h-4 bg-muted rounded w-2/3"></div>
+                <div className="h-3 sm:h-4 bg-slate-200 rounded w-full mb-2"></div>
+                <div className="h-3 sm:h-4 bg-slate-200 rounded w-2/3"></div>
               </CardContent>
             </Card>
           ))}
@@ -369,19 +369,23 @@ export default function MovementsPage() {
       ) : filteredMovements.length === 0 ? (
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-8 sm:p-12 text-center">
-            <div className="p-4 sm:p-6 bg-muted/50 rounded-2xl w-fit mx-auto mb-6">
-              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto" />
+            <div className="p-4 sm:p-6 bg-slate-100 rounded-2xl w-fit mx-auto mb-6">
+              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-400 mx-auto" />
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold mb-2">
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-slate-800">
               {movements.length === 0 ? "No hay movimientos registrados" : "No se encontraron movimientos"}
             </h3>
-            <p className="text-sm sm:text-base text-muted-foreground mb-6">
+            <p className="text-sm sm:text-base text-slate-600 mb-6">
               {searchQuery || departmentFilter !== "all"
                 ? "Intente con otros criterios de búsqueda"
                 : "Los movimientos aparecerán aquí cuando se muevan documentos entre departamentos"}
             </p>
             {movements.length === 0 && (
-              <Button onClick={handleRefresh} variant="outline">
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                className="border-slate-200 hover:bg-slate-100 text-slate-700"
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
               </Button>
@@ -391,11 +395,14 @@ export default function MovementsPage() {
       ) : (
         <div className="space-y-4">
           {filteredMovements.map((movement) => (
-            <Card key={movement.id} className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <Card
+              key={movement.id}
+              className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200"
+            >
               <CardHeader className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg group-hover:text-primary transition-colors duration-300">
+                    <CardTitle className="text-base sm:text-lg group-hover:text-primary transition-colors duration-300 text-slate-800">
                       {movement.documents ? (
                         <Link
                           href={`/documents/${movement.document_id}`}
@@ -411,13 +418,18 @@ export default function MovementsPage() {
                         </span>
                       )}
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
+                    <CardDescription className="text-xs sm:text-sm text-slate-600">
                       {movement.documents?.document_number && `#${movement.documents.document_number} • `}
                       {format(new Date(movement.created_at), "PPP 'a las' p", { locale: es })}
                     </CardDescription>
                   </div>
                   {movement.documents && (
-                    <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="w-full sm:w-auto border-slate-200 hover:bg-slate-100 text-slate-700"
+                    >
                       <Link href={`/documents/${movement.document_id}`}>
                         <span className="sm:hidden">Ver Doc</span>
                         <span className="hidden sm:inline">Ver Documento</span>
@@ -428,7 +440,7 @@ export default function MovementsPage() {
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 sm:p-4 bg-slate-50/50 rounded-lg">
                     <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                       <DepartmentBadge department={movement.from_departments} />
                       <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
@@ -436,13 +448,13 @@ export default function MovementsPage() {
                     </div>
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-slate-600 rounded-full flex-shrink-0"></div>
                     <span className="truncate">Movido por {movement.profiles?.full_name || "Usuario desconocido"}</span>
                   </div>
                   {movement.notes && (
-                    <div className="mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border-l-4 border-blue-500">
-                      <p className="font-medium text-blue-800 dark:text-blue-200 mb-1 text-sm">Notas:</p>
-                      <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 whitespace-pre-line break-words">
+                    <div className="mt-4 p-3 sm:p-4 bg-slate-50 border-l-4 border-l-slate-500 rounded-lg">
+                      <p className="font-medium text-slate-700 mb-1 text-sm">Notas:</p>
+                      <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-line break-words">
                         {movement.notes}
                       </p>
                     </div>

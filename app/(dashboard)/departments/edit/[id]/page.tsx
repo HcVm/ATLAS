@@ -295,22 +295,24 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
   const textColor = isColorDark(colorHex) ? "text-white" : "text-black"
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-6 max-w-4xl mx-auto p-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={() => router.push("/departments")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Editar Departamento</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+            Editar Departamento
+          </h1>
           <p className="text-muted-foreground">Modifica la información del departamento: {department.name}</p>
         </div>
       </div>
 
-      <Card>
+      <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
         <CardHeader>
-          <CardTitle>Información del Departamento</CardTitle>
-          <CardDescription>Actualiza los detalles del departamento</CardDescription>
+          <CardTitle className="text-slate-700">Información del Departamento</CardTitle>
+          <CardDescription className="text-slate-600">Actualiza los detalles del departamento</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -322,7 +324,9 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
             <TabsContent value="basic">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nombre del Departamento *</Label>
+                  <Label htmlFor="name" className="text-slate-700">
+                    Nombre del Departamento *
+                  </Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -330,11 +334,14 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                     disabled={saving}
                     required
                     placeholder="Ingresa el nombre del departamento"
+                    className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descripción</Label>
+                  <Label htmlFor="description" className="text-slate-700">
+                    Descripción
+                  </Label>
                   <Textarea
                     id="description"
                     value={formData.description}
@@ -342,6 +349,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                     disabled={saving}
                     rows={4}
                     placeholder="Descripción opcional del departamento"
+                    className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
                   />
                 </div>
               </div>
@@ -369,7 +377,7 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
                       type="text"
                       value={colorHex}
                       onChange={(e) => setColorHex(e.target.value)}
-                      className="font-mono"
+                      className="font-mono border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
                       maxLength={7}
                     />
                     <input
@@ -439,10 +447,20 @@ export default function EditDepartmentPage({ params }: { params: { id: string } 
           </Tabs>
 
           <div className="flex justify-end gap-4 mt-6">
-            <Button type="button" variant="outline" onClick={() => router.push("/departments")} disabled={saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/departments")}
+              disabled={saving}
+              className="border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
+            <Button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+            >
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

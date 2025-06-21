@@ -91,12 +91,14 @@ export default function UsersPage() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
-        return <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm">Administrador</Badge>
+        return (
+          <Badge className="bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-sm">Administrador</Badge>
+        )
       case "supervisor":
-        return <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm">Supervisor</Badge>
+        return <Badge className="bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-sm">Supervisor</Badge>
       case "user":
         return (
-          <Badge variant="secondary" className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm">
+          <Badge variant="secondary" className="bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 shadow-sm">
             Usuario
           </Badge>
         )
@@ -216,10 +218,10 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
             Usuarios
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
@@ -231,14 +233,14 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 hover:shadow-xl transition-all duration-300">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 hover:shadow-xl transition-all duration-300 border-slate-200/50">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar usuarios..."
-                className="pl-8 border-gray-200 focus:border-purple-400 focus:ring-purple-400/20 transition-all duration-300"
+                className="pl-8 border-slate-200 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -255,13 +257,13 @@ export default function UsersPage() {
 
           {loading ? (
             <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-slate-600 mx-auto"></div>
               <p className="mt-4 text-muted-foreground">Cargando usuarios...</p>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
-                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
               </div>
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
               <p className="text-sm sm:text-base text-muted-foreground">
@@ -277,20 +279,20 @@ export default function UsersPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200">
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Usuario</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden md:table-cell">
+                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Usuario</TableHead>
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden md:table-cell">
                         Email
                       </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden lg:table-cell">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden lg:table-cell">
                         Departamento
                       </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Empresa</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm">Rol</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-xs sm:text-sm hidden sm:table-cell">
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Empresa</TableHead>
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm">Rol</TableHead>
+                      <TableHead className="font-semibold text-slate-700 text-xs sm:text-sm hidden sm:table-cell">
                         Fecha de registro
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-gray-700 text-xs sm:text-sm">
+                      <TableHead className="text-right font-semibold text-slate-700 text-xs sm:text-sm">
                         Acciones
                       </TableHead>
                     </TableRow>
@@ -299,14 +301,14 @@ export default function UsersPage() {
                     {filteredUsers.map((userItem) => (
                       <TableRow
                         key={userItem.id}
-                        className="border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 transition-all duration-300"
+                        className="border-gray-100 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 transition-all duration-300"
                       >
                         <TableCell className="p-2 sm:p-4">
                           <div className="flex items-center space-x-2 sm:space-x-3">
                             <div className="relative flex-shrink-0">
                               <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-white shadow-md">
                                 <AvatarImage src={userItem.avatar_url || ""} />
-                                <AvatarFallback className="bg-gradient-to-br from-purple-100 to-blue-100 text-purple-700 font-semibold text-xs sm:text-sm">
+                                <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 font-semibold text-xs sm:text-sm">
                                   {userItem.full_name
                                     ? userItem.full_name
                                         .split(" ")

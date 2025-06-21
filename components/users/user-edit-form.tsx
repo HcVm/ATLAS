@@ -179,10 +179,12 @@ export function UserEditForm({
   }
 
   return (
-    <Card>
+    <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
       <CardHeader>
-        <CardTitle>Información del Usuario</CardTitle>
-        <CardDescription>Actualiza la información del usuario y asigna empresa</CardDescription>
+        <CardTitle className="text-slate-700">Información del Usuario</CardTitle>
+        <CardDescription className="text-slate-600">
+          Actualiza la información del usuario y asigna empresa
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -193,9 +195,13 @@ export function UserEditForm({
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre completo</FormLabel>
+                    <FormLabel className="text-slate-700">Nombre completo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre completo" {...field} />
+                      <Input
+                        placeholder="Nombre completo"
+                        {...field}
+                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -207,9 +213,13 @@ export function UserEditForm({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-slate-700">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="email@ejemplo.com" {...field} />
+                      <Input
+                        placeholder="email@ejemplo.com"
+                        {...field}
+                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -221,9 +231,13 @@ export function UserEditForm({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Teléfono</FormLabel>
+                    <FormLabel className="text-slate-700">Teléfono</FormLabel>
                     <FormControl>
-                      <Input placeholder="Teléfono" {...field} />
+                      <Input
+                        placeholder="Teléfono"
+                        {...field}
+                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -235,10 +249,10 @@ export function UserEditForm({
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rol</FormLabel>
+                    <FormLabel className="text-slate-700">Rol</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
                           <SelectValue placeholder="Seleccionar rol" />
                         </SelectTrigger>
                       </FormControl>
@@ -258,10 +272,10 @@ export function UserEditForm({
                 name="company_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Empresa</FormLabel>
+                    <FormLabel className="text-slate-700">Empresa</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
                           <SelectValue placeholder="Seleccionar empresa" />
                         </SelectTrigger>
                       </FormControl>
@@ -284,7 +298,7 @@ export function UserEditForm({
                 name="department_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-slate-700">
                       Departamento
                       {selectedCompanyId && selectedCompanyId !== "none" && (
                         <span className="text-sm text-muted-foreground ml-2">(Solo de la empresa seleccionada)</span>
@@ -292,7 +306,7 @@ export function UserEditForm({
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
                           <SelectValue placeholder="Seleccionar departamento" />
                         </SelectTrigger>
                       </FormControl>
@@ -312,10 +326,20 @@ export function UserEditForm({
             </div>
 
             <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={isLoading}
+                className="border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+              >
                 {isLoading ? "Guardando..." : "Guardar cambios"}
               </Button>
             </div>
