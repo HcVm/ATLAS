@@ -18,6 +18,7 @@ import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
+import { ProductSelector } from "@/components/ui/product-selector"
 
 interface Product {
   id: string
@@ -62,7 +63,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
   const [quotations, setQuotations] = useState<Quotation[]>([])
-  const [searchingProduct, setSearchingProduct] = useState(false)
   const [searchingQuotation, setSearchingQuotation] = useState(false)
 
   // Form state
@@ -78,7 +78,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     quantity: "",
     product_id: "",
     product_code: "",
-    product_search: "",
     product_name: "",
     product_description: "",
     product_brand: "",
@@ -256,56 +255,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     }
   }
 
-  const searchProductByCode = async () => {
-    if (!selectedCompany || !formData.product_search.trim()) {
-      toast.error("Ingresa un código de producto")
-      return
-    }
-
-    setSearchingProduct(true)
-
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure,
-          brands (name)
-        `)
-        .eq("company_id", selectedCompany.id)
-        .eq("code", formData.product_search.trim())
-        .eq("is_active", true)
-        .single()
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          toast.error("No se encontró un producto con ese código")
-        } else {
-          console.error("Error searching product:", error)
-          toast.error("Error al buscar el producto: " + error.message)
-        }
-        return
-      }
-
-      // Llenar automáticamente los campos del producto
-      setFormData((prev) => ({
-        ...prev,
-        product_id: data.id,
-        product_code: data.code,
-        product_name: data.name,
-        product_description: data.description || "",
-        product_brand: data.brands?.name || "",
-        unit_price_with_tax: data.sale_price.toString(),
-      }))
-
-      toast.success("Producto encontrado y cargado automáticamente")
-    } catch (error: any) {
-      console.error("Error searching product:", error)
-      toast.error("Error al buscar el producto: " + (error.message || "Error desconocido"))
-    } finally {
-      setSearchingProduct(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCompany || !user) return
@@ -479,27 +428,30 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       {/* Información del Producto */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Producto</h3>
+
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
-            <Label htmlFor="product_search">Buscar Producto por Código *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="product_search"
-                value={formData.product_search}
-                onChange={(e) => setFormData((prev) => ({ ...prev, product_search: e.target.value }))}
-                placeholder="Ingresa el código del producto"
-              />
-              <Button
-                type="button"
-                onClick={searchProductByCode}
-                disabled={searchingProduct || !formData.product_search}
-              >
-                {searchingProduct ? "Buscando..." : <Search className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ingresa el código y presiona buscar para cargar automáticamente los datos del producto
-            </p>
+            <ProductSelector
+              value={formData.product_id}
+              onSelect={(product) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  product_id: product.id,
+                  product_code: product.code,
+                  product_name: product.name,
+                  product_description: product.description || "",
+                  product_brand: product.brands?.name || "",
+                  unit_price_with_tax: product.sale_price.toString(),
+                }))
+
+                toast.success("Producto seleccionado y datos cargados automáticamente")
+              }}
+              label="Producto"
+              placeholder="Buscar o crear producto..."
+              required
+              showStock={true}
+              showPrice={true}
+            />
           </div>
           <div>
             <Label htmlFor="quantity">Cantidad *</Label>
@@ -523,13 +475,12 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="product_code">Código del Producto *</Label>
+            <Label htmlFor="product_code">Código del Producto</Label>
             <Input
               id="product_code"
               value={formData.product_code}
               onChange={(e) => setFormData((prev) => ({ ...prev, product_code: e.target.value }))}
-              placeholder="Código del producto"
-              required
+              placeholder="Se llena automáticamente al seleccionar producto"
             />
           </div>
           <div>
@@ -538,6 +489,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
               id="product_name"
               value={formData.product_name}
               onChange={(e) => setFormData((prev) => ({ ...prev, product_name: e.target.value }))}
+              placeholder="Se llena automáticamente al seleccionar producto"
             />
           </div>
         </div>

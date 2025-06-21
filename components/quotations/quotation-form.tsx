@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Calculator } from "lucide-react"
+import { Calculator } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
+import { ProductSelector } from "@/components/ui/product-selector"
 
 interface Product {
   id: string
@@ -46,7 +47,6 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
-  const [searchingProduct, setSearchingProduct] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -101,6 +101,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
     formData.offer_unit_price_with_tax,
   ])
 
+  /* REMOVE
   const searchProductByCode = async () => {
     if (!selectedCompany || !formData.unique_code.trim()) {
       toast.error("Ingresa un código de producto")
@@ -152,6 +153,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
       setSearchingProduct(false)
     }
   }
+  */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -257,24 +259,33 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
       {/* Información del Producto */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Producto</h3>
+
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
-            <Label htmlFor="unique_code">Código Único del Producto *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="unique_code"
-                value={formData.unique_code}
-                onChange={(e) => setFormData((prev) => ({ ...prev, unique_code: e.target.value }))}
-                placeholder="Ingresa el código del producto"
-                required
-              />
-              <Button type="button" onClick={searchProductByCode} disabled={searchingProduct || !formData.unique_code}>
-                {searchingProduct ? "Buscando..." : <Search className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ingresa el código y presiona buscar para cargar automáticamente los datos del producto
-            </p>
+            <ProductSelector
+              value={formData.product_id}
+              onSelect={(product) => {
+                // Calcular precio con IGV (18%)
+                const priceWithTax = product.sale_price * 1.18
+
+                setFormData((prev) => ({
+                  ...prev,
+                  product_id: product.id,
+                  unique_code: product.code,
+                  product_description: product.description || product.name,
+                  product_brand: product.brands?.name || "",
+                  platform_unit_price_with_tax: priceWithTax.toFixed(2),
+                  reference_image_url: product.image_url || "",
+                }))
+
+                toast.success("Producto seleccionado y datos cargados automáticamente")
+              }}
+              label="Producto"
+              placeholder="Buscar o crear producto..."
+              required
+              showStock={true}
+              showPrice={true}
+            />
           </div>
           <div>
             <Label htmlFor="quantity">Cantidad (Unidades) *</Label>
@@ -291,13 +302,13 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="product_description">Descripción del Producto *</Label>
-            <Textarea
-              id="product_description"
-              value={formData.product_description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, product_description: e.target.value }))}
-              placeholder="Descripción detallada del producto"
-              required
+            <Label htmlFor="unique_code">Código del Producto</Label>
+            <Input
+              id="unique_code"
+              value={formData.unique_code}
+              onChange={(e) => setFormData((prev) => ({ ...prev, unique_code: e.target.value }))}
+              placeholder="Se llena automáticamente al seleccionar producto"
+              disabled
             />
           </div>
           <div>
@@ -309,6 +320,17 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
               placeholder="Marca del producto"
             />
           </div>
+        </div>
+
+        <div>
+          <Label htmlFor="product_description">Descripción del Producto *</Label>
+          <Textarea
+            id="product_description"
+            value={formData.product_description}
+            onChange={(e) => setFormData((prev) => ({ ...prev, product_description: e.target.value }))}
+            placeholder="Descripción detallada del producto"
+            required
+          />
         </div>
       </div>
 

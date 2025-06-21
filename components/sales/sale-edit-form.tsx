@@ -18,6 +18,7 @@ import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
+import { ProductSelector } from "@/components/ui/product-selector"
 
 interface Product {
   id: string
@@ -157,21 +158,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
     } catch (error: any) {
       console.error("Error fetching products:", error)
       toast.error("Error al cargar productos")
-    }
-  }
-
-  const handleProductSelect = (productId: string) => {
-    const product = products.find((p) => p.id === productId)
-    if (product) {
-      setFormData((prev) => ({
-        ...prev,
-        product_id: productId,
-        product_code: product.code,
-        product_name: product.name,
-        product_description: product.description || "",
-        product_brand: product.brands?.name || "",
-        unit_price_with_tax: product.sale_price.toString(),
-      }))
     }
   }
 
@@ -322,19 +308,25 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         <h3 className="text-lg font-semibold">Información del Producto</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="product">Producto *</Label>
-            <Select value={formData.product_id} onValueChange={handleProductSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar producto" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.code} - {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ProductSelector
+              value={formData.product_id}
+              onSelect={(product) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  product_id: product.id,
+                  product_code: product.code,
+                  product_name: product.name,
+                  product_description: product.description || "",
+                  product_brand: product.brands?.name || "",
+                  unit_price_with_tax: product.sale_price.toString(),
+                }))
+              }}
+              label="Producto"
+              placeholder="Seleccionar producto..."
+              required
+              showStock={true}
+              showPrice={true}
+            />
           </div>
           <div>
             <Label htmlFor="quantity">Cantidad *</Label>
