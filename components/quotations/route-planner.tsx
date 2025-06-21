@@ -195,7 +195,7 @@ export default function RoutePlanner({
   }, [])
 
   return (
-    <div className="space-y-6" onMouseDown={stopPropagation}>
+    <div className="space-y-6">
       {/* Configuración de Ruta */}
       <Card>
         <CardHeader>
@@ -218,6 +218,12 @@ export default function RoutePlanner({
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Dirección de origen..."
                   className="pl-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -231,6 +237,12 @@ export default function RoutePlanner({
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Dirección de destino..."
                   className="pl-10"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -249,15 +261,7 @@ export default function RoutePlanner({
           </div>
 
           {/* Botón Calcular */}
-          <Button
-            type="button"
-            onClick={(e) => {
-              stopPropagation(e)
-              handleCalculateRoute()
-            }}
-            disabled={loading || !mapsLoaded}
-            className="w-full"
-          >
+          <Button type="button" onClick={handleCalculateRoute} disabled={loading || !mapsLoaded} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -302,23 +306,12 @@ export default function RoutePlanner({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={(e) => {
-                    stopPropagation(e)
-                    window.open(routeInfo.googleMapsUrl, "_blank")
-                  }}
+                  onClick={() => window.open(routeInfo.googleMapsUrl, "_blank")}
                 >
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Ver en Maps
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={(e) => {
-                    stopPropagation(e)
-                    handleSaveRoute()
-                  }}
-                  disabled={saving}
-                >
+                <Button type="button" size="sm" onClick={handleSaveRoute} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
