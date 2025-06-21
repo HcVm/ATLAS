@@ -1,5 +1,5 @@
 // ============================================================================
-// UTILIDADES PARA GOOGLE MAPS - VERSIÓN CORREGIDA
+// UTILIDADES PARA GOOGLE MAPS - VERSIÓN ORIGINAL RESTAURADA
 // Funciones para integración con Google Maps API
 // ============================================================================
 
@@ -15,12 +15,16 @@ export interface RouteInfo {
     value: number // en segundos
   }
   polyline: string
+  waypoints?: google.maps.DirectionsWaypoint[]
+  tollCost?: number
+  fuelCost?: number
   googleMapsUrl: string
 }
 
 export interface RouteRequest {
   origin: string
   destination: string
+  waypoints?: string[]
   travelMode?: "DRIVING" | "WALKING" | "TRANSIT" | "BICYCLING"
   avoidTolls?: boolean
   avoidHighways?: boolean
@@ -39,9 +43,16 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
 
     const directionsService = new google.maps.DirectionsService()
 
+    const waypoints =
+      request.waypoints?.map((location) => ({
+        location,
+        stopover: true,
+      })) || []
+
     const directionsRequest: google.maps.DirectionsRequest = {
       origin: request.origin,
       destination: request.destination,
+      waypoints,
       travelMode: google.maps.TravelMode[request.travelMode || "DRIVING"],
       avoidTolls: request.avoidTolls || false,
       avoidHighways: request.avoidHighways || false,
@@ -56,7 +67,16 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
           const leg = route.legs[0]
 
           // Generar URL de Google Maps
-          const googleMapsUrl = generateGoogleMapsUrl(request.origin, request.destination)
+          const googleMapsUrl = generateGoogleMapsUrl(
+            request.origin,
+            request.destination,
+            waypoints.map((w) => w.location as string),
+          )
+
+          // Calcular costos estimados
+          const distanceKm = leg.distance!.value / 1000
+          const fuelCost = calculateFuelCost(distanceKm)
+          const tollCost = estimateTollCost(distanceKm, request.avoidTolls)
 
           const routeInfo: RouteInfo = {
             origin: request.origin,
@@ -64,6 +84,9 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
             distance: leg.distance!,
             duration: leg.duration!,
             polyline: route.overview_polyline!.points,
+            waypoints: waypoints,
+            tollCost,
+            fuelCost,
             googleMapsUrl,
           }
 
@@ -80,12 +103,35 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
 }
 
 // Función para generar URL de Google Maps
-export function generateGoogleMapsUrl(origin: string, destination: string): string {
+export function generateGoogleMapsUrl(origin: string, destination: string, waypoints: string[] = []): string {
   const baseUrl = "https://www.google.com/maps/dir/"
   const encodedOrigin = encodeURIComponent(origin)
   const encodedDestination = encodeURIComponent(destination)
 
-  return `${baseUrl}${encodedOrigin}/${encodedDestination}`
+  let url = `${baseUrl}${encodedOrigin}/${encodedDestination}`
+
+  if (waypoints.length > 0) {
+    const encodedWaypoints = waypoints.map((w) => encodeURIComponent(w)).join("/")
+    url = `${baseUrl}${encodedOrigin}/${encodedWaypoints}/${encodedDestination}`
+  }
+
+  return url
+}
+
+// Función para calcular costo de combustible
+export function calculateFuelCost(distanceKm: number, fuelPricePerLiter = 15.5, vehicleConsumption = 12.0): number {
+  // Cálculo: (distancia / rendimiento) * precio_combustible
+  return Math.round((distanceKm / vehicleConsumption) * fuelPricePerLiter * 100) / 100
+}
+
+// Función para estimar costo de peajes (aproximado para Perú)
+export function estimateTollCost(distanceKm: number, avoidTolls = false): number {
+  if (avoidTolls) return 0
+
+  // Estimación aproximada: S/ 0.15 por km en carreteras principales
+  // Mínimo S/ 5.00 para distancias cortas
+  const baseCost = Math.max(distanceKm * 0.15, 5.0)
+  return Math.round(baseCost * 100) / 100
 }
 
 // Función para formatear duración
