@@ -227,11 +227,11 @@ export default function RoutePlanner({
           {/* Origen y Destino */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="route-origin">Origen</Label>
+              <Label htmlFor="origin">Origen</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-500" />
                 <Input
-                  id="route-origin"
+                  id="origin"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Dirección de origen..."
@@ -246,11 +246,11 @@ export default function RoutePlanner({
               </div>
             </div>
             <div>
-              <Label htmlFor="route-destination">Destino</Label>
+              <Label htmlFor="destination">Destino</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-500" />
                 <Input
-                  id="route-destination"
+                  id="destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Dirección de destino..."
