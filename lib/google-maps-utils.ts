@@ -1,5 +1,5 @@
 // ============================================================================
-// UTILIDADES PARA GOOGLE MAPS - VERSIÓN ORIGINAL RESTAURADA
+// UTILIDADES PARA GOOGLE MAPS - VERSIÓN SIMPLIFICADA Y FUNCIONAL
 // Funciones para integración con Google Maps API
 // ============================================================================
 
@@ -15,16 +15,12 @@ export interface RouteInfo {
     value: number // en segundos
   }
   polyline: string
-  waypoints?: google.maps.DirectionsWaypoint[]
-  tollCost?: number
-  fuelCost?: number
   googleMapsUrl: string
 }
 
 export interface RouteRequest {
   origin: string
   destination: string
-  waypoints?: string[]
   travelMode?: "DRIVING" | "WALKING" | "TRANSIT" | "BICYCLING"
   avoidTolls?: boolean
   avoidHighways?: boolean
@@ -37,22 +33,17 @@ let googleMapsPromise: Promise<void> | null = null
 // Función para calcular ruta usando Google Maps Directions API
 export async function calculateRoute(request: RouteRequest): Promise<RouteInfo | null> {
   try {
+    console.log("🗺️ Calculando ruta:", request)
+
     if (!window.google || !window.google.maps) {
       throw new Error("Google Maps API no está cargada")
     }
 
     const directionsService = new google.maps.DirectionsService()
 
-    const waypoints =
-      request.waypoints?.map((location) => ({
-        location,
-        stopover: true,
-      })) || []
-
     const directionsRequest: google.maps.DirectionsRequest = {
       origin: request.origin,
       destination: request.destination,
-      waypoints,
       travelMode: google.maps.TravelMode[request.travelMode || "DRIVING"],
       avoidTolls: request.avoidTolls || false,
       avoidHighways: request.avoidHighways || false,
@@ -62,21 +53,14 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
 
     return new Promise((resolve, reject) => {
       directionsService.route(directionsRequest, (result, status) => {
+        console.log("📍 Respuesta de Google Maps:", status, result)
+
         if (status === google.maps.DirectionsStatus.OK && result) {
           const route = result.routes[0]
           const leg = route.legs[0]
 
           // Generar URL de Google Maps
-          const googleMapsUrl = generateGoogleMapsUrl(
-            request.origin,
-            request.destination,
-            waypoints.map((w) => w.location as string),
-          )
-
-          // Calcular costos estimados
-          const distanceKm = leg.distance!.value / 1000
-          const fuelCost = calculateFuelCost(distanceKm)
-          const tollCost = estimateTollCost(distanceKm, request.avoidTolls)
+          const googleMapsUrl = generateGoogleMapsUrl(request.origin, request.destination)
 
           const routeInfo: RouteInfo = {
             origin: request.origin,
@@ -84,54 +68,29 @@ export async function calculateRoute(request: RouteRequest): Promise<RouteInfo |
             distance: leg.distance!,
             duration: leg.duration!,
             polyline: route.overview_polyline!.points,
-            waypoints: waypoints,
-            tollCost,
-            fuelCost,
             googleMapsUrl,
           }
 
+          console.log("✅ Ruta calculada exitosamente:", routeInfo)
           resolve(routeInfo)
         } else {
+          console.error("❌ Error calculando ruta:", status)
           reject(new Error(`Error calculando ruta: ${status}`))
         }
       })
     })
   } catch (error) {
-    console.error("Error en calculateRoute:", error)
+    console.error("💥 Error en calculateRoute:", error)
     return null
   }
 }
 
 // Función para generar URL de Google Maps
-export function generateGoogleMapsUrl(origin: string, destination: string, waypoints: string[] = []): string {
+export function generateGoogleMapsUrl(origin: string, destination: string): string {
   const baseUrl = "https://www.google.com/maps/dir/"
   const encodedOrigin = encodeURIComponent(origin)
   const encodedDestination = encodeURIComponent(destination)
-
-  let url = `${baseUrl}${encodedOrigin}/${encodedDestination}`
-
-  if (waypoints.length > 0) {
-    const encodedWaypoints = waypoints.map((w) => encodeURIComponent(w)).join("/")
-    url = `${baseUrl}${encodedOrigin}/${encodedWaypoints}/${encodedDestination}`
-  }
-
-  return url
-}
-
-// Función para calcular costo de combustible
-export function calculateFuelCost(distanceKm: number, fuelPricePerLiter = 15.5, vehicleConsumption = 12.0): number {
-  // Cálculo: (distancia / rendimiento) * precio_combustible
-  return Math.round((distanceKm / vehicleConsumption) * fuelPricePerLiter * 100) / 100
-}
-
-// Función para estimar costo de peajes (aproximado para Perú)
-export function estimateTollCost(distanceKm: number, avoidTolls = false): number {
-  if (avoidTolls) return 0
-
-  // Estimación aproximada: S/ 0.15 por km en carreteras principales
-  // Mínimo S/ 5.00 para distancias cortas
-  const baseCost = Math.max(distanceKm * 0.15, 5.0)
-  return Math.round(baseCost * 100) / 100
+  return `${baseUrl}${encodedOrigin}/${encodedDestination}`
 }
 
 // Función para formatear duración
@@ -154,15 +113,19 @@ export function formatDistance(meters: number): string {
   return `${meters} m`
 }
 
-// Cargar Google Maps API dinámicamente con async
+// Cargar Google Maps API dinámicamente
 export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
+  console.log("🔄 Cargando Google Maps API...")
+
   // Si ya está cargado, resolver inmediatamente
   if (isGoogleMapsLoaded && window.google && window.google.maps) {
+    console.log("✅ Google Maps ya está cargado")
     return Promise.resolve()
   }
 
   // Si ya hay una promesa en curso, devolverla
   if (googleMapsPromise) {
+    console.log("⏳ Google Maps ya se está cargando...")
     return googleMapsPromise
   }
 
@@ -171,6 +134,7 @@ export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
     // Verificar si ya existe el script
     const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
     if (existingScript) {
+      console.log("🗑️ Removiendo script existente de Google Maps")
       existingScript.remove()
     }
 
@@ -180,16 +144,19 @@ export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
     script.defer = true
 
     script.onload = () => {
+      console.log("✅ Google Maps API cargada exitosamente")
       isGoogleMapsLoaded = true
       resolve()
     }
 
-    script.onerror = () => {
+    script.onerror = (error) => {
+      console.error("❌ Error cargando Google Maps API:", error)
       googleMapsPromise = null
       reject(new Error("Error cargando Google Maps API"))
     }
 
     document.head.appendChild(script)
+    console.log("📡 Script de Google Maps agregado al DOM")
   })
 
   return googleMapsPromise
@@ -197,7 +164,9 @@ export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
 
 // Función para verificar si Google Maps está disponible
 export function isGoogleMapsAvailable(): boolean {
-  return isGoogleMapsLoaded && window.google && window.google.maps
+  const available = isGoogleMapsLoaded && window.google && window.google.maps
+  console.log("🔍 Google Maps disponible:", available)
+  return available
 }
 
 // Declaración de tipos para Google Maps
