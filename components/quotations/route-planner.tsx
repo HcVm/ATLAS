@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,13 +45,32 @@ export default function RoutePlanner({
   const [mapsError, setMapsError] = useState<string | null>(null)
   const [avoidTolls, setAvoidTolls] = useState(false)
   const [avoidHighways, setAvoidHighways] = useState(false)
+
+  // Referencias que persisten entre renders
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<google.maps.Map | null>(null)
   const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(null)
   const isInitialized = useRef(false)
+  const isLoadingMaps = useRef(false)
 
-  // Cargar Google Maps API
+  // Inicializar origen y destino solo una vez
   useEffect(() => {
+    if (initialOrigin && !origin) {
+      setOrigin(initialOrigin)
+    }
+    if (initialDestination && !destination) {
+      setDestination(initialDestination)
+    }
+  }, [initialOrigin, initialDestination, origin, destination])
+
+  // Cargar Google Maps API solo una vez
+  useEffect(() => {
+    // Evitar múltiples inicializaciones
+    if (isInitialized.current || isLoadingMaps.current) {
+      console.log("⚠️ Ya inicializado o cargando, saltando...")
+      return
+    }
+
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     console.log("🔑 API Key disponible:", !!apiKey)
 
@@ -61,12 +82,16 @@ export default function RoutePlanner({
       return
     }
 
-    if (isInitialized.current) {
-      console.log("⚠️ Ya inicializado, saltando...")
+    // Verificar si Google Maps ya está disponible globalmente
+    if (window.google && window.google.maps) {
+      console.log("✅ Google Maps ya disponible globalmente")
+      setMapsLoaded(true)
+      setMapsError(null)
+      setTimeout(initializeMap, 100)
       return
     }
 
-    isInitialized.current = true
+    isLoadingMaps.current = true
     console.log("🚀 Iniciando carga de Google Maps...")
 
     loadGoogleMapsAPI(apiKey)
@@ -74,15 +99,22 @@ export default function RoutePlanner({
         console.log("✅ Google Maps cargado, inicializando mapa...")
         setMapsLoaded(true)
         setMapsError(null)
-        setTimeout(initializeMap, 200) // Pequeño delay para asegurar que el DOM esté listo
+        isInitialized.current = true
+        isLoadingMaps.current = false
+        setTimeout(initializeMap, 200)
       })
       .catch((error) => {
         console.error("💥 Error cargando Google Maps:", error)
         setMapsError(error.message)
         toast.error("Error cargando Google Maps: " + error.message)
-        isInitialized.current = false
+        isLoadingMaps.current = false
       })
-  }, [])
+
+    // Cleanup function
+    return () => {
+      console.log("🧹 Limpiando componente RoutePlanner")
+    }
+  }, []) // Array de dependencias vacío para ejecutar solo una vez
 
   // Inicializar mapa
   const initializeMap = useCallback(() => {
@@ -95,6 +127,12 @@ export default function RoutePlanner({
 
     if (!isGoogleMapsAvailable()) {
       console.error("❌ Google Maps no disponible")
+      return
+    }
+
+    // Evitar reinicializar si ya existe
+    if (mapInstance.current) {
+      console.log("⚠️ Mapa ya inicializado")
       return
     }
 
@@ -122,109 +160,151 @@ export default function RoutePlanner({
   }, [])
 
   // Calcular ruta
-  const handleCalculateRoute = useCallback(async () => {
-    console.log("🎯 Iniciando cálculo de ruta...")
-
-    if (!origin.trim() || !destination.trim()) {
-      toast.error("Por favor ingresa origen y destino")
-      return
-    }
-
-    if (!mapsLoaded || !isGoogleMapsAvailable()) {
-      toast.error("Google Maps aún no está cargado")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const routeResult = await calculateRoute({
-        origin: origin.trim(),
-        destination: destination.trim(),
-        travelMode: "DRIVING",
-        avoidTolls,
-        avoidHighways,
-      })
-
-      if (routeResult) {
-        console.log("✅ Ruta calculada, actualizando estado...")
-        setRouteInfo(routeResult)
-        onRouteCalculated?.(routeResult)
-
-        // Mostrar ruta en el mapa
-        if (directionsRenderer.current && mapInstance.current) {
-          console.log("🗺️ Mostrando ruta en el mapa...")
-          const directionsService = new window.google.maps.DirectionsService()
-
-          directionsService.route(
-            {
-              origin: origin.trim(),
-              destination: destination.trim(),
-              travelMode: window.google.maps.TravelMode.DRIVING,
-              avoidTolls,
-              avoidHighways,
-            },
-            (result, status) => {
-              if (status === window.google.maps.DirectionsStatus.OK && result) {
-                directionsRenderer.current!.setDirections(result)
-                console.log("✅ Ruta mostrada en el mapa")
-              } else {
-                console.error("❌ Error mostrando ruta en mapa:", status)
-              }
-            },
-          )
-        }
-
-        toast.success("Ruta calculada exitosamente")
-      } else {
-        toast.error("No se pudo calcular la ruta")
+  const handleCalculateRoute = useCallback(
+    async (e?: React.MouseEvent) => {
+      // Prevenir propagación del evento
+      if (e) {
+        e.preventDefault()
+        e.stopPropagation()
       }
-    } catch (error) {
-      console.error("💥 Error calculando ruta:", error)
-      toast.error("Error calculando la ruta")
-    } finally {
-      setLoading(false)
-    }
-  }, [origin, destination, mapsLoaded, avoidTolls, avoidHighways, onRouteCalculated])
+
+      console.log("🎯 Iniciando cálculo de ruta...")
+
+      if (!origin.trim() || !destination.trim()) {
+        toast.error("Por favor ingresa origen y destino")
+        return
+      }
+
+      if (!mapsLoaded || !isGoogleMapsAvailable()) {
+        toast.error("Google Maps aún no está cargado")
+        return
+      }
+
+      setLoading(true)
+      try {
+        const routeResult = await calculateRoute({
+          origin: origin.trim(),
+          destination: destination.trim(),
+          travelMode: "DRIVING",
+          avoidTolls,
+          avoidHighways,
+        })
+
+        if (routeResult) {
+          console.log("✅ Ruta calculada, actualizando estado...")
+          setRouteInfo(routeResult)
+
+          // Llamar callback sin causar re-render del padre
+          if (onRouteCalculated) {
+            setTimeout(() => onRouteCalculated(routeResult), 0)
+          }
+
+          // Mostrar ruta en el mapa
+          if (directionsRenderer.current && mapInstance.current) {
+            console.log("🗺️ Mostrando ruta en el mapa...")
+            const directionsService = new window.google.maps.DirectionsService()
+
+            directionsService.route(
+              {
+                origin: origin.trim(),
+                destination: destination.trim(),
+                travelMode: window.google.maps.TravelMode.DRIVING,
+                avoidTolls,
+                avoidHighways,
+              },
+              (result, status) => {
+                if (status === window.google.maps.DirectionsStatus.OK && result) {
+                  directionsRenderer.current!.setDirections(result)
+                  console.log("✅ Ruta mostrada en el mapa")
+                } else {
+                  console.error("❌ Error mostrando ruta en mapa:", status)
+                }
+              },
+            )
+          }
+
+          toast.success("Ruta calculada exitosamente")
+        } else {
+          toast.error("No se pudo calcular la ruta")
+        }
+      } catch (error) {
+        console.error("💥 Error calculando ruta:", error)
+        toast.error("Error calculando la ruta")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [origin, destination, mapsLoaded, avoidTolls, avoidHighways, onRouteCalculated],
+  )
 
   // Guardar información de ruta
-  const handleSaveRoute = useCallback(async () => {
-    console.log("💾 Guardando información de ruta...")
-
-    if (!routeInfo || !user) {
-      toast.error("No hay información de ruta para guardar")
-      return
-    }
-
-    setSaving(true)
-    try {
-      const routeData = {
-        route_origin_address: routeInfo.origin,
-        route_destination_address: routeInfo.destination,
-        route_distance_km: Number((routeInfo.distance.value / 1000).toFixed(2)),
-        route_duration_minutes: Math.round(routeInfo.duration.value / 60),
-        route_google_maps_url: routeInfo.googleMapsUrl,
-        route_created_at: new Date().toISOString(),
-        route_created_by: user.id,
+  const handleSaveRoute = useCallback(
+    async (e?: React.MouseEvent) => {
+      // Prevenir propagación del evento
+      if (e) {
+        e.preventDefault()
+        e.stopPropagation()
       }
 
-      console.log("📝 Datos a guardar:", routeData)
+      console.log("💾 Guardando información de ruta...")
 
-      const { error } = await supabase.from("quotations").update(routeData).eq("id", quotationId)
-
-      if (error) {
-        console.error("❌ Error guardando en Supabase:", error)
-        throw error
+      if (!routeInfo || !user) {
+        toast.error("No hay información de ruta para guardar")
+        return
       }
 
-      console.log("✅ Ruta guardada exitosamente")
-      toast.success("Información de ruta guardada exitosamente")
-    } catch (error: any) {
-      console.error("💥 Error guardando ruta:", error)
-      toast.error("Error guardando la información de ruta: " + error.message)
-    } finally {
-      setSaving(false)
-    }
-  }, [routeInfo, user, quotationId])
+      setSaving(true)
+      try {
+        const routeData = {
+          route_origin_address: routeInfo.origin,
+          route_destination_address: routeInfo.destination,
+          route_distance_km: Number((routeInfo.distance.value / 1000).toFixed(2)),
+          route_duration_minutes: Math.round(routeInfo.duration.value / 60),
+          route_google_maps_url: routeInfo.googleMapsUrl,
+          route_created_at: new Date().toISOString(),
+          route_created_by: user.id,
+        }
+
+        console.log("📝 Datos a guardar:", routeData)
+
+        const { error } = await supabase.from("quotations").update(routeData).eq("id", quotationId)
+
+        if (error) {
+          console.error("❌ Error guardando en Supabase:", error)
+          throw error
+        }
+
+        console.log("✅ Ruta guardada exitosamente")
+        toast.success("Información de ruta guardada exitosamente")
+      } catch (error: any) {
+        console.error("💥 Error guardando ruta:", error)
+        toast.error("Error guardando la información de ruta: " + error.message)
+      } finally {
+        setSaving(false)
+      }
+    },
+    [routeInfo, user, quotationId],
+  )
+
+  // Manejar cambios en inputs sin causar re-renders
+  const handleOriginChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setOrigin(e.target.value)
+  }, [])
+
+  const handleDestinationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setDestination(e.target.value)
+  }, [])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        e.stopPropagation()
+        handleCalculateRoute()
+      }
+    },
+    [handleCalculateRoute],
+  )
 
   return (
     <div className="space-y-6">
@@ -264,7 +344,8 @@ export default function RoutePlanner({
                 <Input
                   id="route-origin"
                   value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
+                  onChange={handleOriginChange}
+                  onKeyDown={handleKeyDown}
                   placeholder="Dirección de origen..."
                   className="pl-10 border-slate-200 focus:border-slate-400"
                 />
@@ -279,7 +360,8 @@ export default function RoutePlanner({
                 <Input
                   id="route-destination"
                   value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
+                  onChange={handleDestinationChange}
+                  onKeyDown={handleKeyDown}
                   placeholder="Dirección de destino..."
                   className="pl-10 border-slate-200 focus:border-slate-400"
                 />
@@ -305,6 +387,7 @@ export default function RoutePlanner({
 
           {/* Botón Calcular */}
           <Button
+            type="button"
             onClick={handleCalculateRoute}
             disabled={loading || !mapsLoaded || !!mapsError}
             className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800"
@@ -337,7 +420,7 @@ export default function RoutePlanner({
         <CardHeader>
           <CardTitle className="text-slate-800">Mapa de Ruta</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           <div
             ref={mapRef}
             className="w-full h-96 rounded-lg border border-slate-200 bg-slate-100"
@@ -362,6 +445,7 @@ export default function RoutePlanner({
               <span>Información de Ruta</span>
               <div className="flex gap-2">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(routeInfo.googleMapsUrl, "_blank")}
@@ -371,6 +455,7 @@ export default function RoutePlanner({
                   Ver en Maps
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   onClick={handleSaveRoute}
                   disabled={saving}
