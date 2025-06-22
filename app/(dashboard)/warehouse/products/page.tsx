@@ -190,23 +190,23 @@ export default function ProductsPage() {
 
   if (!hasWarehouseAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
                 Productos
               </h1>
-              <p className="text-slate-600">Gestión de productos del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
             </div>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="h-8 w-8 text-slate-500" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-slate-500 dark:text-slate-300" />
                 </div>
-                <p className="text-slate-600">No tienes permisos para acceder a los productos.</p>
+                <p className="text-slate-600 dark:text-slate-300">No tienes permisos para acceder a los productos.</p>
               </div>
             </CardContent>
           </Card>
@@ -217,23 +217,23 @@ export default function ProductsPage() {
 
   if (!companyToUse) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
                 Productos
               </h1>
-              <p className="text-slate-600">Gestión de productos del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
             </div>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center">
-                  <Package className="h-8 w-8 text-slate-500" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
+                  <Package className="h-8 w-8 text-slate-500 dark:text-slate-300" />
                 </div>
-                <p className="text-slate-600">
+                <p className="text-slate-600 dark:text-slate-300">
                   {user?.role === "admin"
                     ? "Selecciona una empresa para ver sus productos."
                     : "No tienes una empresa asignada. Contacta al administrador."}
@@ -248,23 +248,23 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
                 Productos
               </h1>
-              <p className="text-slate-600">Gestión de productos del inventario</p>
+              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
             </div>
-            <Button disabled className="bg-slate-200 text-slate-500">
+            <Button disabled className="bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Button>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
-              <div className="text-center text-slate-600">Cargando productos...</div>
+              <div className="text-center text-slate-600 dark:text-slate-300">Cargando productos...</div>
             </CardContent>
           </Card>
         </div>
@@ -273,23 +273,23 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
               Productos
             </h1>
-            <p className="text-slate-600">
+            <p className="text-slate-600 dark:text-slate-300">
               Gestión de productos del inventario
               {user?.role === "admin" && selectedCompany && (
-                <span className="ml-2 text-slate-700 font-medium">- {selectedCompany.name}</span>
+                <span className="ml-2 text-slate-700 dark:text-slate-200 font-medium">- {selectedCompany.name}</span>
               )}
             </p>
           </div>
           <Button
             asChild
-            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white"
           >
             <Link href="/warehouse/products/new">
               <Plus className="h-4 w-4 mr-2" />
@@ -298,15 +298,15 @@ export default function ProductsPage() {
           </Button>
         </div>
 
-        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+        <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-800">
-              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                <Package className="h-4 w-4 text-slate-600" />
+            <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
+                <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
               </div>
               Lista de Productos
             </CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardDescription className="text-slate-600 dark:text-slate-300">
               {filteredProducts.length} de {products.length} productos
             </CardDescription>
           </CardHeader>
@@ -315,66 +315,80 @@ export default function ProductsPage() {
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
                   <Input
                     placeholder="Buscar por nombre, código o código de barras..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-slate-300 focus:border-slate-500 focus:ring-slate-500"
+                    className="pl-10 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
               <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                   <SelectValue placeholder="Todas las marcas" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las marcas</SelectItem>
+                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
+                    Todas las marcas
+                  </SelectItem>
                   {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id}>
+                    <SelectItem key={brand.id} value={brand.id} className="text-slate-900 dark:text-slate-100">
                       {brand.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                   <SelectValue placeholder="Todas las categorías" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las categorías</SelectItem>
+                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
+                    Todas las categorías
+                  </SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
+                    <SelectItem key={category.id} value={category.id} className="text-slate-900 dark:text-slate-100">
                       {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={stockFilter} onValueChange={setStockFilter}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                   <SelectValue placeholder="Estado del stock" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="available">Disponible</SelectItem>
-                  <SelectItem value="low">Stock bajo</SelectItem>
-                  <SelectItem value="out">Sin stock</SelectItem>
+                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
+                    Todos los estados
+                  </SelectItem>
+                  <SelectItem value="available" className="text-slate-900 dark:text-slate-100">
+                    Disponible
+                  </SelectItem>
+                  <SelectItem value="low" className="text-slate-900 dark:text-slate-100">
+                    Stock bajo
+                  </SelectItem>
+                  <SelectItem value="out" className="text-slate-900 dark:text-slate-100">
+                    Sin stock
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Tabla de productos */}
-            <div className="rounded-md border border-slate-200 bg-white">
+            <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200">
-                    <TableHead className="text-slate-700 font-semibold">Producto</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Código</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Marca/Categoría</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Stock</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Precios</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Estado</TableHead>
-                    <TableHead className="text-right text-slate-700 font-semibold">Acciones</TableHead>
+                  <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Producto</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Código</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Marca/Categoría</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Stock</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Precios</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Estado</TableHead>
+                    <TableHead className="text-right text-slate-700 dark:text-slate-200 font-semibold">
+                      Acciones
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -382,22 +396,32 @@ export default function ProductsPage() {
                     filteredProducts.map((product) => {
                       const stockStatus = getStockStatus(product.current_stock, product.minimum_stock)
                       return (
-                        <TableRow key={product.id} className="hover:bg-slate-50/50 border-slate-200">
+                        <TableRow
+                          key={product.id}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 border-slate-200 dark:border-slate-700"
+                        >
                           <TableCell>
                             <div>
-                              <div className="font-medium text-slate-800">{product.name}</div>
+                              <div className="font-medium text-slate-800 dark:text-slate-100">{product.name}</div>
                               {product.description && (
-                                <div className="text-sm text-slate-500">{product.description}</div>
+                                <div className="text-sm text-slate-500 dark:text-slate-400">{product.description}</div>
                               )}
-                              {product.location && <div className="text-xs text-slate-500">📍 {product.location}</div>}
+                              {product.location && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400">📍 {product.location}</div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <Badge variant="outline" className="font-mono border-slate-300 text-slate-700">
+                              <Badge
+                                variant="outline"
+                                className="font-mono border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+                              >
                                 {product.code}
                               </Badge>
-                              {product.barcode && <div className="text-xs text-slate-500 mt-1">{product.barcode}</div>}
+                              {product.barcode && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{product.barcode}</div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -430,12 +454,14 @@ export default function ProductsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="text-right">
-                              <div className="font-medium text-slate-800">
+                              <div className="font-medium text-slate-800 dark:text-slate-100">
                                 {product.current_stock} {product.unit_of_measure}
                               </div>
-                              <div className="text-xs text-slate-500">Mín: {product.minimum_stock}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                Mín: {product.minimum_stock}
+                              </div>
                               {product.current_stock <= product.minimum_stock && (
-                                <div className="flex items-center gap-1 text-orange-600 text-xs mt-1">
+                                <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 text-xs mt-1">
                                   <AlertTriangle className="h-3 w-3" />
                                   Stock bajo
                                 </div>
@@ -444,11 +470,15 @@ export default function ProductsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="text-right">
-                              <div className="font-medium text-slate-800">{formatCurrency(product.sale_price)}</div>
-                              <div className="text-xs text-green-600">
+                              <div className="font-medium text-slate-800 dark:text-slate-100">
+                                {formatCurrency(product.sale_price)}
+                              </div>
+                              <div className="text-xs text-green-600 dark:text-green-400">
                                 Con IGV: {formatCurrency(product.sale_price * 1.18)}
                               </div>
-                              <div className="text-xs text-slate-500">Costo: {formatCurrency(product.cost_price)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                Costo: {formatCurrency(product.cost_price)}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -456,12 +486,22 @@ export default function ProductsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                asChild
+                                className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              >
                                 <Link href={`/warehouse/products/${product.id}`}>
                                   <Eye className="h-4 w-4" />
                                 </Link>
                               </Button>
-                              <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                asChild
+                                className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              >
                                 <Link href={`/warehouse/products/edit/${product.id}`}>
                                   <Edit className="h-4 w-4" />
                                 </Link>
@@ -474,7 +514,7 @@ export default function ProductsPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
-                        <div className="text-slate-500">
+                        <div className="text-slate-500 dark:text-slate-400">
                           {products.length === 0
                             ? "No hay productos registrados"
                             : "No se encontraron productos con los filtros aplicados"}

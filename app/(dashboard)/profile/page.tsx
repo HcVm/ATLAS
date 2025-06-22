@@ -4,237 +4,347 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User, Mail, Phone, Building, Calendar, Shield, Camera, Save, AlertTriangle } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
-import { toast } from "sonner"
+import { User, Building2, Calendar, Shield, Save, Camera, FileText, Activity, Eye, EyeOff, Lock } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
-interface UserProfile {
-  id: string
-  full_name: string
-  email: string
-  phone: string | null
-  role: string
-  created_at: string
-  avatar_url: string | null
-  department?: {
-    name: string
-    color: string
-  } | null
-  company?: {
-    name: string
-    code: string
-  } | null
-}
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [formData, setFormData] = useState({
+  const { user, refreshUser } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState({
     full_name: "",
+    email: "",
     phone: "",
+    avatar_url: "",
   })
+  const [stats, setStats] = useState({
+    documentsCreated: 0,
+    documentsInDepartment: 0,
+    movementsMade: 0,
+  })
+  const [department, setDepartment] = useState<any>(null)
+  const [uploading, setUploading] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  })
+  const [changingPassword, setChangingPassword] = useState(false)
 
   useEffect(() => {
     if (user) {
-      fetchProfile()
+      setProfile({
+        full_name: user.full_name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        avatar_url: user.avatar_url || "",
+      })
+      fetchUserStats()
+      fetchDepartment()
     }
   }, [user])
 
-  const fetchProfile = async () => {
-    try {
-      setLoading(true)
+  const fetchUserStats = async () => {
+    if (!user) return
 
-      const { data, error } = await supabase
+    try {
+      const [documentsRes, movementsRes] = await Promise.all([
+        supabase.from("documents").select("id", { count: "exact", head: true }).eq("created_by", user.id),
+        supabase.from("document_movements").select("id", { count: "exact", head: true }).eq("moved_by", user.id),
+      ])
+
+      let departmentDocsCount = 0
+      if (user.department_id) {
+        const { count } = await supabase
+          .from("documents")
+          .select("id", { count: "exact", head: true })
+          .eq("current_department_id", user.department_id)
+        departmentDocsCount = count || 0
+      }
+
+      setStats({
+        documentsCreated: documentsRes.count || 0,
+        documentsInDepartment: departmentDocsCount,
+        movementsMade: movementsRes.count || 0,
+      })
+    } catch (error) {
+      console.error("Error fetching user stats:", error)
+    }
+  }
+
+  const fetchDepartment = async () => {
+    if (!user?.department_id) return
+
+    try {
+      const { data, error } = await supabase.from("departments").select("*").eq("id", user.department_id).single()
+
+      if (error) throw error
+      setDepartment(data)
+    } catch (error) {
+      console.error("Error fetching department:", error)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
         .from("profiles")
-        .select(`
-          id, full_name, email, phone, role, created_at, avatar_url,
-          departments!profiles_department_id_fkey (name, color),
-          companies (name, code)
-        `)
-        .eq("id", user?.id)
-        .single()
+        .update({
+          full_name: profile.full_name,
+          phone: profile.phone,
+        })
+        .eq("id", user.id)
 
       if (error) throw error
 
-      setProfile(data)
-      setFormData({
-        full_name: data.full_name || "",
-        phone: data.phone || "",
+      await refreshUser()
+      toast({
+        title: "Perfil actualizado",
+        description: "Tu perfil ha sido actualizado correctamente.",
       })
     } catch (error: any) {
-      console.error("Error fetching profile:", error)
-      toast.error("Error al cargar el perfil")
+      console.error("Error updating profile:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el perfil: " + error.message,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSave = async () => {
-    try {
-      setSaving(true)
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user?.id)
-
-      if (error) throw error
-
-      toast.success("Perfil actualizado exitosamente")
-      await fetchProfile()
-    } catch (error: any) {
-      console.error("Error updating profile:", error)
-      toast.error("Error al actualizar el perfil")
-    } finally {
-      setSaving(false)
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm">Administrador</Badge>
+      case "supervisor":
+        return <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm">Supervisor</Badge>
+      case "user":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 text-gray-700 dark:text-slate-200 shadow-sm"
+          >
+            Usuario
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{role}</Badge>
     }
   }
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      const file = event.target.files?.[0]
-      if (!file) return
+      setUploading(true)
 
-      // Validar tamaño (máximo 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("La imagen debe ser menor a 2MB")
-        return
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Debes seleccionar una imagen para subir.")
       }
 
-      // Validar tipo
+      const file = event.target.files[0]
+
+      // Validar tipo de archivo
       if (!file.type.startsWith("image/")) {
-        toast.error("Solo se permiten archivos de imagen")
-        return
+        throw new Error("El archivo debe ser una imagen.")
       }
 
-      setUploadingAvatar(true)
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("La imagen debe ser menor a 5MB.")
+      }
 
-      // Generar nombre único
+      // Crear nombre de archivo con estructura que funcione con RLS
       const fileExt = file.name.split(".").pop()
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      const timestamp = Date.now()
+      const fileName = `${user?.id}/avatar-${timestamp}.${fileExt}`
 
-      // Subir archivo
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true })
+      console.log("Uploading file:", fileName)
+      console.log("User ID:", user?.id)
 
-      if (uploadError) throw uploadError
+      // Eliminar avatar anterior si existe
+      if (profile.avatar_url) {
+        try {
+          const oldPath = profile.avatar_url.split("/").pop()
+          if (oldPath) {
+            await supabase.storage.from("avatars").remove([`${user?.id}/${oldPath}`])
+          }
+        } catch (error) {
+          console.log("Could not delete old avatar:", error)
+        }
+      }
+
+      // Subir archivo a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      })
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        throw uploadError
+      }
+
+      console.log("Upload successful:", uploadData)
 
       // Obtener URL pública
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(filePath)
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
+      const publicUrl = data.publicUrl
 
-      // Actualizar perfil
+      if (!publicUrl) {
+        throw new Error("No se pudo obtener la URL de la imagen")
+      }
+
+      console.log("Public URL:", publicUrl)
+
+      // Actualizar perfil con nueva URL
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
         .eq("id", user?.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error("Profile update error:", updateError)
+        throw updateError
+      }
 
-      toast.success("Avatar actualizado exitosamente")
-      await fetchProfile()
+      // Actualizar estado local
+      setProfile({ ...profile, avatar_url: publicUrl })
+      await refreshUser()
+
+      toast({
+        title: "Foto actualizada",
+        description: "Tu foto de perfil ha sido actualizada correctamente.",
+      })
     } catch (error: any) {
       console.error("Error uploading avatar:", error)
-      toast.error("Error al subir el avatar")
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo subir la imagen.",
+        variant: "destructive",
+      })
     } finally {
-      setUploadingAvatar(false)
+      setUploading(false)
+      // Limpiar el input file
+      const input = document.getElementById("avatar-upload") as HTMLInputElement
+      if (input) input.value = ""
     }
   }
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-      case "supervisor":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case "user":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+  const handlePasswordChange = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Todos los campos son obligatorios.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas nuevas no coinciden.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "La nueva contraseña debe tener al menos 6 caracteres.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      toast({
+        title: "Error",
+        description: "La nueva contraseña debe ser diferente a la actual.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setChangingPassword(true)
+    try {
+      // Primero verificar la contraseña actual intentando hacer login
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: passwordForm.currentPassword,
+      })
+
+      if (verifyError) {
+        toast({
+          title: "Error",
+          description: "La contraseña actual es incorrecta.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Si la verificación es exitosa, actualizar la contraseña
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword,
+      })
+
+      if (updateError) {
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar la contraseña: " + updateError.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Limpiar el formulario
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+
+      toast({
+        title: "Contraseña actualizada",
+        description: "Tu contraseña ha sido actualizada correctamente.",
+      })
+    } catch (error: any) {
+      console.error("Error changing password:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error inesperado.",
+        variant: "destructive",
+      })
+    } finally {
+      setChangingPassword(false)
     }
   }
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "Administrador"
-      case "supervisor":
-        return "Supervisor"
-      case "user":
-        return "Usuario"
-      default:
-        return role
-    }
-  }
-
-  if (loading) {
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-96" />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center space-y-4">
-                    <Skeleton className="h-24 w-24 rounded-full" />
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-                <CardHeader>
-                  <Skeleton className="h-6 w-48" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="space-y-2">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>No se pudo cargar la información del perfil</AlertDescription>
-            </Alert>
-          </div>
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-muted-foreground">Cargando perfil...</p>
         </div>
       </div>
     )
@@ -242,215 +352,321 @@ export default function ProfilePage() {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20">
-                <User className="h-6 w-6 text-primary dark:text-primary" />
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona tu información personal</p>
+        </div>
+      </div>
+
+      {/* Profile Header Card */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+            <div className="relative group">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-white dark:ring-slate-600 shadow-xl">
+                <AvatarImage src={profile.avatar_url || "/placeholder.svg"} />
+                <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-lg sm:text-xl">
+                  {profile.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-2 -right-2">
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:scale-110 transition-all duration-300"
+                  onClick={() => document.getElementById("avatar-upload")?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 dark:border-slate-300 border-t-transparent" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
-                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
-                  Gestiona tu información personal y configuración de cuenta
-                </p>
+            </div>
+
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{profile.full_name}</h2>
+                <p className="text-sm sm:text-base text-muted-foreground">{profile.email}</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                {getRoleBadge(user.role)}
+                {department && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: department.color || "#6B7280" }} />
+                    <span className="text-sm text-muted-foreground">{department.name}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center sm:justify-start gap-1 text-xs sm:text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>Miembro desde {format(new Date(user.created_at), "MMMM yyyy", { locale: es })}</span>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Card */}
-            <Card className="lg:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center space-y-4">
-                  {/* Avatar */}
-                  <div className="relative">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={profile.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary text-xl">
-                        {profile.full_name?.charAt(0)?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <label
-                      htmlFor="avatar-upload"
-                      className="absolute bottom-0 right-0 p-1 bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 rounded-full cursor-pointer transition-colors"
-                    >
-                      <Camera className="h-4 w-4 text-primary-foreground" />
-                    </label>
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                    />
-                  </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Documentos Creados</p>
+                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.documentsCreated}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <FileText className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                  {/* Basic Info */}
-                  <div className="text-center space-y-2">
-                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
-                      {profile.full_name}
-                    </h3>
-                    <Badge className={getRoleColor(profile.role)}>
-                      <Shield className="h-3 w-3 mr-1" />
-                      {getRoleLabel(profile.role)}
-                    </Badge>
-                  </div>
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">En Mi Departamento</p>
+                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.documentsInDepartment}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <Building2 className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                  <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-                  {/* Additional Info */}
-                  <div className="w-full space-y-3">
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                      <span className="text-slate-800 dark:text-slate-100">{profile.email}</span>
-                    </div>
-
-                    {profile.phone && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                        <span className="text-slate-800 dark:text-slate-100">{profile.phone}</span>
-                      </div>
-                    )}
-
-                    {profile.company && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Building className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                        <span className="text-slate-800 dark:text-slate-100">{profile.company.name}</span>
-                      </div>
-                    )}
-
-                    {profile.department && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: profile.department.color }} />
-                        <span className="text-slate-800 dark:text-slate-100">{profile.department.name}</span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-3 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                      <span className="text-slate-800 dark:text-slate-100">
-                        Miembro desde {new Date(profile.created_at).toLocaleDateString("es-PE")}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Edit Form */}
-            <Card className="lg:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-slate-800 dark:text-slate-100">Información Personal</CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Actualiza tu información personal y datos de contacto
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-200">
-                      Nombre Completo
-                    </Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
-                      className="bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
-                      Correo Electrónico
-                    </Label>
-                    <Input
-                      id="email"
-                      value={profile.email}
-                      disabled
-                      className="bg-slate-100 dark:bg-slate-600 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400"
-                    />
-                    <p className="text-xs sm:text-sm text-muted-foreground dark:text-muted-foreground">
-                      El correo electrónico no se puede modificar
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-slate-700 dark:text-slate-200">
-                      Teléfono
-                    </Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Número de teléfono"
-                      className="bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-slate-700 dark:text-slate-200">Rol</Label>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getRoleColor(profile.role)}>
-                        <Shield className="h-3 w-3 mr-1" />
-                        {getRoleLabel(profile.role)}
-                      </Badge>
-                      <span className="text-xs sm:text-sm text-muted-foreground dark:text-muted-foreground">
-                        Contacta al administrador para cambiar tu rol
-                      </span>
-                    </div>
-                  </div>
-
-                  {profile.company && (
-                    <div className="space-y-2">
-                      <Label className="text-slate-700 dark:text-slate-200">Empresa</Label>
-                      <Input
-                        value={`${profile.company.code} - ${profile.company.name}`}
-                        disabled
-                        className="bg-slate-100 dark:bg-slate-600 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400"
-                      />
-                    </div>
-                  )}
-
-                  {profile.department && (
-                    <div className="space-y-2">
-                      <Label className="text-slate-700 dark:text-slate-200">Departamento</Label>
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted dark:bg-muted border border-border dark:border-border">
-                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: profile.department.color }} />
-                        <span className="text-muted-foreground dark:text-muted-foreground">
-                          {profile.department.name}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || uploadingAvatar}
-                      className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white"
-                    >
-                      {saving ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Guardar Cambios
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Movimientos</p>
+                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.movementsMade}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <Activity className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Profile Form */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <User className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Información Personal</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-200">
+                  Nombre Completo
+                </Label>
+                <Input
+                  id="full_name"
+                  value={profile.full_name}
+                  onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                  className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className="bg-gray-50 dark:bg-slate-600 text-gray-500 dark:text-slate-400"
+                />
+                <p className="text-xs text-muted-foreground">El email no se puede cambiar</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-slate-700 dark:text-slate-200">
+                  Teléfono
+                </Label>
+                <Input
+                  id="phone"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  placeholder="Número de teléfono"
+                  className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-slate-700 dark:text-slate-200">
+                  Rol
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  {getRoleBadge(user.role)}
+                </div>
+              </div>
+            </div>
+
+            <Separator className="bg-slate-200 dark:bg-slate-600" />
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                onClick={handleSave}
+                disabled={loading}
+                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {loading ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Password Change Card */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-4 sm:p-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                <Lock className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Cambiar Contraseña</h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="current_password" className="text-slate-700 dark:text-slate-200">
+                  Contraseña Actual
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="current_password"
+                    type={showPasswords.current ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                    placeholder="Ingresa tu contraseña actual"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                  >
+                    {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new_password" className="text-slate-700 dark:text-slate-200">
+                  Nueva Contraseña
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="new_password"
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                    placeholder="Ingresa tu nueva contraseña"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  >
+                    {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password" className="text-slate-700 dark:text-slate-200">
+                  Confirmar Nueva Contraseña
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                    placeholder="Confirma tu nueva contraseña"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  >
+                    {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <Separator className="bg-slate-200 dark:bg-slate-600" />
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPasswordForm({
+                    currentPassword: "",
+                    newPassword: "",
+                    confirmPassword: "",
+                  })
+                }}
+                className="w-full sm:w-auto border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                disabled={changingPassword}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handlePasswordChange}
+                disabled={
+                  changingPassword ||
+                  !passwordForm.currentPassword ||
+                  !passwordForm.newPassword ||
+                  !passwordForm.confirmPassword
+                }
+                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                {changingPassword ? "Cambiando..." : "Cambiar Contraseña"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
