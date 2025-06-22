@@ -60,7 +60,7 @@ export default function ProfilePage() {
         .from("profiles")
         .select(`
           id, full_name, email, phone, role, created_at, avatar_url,
-          departments (name, color),
+          departments!profiles_department_id_fkey (name, color),
           companies (name, code)
         `)
         .eq("id", user?.id)
@@ -186,7 +186,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 dark:from-background dark:via-background dark:to-muted/10">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
@@ -194,7 +194,7 @@ export default function ProfilePage() {
               <Skeleton className="h-4 w-96" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1 border-border/50 dark:border-border/50">
+              <Card className="lg:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center space-y-4">
                     <Skeleton className="h-24 w-24 rounded-full" />
@@ -203,7 +203,7 @@ export default function ProfilePage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="lg:col-span-2 border-border/50 dark:border-border/50">
+              <Card className="lg:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
                 <CardHeader>
                   <Skeleton className="h-6 w-48" />
                 </CardHeader>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 dark:from-background dark:via-background dark:to-muted/10">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <Alert variant="destructive">
@@ -241,7 +241,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 min-h-screen bg-gradient-to-br from-background via-background to-muted/20 dark:from-background dark:via-background dark:to-muted/10">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -251,8 +251,8 @@ export default function ProfilePage() {
                 <User className="h-6 w-6 text-primary dark:text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground dark:text-foreground">Mi Perfil</h1>
-                <p className="text-sm sm:text-base text-muted-foreground dark:text-muted-foreground">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
                   Gestiona tu información personal y configuración de cuenta
                 </p>
               </div>
@@ -261,7 +261,7 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Profile Card */}
-            <Card className="lg:col-span-1 border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+            <Card className="lg:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center space-y-4">
                   {/* Avatar */}
@@ -290,7 +290,7 @@ export default function ProfilePage() {
 
                   {/* Basic Info */}
                   <div className="text-center space-y-2">
-                    <h3 className="text-xl sm:text-2xl font-bold text-card-foreground dark:text-card-foreground">
+                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
                       {profile.full_name}
                     </h3>
                     <Badge className={getRoleColor(profile.role)}>
@@ -299,41 +299,39 @@ export default function ProfilePage() {
                     </Badge>
                   </div>
 
-                  <Separator className="bg-border dark:bg-border" />
+                  <Separator className="bg-slate-200 dark:bg-slate-600" />
 
                   {/* Additional Info */}
                   <div className="w-full space-y-3">
                     <div className="flex items-center gap-3 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                      <span className="text-card-foreground dark:text-card-foreground">{profile.email}</span>
+                      <span className="text-slate-800 dark:text-slate-100">{profile.email}</span>
                     </div>
 
                     {profile.phone && (
                       <div className="flex items-center gap-3 text-sm">
                         <Phone className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                        <span className="text-card-foreground dark:text-card-foreground">{profile.phone}</span>
+                        <span className="text-slate-800 dark:text-slate-100">{profile.phone}</span>
                       </div>
                     )}
 
                     {profile.company && (
                       <div className="flex items-center gap-3 text-sm">
                         <Building className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                        <span className="text-card-foreground dark:text-card-foreground">{profile.company.name}</span>
+                        <span className="text-slate-800 dark:text-slate-100">{profile.company.name}</span>
                       </div>
                     )}
 
                     {profile.department && (
                       <div className="flex items-center gap-3 text-sm">
                         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: profile.department.color }} />
-                        <span className="text-card-foreground dark:text-card-foreground">
-                          {profile.department.name}
-                        </span>
+                        <span className="text-slate-800 dark:text-slate-100">{profile.department.name}</span>
                       </div>
                     )}
 
                     <div className="flex items-center gap-3 text-sm">
                       <Calendar className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                      <span className="text-card-foreground dark:text-card-foreground">
+                      <span className="text-slate-800 dark:text-slate-100">
                         Miembro desde {new Date(profile.created_at).toLocaleDateString("es-PE")}
                       </span>
                     </div>
@@ -343,36 +341,36 @@ export default function ProfilePage() {
             </Card>
 
             {/* Edit Form */}
-            <Card className="lg:col-span-2 border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+            <Card className="lg:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
               <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-card-foreground dark:text-card-foreground">Información Personal</CardTitle>
-                <CardDescription className="text-muted-foreground dark:text-muted-foreground">
+                <CardTitle className="text-slate-800 dark:text-slate-100">Información Personal</CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-300">
                   Actualiza tu información personal y datos de contacto
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="full_name" className="text-card-foreground dark:text-card-foreground">
+                    <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-200">
                       Nombre Completo
                     </Label>
                     <Input
                       id="full_name"
                       value={formData.full_name}
                       onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
-                      className="bg-background dark:bg-background border-border dark:border-border"
+                      className="bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-card-foreground dark:text-card-foreground">
+                    <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
                       Correo Electrónico
                     </Label>
                     <Input
                       id="email"
                       value={profile.email}
                       disabled
-                      className="bg-muted dark:bg-muted border-border dark:border-border text-muted-foreground dark:text-muted-foreground"
+                      className="bg-slate-100 dark:bg-slate-600 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400"
                     />
                     <p className="text-xs sm:text-sm text-muted-foreground dark:text-muted-foreground">
                       El correo electrónico no se puede modificar
@@ -380,7 +378,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-card-foreground dark:text-card-foreground">
+                    <Label htmlFor="phone" className="text-slate-700 dark:text-slate-200">
                       Teléfono
                     </Label>
                     <Input
@@ -388,12 +386,12 @@ export default function ProfilePage() {
                       value={formData.phone}
                       onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="Número de teléfono"
-                      className="bg-background dark:bg-background border-border dark:border-border"
+                      className="bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-card-foreground dark:text-card-foreground">Rol</Label>
+                    <Label className="text-slate-700 dark:text-slate-200">Rol</Label>
                     <div className="flex items-center gap-2">
                       <Badge className={getRoleColor(profile.role)}>
                         <Shield className="h-3 w-3 mr-1" />
@@ -407,18 +405,18 @@ export default function ProfilePage() {
 
                   {profile.company && (
                     <div className="space-y-2">
-                      <Label className="text-card-foreground dark:text-card-foreground">Empresa</Label>
+                      <Label className="text-slate-700 dark:text-slate-200">Empresa</Label>
                       <Input
                         value={`${profile.company.code} - ${profile.company.name}`}
                         disabled
-                        className="bg-muted dark:bg-muted border-border dark:border-border text-muted-foreground dark:text-muted-foreground"
+                        className="bg-slate-100 dark:bg-slate-600 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400"
                       />
                     </div>
                   )}
 
                   {profile.department && (
                     <div className="space-y-2">
-                      <Label className="text-card-foreground dark:text-card-foreground">Departamento</Label>
+                      <Label className="text-slate-700 dark:text-slate-200">Departamento</Label>
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted dark:bg-muted border border-border dark:border-border">
                         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: profile.department.color }} />
                         <span className="text-muted-foreground dark:text-muted-foreground">
@@ -432,7 +430,7 @@ export default function ProfilePage() {
                     <Button
                       onClick={handleSave}
                       disabled={saving || uploadingAvatar}
-                      className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 text-primary-foreground"
+                      className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white"
                     >
                       {saving ? (
                         <>

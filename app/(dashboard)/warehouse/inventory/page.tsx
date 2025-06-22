@@ -258,7 +258,7 @@ export default function InventoryPage() {
   const totalAjustes = movements.filter((m) => m.movement_type === "ajuste").length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-background dark:via-background dark:to-muted/10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -267,17 +267,17 @@ export default function InventoryPage() {
               <Package className="h-6 w-6 text-primary dark:text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-foreground dark:via-foreground dark:to-foreground bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
                 Movimientos de Inventario
               </h1>
-              <p className="text-slate-600 dark:text-muted-foreground">
+              <p className="text-slate-600 dark:text-slate-300">
                 Historial de entradas, salidas y ajustes de {selectedCompany?.name}
               </p>
             </div>
           </div>
           <Button
             onClick={() => setShowMovementDialog(true)}
-            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 text-white"
+            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Movimiento
@@ -286,36 +286,36 @@ export default function InventoryPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Entradas</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-card-foreground">{totalEntradas}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totalEntradas}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Salidas</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-card-foreground">{totalSalidas}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totalSalidas}</p>
                 </div>
                 <TrendingDown className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Ajustes</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-card-foreground">{totalAjustes}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totalAjustes}</p>
                 </div>
                 <Activity className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
@@ -324,7 +324,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Search and Filters */}
-        <Card className="mb-6 bg-gradient-to-br from-white to-slate-50/50 dark:from-card dark:to-card/50 border-slate-200/60 dark:border-border/50 shadow-lg">
+        <Card className="mb-6 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
@@ -333,7 +333,7 @@ export default function InventoryPage() {
                   placeholder="Buscar por producto, entidad, proveedor u orden..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-background dark:bg-background border-slate-300 dark:border-border focus:border-slate-500 dark:focus:border-primary focus:ring-slate-500 dark:focus:ring-primary/20"
+                  className="pl-10 bg-background dark:bg-background border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500/20 dark:focus:ring-slate-400/20"
                 />
               </div>
               <div className="flex gap-2">
@@ -351,12 +351,12 @@ export default function InventoryPage() {
         </Card>
 
         {/* Movements Table */}
-        <Card className="shadow-lg border-border/50 dark:border-border/50 bg-card/95 dark:bg-card/95">
+        <Card className="shadow-lg bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60">
           <CardHeader className="border-b border-border/50 dark:border-border/50">
-            <CardTitle className="text-slate-700 dark:text-card-foreground">
+            <CardTitle className="text-slate-800 dark:text-slate-100">
               Historial de Movimientos ({filteredMovements.length})
             </CardTitle>
-            <CardDescription className="text-slate-600 dark:text-muted-foreground">
+            <CardDescription className="text-slate-600 dark:text-slate-300">
               Últimos movimientos de inventario registrados
             </CardDescription>
           </CardHeader>
@@ -398,7 +398,7 @@ export default function InventoryPage() {
                     {filteredMovements.map((movement) => (
                       <TableRow
                         key={movement.id}
-                        className="border-border/50 dark:border-border/50 hover:bg-slate-50/50 dark:hover:bg-muted/50"
+                        className="border-border/50 dark:border-border/50 hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -410,16 +410,16 @@ export default function InventoryPage() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium text-card-foreground dark:text-card-foreground">
+                            <p className="font-medium text-slate-800 dark:text-slate-100">
                               {movement.products?.name || "Producto eliminado"}
                             </p>
-                            <p className="text-sm text-slate-600 dark:text-muted-foreground">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                               {movement.products?.code || "N/A"}
                             </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-card-foreground dark:text-card-foreground">
+                          <div className="text-slate-800 dark:text-slate-100">
                             <span
                               className={
                                 movement.movement_type === "entrada"
@@ -442,45 +442,48 @@ export default function InventoryPage() {
                         <TableCell>
                           <div className="text-sm">
                             {movement.movement_type === "salida" && movement.destination_entity_name && (
-                              <p className="text-card-foreground dark:text-card-foreground">
+                              <p className="text-slate-800 dark:text-slate-100">
                                 <strong>Cliente:</strong> {movement.destination_entity_name}
                               </p>
                             )}
                             {movement.movement_type === "salida" && movement.purchase_order_number && (
-                              <p className="text-slate-600 dark:text-muted-foreground">
+                              <p className="text-slate-600 dark:text-slate-300">
                                 <strong>OC:</strong> {movement.purchase_order_number}
                               </p>
                             )}
                             {movement.movement_type === "entrada" && movement.supplier && (
-                              <p className="text-card-foreground dark:text-card-foreground">
+                              <p className="text-slate-800 dark:text-slate-100">
                                 <strong>Proveedor:</strong> {movement.supplier}
                               </p>
                             )}
                             {movement.movement_type === "ajuste" && movement.reason && (
-                              <p className="text-card-foreground dark:text-card-foreground">
+                              <p className="text-slate-800 dark:text-slate-100">
                                 <strong>Motivo:</strong> {movement.reason}
                               </p>
                             )}
                             {movement.peru_departments?.name && (
-                              <p className="text-slate-600 dark:text-muted-foreground">
+                              <p className="text-slate-600 dark:text-slate-300">
                                 <strong>Destino:</strong> {movement.peru_departments.name}
                               </p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium text-card-foreground dark:text-card-foreground">
+                        <TableCell className="font-medium text-slate-800 dark:text-slate-100">
                           {formatCurrency(movement.total_amount)}
                         </TableCell>
-                        <TableCell className="text-card-foreground dark:text-card-foreground">
+                        <TableCell className="text-slate-800 dark:text-slate-100">
                           {formatDate(movement.movement_date)}
                         </TableCell>
-                        <TableCell className="text-card-foreground dark:text-card-foreground">
+                        <TableCell className="text-slate-800 dark:text-slate-100">
                           {movement.profiles?.full_name || "Usuario eliminado"}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-muted">
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-600"
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
