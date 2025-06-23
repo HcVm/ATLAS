@@ -217,7 +217,7 @@ export default function ProductsPage() {
 
   if (!companyToUse) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="min-h-screen">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -248,7 +248,7 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="min-h-screen">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -273,7 +273,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>

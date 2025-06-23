@@ -264,7 +264,7 @@ export default function MovementsPage() {
       {/* Header with gradient text */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent mb-2">
             {getPageTitle()}
           </h1>
           <p className="text-sm sm:text-base text-slate-500">
