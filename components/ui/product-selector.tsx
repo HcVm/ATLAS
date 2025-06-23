@@ -96,26 +96,98 @@ export function ProductSelector({
   }, [value, products])
 
   const fetchProducts = async () => {
-    if (!selectedCompany) return
+    if (!selectedCompany) {
+      console.log("ProductSelector: No company selected")
+      return
+    }
 
+    console.log("ProductSelector: Fetching products for company:", selectedCompany.id)
     setLoading(true)
+
     try {
-      const { data, error } = await supabase
+      // Primero intentar una consulta simple sin relaciones
+      const { data: simpleData, error: simpleError } = await supabase
         .from("products")
-        .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
-          brands (id, name),
-          categories (id, name)
-        `)
+        .select(
+          "id, code, name, description, sale_price, current_stock, unit_of_measure, image_url, brand_id, category_id",
+        )
         .eq("company_id", selectedCompany.id)
         .eq("is_active", true)
         .order("name")
 
-      if (error) throw error
-      setProducts(data || [])
+      if (simpleError) {
+        console.error("ProductSelector: Error in simple query:", simpleError)
+        throw simpleError
+      }
+
+      console.log("ProductSelector: Found products (simple):", simpleData?.length || 0)
+
+      if (!simpleData || simpleData.length === 0) {
+        // Si no hay productos, verificar si existen productos para esta empresa
+        const { data: allProducts, error: allError } = await supabase
+          .from("products")
+          .select("id, name, is_active, company_id")
+          .eq("company_id", selectedCompany.id)
+
+        console.log("ProductSelector: All products for company:", allProducts?.length || 0)
+        if (allProducts) {
+          console.log("ProductSelector: Active products:", allProducts.filter((p) => p.is_active).length)
+          console.log("ProductSelector: Inactive products:", allProducts.filter((p) => !p.is_active).length)
+        }
+      }
+
+      // Ahora intentar obtener las relaciones por separado
+      const productsWithRelations = await Promise.all(
+        (simpleData || []).map(async (product) => {
+          let brandName = ""
+          let categoryName = ""
+
+          // Obtener marca si existe
+          if (product.brand_id) {
+            const { data: brand } = await supabase.from("brands").select("name").eq("id", product.brand_id).single()
+            brandName = brand?.name || ""
+          }
+
+          // Obtener categoría si existe
+          if (product.category_id) {
+            const { data: category } = await supabase
+              .from("product_categories")
+              .select("name")
+              .eq("id", product.category_id)
+              .single()
+            categoryName = category?.name || ""
+          }
+
+          return {
+            ...product,
+            brands: brandName ? { name: brandName } : null,
+            categories: categoryName ? { name: categoryName } : null,
+          }
+        }),
+      )
+
+      console.log("ProductSelector: Products with relations:", productsWithRelations.length)
+      setProducts(productsWithRelations)
     } catch (error: any) {
-      console.error("Error fetching products:", error)
-      toast.error("Error al cargar productos")
+      console.error("ProductSelector: Error fetching products:", error)
+      toast.error("Error al cargar productos: " + error.message)
+
+      // Como fallback, intentar cargar solo los datos básicos
+      try {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("products")
+          .select("id, code, name, description, sale_price, current_stock, unit_of_measure")
+          .eq("company_id", selectedCompany.id)
+          .eq("is_active", true)
+          .order("name")
+
+        if (!fallbackError && fallbackData) {
+          console.log("ProductSelector: Fallback data loaded:", fallbackData.length)
+          setProducts(fallbackData.map((p) => ({ ...p, brands: null, categories: null })))
+        }
+      } catch (fallbackError) {
+        console.error("ProductSelector: Fallback also failed:", fallbackError)
+      }
     } finally {
       setLoading(false)
     }
@@ -138,6 +210,18 @@ export function ProductSelector({
     if (stock <= 0) return "Sin stock"
     return `${stock} ${unit}`
   }
+
+  // Debug useEffect
+  useEffect(() => {
+    console.log("ProductSelector: Component state:", {
+      selectedCompany: selectedCompany?.id,
+      productsCount: products.length,
+      filteredProductsCount: filteredProducts.length,
+      searchValue,
+      loading,
+      selectedProduct: selectedProduct?.id,
+    })
+  }, [selectedCompany, products.length, filteredProducts.length, searchValue, loading, selectedProduct])
 
   return (
     <div className={className}>
