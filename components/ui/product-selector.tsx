@@ -337,9 +337,6 @@ export function ProductSelector({
                                   </Badge>
                                 )}
                               </div>
-                              {product.description && (
-                                <p className="text-xs text-muted-foreground mt-1 truncate">{product.description}</p>
-                              )}
                             </div>
                             <div className="text-right">
                               {showPrice && <p className="text-sm font-medium">S/ {product.sale_price.toFixed(2)}</p>}
