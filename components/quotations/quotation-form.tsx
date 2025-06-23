@@ -48,6 +48,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
 
+  console.log("QuotationForm rendered", { user: user?.id, selectedCompany: selectedCompany?.id })
+
   // Form state
   const [formData, setFormData] = useState({
     entity_id: "",
@@ -157,7 +159,13 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedCompany || !user) return
+    console.log("QuotationForm handleSubmit called", { selectedCompany, user })
+
+    if (!selectedCompany || !user) {
+      console.error("Missing selectedCompany or user", { selectedCompany, user })
+      toast.error("Error: Falta información de empresa o usuario")
+      return
+    }
 
     setLoading(true)
 
@@ -202,10 +210,16 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         created_by: user.id,
       }
 
+      console.log("About to insert quotation data:", quotationData)
+
       const { error } = await supabase.from("quotations").insert([quotationData])
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase insert error:", error)
+        throw error
+      }
 
+      console.log("Quotation created successfully")
       toast.success("Cotización creada exitosamente")
       onSuccess()
     } catch (error: any) {
@@ -265,6 +279,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
             <ProductSelector
               value={formData.product_id}
               onSelect={(product) => {
+                console.log("QuotationForm: Product selected:", product)
+
                 // Calcular precio con IGV (18%)
                 const priceWithTax = product.sale_price * 1.18
 
@@ -483,6 +499,23 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <Separator />
+
+      {/* Información de Entrega */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Información de Entrega</h3>
+        <div>
+          <Label htmlFor="delivery_location">Lugar de Entrega *</Label>
+          <Textarea
+            id="delivery_location"
+            value={formData.delivery_location}
+            onChange={(e) => setFormData((prev) => ({ ...prev, delivery_location: e.target.value }))}
+            placeholder="Dirección completa donde se realizará la entrega"
+            required
+          />
+        </div>
       </div>
 
       <Separator />

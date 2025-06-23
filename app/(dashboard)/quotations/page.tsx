@@ -359,7 +359,13 @@ export default function QuotationsPage() {
           </div>
           <Dialog open={showNewQuotationDialog} onOpenChange={setShowNewQuotationDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg">
+              <Button
+                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg"
+                onClick={() => {
+                  console.log("Nueva Cotización button clicked")
+                  setShowNewQuotationDialog(true)
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Cotización
               </Button>
@@ -371,15 +377,22 @@ export default function QuotationsPage() {
                   Completa todos los campos para crear una nueva cotización
                 </DialogDescription>
               </DialogHeader>
-              <QuotationForm
-                onSuccess={() => {
-                  setShowNewQuotationDialog(false)
-                  if (companyId) {
-                    fetchQuotations(companyId)
-                    fetchStats(companyId)
-                  }
-                }}
-              />
+              {showNewQuotationDialog ? (
+                <QuotationForm
+                  onSuccess={() => {
+                    console.log("QuotationForm onSuccess called")
+                    setShowNewQuotationDialog(false)
+                    if (companyId) {
+                      fetchQuotations(companyId)
+                      fetchStats(companyId)
+                    }
+                  }}
+                />
+              ) : (
+                <div className="p-4">
+                  <p>Cargando formulario...</p>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </div>
