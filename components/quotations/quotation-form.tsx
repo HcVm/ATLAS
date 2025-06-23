@@ -265,6 +265,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
             <ProductSelector
               value={formData.product_id}
               onSelect={(product) => {
+                console.log("QuotationForm: Product selected:", product)
+
                 // Calcular precio con IGV (18%)
                 const priceWithTax = product.sale_price * 1.18
 

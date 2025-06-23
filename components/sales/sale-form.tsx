@@ -434,6 +434,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <ProductSelector
               value={formData.product_id}
               onSelect={(product) => {
+                console.log("SaleForm: Product selected:", product)
+
                 setFormData((prev) => ({
                   ...prev,
                   product_id: product.id,
