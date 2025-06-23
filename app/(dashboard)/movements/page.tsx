@@ -260,7 +260,7 @@ export default function MovementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
       {/* Header with gradient text */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">

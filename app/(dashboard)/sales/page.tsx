@@ -200,7 +200,7 @@ export default function SalesPage() {
 
   if (!hasSalesAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+      <div className="min-h-screen p-6">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -227,7 +227,7 @@ export default function SalesPage() {
 
   if (!companyToUse) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+      <div className="min-h-screen p-6">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -258,7 +258,7 @@ export default function SalesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+      <div className="min-h-screen p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-slate-200 rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -273,7 +273,7 @@ export default function SalesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+    <div className="min-h-screen p-6">
       <div className="container mx-auto py-8 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">

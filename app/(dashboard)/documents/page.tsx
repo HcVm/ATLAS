@@ -343,7 +343,7 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 space-y-6">
+      <div className="min-h-screen  p-6 space-y-6">
         <div className="flex items-center justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-300" />
           <span className="ml-2 text-slate-600 dark:text-slate-300">Cargando documentos...</span>

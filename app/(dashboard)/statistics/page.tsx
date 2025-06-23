@@ -979,12 +979,12 @@ export default function StatisticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-10">
       {/* Header con gradiente */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
-            <BarChart3 className="h-8 w-8 text-slate-600 animate-pulse" />
+            <BarChart3 className="h-8 w-8 animate-pulse" />
             Estadísticas
           </h1>
           <p className="text-muted-foreground">

@@ -209,7 +209,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 sm:py-10 px-3 sm:px-4 bg-gradient-to-br from-slate-50 via-white to-slate-100 min-h-screen">
+    <div className="container mx-auto py-6 sm:py-10 px-3 sm:px-4 min-h-screen">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
