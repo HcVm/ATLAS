@@ -66,22 +66,42 @@ export function ProductSelector({
   }, [selectedCompany])
 
   useEffect(() => {
+    console.log("ProductSelector: Filtering products", {
+      searchValue,
+      productsCount: products.length,
+      searchTerm: searchValue.toLowerCase(),
+    })
+
     // Filtrar productos basado en el texto de búsqueda
     if (searchValue.trim() === "") {
-      setFilteredProducts(products.slice(0, 50)) // Mostrar solo los primeros 50 para performance
+      const initialProducts = products.slice(0, 50)
+      console.log("ProductSelector: No search, showing first 50:", initialProducts.length)
+      setFilteredProducts(initialProducts)
     } else {
       const searchTerm = searchValue.toLowerCase()
-      const filtered = products
-        .filter(
-          (product) =>
-            product.code.toLowerCase().includes(searchTerm) ||
-            product.name.toLowerCase().includes(searchTerm) ||
-            (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-            (product.brands?.name && product.brands.name.toLowerCase().includes(searchTerm)) ||
-            (product.categories?.name && product.categories.name.toLowerCase().includes(searchTerm)),
-        )
-        .slice(0, 20) // Limitar resultados para performance
-      setFilteredProducts(filtered)
+      const filtered = products.filter((product) => {
+        const matchesCode = product.code.toLowerCase().includes(searchTerm)
+        const matchesName = product.name.toLowerCase().includes(searchTerm)
+        const matchesDescription = product.description && product.description.toLowerCase().includes(searchTerm)
+        const matchesBrand = product.brands?.name && product.brands.name.toLowerCase().includes(searchTerm)
+        const matchesCategory = product.categories?.name && product.categories.name.toLowerCase().includes(searchTerm)
+
+        const matches = matchesCode || matchesName || matchesDescription || matchesBrand || matchesCategory
+
+        if (matches) {
+          console.log("ProductSelector: Match found:", product.name, {
+            matchesCode,
+            matchesName,
+            matchesBrand,
+            matchesCategory,
+          })
+        }
+
+        return matches
+      })
+
+      console.log("ProductSelector: Filtered results:", filtered.length)
+      setFilteredProducts(filtered.slice(0, 20))
     }
   }, [searchValue, products])
 
@@ -211,18 +231,6 @@ export function ProductSelector({
     return `${stock} ${unit}`
   }
 
-  // Debug useEffect
-  useEffect(() => {
-    console.log("ProductSelector: Component state:", {
-      selectedCompany: selectedCompany?.id,
-      productsCount: products.length,
-      filteredProductsCount: filteredProducts.length,
-      searchValue,
-      loading,
-      selectedProduct: selectedProduct?.id,
-    })
-  }, [selectedCompany, products.length, filteredProducts.length, searchValue, loading, selectedProduct])
-
   return (
     <div className={className}>
       {label && (
@@ -273,7 +281,7 @@ export function ProductSelector({
         </PopoverTrigger>
 
         <PopoverContent className="w-full p-0" align="start">
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput
               placeholder="Buscar por código, nombre, marca o categoría..."
               value={searchValue}
@@ -299,14 +307,14 @@ export function ProductSelector({
                     </CommandEmpty>
                   ) : filteredProducts.length === 0 && searchValue.trim() === "" ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      Escribe para buscar productos...
+                      {products.length > 0 ? "Escribe para buscar productos..." : "No hay productos disponibles"}
                     </div>
                   ) : (
                     <CommandGroup>
                       {filteredProducts.map((product) => (
                         <CommandItem
                           key={product.id}
-                          value={product.id}
+                          value={`${product.id}-${product.code}-${product.name}`}
                           onSelect={() => handleSelectProduct(product)}
                           className="flex items-center justify-between p-3"
                         >
