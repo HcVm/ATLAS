@@ -20,6 +20,10 @@ import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
 import { ProductSelector } from "@/components/ui/product-selector"
 
+// Verificar configuración de Supabase al inicio
+console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log("Supabase Anon Key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+
 interface Product {
   id: string
   code: string
@@ -146,6 +150,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const fetchQuotations = async () => {
     if (!selectedCompany) return
 
+    console.log("Fetching quotations for company:", selectedCompany.id)
+
     try {
       const { data, error } = await supabase
         .from("quotations")
@@ -155,6 +161,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         .eq("company_id", selectedCompany.id)
         .eq("status", "approved")
         .order("quotation_date", { ascending: false })
+
+      console.log("Quotations fetch result:", { data, error })
 
       if (error) throw error
       setQuotations(data || [])
@@ -170,9 +178,17 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       return
     }
 
+    console.log("Searching quotation with:", {
+      company_id: selectedCompany.id,
+      quotation_number: formData.quotation_search.trim(),
+    })
+
     setSearchingQuotation(true)
 
     try {
+      // Verificar que el cliente de Supabase esté configurado
+      console.log("Supabase client:", supabase)
+
       // Primero buscar la cotización y obtener solo los datos que existen en la tabla quotations
       const { data: quotationData, error: quotationError } = await supabase
         .from("quotations")
@@ -184,15 +200,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         .eq("status", "approved")
         .single()
 
-      if (quotationError) {
-        if (quotationError.code === "PGRST116") {
-          toast.error("No se encontró una cotización aprobada con ese código")
-        } else {
-          console.error("Error searching quotation:", quotationError)
-          toast.error("Error al buscar la cotización: " + quotationError.message)
-        }
-        return
-      }
+      console.log("Quotation query result:", { data: quotationData, error: quotationError })
 
       // Ahora buscar el producto usando el unique_code de la cotización
       let productData = null
@@ -230,9 +238,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         ).toString(),
         // Si encontramos el producto, llenar también sus datos
         ...(productData && {
-          product_id: productData.id,
-          product_name: productData.name,
-          product_brand: productData.brands?.name || "",
+          product_id: productId,
+          product_code: product.code,
+          product_name: product.name,
+          product_description: product.description || "",
+          product_brand: product.brands?.name || "",
           // Usar el precio final de la cotización, no el precio base del producto
           unit_price_with_tax: (
             quotationData.final_unit_price_with_tax ||
@@ -434,9 +444,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <ProductSelector
               value={formData.product_id}
               onSelect={(product) => {
+                console.log("SaleForm: Product selected:", product)
+
                 setFormData((prev) => ({
                   ...prev,
-                  product_id: product.id,
+                  product_id: productId,
                   product_code: product.code,
                   product_name: product.name,
                   product_description: product.description || "",
