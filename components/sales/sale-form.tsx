@@ -46,7 +46,9 @@ interface Quotation {
   entity_name: string
   entity_ruc: string
   product_description: string
-  unique_code: string
+  product_code: string
+  product_name: string
+  product_brand: string
   quantity: number
   offer_unit_price_with_tax: number | null
   final_unit_price_with_tax: number | null
@@ -144,26 +146,21 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   const fetchQuotations = async () => {
     if (!selectedCompany) return
 
-    console.log("Fetching quotations for company:", selectedCompany.id)
-
     try {
-      // Solo seleccionar campos que sabemos que existen
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("status", "approved")
-        .order("created_at", { ascending: false })
-
-      console.log("Quotations fetch result:", { data, error })
+        .order("quotation_date", { ascending: false })
 
       if (error) throw error
       setQuotations(data || [])
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
-      toast.error("Error al cargar cotizaciones: " + error.message)
+      toast.error("Error al cargar cotizaciones")
     }
   }
 
@@ -173,15 +170,10 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       return
     }
 
-    console.log("Searching quotation with:", {
-      company_id: selectedCompany.id,
-      quotation_number: formData.quotation_search.trim(),
-    })
-
     setSearchingQuotation(true)
 
     try {
-      // Buscar la cotización con solo los campos que existen
+      // Primero buscar la cotización y obtener solo los datos que existen en la tabla quotations
       const { data: quotationData, error: quotationError } = await supabase
         .from("quotations")
         .select(
@@ -191,8 +183,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         .eq("quotation_number", formData.quotation_search.trim())
         .eq("status", "approved")
         .single()
-
-      console.log("Quotation query result:", { data: quotationData, error: quotationError })
 
       if (quotationError) {
         if (quotationError.code === "PGRST116") {
@@ -204,26 +194,19 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         return
       }
 
-      if (!quotationData) {
-        toast.error("No se encontró la cotización")
-        return
-      }
-
-      // Buscar el producto usando el unique_code de la cotización
+      // Ahora buscar el producto usando el unique_code de la cotización
       let productData = null
       if (quotationData.unique_code) {
         const { data: product, error: productError } = await supabase
           .from("products")
           .select(`
-            id, code, name, description, sale_price, current_stock, unit_of_measure,
-            brands (name)
-          `)
+          id, code, name, description, sale_price, current_stock, unit_of_measure,
+          brands (name)
+        `)
           .eq("company_id", selectedCompany.id)
           .eq("code", quotationData.unique_code)
           .eq("is_active", true)
           .single()
-
-        console.log("Product search result:", { data: product, error: productError })
 
         if (!productError && product) {
           productData = product
@@ -451,8 +434,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <ProductSelector
               value={formData.product_id}
               onSelect={(product) => {
-                console.log("SaleForm: Product selected:", product)
-
                 setFormData((prev) => ({
                   ...prev,
                   product_id: product.id,
