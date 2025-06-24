@@ -109,13 +109,13 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         companyAccountInfo: "191-38640570-37", // Podrías agregar esto a la base de datos
 
         // Información de la cotización
-        quotationNumber: quotation.quotation_number || quotation.unique_code,
+        quotationNumber: quotation.quotation_number,
         quotationDate: quotation.quotation_date,
         validUntil: quotation.valid_until || undefined,
         status: quotation.status,
 
         // Información del cliente
-        clientCode: quotation.unique_code || "N/A",
+        clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
         clientAddress: quotation.delivery_location || "No especificado",

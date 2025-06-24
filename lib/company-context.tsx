@@ -11,6 +11,7 @@ export interface Company {
   name: string
   code: string
   color: string
+  logo_url?: string | null
 }
 
 interface CompanyContextType {
@@ -69,7 +70,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
       // Si es admin, cargar todas las empresas
       if (user.role === "admin") {
-        const { data, error } = await supabase.from("companies").select("id, name, code, color, ruc").order("name")
+        const { data, error } = await supabase.from("companies").select("id, name, code, color, ruc, logo_url").order("name")
 
         if (error) {
           console.error("Error loading companies:", error)
@@ -101,7 +102,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       else if (user.company_id) {
         const { data, error } = await supabase
           .from("companies")
-          .select("id, name, code, color, ruc")
+          .select("id, name, code, color, ruc, logo_url")
           .eq("id", user.company_id)
           .single()
 

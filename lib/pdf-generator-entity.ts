@@ -131,7 +131,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         data.companyLogoUrl
           ? `
       <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; z-index: 0;">
-        <img src="${data.companyLogoUrl}" alt="Logo" style="width: 300px; height: auto;" crossorigin="anonymous" />
+        <img src="${data.companyLogoUrl}" alt="Logo" style="width: 500px; height: auto;" crossorigin="anonymous" />
       </div>
       `
           : ""
@@ -160,7 +160,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         ${
           data.companyLogoUrl
             ? `
-        <div style="text-align: center; margin-bottom: 15px;">
+        <div style="text-align: center; margin-bottom: 15px; align-items: center; padding-bottom: 10px; display: flex; justify-content: center;">
           <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 120px; max-height: 80px;" crossorigin="anonymous" />
         </div>
         `
@@ -253,7 +253,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
                   (product) => `
                 <tr>
                   <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.quantity.toLocaleString()}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 8px; line-height: 1.2;">${product.description}</td>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: left; font-size: 8px; line-height: 1.6;">${product.description}</td>
                   <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.unit}</td>
                   <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.brand || ""}</td>
                   <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.code || ""}</td>
@@ -272,25 +272,25 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           <table style="width: 100%; font-size: 10px;">
             <tr>
               <td style="width: 70%;"></td>
-              <td style="width: 15%; text-align: right; font-weight: bold; padding: 2px;">Sub Total:</td>
-              <td style="width: 15%; text-align: right; border: 1px solid #000; padding: 2px; font-weight: bold;">${formatCurrency(data.subtotal)}</td>
+              <td style="width: 15%; text-align: right; font-weight: bold; padding: 4px;">Sub Total:</td>
+              <td style="width: 15%; text-align: right; border: 1px solid #000; padding: 5px; font-weight: bold;">${formatCurrency(data.subtotal)}</td>
             </tr>
             <tr>
               <td></td>
               <td style="text-align: right; font-weight: bold; padding: 2px;">I.G.V.:</td>
-              <td style="text-align: right; border: 1px solid #000; padding: 2px; font-weight: bold;">${formatCurrency(data.igv)}</td>
+              <td style="text-align: right; border: 1px solid #000; padding: 5px; font-weight: bold;">${formatCurrency(data.igv)}</td>
             </tr>
             <tr>
               <td></td>
               <td style="text-align: right; font-weight: bold; padding: 2px; font-size: 12px;">TOTAL:</td>
-              <td style="text-align: right; border: 2px solid #000; padding: 2px; font-weight: bold; font-size: 12px; background-color: #f0f0f0;">${formatCurrency(data.total)}</td>
+              <td style="text-align: right; border: 2px solid #000; padding: 5px; font-weight: bold; font-size: 12px; background-color: #f0f0f0;">${formatCurrency(data.total)}</td>
             </tr>
           </table>
         </div>
 
         <!-- Monto en letras -->
         <div style="margin-bottom: 15px; border: 1px solid #000; padding: 5px;">
-          <p style="margin: 0; font-size: 10px; font-weight: bold; text-align: center;">
+          <p style="margin-bottom: 8px; font-size: 10px; font-weight: bold; text-align: center;">
             SON: ${convertNumberToWords(data.total)} SOLES
           </p>
         </div>
@@ -324,9 +324,12 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
-          <div style="display: inline-block; background-color: #0066cc; color: white; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: bold;">
-            VISA
+          <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
+
+
+            BCP
           </div>
+
         </div>
         `
             : ""

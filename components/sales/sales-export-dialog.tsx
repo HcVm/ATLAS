@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import {
   Dialog,
   DialogContent,
@@ -157,11 +157,11 @@ export default function SalesExportDialog({ onExport }: SalesExportDialogProps) 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Fecha Desde</Label>
-              <DatePicker date={dateFrom} setDate={setDateFrom} placeholder="Fecha inicio" />
+              <DatePickerImproved date={dateFrom} setDate={setDateFrom} placeholder="Fecha inicio" />
             </div>
             <div>
               <Label>Fecha Hasta</Label>
-              <DatePicker date={dateTo} setDate={setDateTo} placeholder="Fecha fin" />
+              <DatePickerImproved date={dateTo} setDate={setDateTo} placeholder="Fecha fin" />
             </div>
           </div>
 
