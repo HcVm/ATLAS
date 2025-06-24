@@ -9,14 +9,25 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle } from "lucide-react"
+import {
+  Plus,
+  Search,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Package,
+  Edit,
+  Eye,
+  AlertTriangle,
+  ShoppingCart,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import SaleForm from "@/components/sales/sale-form"
+import MultiProductSaleForm from "@/components/sales/multi-product-sale-form"
 import SaleEditForm from "@/components/sales/sale-edit-form"
 import SalesExportDialog from "@/components/sales/sales-export-dialog"
 import { Label } from "@/components/ui/label"
@@ -30,9 +41,10 @@ interface Sale {
   entity_ruc: string
   entity_executing_unit: string | null
   quotation_code: string
-  quantity: number
-  product_id: string
-  product_name: string
+  total_quantity: number
+  total_items: number
+  display_product_name: string
+  display_product_code: string
   total_sale: number
   payment_method: string
   delivery_date: string | null
@@ -49,11 +61,19 @@ interface Sale {
   warehouse_manager?: string | null
   delivery_term?: string | null
   observations?: string | null
-  product_code?: string | null
-  product_description?: string | null
-  product_brand?: string | null
-  unit_price_with_tax?: number | null
   created_at?: string | null
+  is_multi_product: boolean
+}
+
+interface SaleItem {
+  id: string
+  product_code: string
+  product_name: string
+  product_description: string | null
+  product_brand: string | null
+  quantity: number
+  unit_price_with_tax: number
+  total_amount: number
 }
 
 interface SalesStats {
@@ -79,9 +99,11 @@ export default function SalesPage() {
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [selectedSaleItems, setSelectedSaleItems] = useState<SaleItem[]>([])
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
-  // Check if user has sales access - igual que warehouse
+  // Check if user has sales access
   const hasSalesAccess =
     user?.role === "admin" ||
     user?.role === "supervisor" ||
@@ -89,19 +111,10 @@ export default function SalesPage() {
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones"
 
-  // Get the company to use - igual que warehouse
+  // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   useEffect(() => {
-    // Check if user has sales access - igual que warehouse
-    const hasSalesAccess =
-      user?.role === "admin" ||
-      user?.role === "supervisor" ||
-      user?.departments?.name === "Ventas" ||
-      user?.departments?.name === "Administración" ||
-      user?.departments?.name === "Operaciones"
-
-    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (companyId && hasSalesAccess) {
@@ -117,17 +130,16 @@ export default function SalesPage() {
       setLoading(true)
       console.log("Cargando ventas para empresa:", companyId)
 
+      // Usar la nueva vista que combina ventas con items
       const { data, error } = await supabase
-        .from("sales")
+        .from("sales_with_items")
         .select(`
-        id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
-        quotation_code, exp_siaf, quantity, product_id, product_name, product_code,
-        product_description, product_brand, ocam, physical_order,
-        project_meta, final_destination, warehouse_manager, payment_method,
-        unit_price_with_tax, total_sale, delivery_date, delivery_term,
-        observations, sale_status, created_at,
-        profiles!sales_created_by_fkey (full_name)
-      `)
+          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
+          ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
+          total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
+          profiles!sales_created_by_fkey (full_name)
+        `)
         .eq("company_id", companyId)
         .order("sale_date", { ascending: false })
 
@@ -149,7 +161,7 @@ export default function SalesPage() {
   const fetchStats = async (companyId: string) => {
     try {
       const { data, error } = await supabase
-        .from("sales")
+        .from("sales_with_items")
         .select("total_sale, delivery_date")
         .eq("company_id", companyId)
 
@@ -172,8 +184,72 @@ export default function SalesPage() {
     }
   }
 
+  const fetchSaleDetails = async (saleId: string) => {
+    setLoadingDetails(true)
+    try {
+      // Obtener los items de la venta
+      const { data: items, error: itemsError } = await supabase
+        .from("sale_items")
+        .select(
+          "id, product_code, product_name, product_description, product_brand, quantity, unit_price_with_tax, total_amount",
+        )
+        .eq("sale_id", saleId)
+        .order("product_name")
+
+      if (itemsError) {
+        console.error("Error fetching sale items:", itemsError)
+        // Si no hay items, podría ser una venta simple (legacy)
+        setSelectedSaleItems([])
+      } else {
+        setSelectedSaleItems(items || [])
+      }
+    } catch (error: any) {
+      console.error("Error fetching sale details:", error)
+      toast.error("Error al cargar detalles de la venta")
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+
   const handleEditSale = (sale: Sale) => {
-    setEditingSale(sale)
+    if (sale.is_multi_product) {
+      toast.error("Las ventas multi-producto no se pueden editar desde esta vista. Usa el módulo de ventas avanzado.")
+      return
+    }
+
+    // Convertir a formato compatible con SaleEditForm
+    const editableSale = {
+      id: sale.id,
+      sale_number: sale.sale_number,
+      sale_date: sale.sale_date,
+      entity_id: sale.entity_id,
+      entity_name: sale.entity_name,
+      entity_ruc: sale.entity_ruc,
+      entity_executing_unit: sale.entity_executing_unit,
+      quotation_code: sale.quotation_code,
+      quantity: sale.total_quantity,
+      product_id: "", // No disponible en la vista
+      product_name: sale.display_product_name,
+      product_code: sale.display_product_code,
+      product_description: "",
+      product_brand: "",
+      total_sale: sale.total_sale,
+      payment_method: sale.payment_method,
+      delivery_date: sale.delivery_date,
+      sale_status: sale.sale_status,
+      exp_siaf: sale.exp_siaf,
+      ocam: sale.ocam,
+      physical_order: sale.physical_order,
+      project_meta: sale.project_meta,
+      final_destination: sale.final_destination,
+      warehouse_manager: sale.warehouse_manager,
+      delivery_term: sale.delivery_term,
+      observations: sale.observations,
+      unit_price_with_tax: sale.total_quantity > 0 ? sale.total_sale / sale.total_quantity : 0,
+      created_at: sale.created_at,
+    }
+
+    setEditingSale(editableSale)
     setShowEditDialog(true)
   }
 
@@ -184,16 +260,17 @@ export default function SalesPage() {
     fetchStats(companyToUse?.id || "")
   }
 
-  const handleViewDetails = (sale: Sale) => {
+  const handleViewDetails = async (sale: Sale) => {
     setSelectedSale(sale)
     setShowDetailsDialog(true)
+    await fetchSaleDetails(sale.id)
   }
 
   const filteredSales = sales.filter(
     (sale) =>
       sale.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.quotation_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.display_product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.entity_ruc.includes(searchTerm) ||
       (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase())),
   )
@@ -304,7 +381,7 @@ export default function SalesPage() {
                     Completa todos los campos para registrar una nueva venta
                   </DialogDescription>
                 </DialogHeader>
-                <SaleForm
+                <MultiProductSaleForm
                   onSuccess={() => {
                     setShowNewSaleDialog(false)
                     fetchSales(companyToUse?.id || "")
@@ -408,7 +485,8 @@ export default function SalesPage() {
                     <TableHead className="text-slate-700 dark:text-slate-200">Cliente</TableHead>
                     <TableHead className="text-slate-700 dark:text-slate-200">RUC</TableHead>
                     <TableHead className="text-slate-700 dark:text-slate-200">N° Cotización</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200">Producto</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Producto(s)</TableHead>
+                    <TableHead className="text-slate-700 dark:text-slate-200">Items</TableHead>
                     <TableHead className="text-slate-700 dark:text-slate-200">Cantidad</TableHead>
                     <TableHead className="text-slate-700 dark:text-slate-200">Total</TableHead>
                     <TableHead className="text-slate-700 dark:text-slate-200">Estado</TableHead>
@@ -418,7 +496,7 @@ export default function SalesPage() {
                 <TableBody>
                   {filteredSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8">
+                      <TableCell colSpan={11} className="text-center py-8">
                         <div className="text-slate-500 dark:text-slate-400">
                           {searchTerm
                             ? "No se encontraron ventas que coincidan con la búsqueda"
@@ -445,17 +523,32 @@ export default function SalesPage() {
                         <TableCell className="font-medium text-slate-700 dark:text-slate-200">
                           {sale.quotation_code}
                         </TableCell>
-                        <TableCell
-                          className="max-w-xs truncate text-slate-600 dark:text-slate-300"
-                          title={sale.product_name}
-                        >
-                          {sale.product_name}
+                        <TableCell className="max-w-xs">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="truncate text-slate-600 dark:text-slate-300"
+                              title={sale.display_product_name}
+                            >
+                              {sale.display_product_name}
+                            </span>
+                            {sale.is_multi_product && (
+                              <Badge variant="secondary" className="text-xs">
+                                <ShoppingCart className="h-3 w-3 mr-1" />
+                                Multi
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs">
+                            {sale.total_items || 1}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-300">
-                          {sale.quantity.toLocaleString()}
+                          {(sale.total_quantity || 0).toLocaleString()}
                         </TableCell>
                         <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -487,6 +580,7 @@ export default function SalesPage() {
                               size="sm"
                               onClick={() => handleEditSale(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              disabled={sale.is_multi_product}
                             >
                               <Edit className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </Button>
@@ -522,7 +616,7 @@ export default function SalesPage() {
 
         {/* Sale Details Dialog */}
         <Dialog open={showDetailsDialog} onOpenChange={() => setShowDetailsDialog(false)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
             <DialogHeader>
               <DialogTitle className="text-slate-800 dark:text-slate-100">Detalles de la Venta</DialogTitle>
               <DialogDescription className="text-slate-600 dark:text-slate-300">
@@ -535,8 +629,14 @@ export default function SalesPage() {
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                      <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                         Venta #{selectedSale.sale_number || "N/A"}
+                        {selectedSale.is_multi_product && (
+                          <Badge variant="secondary" className="text-sm">
+                            <ShoppingCart className="h-4 w-4 mr-1" />
+                            Multi-Producto
+                          </Badge>
+                        )}
                       </h3>
                       <p className="text-slate-600 dark:text-slate-300">
                         {format(new Date(selectedSale.sale_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}
@@ -566,6 +666,12 @@ export default function SalesPage() {
                     </Badge>
                     <span className="text-sm text-slate-600 dark:text-slate-300">
                       Vendedor: {selectedSale.profiles?.full_name || "N/A"}
+                    </span>
+                    <span className="text-sm text-slate-600 dark:text-slate-300">
+                      Items: {selectedSale.total_items || 1}
+                    </span>
+                    <span className="text-sm text-slate-600 dark:text-slate-300">
+                      Cantidad Total: {selectedSale.total_quantity.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -610,11 +716,120 @@ export default function SalesPage() {
                     </CardContent>
                   </Card>
 
-                  {/* Información del Producto */}
+                  {/* Información Financiera */}
                   <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
-                        <div className="w-2 h-2 bg-slate-500 rounded-full"></div>
+                        <DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        Información Financiera
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Items</p>
+                          <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
+                            {selectedSale.total_items || 1}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Cantidad</p>
+                          <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
+                            {selectedSale.total_quantity.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total</p>
+                        <p className="text-xl font-bold text-slate-700 dark:text-slate-200">
+                          S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                            Método de Pago:
+                          </span>
+                          <Badge variant={selectedSale.payment_method === "CONTADO" ? "default" : "secondary"}>
+                            {selectedSale.payment_method}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Productos de la Venta */}
+                {selectedSaleItems.length > 0 ? (
+                  <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                        <Package className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        Productos Vendidos
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingDetails ? (
+                        <div className="text-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600 mx-auto"></div>
+                          <p className="text-sm text-slate-600 mt-2">Cargando productos...</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50">
+                                <TableHead className="text-slate-700 dark:text-slate-200">Código</TableHead>
+                                <TableHead className="text-slate-700 dark:text-slate-200">Producto</TableHead>
+                                <TableHead className="text-slate-700 dark:text-slate-200">Marca</TableHead>
+                                <TableHead className="text-slate-700 dark:text-slate-200">Cantidad</TableHead>
+                                <TableHead className="text-slate-700 dark:text-slate-200">Precio Unit.</TableHead>
+                                <TableHead className="text-slate-700 dark:text-slate-200">Total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedSaleItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="font-mono text-sm text-slate-600 dark:text-slate-300">
+                                    {item.product_code}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div>
+                                      <p className="font-medium text-slate-800 dark:text-slate-100">
+                                        {item.product_name}
+                                      </p>
+                                      {item.product_description && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          {item.product_description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-slate-600 dark:text-slate-300">
+                                    {item.product_brand || "N/A"}
+                                  </TableCell>
+                                  <TableCell className="text-slate-600 dark:text-slate-300">
+                                    {item.quantity.toLocaleString()}
+                                  </TableCell>
+                                  <TableCell className="text-slate-600 dark:text-slate-300">
+                                    S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  </TableCell>
+                                  <TableCell className="font-medium text-slate-700 dark:text-slate-200">
+                                    S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                        <Package className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                         Producto
                       </CardTitle>
                     </CardHeader>
@@ -624,85 +839,39 @@ export default function SalesPage() {
                           Nombre
                         </Label>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {selectedSale.product_name}
+                          {selectedSale.display_product_name}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                          Código
+                        </Label>
+                        <p className="text-sm text-slate-700 dark:text-slate-200">
+                          {selectedSale.display_product_code}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                            Código
-                          </Label>
-                          <p className="text-sm text-slate-700 dark:text-slate-200">
-                            {selectedSale.product_code || "N/A"}
+                        <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Cantidad</p>
+                          <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
+                            {selectedSale.total_quantity.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                            Marca
-                          </Label>
-                          <p className="text-sm text-slate-700 dark:text-slate-200">
-                            {selectedSale.product_brand || "N/A"}
+                        <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Precio Unit.</p>
+                          <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
+                            S/{" "}
+                            {selectedSale.total_quantity > 0
+                              ? (selectedSale.total_sale / selectedSale.total_quantity).toLocaleString("es-PE", {
+                                  minimumFractionDigits: 2,
+                                })
+                              : "0.00"}
                           </p>
                         </div>
                       </div>
-                      {selectedSale.product_description && (
-                        <div>
-                          <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                            Descripción
-                          </Label>
-                          <p className="text-sm text-slate-700 dark:text-slate-200">
-                            {selectedSale.product_description}
-                          </p>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
-                </div>
-
-                {/* Información Financiera */}
-                <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
-                      <DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                      Información Financiera
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="text-center p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Cantidad</p>
-                        <p className="text-2xl font-bold text-slate-700 dark:text-slate-200">
-                          {selectedSale.quantity.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">unidades</p>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Precio Unitario</p>
-                        <p className="text-2xl font-bold text-slate-700 dark:text-slate-200">
-                          S/{" "}
-                          {selectedSale.unit_price_with_tax?.toLocaleString("es-PE", { minimumFractionDigits: 2 }) ||
-                            "N/A"}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">con IGV</p>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total</p>
-                        <p className="text-2xl font-bold text-slate-700 dark:text-slate-200">
-                          S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">monto final</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Método de Pago:</span>
-                        <Badge variant={selectedSale.payment_method === "CONTADO" ? "default" : "secondary"}>
-                          {selectedSale.payment_method}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                )}
 
                 {/* Información de Entrega y Documentos */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -73,7 +73,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     quotation_code: "",
     quotation_search: "",
     exp_siaf: "",
-    quantity: "",
+    quantity: "1",
     product_id: "",
     product_code: "",
     product_name: "",
@@ -85,7 +85,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     final_destination: "",
     warehouse_manager: "",
     payment_method: "",
-    unit_price_with_tax: "",
+    unit_price_with_tax: "0",
     delivery_date: undefined as Date | undefined,
     delivery_term: "",
     observations: "",
@@ -155,10 +155,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     setSearchingQuotation(true)
 
     try {
+      // Primero buscar la cotización base
       const { data: quotationData, error: quotationError } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, status, product_description, unique_code, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("quotation_number", formData.quotation_search.trim())
@@ -182,16 +183,35 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         return
       }
 
-      // Llenar automáticamente los campos de la cotización
+      // Verificar si es una cotización multi-producto
+      const { data: quotationItems, error: itemsError } = await supabase
+        .from("quotation_items")
+        .select(
+          "product_id, product_code, product_name, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+        )
+        .eq("quotation_id", quotationData.id)
+
+      if (itemsError) {
+        console.error("Error checking quotation items:", itemsError)
+      }
+
+      // Si tiene múltiples productos, mostrar advertencia
+      if (quotationItems && quotationItems.length > 1) {
+        toast.error(
+          "Esta cotización tiene múltiples productos. Usa el formulario de venta multi-producto para procesarla completa, o completa manualmente los datos del producto que deseas vender.",
+        )
+      }
+
+      // Llenar automáticamente los campos de la cotización (datos básicos)
       setFormData((prev) => ({
         ...prev,
         quotation_id: quotationData.id,
         quotation_code: quotationData.quotation_number,
         entity_name: quotationData.entity_name,
         entity_ruc: quotationData.entity_ruc,
-        product_description: quotationData.product_description,
+        product_description: quotationData.product_description || "",
         product_code: quotationData.unique_code || "",
-        quantity: quotationData.quantity.toString(),
+        quantity: (quotationData.quantity || 1).toString(),
         unit_price_with_tax: (
           quotationData.final_unit_price_with_tax ||
           quotationData.offer_unit_price_with_tax ||
@@ -199,7 +219,24 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         ).toString(),
       }))
 
-      toast.success("Cotización encontrada. Los datos del producto deben completarse manualmente")
+      if (quotationItems && quotationItems.length === 1) {
+        // Si solo tiene un producto, llenar con los datos del item
+        const item = quotationItems[0]
+        setFormData((prev) => ({
+          ...prev,
+          product_code: item.product_code || prev.product_code,
+          product_name: item.product_name || "",
+          quantity: (item.quantity || 1).toString(),
+          unit_price_with_tax: (item.final_unit_price_with_tax || item.offer_unit_price_with_tax || 0).toString(),
+        }))
+        toast.success("Cotización encontrada y datos cargados automáticamente")
+      } else if (quotationItems && quotationItems.length > 1) {
+        toast.warning(
+          "Cotización encontrada con múltiples productos. Completa manualmente los datos del producto específico que deseas vender.",
+        )
+      } else {
+        toast.success("Cotización encontrada. Los datos del producto deben completarse manualmente")
+      }
     } catch (error: any) {
       console.error("Error searching quotation:", error)
       toast.error("Error al buscar la cotización: " + (error.message || "Error desconocido"))
@@ -218,6 +255,19 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       // Validaciones
       if (!formData.entity_id || !formData.product_code || !formData.quotation_code) {
         toast.error("Por favor completa todos los campos obligatorios")
+        return
+      }
+
+      const quantity = Number.parseInt(formData.quantity) || 0
+      const unitPrice = Number.parseFloat(formData.unit_price_with_tax) || 0
+
+      if (quantity < 0) {
+        toast.error("La cantidad no puede ser negativa")
+        return
+      }
+
+      if (unitPrice < 0) {
+        toast.error("El precio unitario no puede ser negativo")
         return
       }
 

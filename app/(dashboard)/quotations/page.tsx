@@ -34,7 +34,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import QuotationForm from "@/components/quotations/quotation-form"
+import MultiProductQuotationForm from "@/components/quotations/multi-product-quotation-form"
 import { Edit } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -49,11 +49,11 @@ interface Quotation {
   entity_ruc: string
   delivery_location: string
   unique_code: string
-  product_description: string
-  product_brand: string
-  quantity: number
-  platform_unit_price_with_tax: number
-  platform_total: number
+  product_description: string | null
+  product_brand: string | null
+  quantity: number | null
+  platform_unit_price_with_tax: number | null
+  platform_total: number | null
   supplier_unit_price_with_tax: number | null
   supplier_total: number | null
   offer_unit_price_with_tax: number | null
@@ -64,6 +64,8 @@ interface Quotation {
   valid_until: string | null
   created_by: string
   observations: string | null
+  is_multi_product: boolean | null
+  items_count: number | null
   // Campos de ruta simplificados
   route_origin_address?: string | null
   route_destination_address?: string | null
@@ -76,6 +78,17 @@ interface Quotation {
     full_name: string
   }
   reference_image_url: string | null
+  // Campos agregados para multi-producto
+  quotation_items?: Array<{
+    id: string
+    product_name: string
+    product_description: string
+    quantity: number
+    platform_unit_price_with_tax: number
+    platform_total: number
+    offer_unit_price_with_tax?: number
+    offer_total_with_tax?: number
+  }>
 }
 
 interface QuotationsStats {
@@ -148,9 +161,19 @@ export default function QuotationsPage() {
       const { data, error } = await supabase
         .from("quotations")
         .select(`
-       *,
-       profiles!quotations_created_by_fkey (full_name)
-     `)
+        *,
+        profiles!quotations_created_by_fkey (full_name),
+        quotation_items (
+          id,
+          product_name,
+          product_description,
+          quantity,
+          platform_unit_price_with_tax,
+          platform_total,
+          offer_unit_price_with_tax,
+          offer_total_with_tax
+        )
+      `)
         .eq("company_id", companyId)
         .order("quotation_date", { ascending: false })
 
@@ -172,8 +195,8 @@ export default function QuotationsPage() {
   const fetchStats = async (companyId: string) => {
     try {
       const { data, error } = await supabase
-        .from("quotations")
-        .select("status, offer_total_with_tax")
+        .from("quotations_with_totals")
+        .select("status, total_amount")
         .eq("company_id", companyId)
 
       if (error) throw error
@@ -182,7 +205,7 @@ export default function QuotationsPage() {
       const draftQuotations = data?.filter((q) => q.status === "draft").length || 0
       const sentQuotations = data?.filter((q) => q.status === "sent").length || 0
       const approvedQuotations = data?.filter((q) => q.status === "approved").length || 0
-      const totalQuotedAmount = data?.reduce((sum, q) => sum + (q.offer_total_with_tax || 0), 0) || 0
+      const totalQuotedAmount = data?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0
       const averageQuotation = totalQuotations > 0 ? totalQuotedAmount / totalQuotations : 0
 
       setStats({
@@ -216,7 +239,7 @@ export default function QuotationsPage() {
       quotation.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.quotation_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.unique_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quotation.product_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (quotation.product_description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.entity_ruc.includes(searchTerm),
   )
 
@@ -378,9 +401,9 @@ export default function QuotationsPage() {
                 </DialogDescription>
               </DialogHeader>
               {showNewQuotationDialog ? (
-                <QuotationForm
+                <MultiProductQuotationForm
                   onSuccess={() => {
-                    console.log("QuotationForm onSuccess called")
+                    console.log("MultiProductQuotationForm onSuccess called")
                     setShowNewQuotationDialog(false)
                     if (companyId) {
                       fetchQuotations(companyId)
@@ -522,9 +545,15 @@ export default function QuotationsPage() {
                         <TableCell className="text-slate-600">{quotation.entity_ruc}</TableCell>
                         <TableCell className="font-medium text-slate-700">{quotation.unique_code}</TableCell>
                         <TableCell className="max-w-xs truncate text-slate-600" title={quotation.product_description}>
-                          {quotation.product_description}
+                          {quotation.is_multi_product
+                            ? `${quotation.items_count || 0} productos`
+                            : quotation.product_description || "Sin descripción"}
                         </TableCell>
-                        <TableCell className="text-slate-600">{quotation.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-slate-600">
+                          {quotation.is_multi_product
+                            ? `${quotation.items_count || 0} items`
+                            : quotation.quantity?.toLocaleString() || "0"}
+                        </TableCell>
                         <TableCell className="font-medium text-slate-700">
                           {quotation.offer_total_with_tax
                             ? `S/ ${quotation.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
@@ -703,42 +732,104 @@ export default function QuotationsPage() {
                     {/* Product Information */}
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
                       <CardHeader>
-                        <CardTitle className="text-lg text-slate-800">Información del Producto</CardTitle>
+                        <CardTitle className="text-lg text-slate-800">
+                          {selectedQuotation.is_multi_product
+                            ? "Productos en la Cotización"
+                            : "Información del Producto"}
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium text-slate-600">Descripción</Label>
-                            <p className="text-sm text-slate-700">{selectedQuotation.product_description}</p>
+                        {selectedQuotation.is_multi_product ? (
+                          // Multi-product display
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                                <p className="text-sm text-slate-600">Total de Productos</p>
+                                <p className="text-xl font-bold text-slate-700">{selectedQuotation.items_count || 0}</p>
+                              </div>
+                              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                                <p className="text-sm text-slate-600">Tipo</p>
+                                <p className="text-lg font-medium text-slate-700">Multi-Producto</p>
+                              </div>
+                              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                                <p className="text-sm text-slate-600">Estado</p>
+                                <div className="mt-1">{getStatusBadge(selectedQuotation.status)}</div>
+                              </div>
+                            </div>
+
+                            {selectedQuotation.quotation_items && selectedQuotation.quotation_items.length > 0 && (
+                              <div className="mt-4">
+                                <h4 className="font-medium text-slate-700 mb-2">Lista de Productos:</h4>
+                                <div className="space-y-2">
+                                  {selectedQuotation.quotation_items.map((item, index) => (
+                                    <div
+                                      key={item.id || index}
+                                      className="p-3 bg-slate-50 rounded-lg border border-slate-200"
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-slate-800">{item.product_name}</p>
+                                          <p className="text-sm text-slate-600">{item.product_description}</p>
+                                        </div>
+                                        <div className="text-right ml-4">
+                                          <p className="text-sm text-slate-600">
+                                            Cantidad: {item.quantity?.toLocaleString() || 0}
+                                          </p>
+                                          <p className="text-sm font-medium text-slate-700">
+                                            S/{" "}
+                                            {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
+                                              "es-PE",
+                                              { minimumFractionDigits: 2 },
+                                            )}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <Label className="text-sm font-medium text-slate-600">Marca</Label>
-                            <p className="text-sm text-slate-700">
-                              {selectedQuotation.product_brand || "No especificada"}
-                            </p>
-                          </div>
-                        </div>
-                        {selectedQuotation.reference_image_url && (
-                          <div>
-                            <Label className="text-sm font-medium text-slate-600">Imagen Referencial</Label>
-                            <div className="mt-2 w-full max-w-md">
-                              <img
-                                src={selectedQuotation.reference_image_url || "/placeholder.svg"}
-                                alt={selectedQuotation.product_description}
-                                className="w-full h-48 object-contain bg-slate-50 rounded-lg border border-slate-200"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none"
-                                }}
-                              />
+                        ) : (
+                          // Single product display
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Descripción</Label>
+                                <p className="text-sm text-slate-700">
+                                  {selectedQuotation.product_description || "Sin descripción"}
+                                </p>
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Marca</Label>
+                                <p className="text-sm text-slate-700">
+                                  {selectedQuotation.product_brand || "No especificada"}
+                                </p>
+                              </div>
+                            </div>
+                            {selectedQuotation.reference_image_url && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Imagen Referencial</Label>
+                                <div className="mt-2 w-full max-w-md">
+                                  <img
+                                    src={selectedQuotation.reference_image_url || "/placeholder.svg"}
+                                    alt={selectedQuotation.product_description || "Producto"}
+                                    className="w-full h-48 object-contain bg-slate-50 rounded-lg border border-slate-200"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none"
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            <div>
+                              <Label className="text-sm font-medium text-slate-600">Cantidad</Label>
+                              <p className="text-lg font-bold text-slate-800">
+                                {selectedQuotation.quantity?.toLocaleString() || 0} unidades
+                              </p>
                             </div>
                           </div>
                         )}
-                        <div>
-                          <Label className="text-sm font-medium text-slate-600">Cantidad</Label>
-                          <p className="text-lg font-bold text-slate-800">
-                            {selectedQuotation.quantity.toLocaleString()} unidades
-                          </p>
-                        </div>
                       </CardContent>
                     </Card>
 
@@ -748,88 +839,173 @@ export default function QuotationsPage() {
                         <CardTitle className="text-lg text-slate-800">Información de Precios</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-slate-50">
-                                <TableHead className="text-slate-700">Concepto</TableHead>
-                                <TableHead className="text-slate-700">Precio Unitario</TableHead>
-                                <TableHead className="text-slate-700">Total</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              <TableRow>
-                                <TableCell className="font-medium text-slate-700">Precio Plataforma</TableCell>
-                                <TableCell className="text-slate-600">
+                        {selectedQuotation.is_multi_product ? (
+                          // Multi-product pricing summary
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <p className="text-sm text-slate-600">Total Plataforma</p>
+                                <p className="text-xl font-bold text-slate-700">
                                   S/{" "}
-                                  {selectedQuotation.platform_unit_price_with_tax.toLocaleString("es-PE", {
+                                  {(selectedQuotation.platform_total || 0).toLocaleString("es-PE", {
                                     minimumFractionDigits: 2,
                                   })}
-                                </TableCell>
-                                <TableCell className="text-slate-600">
+                                </p>
+                              </div>
+                              <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <p className="text-sm text-slate-600">Total Proveedor</p>
+                                <p className="text-xl font-bold text-slate-700">
                                   S/{" "}
-                                  {selectedQuotation.platform_total.toLocaleString("es-PE", {
+                                  {(selectedQuotation.supplier_total || 0).toLocaleString("es-PE", {
                                     minimumFractionDigits: 2,
                                   })}
-                                </TableCell>
-                              </TableRow>
+                                </p>
+                              </div>
+                              <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                                <p className="text-sm text-primary">Total Ofertado</p>
+                                <p className="text-xl font-bold text-primary">
+                                  S/{" "}
+                                  {(
+                                    selectedQuotation.offer_total_with_tax ||
+                                    selectedQuotation.platform_total ||
+                                    0
+                                  ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
 
-                              {selectedQuotation.supplier_unit_price_with_tax && (
-                                <TableRow>
-                                  <TableCell className="font-medium text-slate-700">Precio Proveedor</TableCell>
-                                  <TableCell className="text-slate-600">
-                                    S/{" "}
-                                    {selectedQuotation.supplier_unit_price_with_tax.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    })}
-                                  </TableCell>
-                                  <TableCell className="text-slate-600">
-                                    S/{" "}
-                                    {selectedQuotation.supplier_total?.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    }) || "0.00"}
-                                  </TableCell>
-                                </TableRow>
-                              )}
-
-                              {selectedQuotation.offer_unit_price_with_tax && (
+                            {selectedQuotation.quotation_items && selectedQuotation.quotation_items.length > 0 && (
+                              <div className="mt-6">
+                                <h4 className="font-medium text-slate-700 mb-3">Detalle por Producto:</h4>
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-slate-50">
+                                        <TableHead className="text-slate-700">Producto</TableHead>
+                                        <TableHead className="text-slate-700">Cantidad</TableHead>
+                                        <TableHead className="text-slate-700">P. Unitario</TableHead>
+                                        <TableHead className="text-slate-700">Total</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {selectedQuotation.quotation_items.map((item, index) => (
+                                        <TableRow key={item.id || index}>
+                                          <TableCell className="font-medium text-slate-700">
+                                            {item.product_name}
+                                          </TableCell>
+                                          <TableCell className="text-slate-600">
+                                            {item.quantity?.toLocaleString() || 0}
+                                          </TableCell>
+                                          <TableCell className="text-slate-600">
+                                            S/{" "}
+                                            {(
+                                              item.offer_unit_price_with_tax ||
+                                              item.platform_unit_price_with_tax ||
+                                              0
+                                            ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                          </TableCell>
+                                          <TableCell className="font-medium text-slate-700">
+                                            S/{" "}
+                                            {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
+                                              "es-PE",
+                                              { minimumFractionDigits: 2 },
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          // Single product pricing table
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
                                 <TableRow className="bg-slate-50">
-                                  <TableCell className="font-bold text-slate-800">Precio Oferta</TableCell>
-                                  <TableCell className="font-bold text-slate-700">
-                                    S/{" "}
-                                    {selectedQuotation.offer_unit_price_with_tax.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    })}
-                                  </TableCell>
-                                  <TableCell className="font-bold text-slate-700">
-                                    S/{" "}
-                                    {selectedQuotation.offer_total_with_tax?.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    }) || "0.00"}
-                                  </TableCell>
+                                  <TableHead className="text-slate-700">Concepto</TableHead>
+                                  <TableHead className="text-slate-700">Precio Unitario</TableHead>
+                                  <TableHead className="text-slate-700">Total</TableHead>
                                 </TableRow>
-                              )}
+                              </TableHeader>
+                              <TableBody>
+                                {selectedQuotation.platform_unit_price_with_tax && (
+                                  <TableRow>
+                                    <TableCell className="font-medium text-slate-700">Precio Plataforma</TableCell>
+                                    <TableCell className="text-slate-600">
+                                      S/{" "}
+                                      {selectedQuotation.platform_unit_price_with_tax.toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">
+                                      S/{" "}
+                                      {(selectedQuotation.platform_total || 0).toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
 
-                              {selectedQuotation.final_unit_price_with_tax && (
-                                <TableRow className="bg-slate-100">
-                                  <TableCell className="font-bold text-slate-800">Precio Final</TableCell>
-                                  <TableCell className="font-bold text-slate-700">
-                                    S/{" "}
-                                    {selectedQuotation.final_unit_price_with_tax.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    })}
-                                  </TableCell>
-                                  <TableCell className="font-bold text-slate-700">
-                                    S/{" "}
-                                    {(
-                                      selectedQuotation.final_unit_price_with_tax * selectedQuotation.quantity
-                                    ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
+                                {selectedQuotation.supplier_unit_price_with_tax && (
+                                  <TableRow>
+                                    <TableCell className="font-medium text-slate-700">Precio Proveedor</TableCell>
+                                    <TableCell className="text-slate-600">
+                                      S/{" "}
+                                      {selectedQuotation.supplier_unit_price_with_tax.toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">
+                                      S/{" "}
+                                      {(selectedQuotation.supplier_total || 0).toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+
+                                {selectedQuotation.offer_unit_price_with_tax && (
+                                  <TableRow className="bg-slate-50">
+                                    <TableCell className="font-bold text-slate-800">Precio Oferta</TableCell>
+                                    <TableCell className="font-bold text-slate-700">
+                                      S/{" "}
+                                      {selectedQuotation.offer_unit_price_with_tax.toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                    <TableCell className="font-bold text-slate-700">
+                                      S/{" "}
+                                      {(selectedQuotation.offer_total_with_tax || 0).toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+
+                                {selectedQuotation.final_unit_price_with_tax && (
+                                  <TableRow className="bg-slate-100">
+                                    <TableCell className="font-bold text-slate-800">Precio Final</TableCell>
+                                    <TableCell className="font-bold text-slate-700">
+                                      S/{" "}
+                                      {selectedQuotation.final_unit_price_with_tax.toLocaleString("es-PE", {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </TableCell>
+                                    <TableCell className="font-bold text-slate-700">
+                                      S/{" "}
+                                      {(
+                                        selectedQuotation.final_unit_price_with_tax * (selectedQuotation.quantity || 0)
+                                      ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
 
                         {selectedQuotation.budget_ceiling && (
                           <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
