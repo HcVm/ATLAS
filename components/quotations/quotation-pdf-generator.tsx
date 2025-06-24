@@ -26,8 +26,6 @@ interface QuotationItem {
   offer_unit_price_with_tax?: number | null
   offer_total_with_tax?: number | null
   final_unit_price_with_tax?: number | null
-  budget_ceiling_unit_price_with_tax?: number | null
-  budget_ceiling_total?: number | null
   reference_image_url?: string | null
 }
 
@@ -147,9 +145,6 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
             providerTotal: supplierTotal > 0 ? supplierTotal : undefined,
             offerTotal: offerTotal > 0 ? offerTotal : undefined,
             finalTotal: finalTotal,
-            budgetCeilingUnitPrice: item.budget_ceiling_unit_price_with_tax || undefined,
-            budgetCeilingTotal: item.budget_ceiling_total || undefined,
-            referenceImageUrl: item.reference_image_url || undefined,
           }
         })
 
@@ -160,7 +155,6 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         pdfData.providerGrandTotal = pdfData.items.reduce((sum, item) => sum + (item.providerTotal || 0), 0)
         pdfData.offerGrandTotal = pdfData.items.reduce((sum, item) => sum + (item.offerTotal || 0), 0)
         pdfData.finalGrandTotal = pdfData.items.reduce((sum, item) => sum + item.finalTotal, 0)
-        pdfData.budgetCeilingGrandTotal = pdfData.items.reduce((sum, item) => sum + (item.budgetCeilingTotal || 0), 0)
 
         console.log("Calculated totals:", {
           platform: pdfData.platformGrandTotal,

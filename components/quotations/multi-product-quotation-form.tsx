@@ -49,8 +49,6 @@ interface QuotationItem {
   offer_unit_price_with_tax: number | null
   offer_total_with_tax: number | null
   final_unit_price_with_tax: number | null
-  budget_ceiling_unit_price_with_tax: number | null
-  budget_ceiling_total: number | null
   reference_image_url: string | null
 }
 
@@ -88,8 +86,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     supplier_unit_price_with_tax: null,
     offer_unit_price_with_tax: null,
     final_unit_price_with_tax: null,
-    budget_ceiling_unit_price_with_tax: null,
-    budget_ceiling_total: null,
     reference_image_url: null,
   })
 
@@ -98,7 +94,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     platform_total: 0,
     supplier_total: 0,
     offer_total_with_tax: 0,
-    budget_ceiling_total: 0,
     total_items: 0,
   })
 
@@ -107,13 +102,11 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     const platformTotal = items.reduce((sum, item) => sum + item.platform_total, 0)
     const supplierTotal = items.reduce((sum, item) => sum + (item.supplier_total || 0), 0)
     const offerTotal = items.reduce((sum, item) => sum + (item.offer_total_with_tax || 0), 0)
-    const budgetCeilingTotal = items.reduce((sum, item) => sum + (item.budget_ceiling_total || 0), 0)
 
     setTotals({
       platform_total: platformTotal,
       supplier_total: supplierTotal,
       offer_total_with_tax: offerTotal,
-      budget_ceiling_total: budgetCeilingTotal,
       total_items: items.length,
     })
   }, [items])
@@ -124,13 +117,11 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     const platformPrice = item.platform_unit_price_with_tax || 0
     const supplierPrice = item.supplier_unit_price_with_tax || 0
     const offerPrice = item.offer_unit_price_with_tax || 0
-    const budgetCeilingPrice = item.budget_ceiling_unit_price_with_tax || 0
 
     return {
       platform_total: quantity * platformPrice,
       supplier_total: supplierPrice > 0 ? quantity * supplierPrice : null,
       offer_total_with_tax: offerPrice > 0 ? quantity * offerPrice : null,
-      budget_ceiling_total: budgetCeilingPrice > 0 ? quantity * budgetCeilingPrice : null,
     }
   }
 
@@ -156,8 +147,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
       offer_unit_price_with_tax: currentItem.offer_unit_price_with_tax,
       offer_total_with_tax: calculatedTotals.offer_total_with_tax,
       final_unit_price_with_tax: currentItem.final_unit_price_with_tax,
-      budget_ceiling_unit_price_with_tax: currentItem.budget_ceiling_unit_price_with_tax,
-      budget_ceiling_total: calculatedTotals.budget_ceiling_total,
       reference_image_url: currentItem.reference_image_url,
     }
 
@@ -175,8 +164,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
       supplier_unit_price_with_tax: null,
       offer_unit_price_with_tax: null,
       final_unit_price_with_tax: null,
-      budget_ceiling_unit_price_with_tax: null,
-      budget_ceiling_total: null,
       reference_image_url: null,
     })
 
@@ -222,7 +209,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         platform_total: totals.platform_total,
         supplier_total: totals.supplier_total || null,
         offer_total_with_tax: totals.offer_total_with_tax || null,
-        budget_ceiling_total: totals.budget_ceiling_total || null,
         budget_ceiling: formData.budget_ceiling ? Number.parseFloat(formData.budget_ceiling) : null,
         status: formData.status,
         valid_until: formData.valid_until?.toISOString().split("T")[0] || null,
@@ -258,8 +244,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         offer_unit_price_with_tax: item.offer_unit_price_with_tax,
         offer_total_with_tax: item.offer_total_with_tax,
         final_unit_price_with_tax: item.final_unit_price_with_tax,
-        budget_ceiling_unit_price_with_tax: item.budget_ceiling_unit_price_with_tax,
-        budget_ceiling_total: item.budget_ceiling_total,
         reference_image_url: item.reference_image_url,
       }))
 
@@ -372,7 +356,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label>Precio Plataforma</Label>
                 <Input
@@ -432,21 +416,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                   placeholder="Opcional"
                 />
               </div>
-              <div>
-                <Label>Techo Presupuestal</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={currentItem.budget_ceiling_unit_price_with_tax || ""}
-                  onChange={(e) =>
-                    setCurrentItem((prev) => ({
-                      ...prev,
-                      budget_ceiling_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                    }))
-                  }
-                  placeholder="Precio máximo"
-                />
-              </div>
             </div>
 
             <Button
@@ -476,7 +445,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                     <TableHead>Cantidad</TableHead>
                     <TableHead>P. Plataforma</TableHead>
                     <TableHead>P. Oferta</TableHead>
-                    <TableHead>Techo Presup.</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
@@ -502,11 +470,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                       <TableCell>
                         {item.offer_unit_price_with_tax
                           ? `S/ ${item.offer_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {item.budget_ceiling_unit_price_with_tax
-                          ? `S/ ${item.budget_ceiling_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
                           : "-"}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -542,7 +505,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="text-center p-3 bg-slate-50 rounded-lg">
                   <p className="text-sm text-slate-600">Total Items</p>
                   <p className="text-xl font-bold">{totals.total_items}</p>
@@ -563,12 +526,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                   <p className="text-sm text-primary">Total Ofertado</p>
                   <p className="text-xl font-bold text-primary">
                     S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-orange-50 rounded-lg">
-                  <p className="text-sm text-orange-600">Total Techo Presup.</p>
-                  <p className="text-xl font-bold text-orange-600">
-                    S/ {totals.budget_ceiling_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>

@@ -42,16 +42,12 @@ export interface QuotationPDFData {
     providerTotal?: number
     offerTotal?: number
     finalTotal: number
-    budgetCeilingUnitPrice?: number
-    budgetCeilingTotal?: number
-    referenceImageUrl?: string
   }>
 
   // Totales generales
   platformGrandTotal?: number
   providerGrandTotal?: number
   offerGrandTotal?: number
-  budgetCeilingGrandTotal?: number
   finalGrandTotal: number
 
   // Información de ruta (opcional)
@@ -158,8 +154,6 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
   const hasProviderPrices =
     isMultiProduct && data.items?.some((item) => item.providerUnitPrice && item.providerUnitPrice > 0)
   const hasOfferPrices = isMultiProduct && data.items?.some((item) => item.offerUnitPrice && item.offerUnitPrice > 0)
-  const hasBudgetCeilingPrices =
-    isMultiProduct && data.items?.some((item) => item.budgetCeilingUnitPrice && item.budgetCeilingUnitPrice > 0)
 
   console.log("PDF Generation Debug:", {
     isMultiProduct,
@@ -243,14 +237,13 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             <thead>
               <tr style="background: linear-gradient(135deg, #f3f4f6, #e5e7eb);">
                 <th style="padding: 12px 8px; text-align: left; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 8%;">Código</th>
-                <th style="padding: 12px 8px; text-align: left; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 20%;">Descripción del Producto</th>
+                <th style="padding: 12px 8px; text-align: left; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 25%;">Descripción del Producto</th>
                 <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 6%;">Cant.</th>
-                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 10%;">Precio Plataforma</th>
-                ${hasProviderPrices ? `<th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 10%;">Precio Proveedor</th>` : ""}
-                ${hasOfferPrices ? `<th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 10%;">Precio Oferta</th>` : ""}
-                ${hasBudgetCeilingPrices ? `<th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 10%;">Techo Presup.</th>` : ""}
-                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 10%;">Imagen Ref.</th>
-                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 16%;">Total Cotizado</th>
+                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 12%;">Precio Plataforma</th>
+                ${hasProviderPrices ? `<th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 12%;">Precio Proveedor</th>` : ""}
+                ${hasOfferPrices ? `<th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 12%;">Precio Oferta</th>` : ""}
+                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 12%;">Precio Final</th>
+                <th style="padding: 12px 8px; text-align: center; font-weight: bold; color: #374151; border-bottom: 2px solid #d1d5db; width: 13%;">Total Final</th>
               </tr>
             </thead>
             <tbody>
@@ -304,28 +297,17 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                 </td>`
                     : ""
                 }
-                ${
-                  hasBudgetCeilingPrices
-                    ? `<td style="padding: 15px 8px; text-align: center; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
-                  <div style="background: #fdf2f8; padding: 8px; border-radius: 6px; border: 1px solid #f9a8d4;">
-                    <div style="font-weight: 600; color: #be185d; font-size: 10px;">Unitario:</div>
-                    <div style="font-size: 11px; color: #be185d;">${item.budgetCeilingUnitPrice ? formatCurrency(item.budgetCeilingUnitPrice) : "N/A"}</div>
-                    <div style="font-weight: 600; color: #be185d; font-size: 10px; margin-top: 4px;">Total:</div>
-                    <div style="font-size: 11px; font-weight: bold; color: #be185d;">${item.budgetCeilingTotal ? formatCurrency(item.budgetCeilingTotal) : "N/A"}</div>
-                  </div>
-                </td>`
-                    : ""
-                }
                 <td style="padding: 15px 8px; text-align: center; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
-                  ${
-                    item.referenceImageUrl
-                      ? `<img src="${item.referenceImageUrl}" alt="Imagen del producto" style="max-width: 80px; max-height: 60px; border-radius: 6px; border: 1px solid #e5e7eb;" crossorigin="anonymous" />`
-                      : `<div style="width: 80px; height: 60px; background: #f3f4f6; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;">Sin imagen</div>`
-                  }
+                  <div style="background: #fce7f3; padding: 8px; border-radius: 6px; border: 1px solid #f9a8d4;">
+                    <div style="font-weight: 600; color: #be185d; font-size: 10px;">Unitario:</div>
+                    <div style="font-size: 11px; color: #be185d;">${formatCurrency(item.finalUnitPrice)}</div>
+                    <div style="font-weight: 600; color: #be185d; font-size: 10px; margin-top: 4px;">Total:</div>
+                    <div style="font-size: 11px; font-weight: bold; color: #be185d;">${formatCurrency(item.finalTotal)}</div>
+                  </div>
                 </td>
                 <td style="padding: 15px 8px; text-align: center; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
                   <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 10px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 14px; font-weight: bold;">${formatCurrency(item.offerTotal || item.platformTotal)}</div>
+                    <div style="font-size: 14px; font-weight: bold;">${formatCurrency(item.finalTotal)}</div>
                   </div>
                 </td>
               </tr>
@@ -381,20 +363,6 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                   </td>
                   <td style="padding: 8px 15px; text-align: right; font-weight: bold; color: #92400e; font-size: 14px; border-bottom: 1px solid #e2e8f0;">
                     ${formatCurrency(data.offerGrandTotal)}
-                  </td>
-                </tr>
-                `
-                    : ""
-                }
-                ${
-                  data.budgetCeilingGrandTotal && data.budgetCeilingGrandTotal > 0
-                    ? `
-                <tr>
-                  <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: #be185d; font-size: 14px; border-bottom: 1px solid #e2e8f0;">
-                    Total Techo Presupuestal:
-                  </td>
-                  <td style="padding: 8px 15px; text-align: right; font-weight: bold; color: #be185d; font-size: 14px; border-bottom: 1px solid #e2e8f0;">
-                    ${formatCurrency(data.budgetCeilingGrandTotal)}
                   </td>
                 </tr>
                 `
