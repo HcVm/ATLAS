@@ -20,10 +20,6 @@ import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
 import { ProductSelector } from "@/components/ui/product-selector"
 
-// Verificar configuración de Supabase al inicio
-console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log("Supabase Anon Key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
 interface Product {
   id: string
   code: string
@@ -50,9 +46,7 @@ interface Quotation {
   entity_name: string
   entity_ruc: string
   product_description: string
-  product_code: string
-  product_name: string
-  product_brand: string
+  unique_code: string
   quantity: number
   offer_unit_price_with_tax: number | null
   final_unit_price_with_tax: number | null
@@ -98,7 +92,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     sale_status: "",
   })
 
-  // New entity form
   const [stockWarning, setStockWarning] = useState("")
   const [totalSale, setTotalSale] = useState(0)
 
@@ -118,34 +111,10 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
   // Verificar stock cuando cambia la cantidad
   useEffect(() => {
     if (formData.product_id && formData.quantity) {
-      checkProductStock()
+      //TODO: Implement stock check with ProductSelector
+      setStockWarning("")
     }
   }, [formData.product_id, formData.quantity])
-
-  const checkProductStock = async () => {
-    if (!selectedCompany || !formData.product_id) return
-
-    try {
-      const { data: product, error } = await supabase
-        .from("products")
-        .select("current_stock, unit_of_measure")
-        .eq("id", formData.product_id)
-        .single()
-
-      if (error) throw error
-
-      const requestedQuantity = Number.parseFloat(formData.quantity)
-      if (requestedQuantity > product.current_stock) {
-        setStockWarning(
-          `⚠️ Stock insuficiente. Disponible: ${product.current_stock} ${product.unit_of_measure}. Se necesita comprar ${requestedQuantity - product.current_stock} unidades adicionales.`,
-        )
-      } else {
-        setStockWarning("")
-      }
-    } catch (error: any) {
-      console.error("Error checking stock:", error)
-    }
-  }
 
   const fetchQuotations = async () => {
     if (!selectedCompany) return
@@ -156,11 +125,11 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       const { data, error } = await supabase
         .from("quotations")
         .select(
-          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, product_name, product_brand, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
+          "id, quotation_number, entity_name, entity_ruc, product_description, unique_code, quantity, offer_unit_price_with_tax, final_unit_price_with_tax",
         )
         .eq("company_id", selectedCompany.id)
         .eq("status", "approved")
-        .order("quotation_date", { ascending: false })
+        .order("created_at", { ascending: false })
 
       console.log("Quotations fetch result:", { data, error })
 
@@ -168,7 +137,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       setQuotations(data || [])
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
-      toast.error("Error al cargar cotizaciones")
+      toast.error("Error al cargar cotizaciones: " + error.message)
     }
   }
 
@@ -186,10 +155,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     setSearchingQuotation(true)
 
     try {
-      // Verificar que el cliente de Supabase esté configurado
-      console.log("Supabase client:", supabase)
-
-      // Primero buscar la cotización y obtener solo los datos que existen en la tabla quotations
       const { data: quotationData, error: quotationError } = await supabase
         .from("quotations")
         .select(
@@ -202,23 +167,19 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
       console.log("Quotation query result:", { data: quotationData, error: quotationError })
 
-      // Ahora buscar el producto usando el unique_code de la cotización
-      let productData = null
-      if (quotationData.unique_code) {
-        const { data: product, error: productError } = await supabase
-          .from("products")
-          .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure,
-          brands (name)
-        `)
-          .eq("company_id", selectedCompany.id)
-          .eq("code", quotationData.unique_code)
-          .eq("is_active", true)
-          .single()
-
-        if (!productError && product) {
-          productData = product
+      if (quotationError) {
+        if (quotationError.code === "PGRST116") {
+          toast.error("No se encontró una cotización aprobada con ese código")
+        } else {
+          console.error("Error searching quotation:", quotationError)
+          toast.error("Error al buscar la cotización: " + quotationError.message)
         }
+        return
+      }
+
+      if (!quotationData) {
+        toast.error("No se encontró la cotización")
+        return
       }
 
       // Llenar automáticamente los campos de la cotización
@@ -236,27 +197,9 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
           quotationData.offer_unit_price_with_tax ||
           0
         ).toString(),
-        // Si encontramos el producto, llenar también sus datos
-        ...(productData && {
-          product_id: productId,
-          product_code: product.code,
-          product_name: product.name,
-          product_description: product.description || "",
-          product_brand: product.brands?.name || "",
-          // Usar el precio final de la cotización, no el precio base del producto
-          unit_price_with_tax: (
-            quotationData.final_unit_price_with_tax ||
-            quotationData.offer_unit_price_with_tax ||
-            (productData ? productData.sale_price * 1.18 : 0)
-          ).toString(),
-        }),
       }))
 
-      if (productData) {
-        toast.success("Cotización encontrada y datos del producto cargados automáticamente")
-      } else {
-        toast.success("Cotización encontrada. Los datos del producto deben completarse manualmente")
-      }
+      toast.success("Cotización encontrada. Los datos del producto deben completarse manualmente")
     } catch (error: any) {
       console.error("Error searching quotation:", error)
       toast.error("Error al buscar la cotización: " + (error.message || "Error desconocido"))
@@ -438,7 +381,6 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
       {/* Información del Producto */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Producto</h3>
-
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
             <ProductSelector
@@ -448,7 +390,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
                 setFormData((prev) => ({
                   ...prev,
-                  product_id: productId,
+                  product_id: product.id,
                   product_code: product.code,
                   product_name: product.name,
                   product_description: product.description || "",
@@ -459,7 +401,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
                 toast.success("Producto seleccionado y datos cargados automáticamente")
               }}
               label="Producto"
-              placeholder="Buscar o crear producto..."
+              placeholder="Buscar producto..."
               required
               showStock={true}
               showPrice={true}
