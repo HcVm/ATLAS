@@ -40,6 +40,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import RoutePlanner from "@/components/quotations/route-planner"
 import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
+import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator"
+
+interface QuotationItem {
+  id: string
+  product_name: string
+  product_description: string
+  product_code: string
+  product_brand: string
+  quantity: number
+  platform_unit_price_with_tax: number
+  platform_total: number
+  supplier_unit_price_with_tax?: number
+  supplier_total?: number
+  offer_unit_price_with_tax?: number
+  offer_total_with_tax?: number
+  final_unit_price_with_tax?: number
+  reference_image_url?: string
+}
 
 interface Quotation {
   id: string
@@ -79,16 +97,7 @@ interface Quotation {
   }
   reference_image_url: string | null
   // Campos agregados para multi-producto
-  quotation_items?: Array<{
-    id: string
-    product_name: string
-    product_description: string
-    quantity: number
-    platform_unit_price_with_tax: number
-    platform_total: number
-    offer_unit_price_with_tax?: number
-    offer_total_with_tax?: number
-  }>
+  quotation_items?: QuotationItem[]
 }
 
 interface QuotationsStats {
@@ -158,32 +167,47 @@ export default function QuotationsPage() {
       setLoading(true)
       console.log("Cargando cotizaciones para empresa:", companyId)
 
-      const { data, error } = await supabase
+      // Primero obtener las cotizaciones
+      const { data: quotationsData, error: quotationsError } = await supabase
         .from("quotations")
         .select(`
-        *,
-        profiles!quotations_created_by_fkey (full_name),
-        quotation_items (
-          id,
-          product_name,
-          product_description,
-          quantity,
-          platform_unit_price_with_tax,
-          platform_total,
-          offer_unit_price_with_tax,
-          offer_total_with_tax
-        )
-      `)
+          *,
+          profiles!quotations_created_by_fkey (full_name)
+        `)
         .eq("company_id", companyId)
         .order("quotation_date", { ascending: false })
 
-      if (error) {
-        console.error("Quotations error:", error)
-        throw error
+      if (quotationsError) {
+        console.error("Quotations error:", quotationsError)
+        throw quotationsError
       }
 
-      console.log("Cotizaciones cargadas:", data?.length || 0)
-      setQuotations(data || [])
+      console.log("Cotizaciones base cargadas:", quotationsData?.length || 0)
+
+      // Luego obtener los items para cada cotización
+      const quotationsWithItems = await Promise.all(
+        (quotationsData || []).map(async (quotation) => {
+          if (quotation.is_multi_product) {
+            const { data: itemsData, error: itemsError } = await supabase
+              .from("quotation_items")
+              .select("*")
+              .eq("quotation_id", quotation.id)
+              .order("created_at", { ascending: true })
+
+            if (itemsError) {
+              console.error(`Error loading items for quotation ${quotation.id}:`, itemsError)
+              return { ...quotation, quotation_items: [] }
+            }
+
+            console.log(`Items cargados para cotización ${quotation.quotation_number}:`, itemsData?.length || 0)
+            return { ...quotation, quotation_items: itemsData || [] }
+          }
+          return quotation
+        }),
+      )
+
+      console.log("Cotizaciones con items procesadas:", quotationsWithItems.length)
+      setQuotations(quotationsWithItems)
     } catch (error: any) {
       console.error("Error fetching quotations:", error)
       toast.error("Error al cargar las cotizaciones: " + error.message)
@@ -194,9 +218,10 @@ export default function QuotationsPage() {
 
   const fetchStats = async (companyId: string) => {
     try {
+      // Usar la tabla base quotations para estadísticas básicas
       const { data, error } = await supabase
-        .from("quotations_with_totals")
-        .select("status, total_amount")
+        .from("quotations")
+        .select("status, platform_total, offer_total_with_tax")
         .eq("company_id", companyId)
 
       if (error) throw error
@@ -205,7 +230,14 @@ export default function QuotationsPage() {
       const draftQuotations = data?.filter((q) => q.status === "draft").length || 0
       const sentQuotations = data?.filter((q) => q.status === "sent").length || 0
       const approvedQuotations = data?.filter((q) => q.status === "approved").length || 0
-      const totalQuotedAmount = data?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0
+
+      // Calcular total usando offer_total_with_tax o platform_total como fallback
+      const totalQuotedAmount =
+        data?.reduce((sum, q) => {
+          const amount = q.offer_total_with_tax || q.platform_total || 0
+          return sum + amount
+        }, 0) || 0
+
       const averageQuotation = totalQuotations > 0 ? totalQuotedAmount / totalQuotations : 0
 
       setStats({
@@ -267,7 +299,6 @@ export default function QuotationsPage() {
 
   const handleRouteUpdated = async () => {
     if (selectedQuotation && companyId) {
-      // Solo actualizar la cotización específica sin recargar toda la lista
       try {
         const { data, error } = await supabase.from("quotations").select("*").eq("id", selectedQuotation.id).single()
 
@@ -277,17 +308,40 @@ export default function QuotationsPage() {
         }
 
         if (data) {
-          // Actualizar solo la cotización seleccionada sin cerrar el diálogo
           setSelectedQuotation(data)
-
-          // Actualizar la cotización en la lista sin recargar todo
           setQuotations((prev) => prev.map((q) => (q.id === data.id ? data : q)))
-
-          // Actualizar stats solo si es necesario
           fetchStats(companyId)
         }
       } catch (error) {
         console.error("Error in handleRouteUpdated:", error)
+      }
+    }
+  }
+
+  // Helper function to get display values for quotation
+  const getQuotationDisplayData = (quotation: Quotation) => {
+    if (quotation.is_multi_product && quotation.quotation_items && quotation.quotation_items.length > 0) {
+      // Multi-product quotation
+      const totalItems = quotation.quotation_items.length
+      const totalQuantity = quotation.quotation_items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+      const totalAmount = quotation.quotation_items.reduce(
+        (sum, item) => sum + (item.offer_total_with_tax || item.platform_total || 0),
+        0,
+      )
+
+      return {
+        productDescription: `${totalItems} productos`,
+        quantity: `${totalQuantity} items`,
+        totalAmount: totalAmount,
+        hasItems: true,
+      }
+    } else {
+      // Single product quotation
+      return {
+        productDescription: quotation.product_description || "Sin descripción",
+        quantity: quotation.quantity?.toLocaleString() || "0",
+        totalAmount: quotation.offer_total_with_tax || quotation.platform_total || 0,
+        hasItems: false,
       }
     }
   }
@@ -530,80 +584,79 @@ export default function QuotationsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredQuotations.map((quotation) => (
-                      <TableRow
-                        key={quotation.id}
-                        className="hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50"
-                      >
-                        <TableCell className="text-slate-600">
-                          {format(new Date(quotation.quotation_date), "dd/MM/yyyy", { locale: es })}
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-700">
-                          {quotation.quotation_number || quotation.unique_code}
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-700">{quotation.entity_name}</TableCell>
-                        <TableCell className="text-slate-600">{quotation.entity_ruc}</TableCell>
-                        <TableCell className="font-medium text-slate-700">{quotation.unique_code}</TableCell>
-                        <TableCell className="max-w-xs truncate text-slate-600" title={quotation.product_description}>
-                          {quotation.is_multi_product
-                            ? `${quotation.items_count || 0} productos`
-                            : quotation.product_description || "Sin descripción"}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {quotation.is_multi_product
-                            ? `${quotation.items_count || 0} items`
-                            : quotation.quantity?.toLocaleString() || "0"}
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-700">
-                          {quotation.offer_total_with_tax
-                            ? `S/ ${quotation.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                            : "-"}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(quotation.status)}</TableCell>
-                        <TableCell>
-                          {quotation.route_distance_km ? (
-                            <div className="flex items-center gap-1">
-                              <Route className="h-4 w-4 text-green-600" />
-                              <span className="text-xs text-green-600 font-medium">
-                                {quotation.route_distance_km.toFixed(0)} km
-                              </span>
+                    filteredQuotations.map((quotation) => {
+                      const displayData = getQuotationDisplayData(quotation)
+                      return (
+                        <TableRow
+                          key={quotation.id}
+                          className="hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50"
+                        >
+                          <TableCell className="text-slate-600">
+                            {format(new Date(quotation.quotation_date), "dd/MM/yyyy", { locale: es })}
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-700">
+                            {quotation.quotation_number || quotation.unique_code}
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-700">{quotation.entity_name}</TableCell>
+                          <TableCell className="text-slate-600">{quotation.entity_ruc}</TableCell>
+                          <TableCell className="font-medium text-slate-700">{quotation.unique_code}</TableCell>
+                          <TableCell
+                            className="max-w-xs truncate text-slate-600"
+                            title={displayData.productDescription}
+                          >
+                            {displayData.productDescription}
+                          </TableCell>
+                          <TableCell className="text-slate-600">{displayData.quantity}</TableCell>
+                          <TableCell className="font-medium text-slate-700">
+                            S/ {displayData.totalAmount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(quotation.status)}</TableCell>
+                          <TableCell>
+                            {quotation.route_distance_km ? (
+                              <div className="flex items-center gap-1">
+                                <Route className="h-4 w-4 text-green-600" />
+                                <span className="text-xs text-green-600 font-medium">
+                                  {quotation.route_distance_km.toFixed(0)} km
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-4 w-4 text-slate-400" />
+                                <span className="text-xs text-slate-400">Sin ruta</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  console.log("Viewing quotation:", quotation.id, quotation)
+                                  setSelectedQuotation(quotation)
+                                  setShowDetailsDialog(true)
+                                }}
+                                className="hover:bg-slate-100"
+                              >
+                                <Eye className="h-4 w-4 text-slate-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingQuotation(quotation)
+                                  setNewStatus(quotation.status)
+                                  setShowEditStatusDialog(true)
+                                }}
+                                className="hover:bg-slate-100"
+                              >
+                                <Edit className="h-4 w-4 text-slate-600" />
+                              </Button>
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4 text-slate-400" />
-                              <span className="text-xs text-slate-400">Sin ruta</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedQuotation(quotation)
-                                setShowDetailsDialog(true)
-                              }}
-                              className="hover:bg-slate-100"
-                            >
-                              <Eye className="h-4 w-4 text-slate-600" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingQuotation(quotation)
-                                setNewStatus(quotation.status)
-                                setShowEditStatusDialog(true)
-                              }}
-                              className="hover:bg-slate-100"
-                            >
-                              <Edit className="h-4 w-4 text-slate-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -688,6 +741,22 @@ export default function QuotationsPage() {
 
                 <TabsContent value="details" className="max-h-[70vh] overflow-y-auto">
                   <div className="space-y-6">
+                    {/* Debug Info */}
+                    {process.env.NODE_ENV === "development" && (
+                      <Card className="bg-yellow-50 border-yellow-200">
+                        <CardHeader>
+                          <CardTitle className="text-sm text-yellow-800">Debug Info</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-xs text-yellow-700">
+                          <p>Is Multi Product: {selectedQuotation.is_multi_product ? "Yes" : "No"}</p>
+                          <p>Items Count: {selectedQuotation.items_count || 0}</p>
+                          <p>Quotation Items Length: {selectedQuotation.quotation_items?.length || 0}</p>
+                          <p>Platform Total: {selectedQuotation.platform_total || 0}</p>
+                          <p>Offer Total: {selectedQuotation.offer_total_with_tax || 0}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Header Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-lg border border-slate-200">
                       <div>
@@ -757,7 +826,7 @@ export default function QuotationsPage() {
                               </div>
                             </div>
 
-                            {selectedQuotation.quotation_items && selectedQuotation.quotation_items.length > 0 && (
+                            {selectedQuotation.quotation_items && selectedQuotation.quotation_items.length > 0 ? (
                               <div className="mt-4">
                                 <h4 className="font-medium text-slate-700 mb-2">Lista de Productos:</h4>
                                 <div className="space-y-2">
@@ -768,8 +837,20 @@ export default function QuotationsPage() {
                                     >
                                       <div className="flex justify-between items-start">
                                         <div className="flex-1">
-                                          <p className="font-medium text-slate-800">{item.product_name}</p>
-                                          <p className="text-sm text-slate-600">{item.product_description}</p>
+                                          <p className="font-medium text-slate-800">
+                                            {item.product_name || "Producto sin nombre"}
+                                          </p>
+                                          <p className="text-sm text-slate-600">
+                                            {item.product_description || "Sin descripción"}
+                                          </p>
+                                          {item.product_code && (
+                                            <p className="text-xs text-slate-500">Código: {item.product_code}</p>
+                                          )}
+                                          {item.product_brand && (
+                                            <Badge variant="outline" className="text-xs mt-1">
+                                              {item.product_brand}
+                                            </Badge>
+                                          )}
                                         </div>
                                         <div className="text-right ml-4">
                                           <p className="text-sm text-slate-600">
@@ -787,6 +868,14 @@ export default function QuotationsPage() {
                                     </div>
                                   ))}
                                 </div>
+                              </div>
+                            ) : (
+                              <div className="text-center p-6 bg-slate-50 rounded-lg border border-slate-200">
+                                <Package className="h-12 w-12 text-slate-400 mx-auto mb-2" />
+                                <p className="text-slate-600">No se encontraron productos para esta cotización</p>
+                                <p className="text-sm text-slate-500">
+                                  Los productos pueden no haberse cargado correctamente
+                                </p>
                               </div>
                             )}
                           </div>
@@ -847,29 +936,30 @@ export default function QuotationsPage() {
                                 <p className="text-sm text-slate-600">Total Plataforma</p>
                                 <p className="text-xl font-bold text-slate-700">
                                   S/{" "}
-                                  {(selectedQuotation.platform_total || 0).toLocaleString("es-PE", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                  {selectedQuotation.quotation_items
+                                    ?.reduce((sum, item) => sum + (item.platform_total || 0), 0)
+                                    .toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "0.00"}
                                 </p>
                               </div>
                               <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
                                 <p className="text-sm text-slate-600">Total Proveedor</p>
                                 <p className="text-xl font-bold text-slate-700">
                                   S/{" "}
-                                  {(selectedQuotation.supplier_total || 0).toLocaleString("es-PE", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                  {selectedQuotation.quotation_items
+                                    ?.reduce((sum, item) => sum + (item.supplier_total || 0), 0)
+                                    .toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "0.00"}
                                 </p>
                               </div>
                               <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
                                 <p className="text-sm text-primary">Total Ofertado</p>
                                 <p className="text-xl font-bold text-primary">
                                   S/{" "}
-                                  {(
-                                    selectedQuotation.offer_total_with_tax ||
-                                    selectedQuotation.platform_total ||
-                                    0
-                                  ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  {selectedQuotation.quotation_items
+                                    ?.reduce(
+                                      (sum, item) => sum + (item.offer_total_with_tax || item.platform_total || 0),
+                                      0,
+                                    )
+                                    .toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "0.00"}
                                 </p>
                               </div>
                             </div>
@@ -883,7 +973,8 @@ export default function QuotationsPage() {
                                       <TableRow className="bg-slate-50">
                                         <TableHead className="text-slate-700">Producto</TableHead>
                                         <TableHead className="text-slate-700">Cantidad</TableHead>
-                                        <TableHead className="text-slate-700">P. Unitario</TableHead>
+                                        <TableHead className="text-slate-700">P. Plataforma</TableHead>
+                                        <TableHead className="text-slate-700">P. Oferta</TableHead>
                                         <TableHead className="text-slate-700">Total</TableHead>
                                       </TableRow>
                                     </TableHeader>
@@ -891,18 +982,55 @@ export default function QuotationsPage() {
                                       {selectedQuotation.quotation_items.map((item, index) => (
                                         <TableRow key={item.id || index}>
                                           <TableCell className="font-medium text-slate-700">
-                                            {item.product_name}
+                                            <div>
+                                              <p className="font-medium">
+                                                {item.product_name || "Producto sin nombre"}
+                                              </p>
+                                              <p className="text-sm text-slate-500">{item.product_code}</p>
+                                              {item.product_brand && (
+                                                <Badge variant="outline" className="text-xs mt-1">
+                                                  {item.product_brand}
+                                                </Badge>
+                                              )}
+                                            </div>
                                           </TableCell>
                                           <TableCell className="text-slate-600">
                                             {item.quantity?.toLocaleString() || 0}
                                           </TableCell>
                                           <TableCell className="text-slate-600">
-                                            S/{" "}
-                                            {(
-                                              item.offer_unit_price_with_tax ||
-                                              item.platform_unit_price_with_tax ||
-                                              0
-                                            ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                            <div className="text-sm">
+                                              <p>
+                                                Unit: S/{" "}
+                                                {(item.platform_unit_price_with_tax || 0).toLocaleString("es-PE", {
+                                                  minimumFractionDigits: 2,
+                                                })}
+                                              </p>
+                                              <p className="font-medium">
+                                                Total: S/{" "}
+                                                {(item.platform_total || 0).toLocaleString("es-PE", {
+                                                  minimumFractionDigits: 2,
+                                                })}
+                                              </p>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="text-slate-600">
+                                            <div className="text-sm">
+                                              <p>
+                                                Unit: S/{" "}
+                                                {(
+                                                  item.offer_unit_price_with_tax ||
+                                                  item.platform_unit_price_with_tax ||
+                                                  0
+                                                ).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                              </p>
+                                              <p className="font-medium">
+                                                Total: S/{" "}
+                                                {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
+                                                  "es-PE",
+                                                  { minimumFractionDigits: 2 },
+                                                )}
+                                              </p>
+                                            </div>
                                           </TableCell>
                                           <TableCell className="font-medium text-slate-700">
                                             S/{" "}
@@ -1127,16 +1255,24 @@ export default function QuotationsPage() {
                 Cerrar
               </Button>
               {selectedQuotation && selectedCompany && (
-                <QuotationPDFGenerator
-                  quotation={selectedQuotation}
-                  companyInfo={{
-                    name: selectedCompany.name,
-                    ruc: selectedCompany.ruc || "",
-                    address: selectedCompany.address,
-                    phone: selectedCompany.phone,
-                    email: selectedCompany.email,
-                  }}
-                />
+                <>
+                  <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                  <QuotationPDFGenerator
+                    quotation={selectedQuotation}
+                    companyInfo={{
+                      id: selectedCompany.id,
+                      name: selectedCompany.name,
+                      ruc: selectedCompany.ruc || "",
+                      code: selectedCompany.code || "",
+                      description: selectedCompany.description,
+                      logo_url: selectedCompany.logo_url,
+                      color: selectedCompany.color || "#3B82F6",
+                      address: selectedCompany.address,
+                      phone: selectedCompany.phone,
+                      email: selectedCompany.email,
+                    }}
+                  />
+                </>
               )}
               <Button
                 onClick={() => {
