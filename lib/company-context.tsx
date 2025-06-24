@@ -7,7 +7,7 @@ import { toast } from "sonner"
 
 export interface Company {
   id: string
-  ruc: string
+  ruc: string | null
   name: string
   code: string
   color: string
@@ -69,7 +69,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
       // Si es admin, cargar todas las empresas
       if (user.role === "admin") {
-        const { data, error } = await supabase.from("companies").select("id, name, code, color").order("name")
+        const { data, error } = await supabase.from("companies").select("id, name, code, color, ruc").order("name")
 
         if (error) {
           console.error("Error loading companies:", error)
@@ -101,7 +101,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       else if (user.company_id) {
         const { data, error } = await supabase
           .from("companies")
-          .select("id, name, code, color")
+          .select("id, name, code, color, ruc")
           .eq("id", user.company_id)
           .single()
 
