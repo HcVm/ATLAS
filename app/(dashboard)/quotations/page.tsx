@@ -741,22 +741,6 @@ export default function QuotationsPage() {
 
                 <TabsContent value="details" className="max-h-[70vh] overflow-y-auto">
                   <div className="space-y-6">
-                    {/* Debug Info */}
-                    {process.env.NODE_ENV === "development" && (
-                      <Card className="bg-yellow-50 border-yellow-200">
-                        <CardHeader>
-                          <CardTitle className="text-sm text-yellow-800">Debug Info</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-xs text-yellow-700">
-                          <p>Is Multi Product: {selectedQuotation.is_multi_product ? "Yes" : "No"}</p>
-                          <p>Items Count: {selectedQuotation.items_count || 0}</p>
-                          <p>Quotation Items Length: {selectedQuotation.quotation_items?.length || 0}</p>
-                          <p>Platform Total: {selectedQuotation.platform_total || 0}</p>
-                          <p>Offer Total: {selectedQuotation.offer_total_with_tax || 0}</p>
-                        </CardContent>
-                      </Card>
-                    )}
-
                     {/* Header Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-lg border border-slate-200">
                       <div>
