@@ -59,6 +59,12 @@ interface QuotationPDFGeneratorProps {
     profiles?: {
       full_name: string
     }
+    // Campos de comisión
+    contact_person?: string | null
+    commission_percentage?: number | null
+    commission_base_amount?: number | null
+    commission_amount?: number | null
+    commission_notes?: string | null
   }
   companyInfo: {
     id: string
@@ -118,6 +124,17 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
 
         // Creado por
         createdBy: quotation.profiles?.full_name || "Sistema",
+      }
+
+      // Agregar información de comisión si existe
+      if (quotation.contact_person || quotation.commission_percentage) {
+        pdfData.commissionInfo = {
+          contactPerson: quotation.contact_person || "No especificado",
+          commissionPercentage: quotation.commission_percentage || 0,
+          commissionBaseAmount: quotation.commission_base_amount || 0,
+          commissionAmount: quotation.commission_amount || 0,
+          commissionNotes: quotation.commission_notes || undefined,
+        }
       }
 
       if (isMultiProduct) {

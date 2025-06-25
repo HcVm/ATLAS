@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calculator, Plus, Trash2, Package } from "lucide-react"
+import { Calculator, Plus, Trash2, Package, Users, Percent } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -73,6 +73,10 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     status: "draft",
     valid_until: undefined as Date | undefined,
     observations: "",
+    // Campos de comisión
+    contact_person: "",
+    commission_percentage: "",
+    commission_notes: "",
   })
 
   // Items state
@@ -100,6 +104,9 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     offer_total_with_tax: 0,
     budget_ceiling_total: 0,
     total_items: 0,
+    // Totales de comisión
+    commission_base_amount: 0,
+    commission_amount: 0,
   })
 
   // Calculate totals when items change
@@ -109,14 +116,22 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     const offerTotal = items.reduce((sum, item) => sum + (item.offer_total_with_tax || 0), 0)
     const budgetCeilingTotal = items.reduce((sum, item) => sum + (item.budget_ceiling_total || 0), 0)
 
+    // Calcular comisión
+    const finalTotal = offerTotal > 0 ? offerTotal : platformTotal
+    const commissionBaseAmount = finalTotal / 1.18 // Quitar IGV
+    const commissionPercentage = Number.parseFloat(formData.commission_percentage) || 0
+    const commissionAmount = commissionBaseAmount * (commissionPercentage / 100)
+
     setTotals({
       platform_total: platformTotal,
       supplier_total: supplierTotal,
       offer_total_with_tax: offerTotal,
       budget_ceiling_total: budgetCeilingTotal,
       total_items: items.length,
+      commission_base_amount: commissionBaseAmount,
+      commission_amount: commissionAmount,
     })
-  }, [items])
+  }, [items, formData.commission_percentage])
 
   // Calculate current item totals
   const calculateCurrentItemTotals = (item: Partial<QuotationItem>) => {
@@ -230,8 +245,14 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         created_by: user.id,
         is_multi_product: true,
         items_count: items.length,
-        // NO incluir campos de producto individuales como:
-        // product_id, unique_code, product_description, quantity, etc.
+        // Campos de comisión
+        contact_person: formData.contact_person || null,
+        commission_percentage: formData.commission_percentage
+          ? Number.parseFloat(formData.commission_percentage)
+          : null,
+        commission_base_amount: totals.commission_base_amount,
+        commission_amount: totals.commission_amount,
+        commission_notes: formData.commission_notes || null,
       }
 
       const { data: quotation, error: quotationError } = await supabase
@@ -313,6 +334,83 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
           placeholder="Buscar o crear entidad..."
           required
         />
+      </div>
+
+      <Separator />
+
+      {/* Información de Comisión */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Información de Comisión
+        </h3>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cálculo de Comisión para Contacto</CardTitle>
+            <CardDescription>La comisión se calcula sobre el total ofertado sin IGV</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="contact_person">Nombre del Contacto/Vendedor</Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, contact_person: e.target.value }))}
+                  placeholder="Nombre del contacto que gestiona la venta"
+                />
+              </div>
+              <div>
+                <Label htmlFor="commission_percentage">Porcentaje de Comisión (%)</Label>
+                <div className="relative">
+                  <Input
+                    id="commission_percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={formData.commission_percentage}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, commission_percentage: e.target.value }))}
+                    placeholder="Ej: 5.5 para 5.5%"
+                  />
+                  <Percent className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Mostrar cálculos de comisión */}
+            {totals.commission_base_amount > 0 && (
+              <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Total sin IGV</p>
+                  <p className="text-lg font-bold text-slate-700">
+                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Porcentaje</p>
+                  <p className="text-lg font-bold text-blue-600">{formData.commission_percentage || "0"}%</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Comisión a Pagar</p>
+                  <p className="text-lg font-bold text-green-600">
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="commission_notes">Notas sobre la Comisión</Label>
+              <Textarea
+                id="commission_notes"
+                value={formData.commission_notes}
+                onChange={(e) => setFormData((prev) => ({ ...prev, commission_notes: e.target.value }))}
+                placeholder="Notas adicionales sobre el cálculo o pago de la comisión..."
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Separator />
@@ -565,10 +663,10 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                     S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="text-center p-3 bg-orange-50 rounded-lg">
-                  <p className="text-sm text-orange-600">Total Techo Presup.</p>
-                  <p className="text-xl font-bold text-orange-600">
-                    S/ {totals.budget_ceiling_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-600">Comisión</p>
+                  <p className="text-xl font-bold text-green-600">
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>

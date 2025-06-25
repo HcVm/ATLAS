@@ -1,19 +1,14 @@
 "use client"
 
+import { DialogTrigger } from "@/components/ui/dialog"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Plus,
@@ -100,6 +95,12 @@ interface Quotation {
   reference_image_url: string | null
   // Campos agregados para multi-producto
   quotation_items?: QuotationItem[]
+  // Campos de comisión
+  contact_person?: string | null
+  commission_percentage?: number | null
+  commission_base_amount?: number | null
+  commission_amount?: number | null
+  commission_notes?: string | null
 }
 
 interface QuotationsStats {
@@ -1461,42 +1462,71 @@ export default function QuotationsPage() {
                       </Card>
                     )}
 
-                    {/* Additional Information */}
-                    <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
-                      <CardHeader>
-                        <CardTitle className="text-lg text-slate-800">Información Adicional</CardTitle>
-                      </CardHeader>
-                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-slate-600">Creado por</Label>
-                          <p className="text-sm text-slate-700">{selectedQuotation.profiles?.full_name || "N/A"}</p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-slate-600">Fecha de Creación</Label>
-                          <p className="text-sm text-slate-700">
-                            {format(new Date(selectedQuotation.quotation_date), "dd/MM/yyyy HH:mm", { locale: es })}
-                          </p>
-                        </div>
-                        {selectedQuotation.valid_until && (
-                          <div>
-                            <Label className="text-sm font-medium text-slate-600">Válida hasta</Label>
-                            <p className="text-sm text-slate-700">
-                              {format(new Date(selectedQuotation.valid_until), "dd/MM/yyyy", { locale: es })}
-                            </p>
+                    {/* Commission Information */}
+                    {(selectedQuotation.contact_person || selectedQuotation.commission_percentage) && (
+                      <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
+                            <DollarSign className="h-5 w-5 text-slate-600" />
+                            Información de Comisión
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {selectedQuotation.contact_person && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Contacto/Vendedor</Label>
+                                <p className="text-sm font-medium text-slate-800">{selectedQuotation.contact_person}</p>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_percentage && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Porcentaje de Comisión</Label>
+                                <p className="text-sm font-medium text-slate-800">
+                                  {selectedQuotation.commission_percentage.toFixed(2)}%
+                                </p>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_base_amount && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Base de Cálculo (Sin IGV)</Label>
+                                <p className="text-sm font-medium text-slate-800">
+                                  S/{" "}
+                                  {selectedQuotation.commission_base_amount.toLocaleString("es-PE", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </p>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_amount && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Monto de Comisión</Label>
+                                <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+                                  <p className="text-lg font-bold text-green-700">
+                                    S/{" "}
+                                    {selectedQuotation.commission_amount.toLocaleString("es-PE", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_notes && (
+                              <div className="md:col-span-2">
+                                <Label className="text-sm font-medium text-slate-600">Notas de Comisión</Label>
+                                <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                  {selectedQuotation.commission_notes}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div>
-                          <Label className="text-sm font-medium text-slate-600">Estado Actual</Label>
-                          <div className="mt-1">{getStatusBadge(selectedQuotation.status)}</div>
-                        </div>
-                        {selectedQuotation.observations && (
-                          <div className="md:col-span-2">
-                            <Label className="text-sm font-medium text-slate-600">Observaciones</Label>
-                            <p className="text-sm text-slate-700">{selectedQuotation.observations}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 </TabsContent>
 
