@@ -1,15 +1,20 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
+import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
   companyName: string
   companyRuc: string
+  companyCode?: string
   companyAddress?: string
   companyPhone?: string
   companyEmail?: string
   companyLogoUrl?: string
   companyAccountInfo?: string
+
+  // Información bancaria (se obtiene automáticamente por código de empresa)
+  bankingInfo?: BankingInfo
 
   // Información de la cotización
   quotationNumber: string
@@ -53,6 +58,12 @@ export interface EntityQuotationPDFData {
 }
 
 export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
+  // Obtener información bancaria automáticamente si tenemos el código de empresa
+  if (data.companyCode && !data.bankingInfo) {
+    data.bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
+    console.log("Banking info obtained for company:", data.companyCode, data.bankingInfo)
+  }
+
   // Crear el HTML temporal para el PDF
   const htmlContent = createEntityQuotationHTML(data)
 
@@ -79,7 +90,6 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       allowTaint: true,
       backgroundColor: "#ffffff",
       width: 794, // A4 width in pixels at 96 DPI
-      height: 1123, // A4 height in pixels at 96 DPI
     })
 
     // Crear PDF
@@ -316,23 +326,71 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           }
         </div>
 
-        <!-- Cuenta habilitada -->
         ${
-          data.companyAccountInfo
+          data.bankingInfo
             ? `
+        <!-- Información Bancaria y Fiscal -->
+        <div style="margin-bottom: 15px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
+          <p style="margin: 0 0 5px 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
+          
+          ${
+            data.bankingInfo.bankAccount
+              ? `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #007bff; border-radius: 3px;">
+            <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #007bff;">💳 DATOS BANCARIOS</p>
+            <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
+            <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
+            <p style="margin: 0; font-size: 9px;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
+          </div>
+          `
+              : ""
+          }
+          
+          ${
+            data.bankingInfo.detractionAccount
+              ? `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: #fff3cd; border-left: 3px solid #ffc107; border-radius: 3px;">
+            <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #856404;">🏛️ CUENTA DE DETRACCIÓN</p>
+            <p style="margin: 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.detractionAccount.accountNumber}</p>
+          </div>
+          `
+              : `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #6c757d; border-radius: 3px;">
+            <p style="margin: 0; font-size: 9px; color: #6c757d; font-style: italic;">SIN CUENTA DE DETRACCIÓN</p>
+          </div>
+          `
+          }
+          
+          ${
+            data.bankingInfo.fiscalAddress
+              ? `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: #d4edda; border-left: 3px solid #28a745; border-radius: 3px;">
+            <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #155724;">🏢 DOMICILIO FISCAL</p>
+            <p style="margin: 0; font-size: 9px; line-height: 1.3;">${data.bankingInfo.fiscalAddress}</p>
+          </div>
+          `
+              : `
+          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #6c757d; border-radius: 3px;">
+            <p style="margin: 0; font-size: 9px; color: #6c757d; font-style: italic;">SIN DOMICILIO FISCAL</p>
+          </div>
+          `
+          }
+        </div>
+        `
+            : data.companyAccountInfo
+              ? `
+        <!-- Cuenta habilitada (fallback) -->
         <div style="margin-bottom: 15px;">
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
           <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
-
-
             BCP
           </div>
-
         </div>
         `
-            : ""
+              : ""
         }
 
         ${
@@ -350,8 +408,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         <!-- Footer -->
         <div style="border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 9px; margin-top: 20px;">
           ${
-            data.companyAddress
-              ? `<p style="margin: 0 0 3px 0;">${data.companyAddress}</p>`
+            data.companyAddress || data.bankingInfo?.fiscalAddress
+              ? `<p style="margin: 0 0 3px 0;">${data.companyAddress || data.bankingInfo?.fiscalAddress}</p>`
               : `<p style="margin: 0 0 3px 0;">Jr. Huantar Nro. 3311 Urb. Ca Huantar 5030 N 3311 Urb Parque El Naranjal 2da Etapa Los Olivos-Lima</p>`
           }
           ${data.companyEmail ? `<p style="margin: 0 0 3px 0;"><strong>E-MAIL:</strong> ${data.companyEmail}</p>` : ""}

@@ -63,6 +63,8 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
     setIsGenerating(true)
 
     try {
+      console.log("Generating entity PDF for company:", companyInfo.code)
+
       // Preparar productos
       let products: EntityQuotationPDFData["products"] = []
 
@@ -102,11 +104,12 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         // Información de la empresa
         companyName: companyInfo.name || "Empresa",
         companyRuc: companyInfo.ruc || "N/A",
+        companyCode: companyInfo.code, // ¡IMPORTANTE! Pasar el código para obtener info bancaria
         companyAddress: companyInfo.address,
         companyPhone: companyInfo.phone,
         companyEmail: companyInfo.email,
         companyLogoUrl: companyInfo.logo_url || undefined,
-        companyAccountInfo: "191-38640570-37", // Podrías agregar esto a la base de datos
+        companyAccountInfo: "191-38640570-37", // Fallback, pero se usará la info bancaria dinámica
 
         // Información de la cotización
         quotationNumber: quotation.quotation_number,
@@ -146,10 +149,17 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         createdBy: quotation.profiles?.full_name || "Sistema",
       }
 
+      console.log("PDF data prepared:", {
+        companyCode: pdfData.companyCode,
+        companyName: pdfData.companyName,
+        productsCount: pdfData.products.length,
+        total: pdfData.total,
+      })
+
       // Generar el PDF
       await generateEntityQuotationPDF(pdfData)
 
-      toast.success("PDF para entidad generado exitosamente")
+      toast.success("PDF para entidad generado exitosamente con información bancaria completa")
     } catch (error) {
       console.error("Error generating entity PDF:", error)
       toast.error("Error al generar el PDF para entidad. Por favor, intente nuevamente.")
