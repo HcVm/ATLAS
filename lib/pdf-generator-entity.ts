@@ -83,31 +83,79 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     // Esperar un poco para que las imágenes se carguen
     await new Promise((resolve) => setTimeout(resolve, 3000))
 
-    // Convertir HTML a canvas
+    // Convertir HTML a canvas con altura automática
     const canvas = await html2canvas(tempDiv, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
       width: 794, // A4 width in pixels at 96 DPI
+      // Removemos la restricción de altura para permitir contenido largo
     })
 
     // Crear PDF
     const pdf = new jsPDF("p", "mm", "a4")
     const imgData = canvas.toDataURL("image/png")
 
-    // Calcular dimensiones para ajustar a A4
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
+    // Dimensiones de la página A4 en mm
+    const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
+
+    // Calcular dimensiones de la imagen
     const imgWidth = pdfWidth
     const imgHeight = (canvas.height * pdfWidth) / canvas.width
 
-    // Si la imagen es más alta que la página, ajustar
-    if (imgHeight > pdfHeight) {
-      const ratio = pdfHeight / imgHeight
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth * ratio, pdfHeight)
-    } else {
+    // Si la imagen cabe en una página, agregarla directamente
+    if (imgHeight <= pdfHeight) {
       pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight)
+    } else {
+      // Si la imagen es más alta que una página, dividirla en múltiples páginas
+      let remainingHeight = imgHeight
+      let currentY = 0
+      let pageNumber = 1
+
+      while (remainingHeight > 0) {
+        // Calcular la altura para esta página
+        const pageHeight = Math.min(remainingHeight, pdfHeight)
+
+        // Crear un canvas temporal para esta sección
+        const pageCanvas = document.createElement("canvas")
+        const pageCtx = pageCanvas.getContext("2d")
+
+        if (pageCtx) {
+          // Configurar el canvas para esta página
+          pageCanvas.width = canvas.width
+          pageCanvas.height = (pageHeight * canvas.width) / imgWidth
+
+          // Dibujar la sección correspondiente del canvas original
+          pageCtx.drawImage(
+            canvas,
+            0,
+            (currentY * canvas.width) / imgWidth, // sx, sy
+            canvas.width,
+            pageCanvas.height, // sWidth, sHeight
+            0,
+            0, // dx, dy
+            pageCanvas.width,
+            pageCanvas.height, // dWidth, dHeight
+          )
+
+          // Convertir a imagen y agregar al PDF
+          const pageImgData = pageCanvas.toDataURL("image/png")
+
+          // Si no es la primera página, agregar una nueva página
+          if (pageNumber > 1) {
+            pdf.addPage()
+          }
+
+          pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight)
+        }
+
+        // Actualizar para la siguiente página
+        currentY += pageHeight
+        remainingHeight -= pageHeight
+        pageNumber++
+      }
     }
 
     // Descargar el PDF
@@ -131,7 +179,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
     })
   }
 
-  const currentYear = new Date().getFullYear()
+  console.log("Entity PDF - Products data:", data.products)
+  console.log("Entity PDF - Products count:", data.products?.length || 0)
 
   return `
     <div style="padding: 15px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; position: relative;">
@@ -243,7 +292,10 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           </p>
         </div>
 
-        <!-- Tabla de productos -->
+        <!-- Tabla de productos - SIEMPRE MOSTRAR -->
+        ${
+          data.products && data.products.length > 0
+            ? `
         <div style="margin-bottom: 15px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
             <thead>
@@ -276,6 +328,16 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             </tbody>
           </table>
         </div>
+        `
+            : `
+        <!-- Mensaje de error si no hay productos -->
+        <div style="margin-bottom: 15px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+          <p style="margin: 0; font-size: 10px; color: #856404; text-align: center;">
+            ⚠️ No se encontraron productos para mostrar en esta cotización
+          </p>
+        </div>
+        `
+        }
 
         <!-- Totales -->
         <div style="margin-bottom: 15px;">
@@ -342,7 +404,6 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
             <p style="margin: 0; font-size: 9px;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
-            <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
           </div>
           `
               : ""

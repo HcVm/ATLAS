@@ -63,24 +63,32 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
     setIsGenerating(true)
 
     try {
-      console.log("Generating entity PDF for company:", companyInfo.code)
+      console.log("=== Entity PDF Generation Debug ===")
+      console.log("Quotation data:", quotation)
+      console.log("Is multi product flag:", quotation.is_multi_product)
+      console.log("Quotation items:", quotation.quotation_items)
+      console.log("Quotation items count:", quotation.quotation_items?.length || 0)
 
-      // Preparar productos
+      // NUEVA LÓGICA: Siempre usar quotation_items si existen, sin importar is_multi_product
       let products: EntityQuotationPDFData["products"] = []
 
-      if (quotation.is_multi_product && quotation.quotation_items && quotation.quotation_items.length > 0) {
-        // Multi-producto
+      if (quotation.quotation_items && quotation.quotation_items.length > 0) {
+        // Usar quotation_items (tanto para 1 producto como para múltiples)
+        console.log("Using quotation_items data (modern approach)")
         products = quotation.quotation_items.map((item) => ({
           quantity: item.quantity || 0,
           description: item.product_description || item.product_name || "Producto sin descripción",
-          unit: "UND", // Por defecto, podrías agregar este campo a la base de datos
+          unit: "UND",
           brand: item.product_brand || undefined,
           code: item.product_code || undefined,
           unitPrice: item.offer_unit_price_with_tax || item.platform_unit_price_with_tax || 0,
           totalPrice: item.offer_total_with_tax || item.platform_total || 0,
         }))
+
+        console.log("Products from quotation_items:", products)
       } else {
-        // Producto único
+        // Fallback a campos directos (cotizaciones legacy)
+        console.log("Using direct fields (legacy approach)")
         products = [
           {
             quantity: quotation.quantity || 0,
@@ -92,24 +100,41 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
             totalPrice: quotation.offer_total_with_tax || quotation.platform_total || 0,
           },
         ]
+
+        console.log("Products from direct fields:", products)
       }
 
-      // Calcular totales
-      const subtotal = products.reduce((sum, product) => sum + product.totalPrice, 0)
+      console.log("Final products array:", products)
+      console.log("Products count:", products.length)
+
+      // Verificar que tenemos productos
+      if (!products || products.length === 0) {
+        console.error("No products found! This should not happen.")
+        toast.error("Error: No se encontraron productos para generar el PDF")
+        return
+      }
+
+      // Calcular totales basados en los productos procesados
+      const subtotalFromProducts = products.reduce((sum, product) => sum + product.totalPrice, 0)
+
+      // Usar los totales calculados
+      const subtotal = subtotalFromProducts
       const igv = subtotal * 0.18 // 18% IGV
       const total = subtotal + igv
+
+      console.log("Calculated totals:", { subtotal, igv, total })
 
       // Preparar datos para el PDF
       const pdfData: EntityQuotationPDFData = {
         // Información de la empresa
         companyName: companyInfo.name || "Empresa",
         companyRuc: companyInfo.ruc || "N/A",
-        companyCode: companyInfo.code, // ¡IMPORTANTE! Pasar el código para obtener info bancaria
+        companyCode: companyInfo.code,
         companyAddress: companyInfo.address,
         companyPhone: companyInfo.phone,
         companyEmail: companyInfo.email,
         companyLogoUrl: companyInfo.logo_url || undefined,
-        companyAccountInfo: "191-38640570-37", // Fallback, pero se usará la info bancaria dinámica
+        companyAccountInfo: "191-38640570-37", // Fallback
 
         // Información de la cotización
         quotationNumber: quotation.quotation_number,
@@ -122,11 +147,11 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
         clientAddress: quotation.delivery_location || "No especificado",
-        clientDepartment: undefined, // Podrías agregar este campo
-        clientAttention: "Logística - Abastecimiento", // Por defecto
+        clientDepartment: undefined,
+        clientAttention: "Logística - Abastecimiento",
         currency: "Soles",
 
-        // Productos
+        // Productos - GARANTIZADO que existe
         products: products,
 
         // Totales
@@ -149,11 +174,13 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         createdBy: quotation.profiles?.full_name || "Sistema",
       }
 
-      console.log("PDF data prepared:", {
+      console.log("Final PDF data:", {
         companyCode: pdfData.companyCode,
         companyName: pdfData.companyName,
         productsCount: pdfData.products.length,
+        products: pdfData.products,
         total: pdfData.total,
+        dataSource: quotation.quotation_items?.length ? "quotation_items" : "direct_fields",
       })
 
       // Generar el PDF

@@ -87,23 +87,26 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
     setIsGenerating(true)
 
     try {
-      console.log("=== PDF Generation Debug ===")
+      console.log("=== Detailed PDF Generation Debug ===")
       console.log("Quotation data:", quotation)
-      console.log("Is multi product:", quotation.is_multi_product)
+      console.log("Company info:", companyInfo)
+      console.log("Is multi product flag:", quotation.is_multi_product)
       console.log("Quotation items:", quotation.quotation_items)
       console.log("Items count:", quotation.quotation_items?.length || 0)
 
-      // Determinar si es multi-producto
-      const isMultiProduct =
-        quotation.is_multi_product && quotation.quotation_items && quotation.quotation_items.length > 0
+      // NUEVA LÓGICA: Determinar si usar quotation_items o campos directos
+      const hasQuotationItems = quotation.quotation_items && quotation.quotation_items.length > 0
+      const isMultiProduct = hasQuotationItems && quotation.quotation_items!.length > 1
 
-      console.log("Calculated isMultiProduct:", isMultiProduct)
+      console.log("Has quotation items:", hasQuotationItems)
+      console.log("Is multi product (>1 item):", isMultiProduct)
 
       // Preparar datos para el PDF
       const pdfData: QuotationPDFData = {
         // Información de la empresa
         companyName: companyInfo.name || "Empresa",
         companyRuc: companyInfo.ruc || "N/A",
+        companyCode: companyInfo.code, // Pasar el código para obtener info bancaria
         companyAddress: companyInfo.address,
         companyPhone: companyInfo.phone,
         companyEmail: companyInfo.email,
@@ -137,10 +140,10 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         }
       }
 
-      if (isMultiProduct) {
-        console.log("Processing multi-product quotation...")
+      if (hasQuotationItems) {
+        console.log("Using quotation_items data (modern approach)")
 
-        // Cotización multi-producto
+        // Usar quotation_items (tanto para 1 producto como para múltiples)
         pdfData.items = quotation.quotation_items!.map((item) => {
           console.log("Processing item:", item)
 
@@ -179,16 +182,16 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         pdfData.finalGrandTotal = pdfData.items.reduce((sum, item) => sum + item.finalTotal, 0)
         pdfData.budgetCeilingGrandTotal = pdfData.items.reduce((sum, item) => sum + (item.budgetCeilingTotal || 0), 0)
 
-        console.log("Calculated totals:", {
+        console.log("Calculated totals from items:", {
           platform: pdfData.platformGrandTotal,
           provider: pdfData.providerGrandTotal,
           offer: pdfData.offerGrandTotal,
           final: pdfData.finalGrandTotal,
         })
       } else {
-        console.log("Processing single-product quotation...")
+        console.log("Using direct fields (legacy approach)")
 
-        // Cotización simple (legacy)
+        // Cotización legacy - usar campos directos
         pdfData.productCode = quotation.unique_code || "N/A"
         pdfData.productDescription = quotation.product_description || "Producto sin descripción"
         pdfData.productBrand = quotation.product_brand || undefined
@@ -196,6 +199,14 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         pdfData.unitPrice = quotation.offer_unit_price_with_tax || quotation.platform_unit_price_with_tax || 0
         pdfData.totalPrice = quotation.offer_total_with_tax || quotation.platform_total || 0
         pdfData.finalGrandTotal = quotation.offer_total_with_tax || quotation.platform_total || 0
+
+        console.log("Single product data from direct fields:", {
+          productCode: pdfData.productCode,
+          productDescription: pdfData.productDescription,
+          quantity: pdfData.quantity,
+          unitPrice: pdfData.unitPrice,
+          totalPrice: pdfData.totalPrice,
+        })
       }
 
       // Agregar información de ruta si existe
@@ -245,12 +256,16 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         }
       }
 
-      console.log("Final PDF data:", pdfData)
+      console.log("Final PDF data:", {
+        ...pdfData,
+        dataSource: hasQuotationItems ? "quotation_items" : "direct_fields",
+        itemsCount: pdfData.items?.length || 0,
+      })
 
       // Generar el PDF
       await generateQuotationPDF(pdfData)
 
-      toast.success("PDF generado exitosamente")
+      toast.success("PDF detallado generado exitosamente")
     } catch (error) {
       console.error("Error generating PDF:", error)
       toast.error("Error al generar el PDF. Por favor, intente nuevamente.")
