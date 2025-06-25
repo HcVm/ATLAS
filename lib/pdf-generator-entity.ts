@@ -342,6 +342,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
             <p style="margin: 0; font-size: 9px;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
+            <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
           </div>
           `
               : ""
