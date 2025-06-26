@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
     darkMode: ["class"],
@@ -92,18 +91,7 @@ const config: Config = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate"),
-  plugin(
-      // @ts-ignore
-      ({ addUtilities }) => {
-        addUtilities({
-          '.underline-offset-2': { 'text-underline-offset': '2px' },
-          '.underline-offset-4': { 'text-underline-offset': '4px' },
-          '.underline-offset-6': { 'text-underline-offset': '6px' },
-        });
-      }
-    )
-  ]
+  plugins: [require("tailwindcss-animate"),]
   
 };
 export default config;
