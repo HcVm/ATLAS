@@ -45,8 +45,11 @@ interface SystemStatus {
   lastRun: Date
   progress: number
 }
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+
 const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl!, supabaseKey!)
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
