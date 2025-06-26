@@ -45,7 +45,7 @@ interface SystemStatus {
   progress: number
 }
 
-const secpass = process.env.SECRET_PASSWORD
+const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -253,41 +253,83 @@ export default function SecretDiagnosticsPage() {
   const testWarehouse = async (): Promise<TestResult> => {
     const start = Date.now()
     try {
-      // First try with stock column
-      const { data: products, error } = await supabase.from("products").select("id, name, stock, price").limit(5)
+      // Try different column combinations progressively
+      const possibleQueries = [
+        // Try with all common columns
+        () => supabase.from("products").select("id, name, code, stock, price, unit_price").limit(5),
+        // Try without price
+        () => supabase.from("products").select("id, name, code, stock, unit_price").limit(5),
+        // Try without stock and price
+        () => supabase.from("products").select("id, name, code, unit_price").limit(5),
+        // Try without stock, price, and unit_price
+        () => supabase.from("products").select("id, name, code").limit(5),
+        // Basic query with just id and name
+        () => supabase.from("products").select("id, name").limit(5),
+        // Minimal query
+        () => supabase.from("products").select("id").limit(5),
+      ]
 
-      if (error && error.message.includes("stock")) {
-        // If stock column doesn't exist, try without it
-        const { data: productsBasic, error: errorBasic } = await supabase
-          .from("products")
-          .select("id, name, price")
-          .limit(5)
+      let lastError: any = null
+      const missingColumns: string[] = []
 
-        if (errorBasic) throw errorBasic
+      for (let i = 0; i < possibleQueries.length; i++) {
+        try {
+          const { data: products, error } = await possibleQueries[i]()
 
-        return {
-          name: "Sistema de Almacén",
-          status: isProduction ? "error" : "warning",
-          message: `${productsBasic?.length || 0} productos (columna 'stock' no existe en ${environment})`,
-          details: { productCount: productsBasic?.length, environment, missingColumns: ["stock"] },
-          duration: Date.now() - start,
+          if (error) {
+            lastError = error
+            // Detect which columns are missing
+            if (error.message.includes("stock")) {
+              missingColumns.push("stock")
+            }
+            if (error.message.includes("price")) {
+              missingColumns.push("price")
+            }
+            if (error.message.includes("unit_price")) {
+              missingColumns.push("unit_price")
+            }
+            if (error.message.includes("code")) {
+              missingColumns.push("code")
+            }
+            continue
+          }
+
+          // Success with this query
+          let message = `${products?.length || 0} productos encontrados`
+          let status: "success" | "warning" = "success"
+
+          if (missingColumns.length > 0) {
+            message += ` (columnas faltantes en ${environment}: ${missingColumns.join(", ")})`
+            status = isProduction ? "error" : "warning"
+          }
+
+          return {
+            name: "Sistema de Almacén",
+            status,
+            message,
+            details: {
+              productCount: products?.length,
+              environment,
+              missingColumns: missingColumns.length > 0 ? missingColumns : undefined,
+              queryUsed: i + 1,
+              availableColumns: i === 0 ? "all" : "limited",
+            },
+            duration: Date.now() - start,
+          }
+        } catch (queryError: any) {
+          lastError = queryError
+          continue
         }
       }
 
-      if (error) throw error
-
-      return {
-        name: "Sistema de Almacén",
-        status: "success",
-        message: `${products?.length || 0} productos en inventario`,
-        details: { productCount: products?.length },
-        duration: Date.now() - start,
-      }
+      // If all queries failed
+      throw lastError || new Error("No se pudo consultar la tabla products con ninguna combinación de columnas")
     } catch (error: any) {
       return {
         name: "Sistema de Almacén",
         status: "error",
         message: `Error: ${error.message}`,
+        details: { environment, error: error.message },
         duration: Date.now() - start,
       }
     }
