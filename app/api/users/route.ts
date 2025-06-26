@@ -19,8 +19,9 @@ const userSchema = z.object({
   id: z.string().optional(),
 })
 
-function getSupabaseServerClient() {
-  const cookieStore = cookies();
+async function getSupabaseServerClient() {
+  const cookieStore = await cookies(); // ✅ await aquí es obligatorio si luego usas .get
+
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get: (name) => cookieStore.get(name)?.value,
@@ -32,7 +33,7 @@ function getSupabaseServerClient() {
 
 // GET: listar usuarios
 export async function GET(request: NextRequest) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   const {
     data: { user: authUser },
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
 
 // PUT: actualizar usuario
 export async function PUT(request: NextRequest) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   const {
     data: { user: authUser },
@@ -173,7 +174,7 @@ export async function PUT(request: NextRequest) {
 
 // DELETE: eliminar usuario
 export async function DELETE(request: NextRequest) {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient();
 
   const {
     data: { user: authUser },
