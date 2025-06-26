@@ -9,13 +9,18 @@ export interface BankingInfo {
     accountNumber: string
   }
   fiscalAddress?: string
+  contactInfo?: {
+    mobile?: string
+    phone?: string
+    email?: string[]
+  }
 }
 
 export interface CompanyBankingData {
   [companyCode: string]: BankingInfo
 }
 
-// Información bancaria y fiscal hardcodeada por empresa
+// Información bancaria, fiscal y de contacto hardcodeada por empresa
 export const COMPANY_BANKING_INFO: CompanyBankingData = {
   AGLE: {
     bankAccount: {
@@ -28,6 +33,11 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
       accountNumber: "00-074-243770",
     },
     fiscalAddress: "AV. CANTA CALLAO MZA. K2 LOTE. 8 LIMA - LIMA - LOS OLIVOS",
+    contactInfo: {
+      mobile: "940930710",
+      phone: "01-748 2242 ANEXO 112",
+      email: ["cotizaciones.lg@agleperuvianc.com", "cotizaciones.eg@agleperuvianc.com"],
+    },
   },
   ARM: {
     bankAccount: {
@@ -41,6 +51,11 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
     },
     fiscalAddress:
       "JR. HUANTAR NRO. 3311 URB. CA HUANTAR 5030 N3311 URB PARQUE EL NARANJAL 2DA ETAPA LIMA - LIMA - LOS OLIVOS",
+    contactInfo: {
+      mobile: "940959514",
+      phone: "01-748 3677 ANEXO 102",
+      email: ["arm-ventas@armcorporations.com", "arm1-ventas@armcorporations.com"],
+    },
   },
   GALUR: {
     bankAccount: {
@@ -53,6 +68,11 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
       accountNumber: "00-074-278817",
     },
     fiscalAddress: "JR. ICA MZA. K LOTE. 15 FONAVI (ALT DEL OVALO DEL OBELISCO) MADRE DE DIOS - TAMBOPATA - TAMBOPATA",
+    contactInfo: {
+      mobile: "915166406",
+      phone: "082-470 013 ANEXO 122",
+      email: ["ventas.galurbc@gmail.com"],
+    },
   },
   AMCO: {
     bankAccount: {
@@ -63,6 +83,11 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
     },
     // Sin cuenta de detracción
     // Sin domicilio fiscal
+    contactInfo: {
+      mobile: "955534639",
+      // Sin central telefónica
+      // Sin correo electrónico
+    },
   },
   GMC: {
     bankAccount: {
@@ -73,6 +98,11 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
     },
     // Sin cuenta de detracción
     // Sin domicilio fiscal
+    contactInfo: {
+      mobile: "927177714",
+      // Sin central telefónica
+      // Sin correo electrónico
+    },
   },
 }
 
@@ -92,12 +122,14 @@ export const getBankingInfoByCompanyId = async (companyId: string): Promise<Bank
 export const formatBankingInfo = (bankingInfo: BankingInfo): string => {
   let formatted = ""
 
+  // Información bancaria
   if (bankingInfo.bankAccount) {
     formatted += `CUENTA ${bankingInfo.bankAccount.type} SOLES ${bankingInfo.bankAccount.bank}\n`
     formatted += `CTA: ${bankingInfo.bankAccount.accountNumber}\n`
     formatted += `CCI: ${bankingInfo.bankAccount.cci}\n\n`
   }
 
+  // Cuenta de detracción
   if (bankingInfo.detractionAccount) {
     formatted += `CUENTA DE DETRACCIÓN\n`
     formatted += `CTA: ${bankingInfo.detractionAccount.accountNumber}\n\n`
@@ -105,11 +137,62 @@ export const formatBankingInfo = (bankingInfo: BankingInfo): string => {
     formatted += `CUENTA DE DETRACCIÓN\nSIN CUENTA DE DETRACCIÓN\n\n`
   }
 
+  // Domicilio fiscal
   if (bankingInfo.fiscalAddress) {
-    formatted += `Domicilio Fiscal:\n${bankingInfo.fiscalAddress}`
+    formatted += `Domicilio Fiscal:\n${bankingInfo.fiscalAddress}\n\n`
   } else {
-    formatted += `Domicilio Fiscal:\nSIN DOMICILIO FISCAL`
+    formatted += `Domicilio Fiscal:\nSIN DOMICILIO FISCAL\n\n`
+  }
+
+  // Información de contacto
+  if (bankingInfo.contactInfo) {
+    // Celular
+    if (bankingInfo.contactInfo.mobile) {
+      formatted += `CELULAR:\n${bankingInfo.contactInfo.mobile}\n\n`
+    } else {
+      formatted += `CELULAR:\nSIN CELULAR\n\n`
+    }
+
+    // Central telefónica
+    if (bankingInfo.contactInfo.phone) {
+      formatted += `CENTRAL TELEFÓNICA:\n${bankingInfo.contactInfo.phone}\n\n`
+    } else {
+      formatted += `CENTRAL TELEFÓNICA:\nSIN CENTRAL TELEFÓNICA\n\n`
+    }
+
+    // Correo electrónico
+    if (bankingInfo.contactInfo.email && bankingInfo.contactInfo.email.length > 0) {
+      formatted += `CORREO ELECTRÓNICO:\n${bankingInfo.contactInfo.email.join(" / ")}`
+    } else {
+      formatted += `CORREO ELECTRÓNICO:\nSIN CORREO ELECTRÓNICO`
+    }
+  } else {
+    // Si no hay información de contacto
+    formatted += `CELULAR:\nSIN CELULAR\n\n`
+    formatted += `CENTRAL TELEFÓNICA:\nSIN CENTRAL TELEFÓNICA\n\n`
+    formatted += `CORREO ELECTRÓNICO:\nSIN CORREO ELECTRÓNICO`
   }
 
   return formatted
+}
+
+// Función para obtener solo la información de contacto formateada
+export const formatContactInfo = (bankingInfo: BankingInfo): string => {
+  let formatted = ""
+
+  if (bankingInfo.contactInfo) {
+    if (bankingInfo.contactInfo.mobile) {
+      formatted += `Celular: ${bankingInfo.contactInfo.mobile}\n`
+    }
+
+    if (bankingInfo.contactInfo.phone) {
+      formatted += `Teléfono: ${bankingInfo.contactInfo.phone}\n`
+    }
+
+    if (bankingInfo.contactInfo.email && bankingInfo.contactInfo.email.length > 0) {
+      formatted += `Email: ${bankingInfo.contactInfo.email.join(", ")}`
+    }
+  }
+
+  return formatted.trim()
 }

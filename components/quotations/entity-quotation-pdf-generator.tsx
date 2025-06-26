@@ -75,20 +75,44 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
       if (quotation.quotation_items && quotation.quotation_items.length > 0) {
         // Usar quotation_items (tanto para 1 producto como para múltiples)
         console.log("Using quotation_items data (modern approach)")
-        products = quotation.quotation_items.map((item) => ({
-          quantity: item.quantity || 0,
-          description: item.product_description || item.product_name || "Producto sin descripción",
-          unit: "UND",
-          brand: item.product_brand || undefined,
-          code: item.product_code || undefined,
-          unitPrice: item.offer_unit_price_with_tax || item.platform_unit_price_with_tax || 0,
-          totalPrice: item.offer_total_with_tax || item.platform_total || 0,
-        }))
+        products = quotation.quotation_items.map((item) => {
+          // Los precios vienen con IGV, necesitamos mostrarlos sin IGV
+          const precioConIGV = item.offer_unit_price_with_tax || item.platform_unit_price_with_tax || 0
+          const totalConIGV = item.offer_total_with_tax || item.platform_total || 0
 
-        console.log("Products from quotation_items:", products)
+          // Calcular precios sin IGV (dividir entre 1.18)
+          const precioSinIGV = precioConIGV / 1.18
+          const totalSinIGV = totalConIGV / 1.18
+
+          console.log(`Product ${item.product_code}:`, {
+            precioConIGV,
+            precioSinIGV,
+            totalConIGV,
+            totalSinIGV,
+          })
+
+          return {
+            quantity: item.quantity || 0,
+            description: item.product_description || item.product_name || "Producto sin descripción",
+            unit: "UND",
+            brand: item.product_brand || undefined,
+            code: item.product_code || undefined,
+            unitPrice: precioSinIGV, // ← PRECIO SIN IGV
+            totalPrice: totalSinIGV, // ← TOTAL SIN IGV
+          }
+        })
+
+        console.log("Products from quotation_items (sin IGV):", products)
       } else {
         // Fallback a campos directos (cotizaciones legacy)
         console.log("Using direct fields (legacy approach)")
+        const precioConIGV = quotation.offer_unit_price_with_tax || quotation.platform_unit_price_with_tax || 0
+        const totalConIGV = quotation.offer_total_with_tax || quotation.platform_total || 0
+
+        // Calcular precios sin IGV
+        const precioSinIGV = precioConIGV / 1.18
+        const totalSinIGV = totalConIGV / 1.18
+
         products = [
           {
             quantity: quotation.quantity || 0,
@@ -96,12 +120,12 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
             unit: "UND",
             brand: quotation.product_brand || undefined,
             code: quotation.unique_code || undefined,
-            unitPrice: quotation.offer_unit_price_with_tax || quotation.platform_unit_price_with_tax || 0,
-            totalPrice: quotation.offer_total_with_tax || quotation.platform_total || 0,
+            unitPrice: precioSinIGV, // ← PRECIO SIN IGV
+            totalPrice: totalSinIGV, // ← TOTAL SIN IGV
           },
         ]
 
-        console.log("Products from direct fields:", products)
+        console.log("Products from direct fields (sin IGV):", products)
       }
 
       console.log("Final products array:", products)
@@ -114,15 +138,21 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         return
       }
 
-      // Calcular totales basados en los productos procesados
-      const subtotalFromProducts = products.reduce((sum, product) => sum + product.totalPrice, 0)
+      // Calcular totales basados en los productos SIN IGV
+      const subtotalSinIGV = products.reduce((sum, product) => sum + product.totalPrice, 0)
+      const igvCalculado = subtotalSinIGV * 0.18
+      const totalCalculado = subtotalSinIGV + igvCalculado
 
-      // Usar los totales calculados
-      const subtotal = subtotalFromProducts
-      const igv = subtotal * 0.18 // 18% IGV
-      const total = subtotal + igv
-
-      console.log("Calculated totals:", { subtotal, igv, total })
+      console.log("Cálculos finales:", {
+        subtotalSinIGV,
+        igvCalculado,
+        totalCalculado,
+        productosEnTabla: products.map((p) => ({
+          code: p.code,
+          unitPrice: p.unitPrice,
+          totalPrice: p.totalPrice,
+        })),
+      })
 
       // Preparar datos para el PDF
       const pdfData: EntityQuotationPDFData = {
@@ -151,13 +181,13 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         clientAttention: "Logística - Abastecimiento",
         currency: "Soles",
 
-        // Productos - GARANTIZADO que existe
+        // Productos - CON PRECIOS SIN IGV
         products: products,
 
         // Totales
-        subtotal: subtotal,
-        igv: igv,
-        total: total,
+        subtotal: subtotalSinIGV,
+        igv: igvCalculado,
+        total: totalCalculado,
 
         // Condiciones por defecto
         conditions: [
@@ -179,6 +209,8 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         companyName: pdfData.companyName,
         productsCount: pdfData.products.length,
         products: pdfData.products,
+        subtotal: pdfData.subtotal,
+        igv: pdfData.igv,
         total: pdfData.total,
         dataSource: quotation.quotation_items?.length ? "quotation_items" : "direct_fields",
       })

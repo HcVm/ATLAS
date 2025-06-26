@@ -724,18 +724,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
               placeholder="Seleccionar fecha de vencimiento"
             />
           </div>
-          <div>
-            <Label htmlFor="budget_ceiling">Techo Presupuestal</Label>
-            <Input
-              id="budget_ceiling"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.budget_ceiling}
-              onChange={(e) => setFormData((prev) => ({ ...prev, budget_ceiling: e.target.value }))}
-              placeholder="Límite presupuestal"
-            />
-          </div>
         </div>
 
         <div>

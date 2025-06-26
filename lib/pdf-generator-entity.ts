@@ -77,85 +77,53 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   tempDiv.style.backgroundColor = "white"
   tempDiv.style.fontFamily = "Arial, sans-serif"
 
+
   document.body.appendChild(tempDiv)
 
   try {
-    // Esperar un poco para que las imágenes se carguen
+    // Esperar un poco para que las imágenes se carguen y el contenido se renderice
     await new Promise((resolve) => setTimeout(resolve, 3000))
 
-    // Convertir HTML a canvas con altura automática
+    // Obtener las dimensiones reales del contenido
+    const contentHeight = tempDiv.scrollHeight
+    const contentWidth = tempDiv.scrollWidth
+
+    console.log("Content dimensions:", { width: contentWidth, height: contentHeight })
+
+    // Convertir HTML a canvas con dimensiones dinámicas
     const canvas = await html2canvas(tempDiv, {
-      scale: 2,
+      scale: 2, // Alta calidad
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
-      width: 794, // A4 width in pixels at 96 DPI
-      // Removemos la restricción de altura para permitir contenido largo
+      width: Math.max(794, contentWidth), // Mínimo A4 width, pero puede ser más ancho
+      height: contentHeight, // Altura dinámica basada en el contenido
+      scrollX: 0,
+      scrollY: 0,
     })
 
-    // Crear PDF
-    const pdf = new jsPDF("p", "mm", "a4")
-    const imgData = canvas.toDataURL("image/png")
+    const imgWidth = canvas.width
+    const imgHeight = canvas.height
 
-    // Dimensiones de la página A4 en mm
-    const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
-    const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
+    const pdfWidth = Math.max(210, (imgWidth * 210) / 794) // Mínimo A4, pero puede ser más ancho
+    const pdfHeight = Math.max(297, (imgHeight * 297) / 1123) // Mínimo A4, pero puede ser más alto
 
-    // Calcular dimensiones de la imagen
-    const imgWidth = pdfWidth
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width
+    // Crear PDF con dimensiones personalizadas
+    const pdf = new jsPDF({
+      orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+      unit: "mm",
+      format: [pdfWidth, pdfHeight],
+    })
 
-    // Si la imagen cabe en una página, agregarla directamente
-    if (imgHeight <= pdfHeight) {
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight)
-    } else {
-      // Si la imagen es más alta que una página, dividirla en múltiples páginas
-      let remainingHeight = imgHeight
-      let currentY = 0
-      let pageNumber = 1
+    // Convertir canvas a imagen
+    const imgData = canvas.toDataURL("image/png", 1.0) // Máxima calidad
 
-      while (remainingHeight > 0) {
-        // Calcular la altura para esta página
-        const pageHeight = Math.min(remainingHeight, pdfHeight)
-
-        // Crear un canvas temporal para esta sección
-        const pageCanvas = document.createElement("canvas")
-        const pageCtx = pageCanvas.getContext("2d")
-
-        if (pageCtx) {
-          // Configurar el canvas para esta página
-          pageCanvas.width = canvas.width
-          pageCanvas.height = (pageHeight * canvas.width) / imgWidth
-
-          // Dibujar la sección correspondiente del canvas original
-          pageCtx.drawImage(
-            canvas,
-            0,
-            (currentY * canvas.width) / imgWidth, // sx, sy
-            canvas.width,
-            pageCanvas.height, // sWidth, sHeight
-            0,
-            0, // dx, dy
-            pageCanvas.width,
-            pageCanvas.height, // dWidth, dHeight
-          )
-
-          // Convertir a imagen y agregar al PDF
-          const pageImgData = pageCanvas.toDataURL("image/png")
-
-
-          pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight)
-        }
-
-        // Actualizar para la siguiente página
-        currentY += pageHeight
-        remainingHeight -= pageHeight
-        pageNumber++
-      }
-    }
+    // Agregar la imagen completa al PDF sin cortes
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST")
 
     // Descargar el PDF
     pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
+
   } finally {
     // Limpiar el elemento temporal
     document.body.removeChild(tempDiv)
@@ -175,17 +143,14 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
     })
   }
 
-  console.log("Entity PDF - Products data:", data.products)
-  console.log("Entity PDF - Products count:", data.products?.length || 0)
-
   return `
-    <div style="padding: 15px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; position: relative;">
+    <div style="padding: 15px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; position: relative; min-height: auto;">
       
       <!-- Marca de agua del logo -->
       ${
         data.companyLogoUrl
           ? `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; z-index: 0;">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; z-index: 0; pointer-events: none;">
         <img src="${data.companyLogoUrl}" alt="Logo" style="width: 500px; height: auto;" crossorigin="anonymous" />
       </div>
       `
@@ -215,7 +180,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         ${
           data.companyLogoUrl
             ? `
-        <div style="text-align: center; margin-bottom: 5px; align-items: center; padding-bottom: 10px; display: flex; justify-content: center;">
+        <div style="text-align: center; margin-bottom: 2px; align-items: center; padding-bottom: 2px; display: flex; justify-content: center;">
           <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 120px; max-height: 80px;" crossorigin="anonymous" />
         </div>
         `
@@ -234,8 +199,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
 
         <!-- Datos del cliente -->
         <div style="margin-bottom: 15px;">
-          <h3 style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-decoration: underline;">DATOS DEL CLIENTE</h3>
-          <table style="width: 100%; font-size: 10px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; border-top: 1px solid #000;">DATOS DEL CLIENTE</h3>
+          <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
             <tr>
               <td style="width: 15%; font-weight: bold; padding: 2px 0;">Código:</td>
               <td style="width: 35%; padding: 2px 0;">${data.clientCode}</td>
@@ -248,7 +213,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             </tr>
             <tr>
               <td style="font-weight: bold; padding: 2px 0; vertical-align: top;">Dirección:</td>
-              <td colspan="3" style="padding: 2px 0;">${data.clientAddress}</td>
+              <td colspan="3" style="padding: 2px 0; word-wrap: break-word;">${data.clientAddress}</td>
             </tr>
             ${
               data.clientDepartment
@@ -281,10 +246,10 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         </div>
 
         <!-- Información de la empresa -->
-        <div style="margin-bottom: 15px; font-size: 9px; text-align: justify;">
+        <div style="margin-bottom: 15px; font-size: 9px; text-align: justify; border-top: 1px solid #000;">
           <p style="margin: 0; line-height: 1.3;">
-            <strong>${data.companyName}</strong> - Identificación con RUC ${data.companyRuc}, 
-            Comercial de confianza y solvencia moral y económica, para su adjudicación de:
+            <strong>${data.companyName}</strong>, identificado con RUC ${data.companyRuc}, 
+            tenemos el agrado de dirigirnos a ustedes para saludarlos cordialmentes y enviarles nuestra propuesta económica, para su adquisición de:
           </p>
         </div>
 
@@ -293,7 +258,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           data.products && data.products.length > 0
             ? `
         <div style="margin-bottom: 15px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed;">
             <thead>
               <tr style="background-color: #f0f0f0;">
                 <th style="border: 1px solid #000; padding: 5px; text-align: center; font-weight: bold; width: 8%;">CANT.</th>
@@ -310,13 +275,13 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
                 .map(
                   (product) => `
                 <tr>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.quantity.toLocaleString()}</td>
-                  <td style="border: 1px solid #000; padding: 6px; text-align: left; font-size: 8px; line-height: 1.6;">${product.description}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.unit}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.brand || ""}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: center;">${product.code || ""}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatCurrency(product.unitPrice)}</td>
-                  <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">${formatCurrency(product.totalPrice)}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;">${product.quantity.toLocaleString()}</td>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: left; font-size: 8px; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word;">${product.description}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;">${product.unit}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;">${product.brand || ""}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;">${product.code || ""}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: right; word-wrap: break-word;">${formatCurrency(product.unitPrice)}</td>
+                  <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; word-wrap: break-word;">${formatCurrency(product.totalPrice)}</td>
                 </tr>
               `,
                 )
@@ -341,17 +306,17 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             <tr>
               <td style="width: 70%;"></td>
               <td style="width: 15%; text-align: right; font-weight: bold; padding: 4px;">Sub Total:</td>
-              <td style="width: 15%; text-align: right; border: 1px solid #000; padding: 5px; font-weight: bold;">${formatCurrency(data.subtotal)}</td>
+              <td style="width: 15%; text-align: right; border: 1px solid #000; padding: 6px; font-weight: bold;">${formatCurrency(data.subtotal)}</td>
             </tr>
             <tr>
               <td></td>
               <td style="text-align: right; font-weight: bold; padding: 2px;">I.G.V.:</td>
-              <td style="text-align: right; border: 1px solid #000; padding: 5px; font-weight: bold;">${formatCurrency(data.igv)}</td>
+              <td style="text-align: right; border: 1px solid #000; padding: 6px; font-weight: bold;">${formatCurrency(data.igv)}</td>
             </tr>
             <tr>
               <td></td>
               <td style="text-align: right; font-weight: bold; padding: 2px; font-size: 12px;">TOTAL:</td>
-              <td style="text-align: right; border: 2px solid #000; padding: 5px; font-weight: bold; font-size: 12px; background-color: #f0f0f0;">${formatCurrency(data.total)}</td>
+              <td style="text-align: right; border: 2px solid #000; padding: 6px; font-weight: bold; font-size: 12px; background-color: #f0f0f0;">${formatCurrency(data.total)}</td>
             </tr>
           </table>
         </div>
@@ -371,15 +336,15 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
               ? data.conditions
                   .map(
                     (condition, index) => `
-            <p style="margin: 2px 0; font-size: 10px;"><strong>${index + 1}.</strong> ${condition}</p>
+            <p style="margin: 2px 0; font-size: 10px; line-height: 1.4;"><strong>${index + 1}.</strong> ${condition}</p>
           `,
                   )
                   .join("")
               : `
-            <p style="margin: 2px 0; font-size: 10px;"><strong>1.</strong> Plazo de entrega: 10 días hábiles.</p>
-            <p style="margin: 2px 0; font-size: 10px;"><strong>2.</strong> Entrega en almacén central.</p>
-            <p style="margin: 2px 0; font-size: 10px;"><strong>3.</strong> Forma de pago: Crédito 15 días.</p>
-            <p style="margin: 2px 0; font-size: 10px;"><strong>4.</strong> Garantía por defectos de fábrica 24 meses.</p>
+            <p style="margin: 2px 0; font-size: 10px; line-height: 1.4;"><strong>1.</strong> Plazo de entrega: 10 días hábiles.</p>
+            <p style="margin: 2px 0; font-size: 10px; line-height: 1.4;"><strong>2.</strong> Entrega en almacén central.</p>
+            <p style="margin: 2px 0; font-size: 10px; line-height: 1.4;"><strong>3.</strong> Forma de pago: Crédito 15 días.</p>
+            <p style="margin: 2px 0; font-size: 10px; line-height: 1.4;"><strong>4.</strong> Garantía por defectos de fábrica 24 meses.</p>
           `
           }
         </div>
@@ -389,23 +354,24 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             ? `
         <!-- Información Bancaria y Fiscal -->
         <div style="margin-bottom: 15px;">
-          <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
+          <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; border-top: 1px solid #000;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0 0 5px 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           
           ${
             data.bankingInfo.bankAccount
               ? `
-          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #007bff; border-radius: 3px;">
+          <div style="margin-bottom: 10px; padding: 8px; border-radius: 3px;">
             <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #007bff;">💳 DATOS BANCARIOS</p>
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
             <p style="margin: 0; font-size: 9px;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
-            <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
+            <img src="otros/bcp-logo.png" alt="Logo BCP" style="width: 60px; margin-top: 10px; margin-bottom: -20px;">
+
           </div>
           `
               : ""
           }
-                    
+          
         </div>
         `
             : data.companyAccountInfo
@@ -415,7 +381,9 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
-          <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
+          <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
+            BCP
+          </div>
         </div>
         `
               : ""
@@ -427,7 +395,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         <!-- Observaciones -->
         <div style="margin-bottom: 15px;">
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">OBSERVACIONES</h4>
-          <p style="margin: 0; font-size: 10px;">${data.observations}</p>
+          <p style="margin: 0; font-size: 10px; line-height: 1.4; word-wrap: break-word;">${data.observations}</p>
         </div>
         `
             : ""
@@ -437,14 +405,26 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         <div style="border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 9px; margin-top: 20px;">
           ${
             data.companyAddress || data.bankingInfo?.fiscalAddress
-              ? `<p style="margin: 0 0 3px 0;">${data.companyAddress || data.bankingInfo?.fiscalAddress}</p>`
+              ? `<p style="margin: 0 0 3px 0; word-wrap: break-word;">${data.companyAddress || data.bankingInfo?.fiscalAddress}</p>`
               : `<p style="margin: 0 0 3px 0;">Jr. Huantar Nro. 3311 Urb. Ca Huantar 5030 N 3311 Urb Parque El Naranjal 2da Etapa Los Olivos-Lima</p>`
           }
-          ${data.companyEmail ? `<p style="margin: 0 0 3px 0;"><strong>E-MAIL:</strong> ${data.companyEmail}</p>` : ""}
           ${
-            data.companyPhone
-              ? `<p style="margin: 0;"><strong>Móvil:</strong> ${data.companyPhone} / <strong>Telf:</strong> ${data.companyPhone}</p>`
-              : `<p style="margin: 0;"><strong>Móvil:</strong> 940955314 / <strong>Telf:</strong> (01)748 3677 anexo:102</p>`
+            data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
+              ? `<p style="margin: 0 0 3px 0; word-wrap: break-word;"><strong>E-MAIL:</strong> ${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
+              : data.companyEmail
+                ? `<p style="margin: 0 0 3px 0; word-wrap: break-word;"><strong>E-MAIL:</strong> ${data.companyEmail}</p>`
+                : ""
+          }
+          ${
+            data.bankingInfo?.contactInfo?.mobile || data.bankingInfo?.contactInfo?.phone
+              ? `<p style="margin: 0; word-wrap: break-word;">
+                  ${data.bankingInfo.contactInfo.mobile ? `<strong>Móvil:</strong> ${data.bankingInfo.contactInfo.mobile}` : ""}
+                  ${data.bankingInfo.contactInfo.mobile && data.bankingInfo.contactInfo.phone ? " / " : ""}
+                  ${data.bankingInfo.contactInfo.phone ? `<strong>Telf:</strong> ${data.bankingInfo.contactInfo.phone}` : ""}
+                </p>`
+              : data.companyPhone
+                ? `<p style="margin: 0;"><strong>Móvil:</strong> ${data.companyPhone} / <strong>Telf:</strong> ${data.companyPhone}</p>`
+                : `<p style="margin: 0;"><strong>Móvil:</strong> 940955314 / <strong>Telf:</strong> (01)748 3677 anexo:102</p>`
           }
         </div>
 
