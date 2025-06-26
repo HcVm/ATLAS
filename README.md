@@ -16,3 +16,4 @@ Un sistema completo de gestión y seguimiento de documentos construido con Next.
 - Node.js 18+ 
 - npm o yarn
 - Cuenta de Supabase
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/HcVm/NEWDOCS-REVISION-FINAL)
