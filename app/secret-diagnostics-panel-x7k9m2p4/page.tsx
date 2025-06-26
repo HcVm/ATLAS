@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { createBrowserClient } from "@supabase/ssr";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -604,33 +605,44 @@ export default function SecretDiagnosticsPage() {
   }
 
   const testAPIEndpoints = async (): Promise<TestResult> => {
-  const start = Date.now()
+  const start = Date.now();
   try {
-    const endpoints = ["/api/departments", "/api/users", "/api/news"]
+    const endpoints = ["/api/departments", "/api/users", "/api/news"];
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const token = session?.access_token;
 
     const results = await Promise.allSettled(
       endpoints.map((endpoint) =>
         fetch(endpoint, {
           method: "GET",
-          credentials: "include", // ✅ Incluye cookies para autenticación
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }).then((res) => ({ endpoint, status: res.status, ok: res.ok }))
       )
-    )
+    );
 
-    const successful = results.filter((r) => r.status === "fulfilled" && r.value.ok).length
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
     const authRequired = results.filter(
       (r) => r.status === "fulfilled" && !r.value.ok && r.value.status === 401
-    ).length
-    const total = endpoints.length
+    ).length;
+    const total = endpoints.length;
 
-    let status: "success" | "warning" | "error" = "success"
-    let message = `${successful}/${total} endpoints funcionando`
+    let status: "success" | "warning" | "error" = "success";
+    let message = `${successful}/${total} endpoints funcionando`;
 
     if (authRequired > 0) {
-      message += ` (${authRequired} requieren autenticación - normal en ${environment})`
-      status = isProduction && successful < total - authRequired ? "error" : "warning"
+      message += ` (${authRequired} requieren autenticación - normal en ${environment})`;
+      status = isProduction && successful < total - authRequired ? "error" : "warning";
     } else if (successful < total) {
-      status = "error"
+      status = "error";
     }
 
     return {
@@ -639,16 +651,16 @@ export default function SecretDiagnosticsPage() {
       message,
       details: { endpoints: results, environment, authRequired },
       duration: Date.now() - start,
-    }
-    } catch (error: any) {
-        return {
-        name: "API Endpoints",
-        status: "error",
-        message: `Error: ${error.message}`,
-        duration: Date.now() - start,
+    };
+        } catch (error: any) {
+            return {
+            name: "API Endpoints",
+            status: "error",
+            message: `Error: ${error.message}`,
+            duration: Date.now() - start,
+            };
         }
-    }
-  }
+  };
 
   const testPerformance = async (): Promise<TestResult> => {
     const start = Date.now()
