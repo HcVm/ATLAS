@@ -1,17 +1,15 @@
-// pages/api/system-status.ts
-import { NextApiRequest, NextApiResponse } from "next";
+// app/api/system-status/route.ts
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Variables de entorno necesarias
 const requiredVars = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_SECRET_PASSWORD",
-  "SUPABASE_SERVICE_ROLE_KEY" // necesaria para acceder a todos los buckets
+  "SUPABASE_SERVICE_ROLE_KEY"
 ];
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verificar variables de entorno
+export async function GET() {
   const missingVars = requiredVars.filter((v) => !process.env[v]);
 
   const results: { envCheck: any; bucketCheck?: any } = {
@@ -57,5 +55,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  res.status(200).json(results);
+  return NextResponse.json(results);
 }

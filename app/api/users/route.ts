@@ -1,3 +1,4 @@
+// app/api/users/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
@@ -18,11 +19,15 @@ const userSchema = z.object({
   id: z.string().optional(),
 })
 
-// Helper para crear supabase client con SSR y cookies
 function getSupabaseServerClient() {
+  const cookieStore = cookies();
   return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: cookies(),
-  })
+    cookies: {
+      get: (name) => cookieStore.get(name)?.value,
+      set: () => {},
+      remove: () => {},
+    },
+  });
 }
 
 // GET: listar usuarios
@@ -46,7 +51,7 @@ export async function GET(request: NextRequest) {
     .select(
       `*,
       departments!profiles_department_id_fkey (id, name),
-      companies!profiles_company_id_fkey (id, name, code, color)`,
+      companies!profiles_company_id_fkey (id, name, code, color)`
     )
     .order("created_at", { ascending: false })
 
@@ -75,7 +80,6 @@ export async function POST(request: NextRequest) {
 
     const { email, password, fullName, departmentId, phone } = parsed.data
 
-    // Verificar si el departamento existe
     const { data: deptCheck, error: deptError } = await supabaseAdmin
       .from("departments")
       .select("id")
@@ -87,7 +91,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El departamento seleccionado no existe" }, { status: 400 })
     }
 
-    // Crear el usuario en Auth
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: password!,
@@ -99,20 +102,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Error creando usuario: ${createError.message}` }, { status: 500 })
     }
 
-    // Crear el perfil del usuario
     const { error: profileError } = await supabaseAdmin.from("profiles").insert({
       id: userData.user.id,
       email,
       full_name: fullName,
       role: "user",
       department_id: departmentId,
-      company_id: null, // La empresa será asignada por el admin
+      company_id: null,
       phone: phone || null,
     })
 
     if (profileError) {
       console.error("Error creando perfil:", profileError)
-      // Si falla la creación del perfil, eliminar el usuario de Auth
       await supabaseAdmin.auth.admin.deleteUser(userData.user.id)
       return NextResponse.json({ error: `Error creando perfil: ${profileError.message}` }, { status: 500 })
     }

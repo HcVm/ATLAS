@@ -139,7 +139,7 @@ export default function SecretDiagnosticsPage() {
   const testServerSideDiagnostics = async (): Promise<TestResult[]> => {
   const start = Date.now();
   try {
-    const res = await fetch("/api/test/system-status");
+    const res = await fetch("/api/system-status");
     const json = await res.json();
 
     const results: TestResult[] = [];
@@ -604,46 +604,49 @@ export default function SecretDiagnosticsPage() {
   }
 
   const testAPIEndpoints = async (): Promise<TestResult> => {
-    const start = Date.now()
-    try {
-      const endpoints = ["/api/departments", "/api/users", "/api/news"]
+  const start = Date.now()
+  try {
+    const endpoints = ["/api/departments", "/api/users", "/api/news"]
 
-      const results = await Promise.allSettled(
-        endpoints.map((endpoint) =>
-          fetch(endpoint, { method: "GET" }).then((res) => ({ endpoint, status: res.status, ok: res.ok })),
-        ),
+    const results = await Promise.allSettled(
+      endpoints.map((endpoint) =>
+        fetch(endpoint, {
+          method: "GET",
+          credentials: "include", // ✅ Incluye cookies para autenticación
+        }).then((res) => ({ endpoint, status: res.status, ok: res.ok }))
       )
+    )
 
-      const successful = results.filter((r) => r.status === "fulfilled" && r.value.ok).length
-      const authRequired = results.filter(
-        (r) => r.status === "fulfilled" && !r.value.ok && r.value.status === 401,
-      ).length
-      const total = endpoints.length
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.ok).length
+    const authRequired = results.filter(
+      (r) => r.status === "fulfilled" && !r.value.ok && r.value.status === 401
+    ).length
+    const total = endpoints.length
 
-      let status: "success" | "warning" | "error" = "success"
-      let message = `${successful}/${total} endpoints funcionando`
+    let status: "success" | "warning" | "error" = "success"
+    let message = `${successful}/${total} endpoints funcionando`
 
-      if (authRequired > 0) {
-        message += ` (${authRequired} requieren autenticación - normal en ${environment})`
-        status = isProduction && successful < total - authRequired ? "error" : "warning"
-      } else if (successful < total) {
-        status = "error"
-      }
+    if (authRequired > 0) {
+      message += ` (${authRequired} requieren autenticación - normal en ${environment})`
+      status = isProduction && successful < total - authRequired ? "error" : "warning"
+    } else if (successful < total) {
+      status = "error"
+    }
 
-      return {
-        name: "API Endpoints",
-        status,
-        message,
-        details: { endpoints: results, environment, authRequired },
-        duration: Date.now() - start,
-      }
+    return {
+      name: "API Endpoints",
+      status,
+      message,
+      details: { endpoints: results, environment, authRequired },
+      duration: Date.now() - start,
+    }
     } catch (error: any) {
-      return {
+        return {
         name: "API Endpoints",
         status: "error",
         message: `Error: ${error.message}`,
         duration: Date.now() - start,
-      }
+        }
     }
   }
 
