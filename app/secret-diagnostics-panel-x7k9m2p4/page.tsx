@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { createClient } from '@supabase/supabase-js'
 import {
   CheckCircle,
   XCircle,
@@ -44,9 +45,8 @@ interface SystemStatus {
   lastRun: Date
   progress: number
 }
-
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD;
-console.log("secpass es:", secpass); // Debería imprimir '123456789'
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
