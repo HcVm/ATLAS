@@ -79,13 +79,13 @@ export default function CreateNewsPage() {
         const filePath = `news/${fileName}`
 
         const { error: uploadError, data: uploadData } = await supabase.storage
-          .from("media")
+          .from("images")
           .upload(filePath, values.image)
 
         if (uploadError) throw uploadError
 
         // Obtener URL pública
-        const { data: urlData } = supabase.storage.from("media").getPublicUrl(filePath)
+        const { data: urlData } = supabase.storage.from("images").getPublicUrl(filePath)
         imageUrl = urlData.publicUrl
       }
 
