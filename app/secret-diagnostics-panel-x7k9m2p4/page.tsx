@@ -607,24 +607,17 @@ export default function SecretDiagnosticsPage() {
   const testAPIEndpoints = async (): Promise<TestResult> => {
   const start = Date.now();
   try {
-    const endpoints = ["/api/departments", "/api/users", "/api/news"];
-
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const token = session?.access_token;
+    const endpoints = [
+      "/api/departments",
+      "/api/diagnostics/protected-users",
+      "/api/news"
+    ];
 
     const results = await Promise.allSettled(
       endpoints.map((endpoint) =>
         fetch(endpoint, {
           method: "GET",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include", // ✅ Envía cookies al servidor
         }).then((res) => ({ endpoint, status: res.status, ok: res.ok }))
       )
     );
@@ -652,15 +645,15 @@ export default function SecretDiagnosticsPage() {
       details: { endpoints: results, environment, authRequired },
       duration: Date.now() - start,
     };
-        } catch (error: any) {
-            return {
-            name: "API Endpoints",
-            status: "error",
-            message: `Error: ${error.message}`,
-            duration: Date.now() - start,
-            };
-        }
-  };
+  } catch (error: any) {
+    return {
+      name: "API Endpoints",
+      status: "error",
+      message: `Error: ${error.message}`,
+      duration: Date.now() - start,
+    };
+  }
+};
 
   const testPerformance = async (): Promise<TestResult> => {
     const start = Date.now()
