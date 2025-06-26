@@ -143,10 +143,6 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
           // Convertir a imagen y agregar al PDF
           const pageImgData = pageCanvas.toDataURL("image/png")
 
-          // Si no es la primera página, agregar una nueva página
-          if (pageNumber > 1) {
-            pdf.addPage()
-          }
 
           pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight)
         }
@@ -219,7 +215,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         ${
           data.companyLogoUrl
             ? `
-        <div style="text-align: center; margin-bottom: 15px; align-items: center; padding-bottom: 10px; display: flex; justify-content: center;">
+        <div style="text-align: center; margin-bottom: 5px; align-items: center; padding-bottom: 10px; display: flex; justify-content: center;">
           <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 120px; max-height: 80px;" crossorigin="anonymous" />
         </div>
         `
@@ -404,40 +400,12 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
             <p style="margin: 0 0 2px 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
             <p style="margin: 0; font-size: 9px;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
+            <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
           </div>
           `
               : ""
           }
-          
-          ${
-            data.bankingInfo.detractionAccount
-              ? `
-          <div style="margin-bottom: 10px; padding: 8px; background-color: #fff3cd; border-left: 3px solid #ffc107; border-radius: 3px;">
-            <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #856404;">🏛️ CUENTA DE DETRACCIÓN</p>
-            <p style="margin: 0; font-size: 9px;"><strong>CTA:</strong> ${data.bankingInfo.detractionAccount.accountNumber}</p>
-          </div>
-          `
-              : `
-          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #6c757d; border-radius: 3px;">
-            <p style="margin: 0; font-size: 9px; color: #6c757d; font-style: italic;">SIN CUENTA DE DETRACCIÓN</p>
-          </div>
-          `
-          }
-          
-          ${
-            data.bankingInfo.fiscalAddress
-              ? `
-          <div style="margin-bottom: 10px; padding: 8px; background-color: #d4edda; border-left: 3px solid #28a745; border-radius: 3px;">
-            <p style="margin: 0 0 3px 0; font-size: 10px; font-weight: bold; color: #155724;">🏢 DOMICILIO FISCAL</p>
-            <p style="margin: 0; font-size: 9px; line-height: 1.3;">${data.bankingInfo.fiscalAddress}</p>
-          </div>
-          `
-              : `
-          <div style="margin-bottom: 10px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #6c757d; border-radius: 3px;">
-            <p style="margin: 0; font-size: 9px; color: #6c757d; font-style: italic;">SIN DOMICILIO FISCAL</p>
-          </div>
-          `
-          }
+                    
         </div>
         `
             : data.companyAccountInfo
@@ -447,9 +415,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
-          <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
-            BCP
-          </div>
+          <img src="/otros/bcp-logo.png" alt="BCP Logo" style="height: 20px; object-fit: contain; margin-top: 10px" />
         </div>
         `
               : ""
