@@ -45,7 +45,7 @@ interface SystemStatus {
   progress: number
 }
 
-const SECRET_PASSWORD = process.env.SECRET_PASSWORD
+const secpass = process.env.SECRET_PASSWORD
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -91,7 +91,7 @@ export default function SecretDiagnosticsPage() {
       }
 
       // Check secret password
-      if (password !== SECRET_PASSWORD) {
+      if (password !== secpass) {
         setAuthError("Contraseña secreta incorrecta")
         setIsLoading(false)
         return
