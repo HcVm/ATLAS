@@ -139,7 +139,7 @@ export default function SecretDiagnosticsPage() {
   const testServerSideDiagnostics = async (): Promise<TestResult[]> => {
   const start = Date.now();
   try {
-    const res = await fetch("/api/system-status");
+    const res = await fetch("/api/test/system-status");
     const json = await res.json();
 
     const results: TestResult[] = [];
