@@ -257,11 +257,11 @@ export default function SecretDiagnosticsPage() {
       // Try different column combinations progressively
       const possibleQueries = [
         // Try with all common columns
-        () => supabase.from("products").select("id, name, code, stock, price, unit_price").limit(5),
+        () => supabase.from("products").select("id, name, code, current_stock, cost_price, sale_price").limit(5),
         // Try without price
-        () => supabase.from("products").select("id, name, code, stock, unit_price").limit(5),
+        () => supabase.from("products").select("id, name, code, current_stock, sale_price").limit(5),
         // Try without stock and price
-        () => supabase.from("products").select("id, name, code, unit_price").limit(5),
+        () => supabase.from("products").select("id, name, code, sale_price").limit(5),
         // Try without stock, price, and unit_price
         () => supabase.from("products").select("id, name, code").limit(5),
         // Basic query with just id and name
@@ -342,11 +342,11 @@ export default function SecretDiagnosticsPage() {
       // Try different column combinations based on what might exist
       const possibleQueries = [
         // Full query with all columns
-        () => supabase.from("sales").select("id, total_amount, status, created_at").limit(5),
+        () => supabase.from("sales").select("id, total_sale, sale_status, created_at").limit(5),
         // Without status column
-        () => supabase.from("sales").select("id, total_amount, created_at").limit(5),
+        () => supabase.from("sales").select("id, total_sale, created_at").limit(5),
         // Without total_amount column
-        () => supabase.from("sales").select("id, status, created_at").limit(5),
+        () => supabase.from("sales").select("id, sale_status, created_at").limit(5),
         // Basic query with minimal columns
         () => supabase.from("sales").select("id, created_at").limit(5),
         // Just count
@@ -363,11 +363,11 @@ export default function SecretDiagnosticsPage() {
           if (error) {
             lastError = error
             // Detect which column is missing
-            if (error.message.includes("total_amount")) {
-              missingColumns.push("total_amount")
+            if (error.message.includes("total_sale")) {
+              missingColumns.push("total_sale")
             }
-            if (error.message.includes("status")) {
-              missingColumns.push("status")
+            if (error.message.includes("sale_status")) {
+              missingColumns.push("sale_status")
             }
             continue
           }
@@ -648,45 +648,6 @@ export default function SecretDiagnosticsPage() {
     }
   }
 
-  const testEnvironmentVariables = async (): Promise<TestResult> => {
-    const start = Date.now()
-    try {
-      // Only check NEXT_PUBLIC_ variables in browser
-      const requiredVars = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "NEXT_PUBLIC_SITE_URL"]
-
-      const missing = requiredVars.filter((varName) => !process.env[varName])
-
-      if (missing.length > 0) {
-        const message = isProduction
-          ? `Variables faltantes: ${missing.join(", ")}`
-          : `Variables no detectadas en navegador (verificar .env.local): ${missing.join(", ")}`
-
-        return {
-          name: "Variables de Entorno",
-          status: isProduction ? "error" : "warning",
-          message,
-          details: { missing, environment, note: "Solo variables NEXT_PUBLIC_ son visibles en el navegador" },
-          duration: Date.now() - start,
-        }
-      }
-
-      return {
-        name: "Variables de Entorno",
-        status: "success",
-        message: "Todas las variables públicas están configuradas",
-        details: { environment },
-        duration: Date.now() - start,
-      }
-    } catch (error: any) {
-      return {
-        name: "Variables de Entorno",
-        status: "error",
-        message: `Error: ${error.message}`,
-        duration: Date.now() - start,
-      }
-    }
-  }
-
   const testPerformance = async (): Promise<TestResult> => {
     const start = Date.now()
     try {
@@ -756,7 +717,6 @@ export default function SecretDiagnosticsPage() {
       testStorage,
       testRLS,
       testAPIEndpoints,
-      testEnvironmentVariables,
       testPerformance,
     ]
 
@@ -1164,10 +1124,10 @@ export default function SecretDiagnosticsPage() {
               <strong>Entorno:</strong> {process.env.NODE_ENV || "development"}
             </div>
             <div>
-              <strong>Versión Next.js:</strong> {process.env.npm_package_version || "N/A"}
+              <strong>Framework de Desarrollo:</strong> {process.env.npm_package_version || "NEXT JS"}
             </div>
             <div>
-              <strong>URL del sitio:</strong> {process.env.NEXT_PUBLIC_SITE_URL || "N/A"}
+              <strong>URL del sitio:</strong> {process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app/"}
             </div>
             <div>
               <strong>Supabase URL:</strong>{" "}
