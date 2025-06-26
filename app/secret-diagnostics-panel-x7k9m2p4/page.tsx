@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { createBrowserClient } from "@supabase/ssr";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -73,6 +72,22 @@ export default function SecretDiagnosticsPage() {
 
   // Authentication handler
   const handleAuthentication = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session) {
+  console.log("📦 SESSION OBTENIDA:", session);
+  const { error: syncError } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+  if (syncError) {
+    console.warn("⚠️ No se pudo sincronizar sesión:", syncError.message);
+  } else {
+    console.log("✅ Cookie de sesión sincronizada correctamente");
+  }
+}
     setIsLoading(true)
     setAuthError("")
 
@@ -112,7 +127,7 @@ export default function SecretDiagnosticsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+}
 
   // Test individual functions
   const testDatabaseConnection = async (): Promise<TestResult> => {
