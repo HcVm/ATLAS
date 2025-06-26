@@ -11,7 +11,6 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { createClient } from '@supabase/supabase-js'
 import {
   CheckCircle,
   XCircle,
@@ -47,9 +46,6 @@ interface SystemStatus {
 }
 
 const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD;
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl!, supabaseKey!)
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -140,6 +136,47 @@ export default function SecretDiagnosticsPage() {
     }
   }
 
+  const testServerSideDiagnostics = async (): Promise<TestResult[]> => {
+  const start = Date.now();
+  try {
+    const res = await fetch("/api/system-status");
+    const json = await res.json();
+
+    const results: TestResult[] = [];
+
+    results.push({
+      name: "Variables de Entorno (servidor)",
+      status: json.envCheck.status,
+      message: json.envCheck.message,
+      details: json.envCheck,
+      duration: Date.now() - start,
+    });
+
+    if (json.bucketCheck) {
+      results.push({
+        name: "Buckets de Supabase (servidor)",
+        status: json.bucketCheck.status,
+        message: json.bucketCheck.message,
+        details: json.bucketCheck,
+        duration: Date.now() - start,
+      });
+    }
+
+    return results;
+  } catch (error: any) {
+    return [
+      {
+        name: "Diagnóstico de servidor",
+        status: "error",
+        message: `Error al consultar la API: ${error.message}`,
+        duration: Date.now() - start,
+      },
+    ];
+  }
+};
+
+
+  
   const testAuthentication = async (): Promise<TestResult> => {
     const start = Date.now()
     try {
@@ -520,47 +557,6 @@ export default function SecretDiagnosticsPage() {
     }
   }
 
-  const testStorage = async (): Promise<TestResult> => {
-    const start = Date.now()
-    try {
-      const { data: buckets, error } = await supabase.storage.listBuckets()
-
-      if (error) throw error
-
-      const requiredBuckets = ["images", "documents", "avatars"]
-      const availableBuckets = buckets?.map((b) => b.name) || []
-      const missingBuckets = requiredBuckets.filter((b) => !availableBuckets.includes(b))
-
-      if (missingBuckets.length > 0) {
-        const status = isProduction ? "error" : "warning"
-        const envMessage = isProduction ? "en producción" : "en desarrollo local (normal)"
-
-        return {
-          name: "Sistema de Almacenamiento",
-          status,
-          message: `Buckets faltantes ${envMessage}: ${missingBuckets.join(", ")}`,
-          details: { available: availableBuckets, missing: missingBuckets, environment },
-          duration: Date.now() - start,
-        }
-      }
-
-      return {
-        name: "Sistema de Almacenamiento",
-        status: "success",
-        message: `${buckets?.length || 0} buckets disponibles`,
-        details: { buckets: availableBuckets },
-        duration: Date.now() - start,
-      }
-    } catch (error: any) {
-      return {
-        name: "Sistema de Almacenamiento",
-        status: "error",
-        message: `Error: ${error.message}`,
-        duration: Date.now() - start,
-      }
-    }
-  }
-
   const testRLS = async (): Promise<TestResult> => {
     const start = Date.now()
     try {
@@ -707,6 +703,7 @@ export default function SecretDiagnosticsPage() {
 
     const tests = [
       testDatabaseConnection,
+      testServerSideDiagnostics,
       testAuthentication,
       testUserProfiles,
       testDepartments,
@@ -717,36 +714,41 @@ export default function SecretDiagnosticsPage() {
       testSupport,
       testNews,
       testNotifications,
-      testStorage,
       testRLS,
       testAPIEndpoints,
       testPerformance,
     ]
 
-    const results: TestResult[] = []
+    const results: TestResult[] = [];
 
     for (let i = 0; i < tests.length; i++) {
-      const test = tests[i]
-      const progress = ((i + 1) / tests.length) * 100
+    const test = tests[i];
+    const progress = ((i + 1) / tests.length) * 100;
+    setStatus((prev) => ({ ...prev, progress }));
 
-      setStatus((prev) => ({ ...prev, progress }))
+    try {
+        const result = await test();
 
-      try {
-        const result = await test()
-        results.push(result)
+        // Si el test devuelve varios resultados (como el del servidor)
+        if (Array.isArray(result)) {
+        results.push(...result);
+        } else {
+        results.push(result);
+        }
 
         setStatus((prev) => ({
-          ...prev,
-          tests: [...results],
-        }))
-      } catch (error) {
+        ...prev,
+        tests: [...results],
+        }));
+    } catch (error) {
         results.push({
-          name: `Test ${i + 1}`,
-          status: "error",
-          message: `Error ejecutando test: ${error}`,
-        })
-      }
+        name: `Test ${i + 1}`,
+        status: "error",
+        message: `Error ejecutando test: ${error}`,
+        });
     }
+    }
+
 
     // Determine overall status
     const hasErrors = results.some((r) => r.status === "error")
