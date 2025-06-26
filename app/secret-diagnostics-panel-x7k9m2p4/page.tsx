@@ -45,7 +45,8 @@ interface SystemStatus {
   progress: number
 }
 
-const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD
+const secpass = process.env.NEXT_PUBLIC_SECRET_PASSWORD;
+console.log("secpass es:", secpass); // Debería imprimir '123456789'
 
 export default function SecretDiagnosticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
