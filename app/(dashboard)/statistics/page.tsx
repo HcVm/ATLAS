@@ -1079,7 +1079,7 @@ export default function StatisticsPage() {
         </Card>
 
         <Card
-          className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "animate-pulse" : ""}`}
+          className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? 'bg-red-50 dark:bg-red-900/10' : ''}`}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-400/80 to-red-300/80"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
@@ -1097,7 +1097,7 @@ export default function StatisticsPage() {
             </div>
             <p className="text-xs text-muted-foreground">Productos con stock bajo</p>
             {warehouseStats.inventoryValue.lowStockCount > 0 && (
-              <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+              <div className="absolute top-1 right-10 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
             )}
           </CardContent>
         </Card>

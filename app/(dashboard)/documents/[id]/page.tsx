@@ -202,6 +202,7 @@ export default function DocumentDetailsPage() {
       // Check if user has permission to view this document
       if (
         user?.role !== "admin" &&
+        user?.role !== "supervisor" &&
         user?.department_id !== data.current_department_id &&
         user?.id !== data.created_by
       ) {
@@ -428,12 +429,12 @@ export default function DocumentDetailsPage() {
 
   const canChangeStatus = () => {
     // Solo admins o el creador del documento pueden cambiar el estado
-    return user?.role === "admin" || user?.id === document?.created_by
+    return user?.role === "admin" || user?.role === "supervisor" || user?.id === document?.created_by
   }
 
   const canEdit = () => {
     // Admins pueden editar cualquier documento
-    if (user?.role === "admin") return true
+    if (user?.role === "admin" || user?.role === "supervisor") return true
 
     // El creador puede editar solo si el documento está en su departamento
     if (user?.id === document?.created_by && user?.department_id === document?.current_department_id) {
@@ -445,7 +446,7 @@ export default function DocumentDetailsPage() {
 
   const canMove = () => {
     // Admins y supervisors pueden mover cualquier documento
-    if (user?.role === "admin" || user?.role === "supervisor") return true
+    if (user?.role === "admin") return true
 
     // Usuarios normales solo pueden mover documentos que están en su departamento
     return user?.department_id === document?.current_department_id
@@ -1440,9 +1441,6 @@ export default function DocumentDetailsPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] bg-white dark:bg-slate-800">
           <DialogHeader>
             <DialogTitle className="text-slate-800 dark:text-slate-100">Vista previa del documento</DialogTitle>
-            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={() => setViewerOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {viewerUrl && (
