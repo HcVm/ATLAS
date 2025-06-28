@@ -1,7 +1,9 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
-import { createClient } from "@/lib/supabase-server"
+import { createServiceClient } from "@/lib/supabase-server"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
+import QRCode from "qrcode"
+import { createHash } from "crypto"
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
@@ -74,7 +76,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     const timestamp = new Date().getTime()
     const uniqueData = `${data.quotationNumber}-${data.clientRuc}-${data.total}-${data.quotationDate}-${data.companyRuc}-${timestamp}`
 
-    // Generar hash SHA-256
+    // Generar hash SHA-256 usando Web Crypto API
     const encoder = new TextEncoder()
     const dataBuffer = encoder.encode(uniqueData)
     const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer)
@@ -83,8 +85,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     console.log("Generated validation hash:", validationHash)
 
-    // Guardar en la base de datos
-    const supabase = createClient()
+    // Guardar en la base de datos usando service client
+    const supabase = createServiceClient()
     const { error: insertError } = await supabase.from("quotation_validations").insert({
       validation_hash: validationHash,
       quotation_number: data.quotationNumber,
@@ -95,6 +97,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       total_amount: data.total,
       quotation_date: data.quotationDate,
       created_by: data.createdBy,
+      is_active: true,
+      validated_count: 0,
     })
 
     if (insertError) {
@@ -111,7 +115,6 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("Validation URL:", validationUrl)
 
     // Generar QR como data URL
-    const QRCode = await import("qrcode")
     qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
       width: 120,
       margin: 1,
@@ -124,7 +127,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("QR Code generated successfully")
   } catch (error) {
     console.error("Error generating validation QR:", error)
-    // Continuar sin QR si hay error
+    // Continuar sin QR si hay error, pero mostrar advertencia
+    alert("Advertencia: No se pudo generar el código de validación. El PDF se creará sin QR de validación.")
   }
 
   // Crear el HTML temporal para el PDF
@@ -183,6 +187,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     // Descargar el PDF
     pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
+
+    console.log("PDF generated and downloaded successfully")
   } finally {
     // Limpiar el elemento temporal
     document.body.removeChild(tempDiv)
@@ -414,7 +420,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
         <!-- Información Bancaria y Fiscal -->
         <div style="margin-bottom: 15px;">
           <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; border-top: 1px solid #000;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
-          <p style="margin: 0 0 5px 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
+          <p style="margin-bottom: 5px; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           
           ${
             data.bankingInfo.bankAccount
