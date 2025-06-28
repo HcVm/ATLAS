@@ -1,46 +1,31 @@
-import { createServerClient } from "@supabase/ssr"
-import { type NextRequest, type NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
 
-export function createClient(request: NextRequest, response: NextResponse) {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          })
-        },
-      },
+// Cliente para uso en API routes (server-side)
+export function createServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables")
+  }
+
+  return createClient<Database>(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
-  )
+  })
 }
 
-// Cliente alternativo para casos donde no necesitamos cookies
-export function createServiceClient() {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get() { return undefined },
-        set() {},
-        remove() {},
-      },
-    },
-  )
+// Cliente para uso en componentes de servidor
+export function createServerClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables")
+  }
+
+  return createClient<Database>(supabaseUrl, supabaseAnonKey)
 }

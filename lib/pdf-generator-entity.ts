@@ -2,8 +2,6 @@ import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { createServiceClient } from "@/lib/supabase-server"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
-import QRCode from "qrcode"
-import { createHash } from "crypto"
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
@@ -61,10 +59,12 @@ export interface EntityQuotationPDFData {
 }
 
 export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
+  console.log("🚀 Iniciando generación de PDF con validación...")
+
   // Obtener información bancaria automáticamente si tenemos el código de empresa
   if (data.companyCode && !data.bankingInfo) {
     data.bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
-    console.log("Banking info obtained for company:", data.companyCode, data.bankingInfo)
+    console.log("✅ Banking info obtained for company:", data.companyCode, data.bankingInfo)
   }
 
   // Generar hash único para validación
@@ -72,6 +72,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   let qrCodeDataUrl = ""
 
   try {
+    console.log("🔐 Generando hash de validación...")
+
     // Crear datos únicos para el hash
     const timestamp = new Date().getTime()
     const uniqueData = `${data.quotationNumber}-${data.clientRuc}-${data.total}-${data.quotationDate}-${data.companyRuc}-${timestamp}`
@@ -83,53 +85,80 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     validationHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 
-    console.log("Generated validation hash:", validationHash)
+    console.log("✅ Hash generado:", validationHash.substring(0, 16) + "...")
 
     // Guardar en la base de datos usando service client
+    console.log("💾 Guardando validación en base de datos...")
+
     const supabase = createServiceClient()
-    const { error: insertError } = await supabase.from("quotation_validations").insert({
-      validation_hash: validationHash,
-      quotation_number: data.quotationNumber,
-      client_ruc: data.clientRuc,
-      client_name: data.clientName,
-      company_ruc: data.companyRuc,
-      company_name: data.companyName,
-      total_amount: data.total,
-      quotation_date: data.quotationDate,
-      created_by: data.createdBy,
-      is_active: true,
-      validated_count: 0,
-    })
+    const { data: insertData, error: insertError } = await supabase
+      .from("quotation_validations")
+      .insert({
+        validation_hash: validationHash,
+        quotation_number: data.quotationNumber,
+        client_ruc: data.clientRuc,
+        client_name: data.clientName,
+        company_ruc: data.companyRuc,
+        company_name: data.companyName,
+        total_amount: data.total,
+        quotation_date: data.quotationDate,
+        created_by: data.createdBy,
+        is_active: true,
+        validated_count: 0,
+      })
+      .select()
 
     if (insertError) {
-      console.error("Error saving validation to database:", insertError)
-      throw new Error("Error al guardar validación en la base de datos")
+      console.error("❌ Error saving validation to database:", insertError)
+      throw new Error(`Error al guardar validación: ${insertError.message}`)
     }
 
-    console.log("Validation saved to database successfully")
+    console.log("✅ Validación guardada en BD:", insertData)
 
     // Crear URL de validación
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "https://agpcdocs.vercel.app")
     const validationUrl = `${baseUrl}/validate-quotation/${validationHash}`
 
-    console.log("Validation URL:", validationUrl)
+    console.log("🔗 URL de validación:", validationUrl)
 
-    // Generar QR como data URL
+    // Generar QR usando dynamic import para evitar problemas de SSR
+    console.log("📱 Generando código QR...")
+
+    const QRCode = await import("qrcode")
     qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
-      width: 120,
-      margin: 1,
+      width: 200,
+      margin: 2,
       color: {
         dark: "#000000",
         light: "#FFFFFF",
       },
+      errorCorrectionLevel: "M",
     })
 
-    console.log("QR Code generated successfully")
+    console.log("✅ QR Code generado exitosamente, tamaño:", qrCodeDataUrl.length, "caracteres")
   } catch (error) {
-    console.error("Error generating validation QR:", error)
-    // Continuar sin QR si hay error, pero mostrar advertencia
-    alert("Advertencia: No se pudo generar el código de validación. El PDF se creará sin QR de validación.")
+    console.error("❌ Error completo en generación de validación:", error)
+
+    // Mostrar error específico al usuario
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+    alert(
+      `Error crítico: No se pudo generar el sistema de validación.\n\nDetalle: ${errorMessage}\n\nEl PDF no se generará sin validación.`,
+    )
+
+    // No continuar sin validación
+    throw new Error("No se puede generar PDF sin sistema de validación")
   }
+
+  // Verificar que tenemos QR antes de continuar
+  if (!qrCodeDataUrl) {
+    console.error("❌ No se generó el código QR")
+    alert("Error: No se pudo generar el código QR de validación. El PDF no se creará.")
+    throw new Error("QR Code es requerido para la validación")
+  }
+
+  console.log("🎨 Creando contenido HTML del PDF...")
 
   // Crear el HTML temporal para el PDF
   const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
@@ -146,16 +175,20 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   document.body.appendChild(tempDiv)
 
   try {
+    console.log("⏳ Esperando renderizado del contenido...")
+
     // Esperar un poco para que las imágenes se carguen y el contenido se renderice
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Obtener las dimensiones reales del contenido
     const contentHeight = tempDiv.scrollHeight
     const contentWidth = tempDiv.scrollWidth
 
-    console.log("Content dimensions:", { width: contentWidth, height: contentHeight })
+    console.log("📏 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
 
     // Convertir HTML a canvas con dimensiones dinámicas
+    console.log("🖼️ Convirtiendo HTML a canvas...")
+
     const canvas = await html2canvas(tempDiv, {
       scale: 2, // Alta calidad
       useCORS: true,
@@ -165,12 +198,15 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       height: contentHeight, // Altura dinámica basada en el contenido
       scrollX: 0,
       scrollY: 0,
+      logging: false, // Desactivar logs de html2canvas
     })
 
     const imgWidth = canvas.width
     const imgHeight = canvas.height
     const pdfWidth = Math.max(210, (imgWidth * 210) / 794) // Mínimo A4, pero puede ser más ancho
     const pdfHeight = Math.max(297, (imgHeight * 297) / 1123) // Mínimo A4, pero puede ser más alto
+
+    console.log("📄 Creando PDF con dimensiones:", { width: pdfWidth, height: pdfHeight })
 
     // Crear PDF con dimensiones personalizadas
     const pdf = new jsPDF({
@@ -186,16 +222,28 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST")
 
     // Descargar el PDF
-    pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
+    const fileName = `Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`
+    pdf.save(fileName)
 
-    console.log("PDF generated and downloaded successfully")
+    console.log("✅ PDF generado y descargado exitosamente:", fileName)
+
+    // Mostrar mensaje de éxito
+    alert(
+      `✅ PDF generado exitosamente con código QR de validación.\n\nArchivo: ${fileName}\n\nHash de validación: ${validationHash.substring(0, 16)}...`,
+    )
+  } catch (error) {
+    console.error("❌ Error en generación de PDF:", error)
+    alert(`Error al generar el PDF: ${error instanceof Error ? error.message : "Error desconocido"}`)
+    throw error
   } finally {
     // Limpiar el elemento temporal
-    document.body.removeChild(tempDiv)
+    if (document.body.contains(tempDiv)) {
+      document.body.removeChild(tempDiv)
+    }
   }
 }
 
-const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?: string): string => {
+const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: string): string => {
   const formatCurrency = (amount: number) => {
     return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
   }
@@ -463,23 +511,23 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
             : ""
         }
 
-        <!-- Código QR de Validación -->
-        ${
-          qrCodeDataUrl
-            ? `
-        <div style="margin: 15px 0; text-align: center; border: 2px solid #007bff; padding: 12px; background-color: #f8f9fa; border-radius: 8px;">
-          <h4 style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold; color: #007bff;">🔒 CÓDIGO DE VALIDACIÓN OFICIAL</h4>
-          <div style="display: inline-block; border: 2px solid #007bff; padding: 5px; background-color: white; border-radius: 4px;">
-            <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 80px; height: 80px; display: block;" />
+        <!-- Código QR de Validación (SIEMPRE PRESENTE) -->
+        <div style="margin: 15px 0; text-align: center; border: 3px solid #007bff; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,123,255,0.2);">
+          <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #007bff; text-transform: uppercase; letter-spacing: 1px;">
+            🔒 VALIDACIÓN OFICIAL AGPC
+          </h4>
+          <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 100px; height: 100px; display: block;" />
           </div>
-          <p style="margin: 8px 0 0 0; font-size: 8px; color: #495057; line-height: 1.3; font-weight: bold;">
-            Escanee este código QR para verificar la autenticidad<br/>
-            y originalidad de esta cotización en línea
+          <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
+            ✅ Escanee este código QR para verificar la autenticidad<br/>
+            📱 y validez de esta cotización en tiempo real<br/>
+            🌐 Sistema de validación criptográfica SHA-256
           </p>
+          <div style="margin-top: 8px; padding: 4px 8px; background-color: #007bff; color: white; border-radius: 4px; font-size: 8px; font-weight: bold; display: inline-block;">
+            DOCUMENTO VERIFICABLE
+          </div>
         </div>
-        `
-            : ""
-        }
 
         <!-- Footer -->
         <div style="border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 9px; margin-top: 20px;">
