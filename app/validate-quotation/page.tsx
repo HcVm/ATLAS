@@ -31,9 +31,11 @@ export default function ValidateQuotationPage() {
         // Obtener parámetros de la URL
         const quotationNumber = searchParams.get("q")
         const clientRuc = searchParams.get("c")
+        const clientName = searchParams.get("cnm")
         const total = searchParams.get("t")
         const date = searchParams.get("d")
         const companyRuc = searchParams.get("cr")
+        const companyName = searchParams.get("cn")
 
         if (!quotationNumber || !clientRuc || !total || !date || !companyRuc) {
           setError("Código QR inválido o incompleto")
@@ -45,11 +47,11 @@ export default function ValidateQuotationPage() {
         const mockData: QuotationData = {
           quotationNumber,
           clientRuc,
-          clientName: "Cliente Validado", // En producción, obtener de la BD
+          clientName: clientName || '',
           total: Number.parseFloat(total),
           date,
           companyRuc,
-          companyName: "Tu Empresa", // En producción, obtener de la BD
+          companyName: companyName || '',
           isValid: true,
         }
 

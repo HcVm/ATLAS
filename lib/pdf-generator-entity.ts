@@ -454,7 +454,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   try {
     // Crear URL de validación con parámetros separados (más simple y confiable)
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
-    const validationUrl = `${baseUrl}/validate-quotation?q=${encodeURIComponent(data.quotationNumber)}&c=${encodeURIComponent(data.clientRuc)}&t=${encodeURIComponent(data.total.toString())}&d=${encodeURIComponent(data.quotationDate)}&cr=${encodeURIComponent(data.companyRuc)}&cr=${encodeURIComponent(data.companyName)}`
+    const validationUrl = `${baseUrl}/validate-quotation?q=${encodeURIComponent(data.quotationNumber)}&c=${encodeURIComponent(data.clientRuc)}&cnm=${encodeURIComponent(data.clientName)}&t=${encodeURIComponent(data.total.toString())}&d=${encodeURIComponent(data.quotationDate)}&cr=${encodeURIComponent(data.companyRuc)}&cn=${encodeURIComponent(data.companyName)}`
 
     // Generar QR como data URL
     const QRCode = await import("qrcode")
