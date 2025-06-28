@@ -20,6 +20,12 @@ interface Product {
   current_stock: number
   unit_of_measure: string
   image_url: string | null
+  company_id: string
+  company: {
+    id: string
+    name: string
+    ruc: string
+  }
   brands?: {
     name: string
   }
@@ -60,10 +66,9 @@ export function ProductSelector({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (selectedCompany) {
-      fetchProducts()
-    }
-  }, [selectedCompany])
+    // Cargar productos de todas las empresas, no solo de la empresa seleccionada
+    fetchProducts()
+  }, []) // Remover la dependencia de selectedCompany
 
   useEffect(() => {
     console.log("ProductSelector: Filtering products", {
@@ -116,49 +121,36 @@ export function ProductSelector({
   }, [value, products])
 
   const fetchProducts = async () => {
-    if (!selectedCompany) {
-      console.log("ProductSelector: No company selected")
-      return
-    }
-
-    console.log("ProductSelector: Fetching products for company:", selectedCompany.id)
+    console.log("ProductSelector: Fetching products from all companies")
     setLoading(true)
 
     try {
-      // Primero intentar una consulta simple sin relaciones
+      // Obtener productos de todas las empresas con información de la empresa
       const { data: simpleData, error: simpleError } = await supabase
         .from("products")
-        .select(
-          "id, code, name, description, sale_price, current_stock, unit_of_measure, image_url, brand_id, category_id",
-        )
-        .eq("company_id", selectedCompany.id)
+        .select(`
+        id, code, name, description, sale_price, current_stock, unit_of_measure, image_url, brand_id, category_id, company_id,
+        companies!inner(id, name, ruc)
+      `)
         .eq("is_active", true)
         .order("name")
 
       if (simpleError) {
-        console.error("ProductSelector: Error in simple query:", simpleError)
+        console.error("ProductSelector: Error in query:", simpleError)
         throw simpleError
       }
 
-      console.log("ProductSelector: Found products (simple):", simpleData?.length || 0)
+      console.log("ProductSelector: Found products from all companies:", simpleData?.length || 0)
 
       if (!simpleData || simpleData.length === 0) {
-        // Si no hay productos, verificar si existen productos para esta empresa
-        const { data: allProducts, error: allError } = await supabase
-          .from("products")
-          .select("id, name, is_active, company_id")
-          .eq("company_id", selectedCompany.id)
-
-        console.log("ProductSelector: All products for company:", allProducts?.length || 0)
-        if (allProducts) {
-          console.log("ProductSelector: Active products:", allProducts.filter((p) => p.is_active).length)
-          console.log("ProductSelector: Inactive products:", allProducts.filter((p) => !p.is_active).length)
-        }
+        console.log("ProductSelector: No products found")
+        setProducts([])
+        return
       }
 
-      // Ahora intentar obtener las relaciones por separado
+      // Obtener las relaciones por separado
       const productsWithRelations = await Promise.all(
-        (simpleData || []).map(async (product) => {
+        simpleData.map(async (product) => {
           let brandName = ""
           let categoryName = ""
 
@@ -182,6 +174,7 @@ export function ProductSelector({
             ...product,
             brands: brandName ? { name: brandName } : null,
             categories: categoryName ? { name: categoryName } : null,
+            company: product.companies,
           }
         }),
       )
@@ -196,14 +189,23 @@ export function ProductSelector({
       try {
         const { data: fallbackData, error: fallbackError } = await supabase
           .from("products")
-          .select("id, code, name, description, sale_price, current_stock, unit_of_measure")
-          .eq("company_id", selectedCompany.id)
+          .select(`
+          id, code, name, description, sale_price, current_stock, unit_of_measure, company_id,
+          companies!inner(id, name, ruc)
+        `)
           .eq("is_active", true)
           .order("name")
 
         if (!fallbackError && fallbackData) {
           console.log("ProductSelector: Fallback data loaded:", fallbackData.length)
-          setProducts(fallbackData.map((p) => ({ ...p, brands: null, categories: null })))
+          setProducts(
+            fallbackData.map((p) => ({
+              ...p,
+              brands: null,
+              categories: null,
+              company: p.companies,
+            })),
+          )
         }
       } catch (fallbackError) {
         console.error("ProductSelector: Fallback also failed:", fallbackError)
@@ -245,7 +247,7 @@ export function ProductSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between"
+            className="w-full justify-between bg-transparent"
             disabled={disabled}
           >
             {selectedProduct ? (
@@ -253,13 +255,19 @@ export function ProductSelector({
                 <Package className="h-4 w-4 text-muted-foreground" />
                 <div className="flex flex-col">
                   <span className="truncate font-medium">{selectedProduct.name}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-xs">
                       {selectedProduct.code}
                     </Badge>
                     {selectedProduct.brands && (
                       <Badge variant="secondary" className="text-xs">
                         {selectedProduct.brands.name}
+                      </Badge>
+                    )}
+                    {/* Badge de empresa si es diferente a la empresa seleccionada */}
+                    {selectedCompany && selectedProduct.company_id !== selectedCompany.id && (
+                      <Badge variant="destructive" className="text-xs">
+                        {selectedProduct.company.name}
                       </Badge>
                     )}
                     {showStock && (
@@ -280,14 +288,14 @@ export function ProductSelector({
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent className="w-full p-0" align="start">
-          <Command shouldFilter={false}>
+        <PopoverContent className="w-full p-0 max-h-[400px]" align="start">
+          <Command shouldFilter={false} className="h-full">
             <CommandInput
               placeholder="Buscar por código, nombre, marca o categoría..."
               value={searchValue}
               onValueChange={setSearchValue}
             />
-            <CommandList>
+            <CommandList className="max-h-[300px] overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Cargando productos...</div>
               ) : (
@@ -316,7 +324,7 @@ export function ProductSelector({
                           key={product.id}
                           value={`${product.id}-${product.code}-${product.name}`}
                           onSelect={() => handleSelectProduct(product)}
-                          className="flex items-center justify-between p-3"
+                          className="flex items-center justify-between p-3 cursor-pointer"
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Check
@@ -330,7 +338,7 @@ export function ProductSelector({
                                 <span className="font-medium">{product.name}</span>
                                 {product.current_stock <= 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
                               </div>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 <Badge variant="outline" className="text-xs">
                                   {product.code}
                                 </Badge>
@@ -342,6 +350,12 @@ export function ProductSelector({
                                 {product.categories && (
                                   <Badge variant="outline" className="text-xs">
                                     {product.categories.name}
+                                  </Badge>
+                                )}
+                                {/* Badge de empresa si es diferente a la empresa seleccionada */}
+                                {selectedCompany && product.company_id !== selectedCompany.id && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {product.company.name}
                                   </Badge>
                                 )}
                               </div>
@@ -360,9 +374,10 @@ export function ProductSelector({
 
                       {/* Mensaje informativo al final */}
                       {filteredProducts.length > 0 && (
-                        <div className="border-t p-3 text-center">
+                        <div className="border-t p-3 text-center bg-muted/50">
                           <p className="text-xs text-muted-foreground">
-                            ¿No encuentras el producto? Contacta al área de inventario para agregarlo.
+                            Se muestran productos de todas las empresas. Los productos de otras empresas aparecen
+                            marcados con un badge rojo.
                           </p>
                         </div>
                       )}

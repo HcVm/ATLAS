@@ -366,13 +366,13 @@ export default function NotificationsPage() {
                             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed break-words">
                               {notification.message}
                             </p>
-                            <p className="text-xs text-slate-400 flex items-center gap-1">
-                              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+                            <div className="text-xs text-slate-400 flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-slate-400"></span>
                               {notification.created_at &&
                                 format(new Date(notification.created_at), "d 'de' MMMM, yyyy 'a las' HH:mm", {
                                   locale: es,
                                 })}
-                            </p>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {!notification.read && (
