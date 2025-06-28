@@ -76,7 +76,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       companyRuc: data.companyRuc,
     }
 
-    // Crear URL de validación
+    // Crear URL de validación (puedes cambiar esta URL según tu dominio)
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
     const validationUrl = `${baseUrl}/validate-quotation?data=${encodeURIComponent(JSON.stringify(validationData))}`
 
@@ -412,7 +412,9 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
-          <img src="otros/bcp-logo.png" alt="Logo BCP" style="width: 60px; margin-top: 10px; margin-bottom: -20px;">
+          <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
+            BCP
+          </div>
         </div>
         `
               : ""
@@ -434,7 +436,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
         ${
           qrCodeDataUrl
             ? `
-        <div style="margin: 15px 0; text-align: center; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="margin: 15px 0; text-align: center; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;">
           <h4 style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold; color: #333;">CÓDIGO DE VALIDACIÓN</h4>
           <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 80px; height: 80px; margin: 5px 0;" />
           <p style="margin: 5px 0 0 0; font-size: 8px; color: #666; line-height: 1.2;">
