@@ -64,8 +64,41 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("Banking info obtained for company:", data.companyCode, data.bankingInfo)
   }
 
+  // Generar código QR para validación
+  let qrCodeDataUrl = ""
+  try {
+    // Crear datos de validación para el QR
+    const validationData = {
+      quotationNumber: data.quotationNumber,
+      clientRuc: data.clientRuc,
+      total: data.total,
+      date: data.quotationDate,
+      companyRuc: data.companyRuc,
+    }
+
+    // Crear URL de validación
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
+    const validationUrl = `${baseUrl}/validate-quotation?data=${encodeURIComponent(JSON.stringify(validationData))}`
+
+    // Generar QR como data URL
+    const QRCode = await import("qrcode")
+    qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+      width: 120,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+
+    console.log("QR Code generated for quotation validation")
+  } catch (error) {
+    console.error("Error generating validation QR:", error)
+    // Continuar sin QR si hay error
+  }
+
   // Crear el HTML temporal para el PDF
-  const htmlContent = createEntityQuotationHTML(data)
+  const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
 
   // Crear un elemento temporal en el DOM
   const tempDiv = document.createElement("div")
@@ -76,7 +109,6 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   tempDiv.style.width = "210mm" // A4 width
   tempDiv.style.backgroundColor = "white"
   tempDiv.style.fontFamily = "Arial, sans-serif"
-
 
   document.body.appendChild(tempDiv)
 
@@ -123,14 +155,13 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     // Descargar el PDF
     pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
-
   } finally {
     // Limpiar el elemento temporal
     document.body.removeChild(tempDiv)
   }
 }
 
-const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
+const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?: string): string => {
   const formatCurrency = (amount: number) => {
     return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
   }
@@ -381,9 +412,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">CUENTA HABILITADA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           <p style="margin: 2px 0; font-size: 10px;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
-          <div style="margin-top: 8px; display: inline-flex; background-color: #0066cc; color: white; padding: 4px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; align-items: center;justify-content: center; line-height: 16px;">
-            BCP
-          </div>
+          <img src="otros/bcp-logo.png" alt="Logo BCP" style="width: 60px; margin-top: 10px; margin-bottom: -20px;">
         </div>
         `
               : ""
@@ -396,6 +425,21 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData): string => {
         <div style="margin-bottom: 15px;">
           <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; text-decoration: underline;">OBSERVACIONES</h4>
           <p style="margin: 0; font-size: 10px; line-height: 1.4; word-wrap: break-word;">${data.observations}</p>
+        </div>
+        `
+            : ""
+        }
+
+        <!-- Código QR de Validación -->
+        ${
+          qrCodeDataUrl
+            ? `
+        <div style="margin: 15px 0; text-align: center; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+          <h4 style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold; color: #333;">CÓDIGO DE VALIDACIÓN</h4>
+          <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 80px; height: 80px; margin: 5px 0;" />
+          <p style="margin: 5px 0 0 0; font-size: 8px; color: #666; line-height: 1.2;">
+            Escanee este código para validar<br/>la autenticidad de esta cotización
+          </p>
         </div>
         `
             : ""
