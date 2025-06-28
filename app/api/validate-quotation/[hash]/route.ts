@@ -5,55 +5,51 @@ export async function GET(request: NextRequest, { params }: { params: { hash: st
   try {
     const { hash } = params
 
-    if (!hash || hash.length !== 64) {
-      return NextResponse.json({ error: "Hash de validación inválido" }, { status: 400 })
+    if (!hash) {
+      return NextResponse.json({ error: "Hash de validación requerido" }, { status: 400 })
     }
 
     const supabase = createClient()
 
-    // Buscar el registro de validación
-    const { data: validation, error } = await supabase
+    // Buscar la cotización por hash
+    const { data: quotation, error } = await supabase
       .from("quotation_validations")
       .select("*")
       .eq("validation_hash", hash)
       .eq("is_active", true)
       .single()
 
-    if (error || !validation) {
-      console.error("Validation not found:", error)
+    if (error || !quotation) {
       return NextResponse.json({ error: "Cotización no encontrada o inválida" }, { status: 404 })
     }
 
-    // Incrementar contador de validaciones
-    const newValidatedCount = validation.validated_count + 1
-    const currentTime = new Date().toISOString()
-
+    // Actualizar contador de validaciones
     const { error: updateError } = await supabase
       .from("quotation_validations")
       .update({
-        validated_count: newValidatedCount,
-        last_validated_at: currentTime,
+        validated_count: quotation.validated_count + 1,
+        last_validated_at: new Date().toISOString(),
       })
-      .eq("id", validation.id)
+      .eq("id", quotation.id)
 
     if (updateError) {
       console.error("Error updating validation count:", updateError)
+      // No retornamos error aquí, solo logueamos
     }
 
-    // Retornar datos de validación
     return NextResponse.json({
-      isValid: true,
-      quotationNumber: validation.quotation_number,
-      clientRuc: validation.client_ruc,
-      clientName: validation.client_name,
-      companyRuc: validation.company_ruc,
-      companyName: validation.company_name,
-      totalAmount: validation.total_amount,
-      quotationDate: validation.quotation_date,
-      createdAt: validation.created_at,
-      validatedCount: newValidatedCount,
-      lastValidatedAt: currentTime,
-      createdBy: validation.created_by,
+      success: true,
+      quotation: {
+        quotation_number: quotation.quotation_number,
+        client_ruc: quotation.client_ruc,
+        client_name: quotation.client_name,
+        company_ruc: quotation.company_ruc,
+        company_name: quotation.company_name,
+        total_amount: quotation.total_amount,
+        quotation_date: quotation.quotation_date,
+        validated_count: quotation.validated_count + 1,
+        last_validated_at: new Date().toISOString(),
+      },
     })
   } catch (error) {
     console.error("Error validating quotation:", error)
