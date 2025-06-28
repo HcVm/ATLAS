@@ -1,43 +1,7 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
+import { createClient } from "@/lib/supabase-server"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
-
-interface Product {
-  id: string
-  name: string
-  description?: string
-  price: number
-  quantity: number
-  unit: string
-  image_url?: string
-}
-
-interface QuotationData {
-  quotationNumber: string
-  clientName: string
-  clientRuc: string
-  clientAddress: string
-  clientPhone?: string
-  clientEmail?: string
-  date: string
-  validUntil: string
-  products: Product[]
-  subtotal: number
-  igv: number
-  total: number
-  notes?: string
-  companyName: string
-  companyRuc: string
-  companyAddress: string
-  companyPhone?: string
-  companyEmail?: string
-  companyLogo?: string
-  routeInfo?: {
-    distance?: string
-    duration?: string
-    route?: string
-  }
-}
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
@@ -92,6 +56,137 @@ export interface EntityQuotationPDFData {
 
   // Creado por
   createdBy: string
+}
+
+export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
+  // Obtener información bancaria automáticamente si tenemos el código de empresa
+  if (data.companyCode && !data.bankingInfo) {
+    data.bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
+    console.log("Banking info obtained for company:", data.companyCode, data.bankingInfo)
+  }
+
+  // Generar hash único para validación
+  let validationHash = ""
+  let qrCodeDataUrl = ""
+
+  try {
+    // Crear datos únicos para el hash
+    const timestamp = new Date().getTime()
+    const uniqueData = `${data.quotationNumber}-${data.clientRuc}-${data.total}-${data.quotationDate}-${data.companyRuc}-${timestamp}`
+
+    // Generar hash SHA-256
+    const encoder = new TextEncoder()
+    const dataBuffer = encoder.encode(uniqueData)
+    const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    validationHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+
+    console.log("Generated validation hash:", validationHash)
+
+    // Guardar en la base de datos
+    const supabase = createClient()
+    const { error: insertError } = await supabase.from("quotation_validations").insert({
+      validation_hash: validationHash,
+      quotation_number: data.quotationNumber,
+      client_ruc: data.clientRuc,
+      client_name: data.clientName,
+      company_ruc: data.companyRuc,
+      company_name: data.companyName,
+      total_amount: data.total,
+      quotation_date: data.quotationDate,
+      created_by: data.createdBy,
+    })
+
+    if (insertError) {
+      console.error("Error saving validation to database:", insertError)
+      throw new Error("Error al guardar validación en la base de datos")
+    }
+
+    console.log("Validation saved to database successfully")
+
+    // Crear URL de validación
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
+    const validationUrl = `${baseUrl}/validate-quotation/${validationHash}`
+
+    console.log("Validation URL:", validationUrl)
+
+    // Generar QR como data URL
+    const QRCode = await import("qrcode")
+    qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+      width: 120,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+
+    console.log("QR Code generated successfully")
+  } catch (error) {
+    console.error("Error generating validation QR:", error)
+    // Continuar sin QR si hay error
+  }
+
+  // Crear el HTML temporal para el PDF
+  const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
+
+  // Crear un elemento temporal en el DOM
+  const tempDiv = document.createElement("div")
+  tempDiv.innerHTML = htmlContent
+  tempDiv.style.position = "absolute"
+  tempDiv.style.left = "-9999px"
+  tempDiv.style.top = "0"
+  tempDiv.style.width = "210mm" // A4 width
+  tempDiv.style.backgroundColor = "white"
+  tempDiv.style.fontFamily = "Arial, sans-serif"
+  document.body.appendChild(tempDiv)
+
+  try {
+    // Esperar un poco para que las imágenes se carguen y el contenido se renderice
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+
+    // Obtener las dimensiones reales del contenido
+    const contentHeight = tempDiv.scrollHeight
+    const contentWidth = tempDiv.scrollWidth
+
+    console.log("Content dimensions:", { width: contentWidth, height: contentHeight })
+
+    // Convertir HTML a canvas con dimensiones dinámicas
+    const canvas = await html2canvas(tempDiv, {
+      scale: 2, // Alta calidad
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      width: Math.max(794, contentWidth), // Mínimo A4 width, pero puede ser más ancho
+      height: contentHeight, // Altura dinámica basada en el contenido
+      scrollX: 0,
+      scrollY: 0,
+    })
+
+    const imgWidth = canvas.width
+    const imgHeight = canvas.height
+    const pdfWidth = Math.max(210, (imgWidth * 210) / 794) // Mínimo A4, pero puede ser más ancho
+    const pdfHeight = Math.max(297, (imgHeight * 297) / 1123) // Mínimo A4, pero puede ser más alto
+
+    // Crear PDF con dimensiones personalizadas
+    const pdf = new jsPDF({
+      orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+      unit: "mm",
+      format: [pdfWidth, pdfHeight],
+    })
+
+    // Convertir canvas a imagen
+    const imgData = canvas.toDataURL("image/png", 1.0) // Máxima calidad
+
+    // Agregar la imagen completa al PDF sin cortes
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST")
+
+    // Descargar el PDF
+    pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
+  } finally {
+    // Limpiar el elemento temporal
+    document.body.removeChild(tempDiv)
+  }
 }
 
 const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?: string): string => {
@@ -217,7 +312,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
           </p>
         </div>
 
-        <!-- Tabla de productos - SIEMPRE MOSTRAR -->
+        <!-- Tabla de productos -->
         ${
           data.products && data.products.length > 0
             ? `
@@ -318,7 +413,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
             ? `
         <!-- Información Bancaria y Fiscal -->
         <div style="margin-bottom: 15px;">
-          <h4 style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; border-top: 1px solid #000;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
+          <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; border-top: 1px solid #000;">INFORMACIÓN BANCARIA DE NUESTRA EMPRESA</h4>
           <p style="margin: 0 0 5px 0; font-size: 10px; font-weight: bold;">${data.companyName}</p>
           
           ${
@@ -333,7 +428,6 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
           `
               : ""
           }
-          
         </div>
         `
             : data.companyAccountInfo
@@ -367,11 +461,14 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl?:
         ${
           qrCodeDataUrl
             ? `
-        <div style="margin: 15px 0; text-align: center; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
-          <h4 style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold; color: #333;">🔒 CÓDIGO DE VALIDACIÓN</h4>
-          <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 80px; height: 80px; margin: 5px 0; border: 1px solid #ccc;" />
-          <p style="margin: 5px 0 0 0; font-size: 8px; color: #666; line-height: 1.2;">
-            Escanee este código QR para validar<br/>la autenticidad de esta cotización
+        <div style="margin: 15px 0; text-align: center; border: 2px solid #007bff; padding: 12px; background-color: #f8f9fa; border-radius: 8px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 10px; font-weight: bold; color: #007bff;">🔒 CÓDIGO DE VALIDACIÓN OFICIAL</h4>
+          <div style="display: inline-block; border: 2px solid #007bff; padding: 5px; background-color: white; border-radius: 4px;">
+            <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 80px; height: 80px; display: block;" />
+          </div>
+          <p style="margin: 8px 0 0 0; font-size: 8px; color: #495057; line-height: 1.3; font-weight: bold;">
+            Escanee este código QR para verificar la autenticidad<br/>
+            y originalidad de esta cotización en línea
           </p>
         </div>
         `
@@ -440,99 +537,4 @@ const getStatusLabel = (status: string): string => {
     expired: "Expirada",
   }
   return statusLabels[status] || status
-}
-
-export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
-  // Obtener información bancaria automáticamente si tenemos el código de empresa
-  if (data.companyCode && !data.bankingInfo) {
-    data.bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
-    console.log("Banking info obtained for company:", data.companyCode, data.bankingInfo)
-  }
-
-  // Generar código QR para validación
-  let qrCodeDataUrl = ""
-  try {
-    // Crear URL de validación con parámetros separados (más simple y confiable)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
-    const validationUrl = `${baseUrl}/validate-quotation?q=${encodeURIComponent(data.quotationNumber)}&c=${encodeURIComponent(data.clientRuc)}&cnm=${encodeURIComponent(data.clientName)}&t=${encodeURIComponent(data.total.toString())}&d=${encodeURIComponent(data.quotationDate)}&cr=${encodeURIComponent(data.companyRuc)}&cn=${encodeURIComponent(data.companyName)}`
-
-    // Generar QR como data URL
-    const QRCode = await import("qrcode")
-    qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
-      width: 120,
-      margin: 1,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    })
-
-    console.log("QR Code generated for quotation validation:", validationUrl)
-  } catch (error) {
-    console.error("Error generating validation QR:", error)
-    // Continuar sin QR si hay error
-  }
-
-  // Crear el HTML temporal para el PDF
-  const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
-
-  // Crear un elemento temporal en el DOM
-  const tempDiv = document.createElement("div")
-  tempDiv.innerHTML = htmlContent
-  tempDiv.style.position = "absolute"
-  tempDiv.style.left = "-9999px"
-  tempDiv.style.top = "0"
-  tempDiv.style.width = "210mm" // A4 width
-  tempDiv.style.backgroundColor = "white"
-  tempDiv.style.fontFamily = "Arial, sans-serif"
-
-  document.body.appendChild(tempDiv)
-
-  try {
-    // Esperar un poco para que las imágenes se carguen y el contenido se renderice
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-
-    // Obtener las dimensiones reales del contenido
-    const contentHeight = tempDiv.scrollHeight
-    const contentWidth = tempDiv.scrollWidth
-
-    console.log("Content dimensions:", { width: contentWidth, height: contentHeight })
-
-    // Convertir HTML a canvas con dimensiones dinámicas
-    const canvas = await html2canvas(tempDiv, {
-      scale: 2, // Alta calidad
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-      width: Math.max(794, contentWidth), // Mínimo A4 width, pero puede ser más ancho
-      height: contentHeight, // Altura dinámica basada en el contenido
-      scrollX: 0,
-      scrollY: 0,
-    })
-
-    const imgWidth = canvas.width
-    const imgHeight = canvas.height
-
-    const pdfWidth = Math.max(210, (imgWidth * 210) / 794) // Mínimo A4, pero puede ser más ancho
-    const pdfHeight = Math.max(297, (imgHeight * 297) / 1123) // Mínimo A4, pero puede ser más alto
-
-    // Crear PDF con dimensiones personalizadas
-    const pdf = new jsPDF({
-      orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
-      unit: "mm",
-      format: [pdfWidth, pdfHeight],
-    })
-
-    // Convertir canvas a imagen
-    const imgData = canvas.toDataURL("image/png", 1.0) // Máxima calidad
-
-    // Agregar la imagen completa al PDF sin cortes
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST")
-
-    // Descargar el PDF
-    pdf.save(`Cotizacion_Entidad_${data.quotationNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`)
-  } finally {
-    // Limpiar el elemento temporal
-    document.body.removeChild(tempDiv)
-  }
 }

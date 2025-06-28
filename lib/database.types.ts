@@ -704,6 +704,60 @@ export interface Database {
         }
         Relationships: []
       }
+      quotation_validations: {
+        Row: {
+          id: string
+          validation_hash: string
+          quotation_number: string
+          client_ruc: string
+          client_name: string
+          company_ruc: string
+          company_name: string
+          total_amount: number
+          quotation_date: string
+          created_by: string
+          validated_count: number
+          last_validated_at: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          validation_hash: string
+          quotation_number: string
+          client_ruc: string
+          client_name: string
+          company_ruc: string
+          company_name: string
+          total_amount: number
+          quotation_date: string
+          created_by: string
+          validated_count?: number
+          last_validated_at?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          validation_hash?: string
+          quotation_number?: string
+          client_ruc?: string
+          client_name?: string
+          company_ruc?: string
+          company_name?: string
+          total_amount?: number
+          quotation_date?: string
+          created_by?: string
+          validated_count?: number
+          last_validated_at?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
