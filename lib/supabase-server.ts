@@ -1,36 +1,45 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { type NextRequest, type NextResponse } from "next/server"
 import type { Database } from "@/lib/database.types"
 
-export function createClient() {
-  const cookieStore = cookies()
-
+export function createClient(request: NextRequest, response: NextResponse) {
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value
+          return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
         },
         remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: "", ...options })
-          } catch {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
+          response.cookies.set({
+            name,
+            value: "",
+            ...options,
+          })
         },
+      },
+    },
+  )
+}
+
+// Cliente alternativo para casos donde no necesitamos cookies
+export function createServiceClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get() { return undefined },
+        set() {},
+        remove() {},
       },
     },
   )
