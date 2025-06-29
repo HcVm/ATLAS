@@ -495,7 +495,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
           <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #007bff;">
             🔒 VALIDACIÓN OFICIAL AGPC
           </h4>
-          <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px;">
+          <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; border-radius: 8px;">
             <img 
               src="${qrCodeDataUrl}" 
               alt="QR Validación" 
