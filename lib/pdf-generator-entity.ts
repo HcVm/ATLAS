@@ -1,6 +1,7 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
+import QRCode from "qrcode"
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
@@ -57,87 +58,30 @@ export interface EntityQuotationPDFData {
   createdBy: string
 }
 
-// Función auxiliar para validar QR generado
-const validateQRDataURL = (dataUrl: string): boolean => {
+// Función para generar QR usando la misma lógica que funciona en documentos
+async function generateQuotationQR(validationUrl: string): Promise<string> {
   try {
-    // Verificar que sea un data URL válido
-    if (!dataUrl.startsWith("data:image/png;base64,")) {
-      console.error("❌ QR no es un data URL PNG válido")
-      return false
-    }
+    console.log("📱 Generando QR con configuración simple...")
+    console.log("🔗 URL para QR:", validationUrl)
 
-    // Verificar que tenga contenido base64
-    const base64Data = dataUrl.split(",")[1]
-    if (!base64Data || base64Data.length < 100) {
-      console.error("❌ QR base64 data es muy corto:", base64Data?.length || 0)
-      return false
-    }
+    // Usar exactamente la misma configuración que funciona en qr-generator.ts
+    const qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
 
-    // Verificar que el base64 sea válido
-    try {
-      atob(base64Data)
-      console.log("✅ QR base64 es válido, longitud:", base64Data.length)
-      return true
-    } catch (e) {
-      console.error("❌ QR base64 no es válido:", e)
-      return false
-    }
+    console.log("✅ QR generado exitosamente, tamaño:", qrCodeDataUrl.length, "caracteres")
+    console.log("🔍 QR preview:", qrCodeDataUrl.substring(0, 100) + "...")
+
+    return qrCodeDataUrl
   } catch (error) {
-    console.error("❌ Error validando QR:", error)
-    return false
+    console.error("❌ Error generating QR code:", error)
+    throw new Error("Failed to generate QR code")
   }
-}
-
-// Función auxiliar para generar QR con múltiples intentos
-const generateQRWithRetry = async (url: string, maxRetries = 3): Promise<string> => {
-  const QRCode = await import("qrcode")
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`📱 Intento ${attempt}/${maxRetries} de generación de QR...`)
-      console.log("🔗 URL para QR:", url)
-
-      // Configuración optimizada para QR
-      const qrOptions = {
-        width: 256, // Tamaño fijo
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-        errorCorrectionLevel: "M" as const,
-        type: "image/png" as const,
-        quality: 0.92,
-        rendererOpts: {
-          quality: 0.92,
-        },
-      }
-
-      const qrCodeDataUrl = await QRCode.toDataURL(url, qrOptions)
-
-      console.log(`✅ QR generado en intento ${attempt}, tamaño:`, qrCodeDataUrl.length, "caracteres")
-
-      // Validar el QR generado
-      if (validateQRDataURL(qrCodeDataUrl)) {
-        console.log("✅ QR validado exitosamente")
-        return qrCodeDataUrl
-      } else {
-        console.warn(`⚠️ QR inválido en intento ${attempt}`)
-        if (attempt === maxRetries) {
-          throw new Error("QR generado no es válido después de múltiples intentos")
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Error en intento ${attempt}:`, error)
-      if (attempt === maxRetries) {
-        throw error
-      }
-      // Esperar un poco antes del siguiente intento
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    }
-  }
-
-  throw new Error("No se pudo generar QR después de múltiples intentos")
 }
 
 // Función auxiliar para precargar imágenes
@@ -203,11 +147,11 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
     console.log("🔗 URL de validación:", validationUrl)
 
-    // Generar QR con reintentos y validación
-    console.log("📱 Generando código QR con validación...")
-    qrCodeDataUrl = await generateQRWithRetry(validationUrl)
+    // Generar QR usando la misma función que funciona para documentos
+    console.log("📱 Generando código QR...")
+    qrCodeDataUrl = await generateQuotationQR(validationUrl)
 
-    console.log("✅ QR Code generado y validado exitosamente")
+    console.log("✅ QR Code generado exitosamente")
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -641,7 +585,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <img 
               src="${qrCodeDataUrl}" 
               alt="QR Validación" 
-              style="width: 100px; height: 100px; display: block; border: none; outline: none; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;" 
+              style="width: 100px; height: 100px; display: block; border: none; outline: none;" 
               crossorigin="anonymous"
             />
           </div>

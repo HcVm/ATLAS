@@ -9,91 +9,65 @@ export async function GET(request: NextRequest, { params }: { params: { hash: st
       return NextResponse.json({ error: "Hash de validación requerido" }, { status: 400 })
     }
 
-    if (hash.length !== 64) {
-      return NextResponse.json({ error: "Hash de validación inválido" }, { status: 400 })
-    }
-
     console.log("🔍 Validando hash:", hash.substring(0, 16) + "...")
 
-    // Usar service client para consultar la validación
+    // Crear cliente de Supabase
     const supabase = createServiceClient()
 
-    // Buscar la validación por hash
-    const { data: validation, error } = await supabase
+    // Buscar la validación
+    const { data: validation, error: selectError } = await supabase
       .from("quotation_validations")
       .select("*")
       .eq("validation_hash", hash)
       .eq("is_active", true)
       .single()
 
-    if (error) {
-      console.error("❌ Error fetching validation:", error)
+    if (selectError) {
+      console.error("❌ Error buscando validación:", selectError)
       return NextResponse.json({ error: "Validación no encontrada" }, { status: 404 })
     }
 
     if (!validation) {
-      console.log("❌ Validación no encontrada o inactiva")
       return NextResponse.json({ error: "Validación no encontrada o inactiva" }, { status: 404 })
+    }
+
+    // Incrementar contador de validaciones
+    const { error: updateError } = await supabase
+      .from("quotation_validations")
+      .update({
+        validated_count: validation.validated_count + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validation.id)
+
+    if (updateError) {
+      console.warn("⚠️ Error actualizando contador:", updateError)
     }
 
     console.log("✅ Validación encontrada:", validation.quotation_number)
 
-    // Verificar si la validación ha expirado
-    const now = new Date()
-    const expiresAt = validation.expires_at ? new Date(validation.expires_at) : new Date()
-
-    if (now > expiresAt) {
-      console.log("⏰ Validación expirada")
-      return NextResponse.json(
-        {
-          error: "Esta validación ha expirado",
-          expired: true,
-          expiresAt: validation.expires_at,
-        },
-        { status: 410 },
-      )
-    }
-
-    // Incrementar contador de validaciones
-    const newCount = (validation.validated_count || 0) + 1
-    const currentTime = new Date().toISOString()
-
-    const { error: updateError } = await supabase
-      .from("quotation_validations")
-      .update({
-        validated_count: newCount,
-        last_validated_at: currentTime,
-      })
-      .eq("validation_hash", hash)
-
-    if (updateError) {
-      console.error("⚠️ Error updating validation count:", updateError)
-      // No fallar la validación por esto, solo logear el error
-    } else {
-      console.log("📊 Contador actualizado:", newCount)
-    }
-
-    // Retornar datos de la validación
     return NextResponse.json({
-      valid: true,
+      success: true,
       validation: {
-        id: validation.id,
         quotationNumber: validation.quotation_number,
-        clientRuc: validation.client_ruc,
         clientName: validation.client_name,
-        companyRuc: validation.company_ruc,
+        clientRuc: validation.client_ruc,
         companyName: validation.company_name,
+        companyRuc: validation.company_ruc,
         totalAmount: validation.total_amount,
         quotationDate: validation.quotation_date,
         createdBy: validation.created_by,
+        validatedCount: validation.validated_count + 1,
         createdAt: validation.created_at,
-        validatedCount: newCount,
-        lastValidatedAt: currentTime,
-        expiresAt: validation.expires_at,
       },
     })
   } catch (error) {
-    console.error("❌ Error in validation API:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    console.error("❌ Error en validación:", error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Error interno del servidor",
+      },
+      { status: 500 },
+    )
   }
 }
