@@ -1,7 +1,7 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
-import QRCode from "qrcode"
+import { generateQR } from "./qr-generator"
 
 export interface EntityQuotationPDFData {
   // Información de la empresa
@@ -56,32 +56,6 @@ export interface EntityQuotationPDFData {
 
   // Creado por
   createdBy: string
-}
-
-// Función para generar QR usando la misma lógica que funciona en documentos
-async function generateQuotationQR(validationUrl: string): Promise<string> {
-  try {
-    console.log("📱 Generando QR con configuración simple...")
-    console.log("🔗 URL para QR:", validationUrl)
-
-    // Usar exactamente la misma configuración que funciona en qr-generator.ts
-    const qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
-      width: 256,
-      margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    })
-
-    console.log("✅ QR generado exitosamente, tamaño:", qrCodeDataUrl.length, "caracteres")
-    console.log("🔍 QR preview:", qrCodeDataUrl.substring(0, 100) + "...")
-
-    return qrCodeDataUrl
-  } catch (error) {
-    console.error("❌ Error generating QR code:", error)
-    throw new Error("Failed to generate QR code")
-  }
 }
 
 // Función auxiliar para precargar imágenes
@@ -148,10 +122,17 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("🔗 URL de validación:", validationUrl)
 
     // Generar QR usando la misma función que funciona para documentos
-    console.log("📱 Generando código QR...")
-    qrCodeDataUrl = await generateQuotationQR(validationUrl)
+    console.log("📱 Generando código QR usando qr-generator.ts...")
+    qrCodeDataUrl = await generateQR(validationUrl)
 
     console.log("✅ QR Code generado exitosamente")
+    console.log("📏 QR Data URL length:", qrCodeDataUrl.length)
+    console.log("🔍 QR Data URL starts with:", qrCodeDataUrl.substring(0, 50))
+
+    // Verificación adicional del QR
+    if (!qrCodeDataUrl.startsWith("data:image/png;base64,")) {
+      throw new Error("QR generado no tiene el formato correcto")
+    }
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -194,6 +175,20 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     // Esperar un poco para que el contenido se renderice
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
+    // Verificar que el QR se insertó correctamente en el DOM
+    const qrImages = tempDiv.querySelectorAll('img[alt="QR Validación"]')
+    console.log("🔍 QR images found in DOM:", qrImages.length)
+
+    qrImages.forEach((img, index) => {
+      const imgElement = img as HTMLImageElement
+      console.log(`📱 QR Image ${index + 1}:`)
+      console.log("  - src length:", imgElement.src.length)
+      console.log("  - src starts with:", imgElement.src.substring(0, 50))
+      console.log("  - naturalWidth:", imgElement.naturalWidth)
+      console.log("  - naturalHeight:", imgElement.naturalHeight)
+      console.log("  - complete:", imgElement.complete)
+    })
+
     // Precargar todas las imágenes antes de generar el PDF
     console.log("🖼️ Precargando imágenes...")
     const images = tempDiv.querySelectorAll("img")
@@ -221,7 +216,19 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     }
 
     // Esperar un poco más para asegurar que todo esté renderizado
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+
+    // Verificar nuevamente las imágenes después del precargado
+    const finalQrImages = tempDiv.querySelectorAll('img[alt="QR Validación"]')
+    console.log("🔍 Final QR images check:", finalQrImages.length)
+
+    finalQrImages.forEach((img, index) => {
+      const imgElement = img as HTMLImageElement
+      console.log(`📱 Final QR Image ${index + 1}:`)
+      console.log("  - complete:", imgElement.complete)
+      console.log("  - naturalWidth:", imgElement.naturalWidth)
+      console.log("  - naturalHeight:", imgElement.naturalHeight)
+    })
 
     // Obtener las dimensiones reales del contenido
     const contentHeight = tempDiv.scrollHeight
@@ -241,16 +248,23 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       height: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      logging: false,
+      logging: true, // Activar logging para debug
       // Configuraciones específicas para imágenes
-      imageTimeout: 15000, // 15 segundos timeout para imágenes
+      imageTimeout: 30000, // 30 segundos timeout para imágenes
       removeContainer: true,
       foreignObjectRendering: false, // Desactivar para mejor compatibilidad con imágenes
       // Forzar el renderizado de imágenes data:
       onclone: (clonedDoc) => {
         console.log("🔄 Procesando documento clonado...")
         const clonedImages = clonedDoc.querySelectorAll("img")
+        console.log("🔍 Imágenes en documento clonado:", clonedImages.length)
+
         clonedImages.forEach((img, index) => {
+          const imgElement = img as HTMLImageElement
+          console.log(`📱 Cloned Image ${index + 1}:`)
+          console.log("  - src length:", imgElement.src.length)
+          console.log("  - alt:", imgElement.alt)
+
           if (img.src && img.src.startsWith("data:")) {
             console.log(`📱 Configurando QR clonado ${index + 1}`)
             img.style.display = "block"
@@ -260,6 +274,13 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
             img.style.height = "100px"
             img.style.border = "none"
             img.style.outline = "none"
+            img.style.imageRendering = "pixelated"
+
+            // Forzar la carga de la imagen
+            if (!imgElement.complete) {
+              console.log("⏳ Forzando carga de imagen QR...")
+              imgElement.onload = () => console.log("✅ QR cargado en clone")
+            }
           }
         })
         return clonedDoc
@@ -320,6 +341,11 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
       day: "numeric",
     })
   }
+
+  // Log del QR que se va a insertar
+  console.log("🎨 Insertando QR en HTML:")
+  console.log("  - QR length:", qrCodeDataUrl.length)
+  console.log("  - QR preview:", qrCodeDataUrl.substring(0, 100))
 
   return `
     <div style="padding: 15px; max-width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; position: relative; min-height: auto;">
@@ -585,8 +611,10 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <img 
               src="${qrCodeDataUrl}" 
               alt="QR Validación" 
-              style="width: 100px; height: 100px; display: block; border: none; outline: none;" 
+              style="width: 100px; height: 100px; display: block; border: none; outline: none; image-rendering: pixelated;" 
               crossorigin="anonymous"
+              onload="console.log('✅ QR image loaded successfully')"
+              onerror="console.error('❌ QR image failed to load')"
             />
           </div>
           <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
