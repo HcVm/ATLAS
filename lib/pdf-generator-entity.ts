@@ -57,6 +57,89 @@ export interface EntityQuotationPDFData {
   createdBy: string
 }
 
+// Función auxiliar para validar QR generado
+const validateQRDataURL = (dataUrl: string): boolean => {
+  try {
+    // Verificar que sea un data URL válido
+    if (!dataUrl.startsWith("data:image/png;base64,")) {
+      console.error("❌ QR no es un data URL PNG válido")
+      return false
+    }
+
+    // Verificar que tenga contenido base64
+    const base64Data = dataUrl.split(",")[1]
+    if (!base64Data || base64Data.length < 100) {
+      console.error("❌ QR base64 data es muy corto:", base64Data?.length || 0)
+      return false
+    }
+
+    // Verificar que el base64 sea válido
+    try {
+      atob(base64Data)
+      console.log("✅ QR base64 es válido, longitud:", base64Data.length)
+      return true
+    } catch (e) {
+      console.error("❌ QR base64 no es válido:", e)
+      return false
+    }
+  } catch (error) {
+    console.error("❌ Error validando QR:", error)
+    return false
+  }
+}
+
+// Función auxiliar para generar QR con múltiples intentos
+const generateQRWithRetry = async (url: string, maxRetries = 3): Promise<string> => {
+  const QRCode = await import("qrcode")
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📱 Intento ${attempt}/${maxRetries} de generación de QR...`)
+      console.log("🔗 URL para QR:", url)
+
+      // Configuración optimizada para QR
+      const qrOptions = {
+        width: 256, // Tamaño fijo
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+        errorCorrectionLevel: "M" as const,
+        type: "image/png" as const,
+        quality: 0.92,
+        rendererOpts: {
+          quality: 0.92,
+        },
+      }
+
+      const qrCodeDataUrl = await QRCode.toDataURL(url, qrOptions)
+
+      console.log(`✅ QR generado en intento ${attempt}, tamaño:`, qrCodeDataUrl.length, "caracteres")
+
+      // Validar el QR generado
+      if (validateQRDataURL(qrCodeDataUrl)) {
+        console.log("✅ QR validado exitosamente")
+        return qrCodeDataUrl
+      } else {
+        console.warn(`⚠️ QR inválido en intento ${attempt}`)
+        if (attempt === maxRetries) {
+          throw new Error("QR generado no es válido después de múltiples intentos")
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error en intento ${attempt}:`, error)
+      if (attempt === maxRetries) {
+        throw error
+      }
+      // Esperar un poco antes del siguiente intento
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+
+  throw new Error("No se pudo generar QR después de múltiples intentos")
+}
+
 // Función auxiliar para precargar imágenes
 const preloadImage = (src: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -120,22 +203,11 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
     console.log("🔗 URL de validación:", validationUrl)
 
-    // Generar QR usando dynamic import para evitar problemas de SSR
-    console.log("📱 Generando código QR...")
+    // Generar QR con reintentos y validación
+    console.log("📱 Generando código QR con validación...")
+    qrCodeDataUrl = await generateQRWithRetry(validationUrl)
 
-    const QRCode = await import("qrcode")
-    qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
-      width: 200,
-      margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-      errorCorrectionLevel: "M",
-    })
-
-    console.log("✅ QR Code generado exitosamente, tamaño:", qrCodeDataUrl.length, "caracteres")
-    console.log("🔍 QR Data URL preview:", qrCodeDataUrl.substring(0, 100) + "...")
+    console.log("✅ QR Code generado y validado exitosamente")
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -183,7 +255,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     const images = tempDiv.querySelectorAll("img")
     const imagePromises: Promise<HTMLImageElement>[] = []
 
-    images.forEach((img) => {
+    images.forEach((img, index) => {
+      console.log(`🔍 Imagen ${index + 1}:`, img.src.substring(0, 50) + "...")
       if (img.src && img.src.startsWith("data:")) {
         console.log("📱 Precargando QR Code...")
         imagePromises.push(preloadImage(img.src))
@@ -241,6 +314,8 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
             img.style.maxHeight = "100px"
             img.style.width = "100px"
             img.style.height = "100px"
+            img.style.border = "none"
+            img.style.outline = "none"
           }
         })
         return clonedDoc
@@ -566,10 +641,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <img 
               src="${qrCodeDataUrl}" 
               alt="QR Validación" 
-              style="width: 100px; height: 100px; display: block; border: none; outline: none;" 
+              style="width: 100px; height: 100px; display: block; border: none; outline: none; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;" 
               crossorigin="anonymous"
-              onload="console.log('QR image loaded successfully')"
-              onerror="console.error('QR image failed to load')"
             />
           </div>
           <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
