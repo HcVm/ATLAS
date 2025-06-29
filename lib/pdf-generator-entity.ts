@@ -499,7 +499,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <img 
               src="${qrCodeDataUrl}" 
               alt="QR Validación" 
-              style="width: 100px; height: 100px; display: block;" 
+              style="width: 100px; height: 100px; display: block; z-index: 1;" 
             />
           </div>
           <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; font-weight: bold;">
