@@ -491,8 +491,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
         }
 
         <!-- Código QR de Validación (BÁSICO) -->
-        <div style="margin: 15px 0; text-align: center; padding: 5px; background: #f8f9fa; border-radius: 12px;">
-          <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold">
+        <div style="margin: 5px 0; text-align: center; padding: 5px; background: #f8f9fa">
+          <h4 style="margin: 0 0 10px 0; font-size: 8px; font-weight: bold">
             VALIDACIÓN OFICIAL AGPC
           </h4>
           <div style="display: inline-block; padding: 4px; border-radius: 8px;">
@@ -502,7 +502,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
               style="width: 80px; height: 80px; display: block; z-index: 1;" 
             />
           </div>
-          <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; font-weight: bold;">
+          <p style="margin: 12px 0 0 0; font-size: 7px; color: #495057; font-weight: bold;">
             Escanee este código QR para verificar la autenticidad y validez de esta cotización en tiempo real
           </p>
         </div>
