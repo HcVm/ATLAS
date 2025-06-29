@@ -530,7 +530,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                 </p>`
               : data.companyPhone
                 ? `<p style="margin: 0;"><strong>Móvil:</strong> ${data.companyPhone} / <strong>Telf:</strong> ${data.companyPhone}</p>`
-                : `<p style="margin: 0;"><strong>Móvil:</strong> 940955314 / <strong>Telf:</strong> (01)748 3677 anexo:102</p>`
+                : `<p style="margin: 0;"><strong>Móvil:</strong> 999999999 / <strong>Telf:</strong> (01)111 1111 anexo:102</p>`
           }
         </div>
 
