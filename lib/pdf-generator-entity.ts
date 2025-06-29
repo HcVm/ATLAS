@@ -58,42 +58,6 @@ export interface EntityQuotationPDFData {
   createdBy: string
 }
 
-// Función para generar QR usando canvas
-async function generateQuotationQRCanvas(validationUrl: string): Promise<HTMLCanvasElement> {
-  try {
-    console.log("📱 Generando QR como canvas...")
-    const canvas = document.createElement("canvas")
-    await QRCode.toCanvas(canvas, validationUrl, {
-      width: 100,
-      margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    })
-    return canvas
-  } catch (error) {
-    console.error("❌ Error al generar el QR canvas:", error)
-    throw new Error("No se pudo generar el código QR como canvas")
-  }
-}
-
-// Función auxiliar para convertir canvas en dataURL y generar HTML
-const canvasToDataUrl = (canvas: HTMLCanvasElement): string => {
-  return canvas.toDataURL("image/png")
-}
-
-// Función auxiliar para precargar imágenes
-const preloadImage = (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = "anonymous"
-    img.onload = () => resolve(img)
-    img.onerror = (error) => reject(error)
-    img.src = src
-  })
-}
-
 export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
   console.log("🚀 Iniciando generación de PDF con validación...")
 
@@ -105,7 +69,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
   // Generar validación usando API endpoint
   let validationHash = ""
-  let qrCanvas: HTMLCanvasElement
+  let validationUrl = ""
 
   try {
     console.log("🔐 Creando validación a través de API...")
@@ -135,16 +99,10 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     const validationData = await response.json()
     validationHash = validationData.validationHash
-    const validationUrl = validationData.validationUrl
+    validationUrl = validationData.validationUrl
 
     console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
     console.log("🔗 URL de validación:", validationUrl)
-
-    // Generar QR usando la misma función que funciona para documentos
-    console.log("📱 Generando código QR...")
-    qrCanvas = await generateQuotationQRCanvas(validationUrl)
-
-    console.log("✅ QR Code generado exitosamente")
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -158,20 +116,10 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     throw new Error("No se puede generar PDF sin sistema de validación")
   }
 
-  // Verificar que tenemos QR antes de continuar
-  if (!qrCanvas) {
-    console.error("❌ No se generó el código QR")
-    alert("Error: No se pudo generar el código QR de validación. El PDF no se creará.")
-    throw new Error("QR Code es requerido para la validación")
-  }
-
   console.log("🎨 Creando contenido HTML del PDF...")
 
-  // Convertir canvas a dataURL
-  const qrCodeDataUrl = canvasToDataUrl(qrCanvas)
-
   // Crear el HTML temporal para el PDF
-  const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
+  const htmlContent = createEntityQuotationHTML(data, validationUrl)
 
   // Crear un elemento temporal en el DOM
   const tempDiv = document.createElement("div")
@@ -190,33 +138,39 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     // Esperar un poco para que el contenido se renderice
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Precargar todas las imágenes antes de generar el PDF
-    console.log("🖼️ Precargando imágenes...")
-    const images = tempDiv.querySelectorAll("img")
-    const imagePromises: Promise<HTMLImageElement>[] = []
+    // Buscar el contenedor del QR y generar el canvas directamente
+    const qrContainer = tempDiv.querySelector("#qr-container")
+    if (qrContainer) {
+      console.log("📱 Generando QR canvas directamente en el DOM...")
 
-    images.forEach((img, index) => {
-      console.log(`🔍 Imagen ${index + 1}:`, img.src.substring(0, 50) + "...")
-      if (img.src && img.src.startsWith("data:")) {
-        console.log("📱 Precargando QR Code...")
-        imagePromises.push(preloadImage(img.src))
-      } else if (img.src && img.src.startsWith("http")) {
-        console.log("🏢 Precargando logo de empresa...")
-        imagePromises.push(preloadImage(img.src))
-      }
-    })
+      // Crear canvas para el QR
+      const qrCanvas = document.createElement("canvas")
+      qrCanvas.width = 100
+      qrCanvas.height = 100
+      qrCanvas.style.width = "100px"
+      qrCanvas.style.height = "100px"
+      qrCanvas.style.border = "none"
+      qrCanvas.style.display = "block"
 
-    // Esperar a que todas las imágenes se carguen
-    if (imagePromises.length > 0) {
-      try {
-        await Promise.all(imagePromises)
-        console.log("✅ Todas las imágenes precargadas exitosamente")
-      } catch (error) {
-        console.warn("⚠️ Algunas imágenes no se pudieron precargar:", error)
-      }
+      // Generar QR directamente en el canvas
+      await QRCode.toCanvas(qrCanvas, validationUrl, {
+        width: 100,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      })
+
+      // Reemplazar el contenedor con el canvas
+      qrContainer.appendChild(qrCanvas)
+      console.log("✅ QR canvas insertado en el DOM")
+    } else {
+      console.error("❌ No se encontró el contenedor del QR")
+      throw new Error("No se pudo insertar el código QR")
     }
 
-    // Esperar un poco más para asegurar que todo esté renderizado
+    // Esperar más tiempo para que el canvas se renderice completamente
     await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Obtener las dimensiones reales del contenido
@@ -225,7 +179,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     console.log("📏 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
 
-    // Convertir HTML a canvas con configuración optimizada para imágenes
+    // Convertir HTML a canvas con configuración optimizada
     console.log("🖼️ Convirtiendo HTML a canvas...")
 
     const canvas = await html2canvas(tempDiv, {
@@ -237,27 +191,26 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       height: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      logging: false,
-      // Configuraciones específicas para imágenes
-      imageTimeout: 15000, // 15 segundos timeout para imágenes
+      logging: true, // Activar logging para debug
+      imageTimeout: 30000, // 30 segundos timeout
       removeContainer: true,
-      foreignObjectRendering: false, // Desactivar para mejor compatibilidad con imágenes
-      // Forzar el renderizado de imágenes data:
+      foreignObjectRendering: false,
+      // Configuración específica para canvas
+      canvas: document.createElement("canvas"),
       onclone: (clonedDoc) => {
         console.log("🔄 Procesando documento clonado...")
-        const clonedImages = clonedDoc.querySelectorAll("img")
-        clonedImages.forEach((img, index) => {
-          if (img.src && img.src.startsWith("data:")) {
-            console.log(`📱 Configurando QR clonado ${index + 1}`)
-            img.style.display = "block"
-            img.style.maxWidth = "100px"
-            img.style.maxHeight = "100px"
-            img.style.width = "100px"
-            img.style.height = "100px"
-            img.style.border = "none"
-            img.style.outline = "none"
-          }
+
+        // Buscar canvas en el documento clonado
+        const clonedCanvases = clonedDoc.querySelectorAll("canvas")
+        console.log("🎨 Canvas encontrados en clone:", clonedCanvases.length)
+
+        clonedCanvases.forEach((canvas, index) => {
+          console.log(`🎨 Canvas ${index + 1}:`, canvas.width, "x", canvas.height)
+          // Asegurar que el canvas sea visible
+          canvas.style.display = "block"
+          canvas.style.visibility = "visible"
         })
+
         return clonedDoc
       },
     })
@@ -304,7 +257,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   }
 }
 
-const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: string): string => {
+const createEntityQuotationHTML = (data: EntityQuotationPDFData, validationUrl: string): string => {
   const formatCurrency = (amount: number) => {
     return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
   }
@@ -572,18 +525,16 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             : ""
         }
 
-        <!-- Código QR de Validación (SIEMPRE PRESENTE) -->
+        <!-- Código QR de Validación (CANVAS DIRECTO) -->
         <div style="margin: 15px 0; text-align: center; border: 3px solid #007bff; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,123,255,0.2);">
           <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #007bff; text-transform: uppercase; letter-spacing: 1px;">
             🔒 VALIDACIÓN OFICIAL AGPC
           </h4>
           <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <img 
-              src="${qrCodeDataUrl}" 
-              alt="QR Validación" 
-              style="width: 100px; height: 100px; display: block; border: none; outline: none;" 
-              crossorigin="anonymous"
-            />
+            <!-- Contenedor donde se insertará el canvas del QR -->
+            <div id="qr-container" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background-color: white;">
+              <!-- El canvas se insertará aquí dinámicamente -->
+            </div>
           </div>
           <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
             ✅ Escanee este código QR para verificar la autenticidad<br/>
