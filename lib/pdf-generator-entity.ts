@@ -57,6 +57,23 @@ export interface EntityQuotationPDFData {
   createdBy: string
 }
 
+// Función auxiliar para precargar imágenes
+const preloadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.onload = () => {
+      console.log("✅ Imagen precargada exitosamente:", src.substring(0, 50) + "...")
+      resolve(img)
+    }
+    img.onerror = (error) => {
+      console.error("❌ Error precargando imagen:", error)
+      reject(error)
+    }
+    img.src = src
+  })
+}
+
 export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): Promise<void> => {
   console.log("🚀 Iniciando generación de PDF con validación...")
 
@@ -118,6 +135,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     })
 
     console.log("✅ QR Code generado exitosamente, tamaño:", qrCodeDataUrl.length, "caracteres")
+    console.log("🔍 QR Data URL preview:", qrCodeDataUrl.substring(0, 100) + "...")
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -157,7 +175,35 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   try {
     console.log("⏳ Esperando renderizado del contenido...")
 
-    // Esperar un poco para que las imágenes se carguen y el contenido se renderice
+    // Esperar un poco para que el contenido se renderice
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // Precargar todas las imágenes antes de generar el PDF
+    console.log("🖼️ Precargando imágenes...")
+    const images = tempDiv.querySelectorAll("img")
+    const imagePromises: Promise<HTMLImageElement>[] = []
+
+    images.forEach((img) => {
+      if (img.src && img.src.startsWith("data:")) {
+        console.log("📱 Precargando QR Code...")
+        imagePromises.push(preloadImage(img.src))
+      } else if (img.src && img.src.startsWith("http")) {
+        console.log("🏢 Precargando logo de empresa...")
+        imagePromises.push(preloadImage(img.src))
+      }
+    })
+
+    // Esperar a que todas las imágenes se carguen
+    if (imagePromises.length > 0) {
+      try {
+        await Promise.all(imagePromises)
+        console.log("✅ Todas las imágenes precargadas exitosamente")
+      } catch (error) {
+        console.warn("⚠️ Algunas imágenes no se pudieron precargar:", error)
+      }
+    }
+
+    // Esperar un poco más para asegurar que todo esté renderizado
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Obtener las dimensiones reales del contenido
@@ -166,7 +212,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     console.log("📏 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
 
-    // Convertir HTML a canvas con dimensiones dinámicas
+    // Convertir HTML a canvas con configuración optimizada para imágenes
     console.log("🖼️ Convirtiendo HTML a canvas...")
 
     const canvas = await html2canvas(tempDiv, {
@@ -174,17 +220,37 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
-      width: Math.max(794, contentWidth), // Mínimo A4 width, pero puede ser más ancho
-      height: contentHeight, // Altura dinámica basada en el contenido
+      width: Math.max(794, contentWidth),
+      height: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      logging: false, // Desactivar logs de html2canvas
+      logging: false,
+      // Configuraciones específicas para imágenes
+      imageTimeout: 15000, // 15 segundos timeout para imágenes
+      removeContainer: true,
+      foreignObjectRendering: false, // Desactivar para mejor compatibilidad con imágenes
+      // Forzar el renderizado de imágenes data:
+      onclone: (clonedDoc) => {
+        console.log("🔄 Procesando documento clonado...")
+        const clonedImages = clonedDoc.querySelectorAll("img")
+        clonedImages.forEach((img, index) => {
+          if (img.src && img.src.startsWith("data:")) {
+            console.log(`📱 Configurando QR clonado ${index + 1}`)
+            img.style.display = "block"
+            img.style.maxWidth = "100px"
+            img.style.maxHeight = "100px"
+            img.style.width = "100px"
+            img.style.height = "100px"
+          }
+        })
+        return clonedDoc
+      },
     })
 
     const imgWidth = canvas.width
     const imgHeight = canvas.height
-    const pdfWidth = Math.max(210, (imgWidth * 210) / 794) // Mínimo A4, pero puede ser más ancho
-    const pdfHeight = Math.max(297, (imgHeight * 297) / 1123) // Mínimo A4, pero puede ser más alto
+    const pdfWidth = Math.max(210, (imgWidth * 210) / 794)
+    const pdfHeight = Math.max(297, (imgHeight * 297) / 1123)
 
     console.log("📄 Creando PDF con dimensiones:", { width: pdfWidth, height: pdfHeight })
 
@@ -497,7 +563,14 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             🔒 VALIDACIÓN OFICIAL AGPC
           </h4>
           <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <img src="${qrCodeDataUrl}" alt="QR Validación" style="width: 100px; height: 100px; display: block;" />
+            <img 
+              src="${qrCodeDataUrl}" 
+              alt="QR Validación" 
+              style="width: 100px; height: 100px; display: block; border: none; outline: none;" 
+              crossorigin="anonymous"
+              onload="console.log('QR image loaded successfully')"
+              onerror="console.error('QR image failed to load')"
+            />
           </div>
           <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
             ✅ Escanee este código QR para verificar la autenticidad<br/>
