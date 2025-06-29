@@ -217,7 +217,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     }
 
     // Esperar un poco más para asegurar que todo esté renderizado
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Obtener las dimensiones reales del contenido
     const contentHeight = tempDiv.scrollHeight
