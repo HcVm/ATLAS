@@ -1,6 +1,5 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
-import { createServiceClient } from "@/lib/supabase-server"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
 
 export interface EntityQuotationPDFData {
@@ -67,60 +66,41 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("✅ Banking info obtained for company:", data.companyCode, data.bankingInfo)
   }
 
-  // Generar hash único para validación
+  // Generar validación usando API endpoint
   let validationHash = ""
   let qrCodeDataUrl = ""
 
   try {
-    console.log("🔐 Generando hash de validación...")
+    console.log("🔐 Creando validación a través de API...")
 
-    // Crear datos únicos para el hash
-    const timestamp = new Date().getTime()
-    const uniqueData = `${data.quotationNumber}-${data.clientRuc}-${data.total}-${data.quotationDate}-${data.companyRuc}-${timestamp}`
+    // Llamar al endpoint de validación
+    const response = await fetch("/api/create-validation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        quotationNumber: data.quotationNumber,
+        clientRuc: data.clientRuc,
+        clientName: data.clientName,
+        companyRuc: data.companyRuc,
+        companyName: data.companyName,
+        totalAmount: data.total,
+        quotationDate: data.quotationDate,
+        createdBy: data.createdBy,
+      }),
+    })
 
-    // Generar hash SHA-256 usando Web Crypto API
-    const encoder = new TextEncoder()
-    const dataBuffer = encoder.encode(uniqueData)
-    const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    validationHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-
-    console.log("✅ Hash generado:", validationHash.substring(0, 16) + "...")
-
-    // Guardar en la base de datos usando service client
-    console.log("💾 Guardando validación en base de datos...")
-
-    const supabase = createServiceClient()
-    const { data: insertData, error: insertError } = await supabase
-      .from("quotation_validations")
-      .insert({
-        validation_hash: validationHash,
-        quotation_number: data.quotationNumber,
-        client_ruc: data.clientRuc,
-        client_name: data.clientName,
-        company_ruc: data.companyRuc,
-        company_name: data.companyName,
-        total_amount: data.total,
-        quotation_date: data.quotationDate,
-        created_by: data.createdBy,
-        is_active: true,
-        validated_count: 0,
-      })
-      .select()
-
-    if (insertError) {
-      console.error("❌ Error saving validation to database:", insertError)
-      throw new Error(`Error al guardar validación: ${insertError.message}`)
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
     }
 
-    console.log("✅ Validación guardada en BD:", insertData)
+    const validationData = await response.json()
+    validationHash = validationData.validationHash
+    const validationUrl = validationData.validationUrl
 
-    // Crear URL de validación
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (typeof window !== "undefined" ? window.location.origin : "https://agpcdocs.vercel.app")
-    const validationUrl = `${baseUrl}/validate-quotation/${validationHash}`
-
+    console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
     console.log("🔗 URL de validación:", validationUrl)
 
     // Generar QR usando dynamic import para evitar problemas de SSR

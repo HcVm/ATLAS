@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { createServiceClient } from "@/lib/supabase-server"
 
 export async function GET(request: NextRequest, { params }: { params: { hash: string } }) {
   try {
@@ -9,50 +9,91 @@ export async function GET(request: NextRequest, { params }: { params: { hash: st
       return NextResponse.json({ error: "Hash de validación requerido" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    if (hash.length !== 64) {
+      return NextResponse.json({ error: "Hash de validación inválido" }, { status: 400 })
+    }
 
-    // Buscar la cotización por hash
-    const { data: quotation, error } = await supabase
+    console.log("🔍 Validando hash:", hash.substring(0, 16) + "...")
+
+    // Usar service client para consultar la validación
+    const supabase = createServiceClient()
+
+    // Buscar la validación por hash
+    const { data: validation, error } = await supabase
       .from("quotation_validations")
       .select("*")
       .eq("validation_hash", hash)
       .eq("is_active", true)
       .single()
 
-    if (error || !quotation) {
-      return NextResponse.json({ error: "Cotización no encontrada o inválida" }, { status: 404 })
+    if (error) {
+      console.error("❌ Error fetching validation:", error)
+      return NextResponse.json({ error: "Validación no encontrada" }, { status: 404 })
     }
 
-    // Actualizar contador de validaciones
+    if (!validation) {
+      console.log("❌ Validación no encontrada o inactiva")
+      return NextResponse.json({ error: "Validación no encontrada o inactiva" }, { status: 404 })
+    }
+
+    console.log("✅ Validación encontrada:", validation.quotation_number)
+
+    // Verificar si la validación ha expirado
+    const now = new Date()
+    const expiresAt = validation.expires_at ? new Date(validation.expires_at) : new Date()
+
+    if (now > expiresAt) {
+      console.log("⏰ Validación expirada")
+      return NextResponse.json(
+        {
+          error: "Esta validación ha expirado",
+          expired: true,
+          expiresAt: validation.expires_at,
+        },
+        { status: 410 },
+      )
+    }
+
+    // Incrementar contador de validaciones
+    const newCount = (validation.validated_count || 0) + 1
+    const currentTime = new Date().toISOString()
+
     const { error: updateError } = await supabase
       .from("quotation_validations")
       .update({
-        validated_count: quotation.validated_count + 1,
-        last_validated_at: new Date().toISOString(),
+        validated_count: newCount,
+        last_validated_at: currentTime,
       })
-      .eq("id", quotation.id)
+      .eq("validation_hash", hash)
 
     if (updateError) {
-      console.error("Error updating validation count:", updateError)
-      // No retornamos error aquí, solo logueamos
+      console.error("⚠️ Error updating validation count:", updateError)
+      // No fallar la validación por esto, solo logear el error
+    } else {
+      console.log("📊 Contador actualizado:", newCount)
     }
 
+    // Retornar datos de la validación
     return NextResponse.json({
-      success: true,
-      quotation: {
-        quotation_number: quotation.quotation_number,
-        client_ruc: quotation.client_ruc,
-        client_name: quotation.client_name,
-        company_ruc: quotation.company_ruc,
-        company_name: quotation.company_name,
-        total_amount: quotation.total_amount,
-        quotation_date: quotation.quotation_date,
-        validated_count: quotation.validated_count + 1,
-        last_validated_at: new Date().toISOString(),
+      valid: true,
+      validation: {
+        id: validation.id,
+        quotationNumber: validation.quotation_number,
+        clientRuc: validation.client_ruc,
+        clientName: validation.client_name,
+        companyRuc: validation.company_ruc,
+        companyName: validation.company_name,
+        totalAmount: validation.total_amount,
+        quotationDate: validation.quotation_date,
+        createdBy: validation.created_by,
+        createdAt: validation.created_at,
+        validatedCount: newCount,
+        lastValidatedAt: currentTime,
+        expiresAt: validation.expires_at,
       },
     })
   } catch (error) {
-    console.error("Error validating quotation:", error)
+    console.error("❌ Error in validation API:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
