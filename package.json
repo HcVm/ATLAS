@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/tailwindcss": "^3.0.11",

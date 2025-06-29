@@ -69,7 +69,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
   // Generar validación usando API endpoint
   let validationHash = ""
-  let validationUrl = ""
+  let qrCodeDataUrl = ""
 
   try {
     console.log("🔐 Creando validación a través de API...")
@@ -99,10 +99,24 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     const validationData = await response.json()
     validationHash = validationData.validationHash
-    validationUrl = validationData.validationUrl
+    const validationUrl = validationData.validationUrl
 
     console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
     console.log("🔗 URL de validación:", validationUrl)
+
+    // Generar QR usando EXACTAMENTE la misma configuración que funciona en documentos
+    console.log("📱 Generando código QR...")
+    qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+
+    console.log("✅ QR Code generado exitosamente")
+    console.log("📏 QR length:", qrCodeDataUrl.length)
   } catch (error) {
     console.error("❌ Error completo en generación de validación:", error)
 
@@ -116,10 +130,17 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     throw new Error("No se puede generar PDF sin sistema de validación")
   }
 
+  // Verificar que tenemos QR antes de continuar
+  if (!qrCodeDataUrl) {
+    console.error("❌ No se generó el código QR")
+    alert("Error: No se pudo generar el código QR de validación. El PDF no se creará.")
+    throw new Error("QR Code es requerido para la validación")
+  }
+
   console.log("🎨 Creando contenido HTML del PDF...")
 
   // Crear el HTML temporal para el PDF
-  const htmlContent = createEntityQuotationHTML(data, validationUrl)
+  const htmlContent = createEntityQuotationHTML(data, qrCodeDataUrl)
 
   // Crear un elemento temporal en el DOM
   const tempDiv = document.createElement("div")
@@ -136,42 +157,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
     console.log("⏳ Esperando renderizado del contenido...")
 
     // Esperar un poco para que el contenido se renderice
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Buscar el contenedor del QR y generar el canvas directamente
-    const qrContainer = tempDiv.querySelector("#qr-container")
-    if (qrContainer) {
-      console.log("📱 Generando QR canvas directamente en el DOM...")
-
-      // Crear canvas para el QR
-      const qrCanvas = document.createElement("canvas")
-      qrCanvas.width = 100
-      qrCanvas.height = 100
-      qrCanvas.style.width = "100px"
-      qrCanvas.style.height = "100px"
-      qrCanvas.style.border = "none"
-      qrCanvas.style.display = "block"
-
-      // Generar QR directamente en el canvas
-      await QRCode.toCanvas(qrCanvas, validationUrl, {
-        width: 100,
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-      })
-
-      // Reemplazar el contenedor con el canvas
-      qrContainer.appendChild(qrCanvas)
-      console.log("✅ QR canvas insertado en el DOM")
-    } else {
-      console.error("❌ No se encontró el contenedor del QR")
-      throw new Error("No se pudo insertar el código QR")
-    }
-
-    // Esperar más tiempo para que el canvas se renderice completamente
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Obtener las dimensiones reales del contenido
     const contentHeight = tempDiv.scrollHeight
@@ -179,11 +165,11 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
     console.log("📏 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
 
-    // Convertir HTML a canvas con configuración optimizada
+    // Convertir HTML a canvas con configuración básica
     console.log("🖼️ Convirtiendo HTML a canvas...")
 
     const canvas = await html2canvas(tempDiv, {
-      scale: 2, // Alta calidad
+      scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
@@ -191,28 +177,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
       height: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      logging: true, // Activar logging para debug
-      imageTimeout: 30000, // 30 segundos timeout
-      removeContainer: true,
-      foreignObjectRendering: false,
-      // Configuración específica para canvas
-      canvas: document.createElement("canvas"),
-      onclone: (clonedDoc) => {
-        console.log("🔄 Procesando documento clonado...")
-
-        // Buscar canvas en el documento clonado
-        const clonedCanvases = clonedDoc.querySelectorAll("canvas")
-        console.log("🎨 Canvas encontrados en clone:", clonedCanvases.length)
-
-        clonedCanvases.forEach((canvas, index) => {
-          console.log(`🎨 Canvas ${index + 1}:`, canvas.width, "x", canvas.height)
-          // Asegurar que el canvas sea visible
-          canvas.style.display = "block"
-          canvas.style.visibility = "visible"
-        })
-
-        return clonedDoc
-      },
+      logging: false,
     })
 
     const imgWidth = canvas.width
@@ -257,7 +222,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
   }
 }
 
-const createEntityQuotationHTML = (data: EntityQuotationPDFData, validationUrl: string): string => {
+const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: string): string => {
   const formatCurrency = (amount: number) => {
     return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
   }
@@ -525,25 +490,22 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, validationUrl: 
             : ""
         }
 
-        <!-- Código QR de Validación (CANVAS DIRECTO) -->
-        <div style="margin: 15px 0; text-align: center; border: 3px solid #007bff; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,123,255,0.2);">
-          <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #007bff; text-transform: uppercase; letter-spacing: 1px;">
+        <!-- Código QR de Validación (BÁSICO) -->
+        <div style="margin: 15px 0; text-align: center; border: 3px solid #007bff; padding: 15px; background: #f8f9fa; border-radius: 12px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #007bff;">
             🔒 VALIDACIÓN OFICIAL AGPC
           </h4>
-          <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <!-- Contenedor donde se insertará el canvas del QR -->
-            <div id="qr-container" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background-color: white;">
-              <!-- El canvas se insertará aquí dinámicamente -->
-            </div>
+          <div style="display: inline-block; border: 3px solid #007bff; padding: 8px; background-color: white; border-radius: 8px;">
+            <img 
+              src="${qrCodeDataUrl}" 
+              alt="QR Validación" 
+              style="width: 100px; height: 100px; display: block;" 
+            />
           </div>
-          <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; line-height: 1.4; font-weight: bold;">
+          <p style="margin: 12px 0 0 0; font-size: 9px; color: #495057; font-weight: bold;">
             ✅ Escanee este código QR para verificar la autenticidad<br/>
-            📱 y validez de esta cotización en tiempo real<br/>
-            🌐 Sistema de validación criptográfica SHA-256
+            📱 y validez de esta cotización en tiempo real
           </p>
-          <div style="margin-top: 8px; padding: 4px 8px; background-color: #007bff; color: white; border-radius: 4px; font-size: 8px; font-weight: bold; display: inline-block;">
-            DOCUMENTO VERIFICABLE
-          </div>
         </div>
 
         <!-- Footer -->
