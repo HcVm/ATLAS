@@ -307,6 +307,43 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
 
       if (error) throw error
 
+      // Enviar notificaciones al personal de almacén
+      try {
+        // Buscar usuarios del departamento de almacén de la misma empresa
+        const { data: warehouseUsers, error: usersError } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, departments!inner(name)")
+          .eq("company_id", selectedCompany.id)
+          .eq("departments.name", "Almacén")
+          .neq("id", user.id) // Excluir al usuario actual
+
+        if (usersError) {
+          console.error("Error fetching warehouse users:", usersError)
+        } else if (warehouseUsers && warehouseUsers.length > 0) {
+          // Crear notificaciones para cada usuario de almacén
+          const notifications = warehouseUsers.map((warehouseUser) => ({
+            user_id: warehouseUser.id,
+            title: "Nueva Venta Registrada",
+            message: `Se ha registrado una nueva venta para ${formData.entity_name}. Se requiere registrar la salida de productos en el módulo de almacén.`,
+            type: "sale_created",
+            related_id: null, // No tenemos el ID de la venta en este punto
+            company_id: selectedCompany.id,
+            read: false,
+          }))
+
+          const { error: notificationError } = await supabase.from("notifications").insert(notifications)
+
+          if (notificationError) {
+            console.error("Error creating notifications:", notificationError)
+          } else {
+            console.log(`Notificaciones enviadas a ${warehouseUsers.length} usuarios de almacén`)
+          }
+        }
+      } catch (error) {
+        console.error("Error in notification process:", error)
+        // No interrumpir el flujo principal si falla el envío de notificaciones
+      }
+
       toast.success("Venta registrada exitosamente")
       onSuccess()
     } catch (error: any) {

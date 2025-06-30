@@ -176,6 +176,14 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
         const { data: department } = await supabase.from("departments").select("id, name").eq("id", relatedId).single()
         return { type: "department", data: department }
 
+      case "sale_created":
+        const { data: sale } = await supabase
+          .from("sales")
+          .select("id, client_name, total_amount")
+          .eq("id", relatedId)
+          .single()
+        return { type: "sale", data: sale }
+
       default:
         return null
     }
