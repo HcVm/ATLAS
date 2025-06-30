@@ -284,15 +284,19 @@ export default function RoutePlanner({
         console.log("✅ Ruta guardada exitosamente")
         toast.success("Información de ruta guardada exitosamente")
 
-        // Llamar callback después de guardar exitosamente
+        // Llamar callback inmediatamente después de guardar exitosamente
         if (onRouteCalculated && routeInfo) {
-          setTimeout(() => {
-            try {
-              onRouteCalculated(routeInfo)
-            } catch (error) {
-              console.error("Error in callback after save:", error)
+          try {
+            // Crear un objeto con la información actualizada
+            const updatedRouteInfo = {
+              ...routeInfo,
+              saved: true,
+              savedAt: new Date().toISOString(),
             }
-          }, 200)
+            onRouteCalculated(updatedRouteInfo)
+          } catch (error) {
+            console.error("Error in callback after save:", error)
+          }
         }
       } catch (error: any) {
         console.error("💥 Error guardando ruta:", error)

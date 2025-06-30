@@ -342,20 +342,66 @@ export default function QuotationsPage() {
   const handleRouteUpdated = async () => {
     if (selectedQuotation && companyId) {
       try {
-        const { data, error } = await supabase.from("quotations").select("*").eq("id", selectedQuotation.id).single()
+        console.log("🔄 Refrescando cotización después de actualizar ruta:", selectedQuotation.id)
+
+        // Obtener la cotización actualizada desde la base de datos con todos sus datos
+        const { data, error } = await supabase
+          .from("quotations")
+          .select(`
+        *,
+        profiles!quotations_created_by_fkey (full_name),
+        quotation_items (
+          id,
+          product_id,
+          product_code,
+          product_name,
+          product_description,
+          product_brand,
+          quantity,
+          platform_unit_price_with_tax,
+          platform_total,
+          supplier_unit_price_with_tax,
+          supplier_total,
+          offer_unit_price_with_tax,
+          offer_total_with_tax,
+          final_unit_price_with_tax,
+          reference_image_url,
+          budget_ceiling_unit_price_with_tax,
+          budget_ceiling_total,
+          item_commission_percentage,
+          item_commission_base_amount,
+          item_commission_amount
+        )
+      `)
+          .eq("id", selectedQuotation.id)
+          .single()
 
         if (error) {
           console.error("Error updating selected quotation:", error)
+          toast.error("Error al actualizar la información de la cotización")
           return
         }
 
         if (data) {
+          console.log("✅ Cotización actualizada con nueva información de ruta")
+
+          // Actualizar la cotización seleccionada
           setSelectedQuotation(data)
+
+          // Actualizar la cotización en la lista principal
           setQuotations((prev) => prev.map((q) => (q.id === data.id ? data : q)))
-          fetchStats(companyId)
+
+          // Refrescar las estadísticas
+          if (companyId) {
+            fetchStats(companyId)
+          }
+
+          // Mostrar mensaje de éxito
+          toast.success("Información de ruta actualizada correctamente")
         }
       } catch (error) {
         console.error("Error in handleRouteUpdated:", error)
+        toast.error("Error al actualizar la información de la cotización")
       }
     }
   }
