@@ -704,63 +704,358 @@ export interface Database {
         }
         Relationships: []
       }
-      quotation_validations: {
+      quotations: {
         Row: {
           id: string
-          validation_hash: string
-          quotation_number: string
-          client_ruc: string
-          client_name: string
-          company_ruc: string
+          quotation_date: string | null
+          company_id: string
           company_name: string
-          total_amount: number
-          quotation_date: string
+          company_ruc: string
+          entity_id: string
+          entity_name: string
+          entity_ruc: string
+          delivery_location: string
+          status: string | null
+          valid_until: string | null
+          observations: string | null
           created_by: string
-          validated_count: number
-          last_validated_at: string | null
-          expires_at?: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
+          created_at: string | null
+          updated_at: string | null
+          route_origin_address: string | null
+          route_destination_address: string | null
+          route_distance_km: number | null
+          route_duration_minutes: number | null
+          route_google_maps_url: string | null
+          route_created_at: string | null
+          route_created_by: string | null
+          quotation_number: string | null
+          is_multi_product: boolean | null
+          items_count: number | null
+          budget_ceiling_total: number | null
+          contact_person: string | null
+          commission_percentage: number | null
+          commission_base_amount: number | null
+          commission_amount: number | null
+          commission_notes: string | null
         }
         Insert: {
           id?: string
-          validation_hash: string
-          quotation_number: string
-          client_ruc: string
-          client_name: string
-          company_ruc: string
+          quotation_date?: string | null
+          company_id: string
           company_name: string
-          total_amount: number
-          quotation_date: string
+          company_ruc: string
+          entity_id: string
+          entity_name: string
+          entity_ruc: string
+          delivery_location: string
+          status?: string | null
+          valid_until?: string | null
+          observations?: string | null
           created_by: string
-          validated_count?: number
-          last_validated_at?: string | null
-          expires_at?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
+          created_at?: string | null
+          updated_at?: string | null
+          route_origin_address?: string | null
+          route_destination_address?: string | null
+          route_distance_km?: number | null
+          route_duration_minutes?: number | null
+          route_google_maps_url?: string | null
+          route_created_at?: string | null
+          route_created_by?: string | null
+          quotation_number?: string | null
+          is_multi_product?: boolean | null
+          items_count?: number | null
+          budget_ceiling_total?: number | null
+          contact_person?: string | null
+          commission_percentage?: number | null
+          commission_base_amount?: number | null
+          commission_amount?: number | null
+          commission_notes?: string | null
         }
         Update: {
           id?: string
-          validation_hash?: string
-          quotation_number?: string
-          client_ruc?: string
-          client_name?: string
-          company_ruc?: string
+          quotation_date?: string | null
+          company_id?: string
           company_name?: string
-          total_amount?: number
-          quotation_date?: string
+          company_ruc?: string
+          entity_id?: string
+          entity_name?: string
+          entity_ruc?: string
+          delivery_location?: string
+          status?: string | null
+          valid_until?: string | null
+          observations?: string | null
           created_by?: string
-          validated_count?: number
-          last_validated_at?: string | null
-          expires_at?: string
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
+          created_at?: string | null
+          updated_at?: string | null
+          route_origin_address?: string | null
+          route_destination_address?: string | null
+          route_distance_km?: number | null
+          route_duration_minutes?: number | null
+          route_google_maps_url?: string | null
+          route_created_at?: string | null
+          route_created_by?: string | null
+          quotation_number?: string | null
+          is_multi_product?: boolean | null
+          items_count?: number | null
+          budget_ceiling_total?: number | null
+          contact_person?: string | null
+          commission_percentage?: number | null
+          commission_base_amount?: number | null
+          commission_amount?: number | null
+          commission_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "sales_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_route_created_by_fkey"
+            columns: ["route_created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_items: {
+        Row: {
+          id: string
+          quotation_id: string
+          product_id: string | null
+          product_code: string
+          product_name: string
+          product_description: string | null
+          product_brand: string | null
+          quantity: number
+          platform_unit_price_with_tax: number
+          platform_total: number
+          supplier_unit_price_with_tax: number | null
+          supplier_total: number | null
+          offer_unit_price_with_tax: number | null
+          offer_total_with_tax: number | null
+          final_unit_price_with_tax: number | null
+          reference_image_url: string | null
+          created_at: string | null
+          updated_at: string | null
+          budget_ceiling_unit_price_with_tax: number | null
+          budget_ceiling_total: number | null
+          item_commission_percentage: number | null
+          item_commission_base_amount: number | null
+          item_commission_amount: number | null
+        }
+        Insert: {
+          id?: string
+          quotation_id: string
+          product_id?: string | null
+          product_code: string
+          product_name: string
+          product_description?: string | null
+          product_brand?: string | null
+          quantity: number
+          platform_unit_price_with_tax: number
+          platform_total: number
+          supplier_unit_price_with_tax?: number | null
+          supplier_total?: number | null
+          offer_unit_price_with_tax?: number | null
+          offer_total_with_tax?: number | null
+          final_unit_price_with_tax?: number | null
+          reference_image_url?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          budget_ceiling_unit_price_with_tax?: number | null
+          budget_ceiling_total?: number | null
+          item_commission_percentage?: number | null
+          item_commission_base_amount?: number | null
+          item_commission_amount?: number | null
+        }
+        Update: {
+          id?: string
+          quotation_id?: string
+          product_id?: string | null
+          product_code?: string
+          product_name?: string
+          product_description?: string | null
+          product_brand?: string | null
+          quantity?: number
+          platform_unit_price_with_tax?: number
+          platform_total?: number
+          supplier_unit_price_with_tax?: number | null
+          supplier_total?: number | null
+          offer_unit_price_with_tax?: number | null
+          offer_total_with_tax?: number | null
+          final_unit_price_with_tax?: number | null
+          reference_image_url?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          budget_ceiling_unit_price_with_tax?: number | null
+          budget_ceiling_total?: number | null
+          item_commission_percentage?: number | null
+          item_commission_base_amount?: number | null
+          item_commission_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_validations: {
+        Row: {
+          id: string
+          quotation_id: string
+          validation_hash: string
+          created_at: string | null
+          expires_at: string | null
+          is_active: boolean | null
+          access_count: number | null
+          last_accessed_at: string | null
+        }
+        Insert: {
+          id?: string
+          quotation_id: string
+          validation_hash: string
+          created_at?: string | null
+          expires_at?: string | null
+          is_active?: boolean | null
+          access_count?: number | null
+          last_accessed_at?: string | null
+        }
+        Update: {
+          id?: string
+          quotation_id?: string
+          validation_hash?: string
+          created_at?: string | null
+          expires_at?: string | null
+          is_active?: boolean | null
+          access_count?: number | null
+          last_accessed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_validations_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      quotations_with_items: {
+        Row: {
+          id: string | null
+          quotation_date: string | null
+          company_id: string | null
+          company_name: string | null
+          company_ruc: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_ruc: string | null
+          delivery_location: string | null
+          status: string | null
+          valid_until: string | null
+          observations: string | null
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+          route_origin_address: string | null
+          route_destination_address: string | null
+          route_distance_km: number | null
+          route_duration_minutes: number | null
+          route_google_maps_url: string | null
+          route_created_at: string | null
+          route_created_by: string | null
+          quotation_number: string | null
+          is_multi_product: boolean | null
+          items_count: number | null
+          budget_ceiling_total: number | null
+          contact_person: string | null
+          commission_percentage: number | null
+          commission_base_amount: number | null
+          commission_amount: number | null
+          commission_notes: string | null
+          platform_total: number | null
+          supplier_total: number | null
+          offer_total: number | null
+          final_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "sales_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_route_created_by_fkey"
+            columns: ["route_created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations_with_totals: {
+        Row: {
+          id: string | null
+          quotation_number: string | null
+          company_name: string | null
+          entity_name: string | null
+          status: string | null
+          items_count: number | null
+          total_platform_amount: number | null
+          total_supplier_amount: number | null
+          total_offer_amount: number | null
+          total_final_amount: number | null
         }
         Relationships: []
       }
+    }
     }
     Views: {
       [_ in never]: never
@@ -781,4 +1076,4 @@ export interface Database {
       [_ in never]: never
     }
   }
-}
+

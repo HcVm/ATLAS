@@ -201,7 +201,7 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         observations: quotation.observations || undefined,
 
         // Creado por
-        createdBy: quotation.profiles?.full_name || "Sistema",
+        createdBy: quotation.profiles?.full_name || "Sistema de creación AGPC",
       }
 
       console.log("Final PDF data:", {
