@@ -279,7 +279,7 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
         // Buscar usuarios del departamento de almacén de la misma empresa
         const { data: warehouseUsers, error: usersError } = await supabase
           .from("profiles")
-          .select("id, full_name, email, departments!inner(name)")
+          .select("id, full_name, email, departments!profiles_department_id_fkey!inner(name)")
           .eq("company_id", selectedCompany.id)
           .eq("departments.name", "Almacén")
           .neq("id", user.id) // Excluir al usuario actual

@@ -179,7 +179,7 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
       case "sale_created":
         const { data: sale } = await supabase
           .from("sales")
-          .select("id, client_name, total_amount")
+          .select("id, entity_name, total_items, total_sale")
           .eq("id", relatedId)
           .single()
         return { type: "sale", data: sale }
