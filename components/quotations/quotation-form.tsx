@@ -50,14 +50,26 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
   console.log("QuotationForm rendered", { user: user?.id, selectedCompany: selectedCompany?.id })
 
-  // Form state
+  // Form state - solo campos que existen en quotations
   const [formData, setFormData] = useState({
     entity_id: "",
     entity_name: "",
     entity_ruc: "",
     delivery_location: "",
-    unique_code: "",
+    status: "draft",
+    valid_until: undefined as Date | undefined,
+    observations: "",
+    // Campos de comisión
+    contact_person: "",
+    commission_percentage: "",
+    commission_notes: "",
+  })
+
+  // Product data - para crear el item
+  const [productData, setProductData] = useState({
     product_id: "",
+    product_code: "",
+    product_name: "",
     product_description: "",
     product_brand: "",
     quantity: "",
@@ -65,11 +77,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
     supplier_unit_price_with_tax: "",
     offer_unit_price_with_tax: "",
     final_unit_price_with_tax: "",
-    budget_ceiling: "",
+    budget_ceiling_unit_price_with_tax: "",
     reference_image_url: "",
-    status: "draft",
-    valid_until: undefined as Date | undefined,
-    observations: "",
   })
 
   // Calculated totals
@@ -77,6 +86,9 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
     platform_total: 0,
     supplier_total: 0,
     offer_total_with_tax: 0,
+    budget_ceiling_total: 0,
+    commission_base_amount: 0,
+    commission_amount: 0,
   })
 
   useEffect(() => {
@@ -86,76 +98,39 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
   // Calcular totales cuando cambian los valores
   useEffect(() => {
-    const quantity = Number.parseFloat(formData.quantity) || 0
-    const platformPrice = Number.parseFloat(formData.platform_unit_price_with_tax) || 0
-    const supplierPrice = Number.parseFloat(formData.supplier_unit_price_with_tax) || 0
-    const offerPrice = Number.parseFloat(formData.offer_unit_price_with_tax) || 0
+    const quantity = Number.parseFloat(productData.quantity) || 0
+    const platformPrice = Number.parseFloat(productData.platform_unit_price_with_tax) || 0
+    const supplierPrice = Number.parseFloat(productData.supplier_unit_price_with_tax) || 0
+    const offerPrice = Number.parseFloat(productData.offer_unit_price_with_tax) || 0
+    const budgetCeilingPrice = Number.parseFloat(productData.budget_ceiling_unit_price_with_tax) || 0
+
+    const platformTotal = quantity * platformPrice
+    const supplierTotal = quantity * supplierPrice
+    const offerTotal = quantity * offerPrice
+    const budgetCeilingTotal = quantity * budgetCeilingPrice
+
+    // Calcular comisión
+    const finalTotal = offerTotal > 0 ? offerTotal : platformTotal
+    const commissionBaseAmount = finalTotal / 1.18 // Quitar IGV
+    const commissionPercentage = Number.parseFloat(formData.commission_percentage) || 0
+    const commissionAmount = commissionBaseAmount * (commissionPercentage / 100)
 
     setTotals({
-      platform_total: quantity * platformPrice,
-      supplier_total: quantity * supplierPrice,
-      offer_total_with_tax: quantity * offerPrice,
+      platform_total: platformTotal,
+      supplier_total: supplierTotal,
+      offer_total_with_tax: offerTotal,
+      budget_ceiling_total: budgetCeilingTotal,
+      commission_base_amount: commissionBaseAmount,
+      commission_amount: commissionAmount,
     })
   }, [
-    formData.quantity,
-    formData.platform_unit_price_with_tax,
-    formData.supplier_unit_price_with_tax,
-    formData.offer_unit_price_with_tax,
+    productData.quantity,
+    productData.platform_unit_price_with_tax,
+    productData.supplier_unit_price_with_tax,
+    productData.offer_unit_price_with_tax,
+    productData.budget_ceiling_unit_price_with_tax,
+    formData.commission_percentage,
   ])
-
-  /* REMOVE
-  const searchProductByCode = async () => {
-    if (!selectedCompany || !formData.unique_code.trim()) {
-      toast.error("Ingresa un código de producto")
-      return
-    }
-
-    setSearchingProduct(true)
-
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select(`
-        id, code, name, description, sale_price, current_stock, image_url,
-        brands (name)
-      `)
-        .eq("company_id", selectedCompany.id)
-        .eq("code", formData.unique_code.trim())
-        .eq("is_active", true)
-        .single()
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          toast.error("No se encontró un producto con ese código")
-        } else {
-          console.error("Error searching product:", error)
-          toast.error("Error al buscar el producto: " + error.message)
-        }
-        return
-      }
-
-      // Calcular precio con IGV (18%)
-      const priceWithTax = data.sale_price * 1.18
-
-      // Llenar automáticamente los campos del producto
-      setFormData((prev) => ({
-        ...prev,
-        product_id: data.id,
-        product_description: data.description || data.name,
-        product_brand: data.brands?.name || "",
-        platform_unit_price_with_tax: priceWithTax.toFixed(2),
-        reference_image_url: data.image_url || "",
-      }))
-
-      toast.success("Producto encontrado y cargado automáticamente")
-    } catch (error: any) {
-      console.error("Error searching product:", error)
-      toast.error("Error al buscar el producto: " + (error.message || "Error desconocido"))
-    } finally {
-      setSearchingProduct(false)
-    }
-  }
-  */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,11 +146,12 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
     try {
       // Validaciones
-      if (!formData.entity_id || !formData.unique_code || !formData.delivery_location) {
+      if (!formData.entity_id || !productData.product_id || !formData.delivery_location) {
         toast.error("Por favor completa todos los campos obligatorios")
         return
       }
 
+      // Crear cotización - SOLO con campos que existen en la tabla
       const quotationData = {
         company_id: selectedCompany.id,
         company_name: selectedCompany.name,
@@ -184,42 +160,79 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         entity_name: formData.entity_name,
         entity_ruc: formData.entity_ruc,
         delivery_location: formData.delivery_location,
-        product_id: formData.product_id,
-        unique_code: formData.unique_code,
-        product_description: formData.product_description,
-        product_brand: formData.product_brand,
-        quantity: Number.parseInt(formData.quantity),
-        platform_unit_price_with_tax: Number.parseFloat(formData.platform_unit_price_with_tax),
-        platform_total: totals.platform_total,
-        supplier_unit_price_with_tax: formData.supplier_unit_price_with_tax
-          ? Number.parseFloat(formData.supplier_unit_price_with_tax)
-          : null,
-        supplier_total: totals.supplier_total || null,
-        offer_unit_price_with_tax: formData.offer_unit_price_with_tax
-          ? Number.parseFloat(formData.offer_unit_price_with_tax)
-          : null,
-        offer_total_with_tax: totals.offer_total_with_tax || null,
-        final_unit_price_with_tax: formData.final_unit_price_with_tax
-          ? Number.parseFloat(formData.final_unit_price_with_tax)
-          : null,
-        budget_ceiling: formData.budget_ceiling ? Number.parseFloat(formData.budget_ceiling) : null,
-        reference_image_url: formData.reference_image_url || null,
         status: formData.status,
         valid_until: formData.valid_until?.toISOString().split("T")[0] || null,
         observations: formData.observations,
         created_by: user.id,
+        is_multi_product: false, // Producto único
+        items_count: 1,
+        // Campos de comisión
+        contact_person: formData.contact_person || null,
+        commission_percentage: formData.commission_percentage
+          ? Number.parseFloat(formData.commission_percentage)
+          : null,
+        commission_base_amount: totals.commission_base_amount,
+        commission_amount: totals.commission_amount,
+        commission_notes: formData.commission_notes || null,
+        // Total del techo presupuestal
+        budget_ceiling_total: totals.budget_ceiling_total > 0 ? totals.budget_ceiling_total : null,
       }
 
       console.log("About to insert quotation data:", quotationData)
 
-      const { error } = await supabase.from("quotations").insert([quotationData])
+      const { data: quotation, error: quotationError } = await supabase
+        .from("quotations")
+        .insert([quotationData])
+        .select()
+        .single()
 
-      if (error) {
-        console.error("Supabase insert error:", error)
-        throw error
+      if (quotationError) {
+        console.error("Supabase insert error:", quotationError)
+        throw quotationError
       }
 
-      console.log("Quotation created successfully")
+      console.log("Quotation created successfully:", quotation.id)
+
+      // Crear quotation item
+      const itemData = {
+        quotation_id: quotation.id,
+        product_id: productData.product_id,
+        product_code: productData.product_code,
+        product_name: productData.product_name,
+        product_description: productData.product_description,
+        product_brand: productData.product_brand,
+        quantity: Number.parseInt(productData.quantity),
+        platform_unit_price_with_tax: Number.parseFloat(productData.platform_unit_price_with_tax),
+        platform_total: totals.platform_total,
+        supplier_unit_price_with_tax: productData.supplier_unit_price_with_tax
+          ? Number.parseFloat(productData.supplier_unit_price_with_tax)
+          : null,
+        supplier_total: totals.supplier_total || null,
+        offer_unit_price_with_tax: productData.offer_unit_price_with_tax
+          ? Number.parseFloat(productData.offer_unit_price_with_tax)
+          : null,
+        offer_total_with_tax: totals.offer_total_with_tax || null,
+        final_unit_price_with_tax: productData.final_unit_price_with_tax
+          ? Number.parseFloat(productData.final_unit_price_with_tax)
+          : null,
+        budget_ceiling_unit_price_with_tax: productData.budget_ceiling_unit_price_with_tax
+          ? Number.parseFloat(productData.budget_ceiling_unit_price_with_tax)
+          : null,
+        budget_ceiling_total: totals.budget_ceiling_total > 0 ? totals.budget_ceiling_total : null,
+        reference_image_url: productData.reference_image_url || null,
+      }
+
+      console.log("Creating quotation item:", itemData)
+
+      const { error: itemError } = await supabase.from("quotation_items").insert([itemData])
+
+      if (itemError) {
+        console.error("Item creation error:", itemError)
+        throw itemError
+      }
+
+      console.log("Quotation item created successfully")
+
       toast.success("Cotización creada exitosamente")
       onSuccess()
     } catch (error: any) {
@@ -277,17 +290,18 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
             <ProductSelector
-              value={formData.product_id}
+              value={productData.product_id}
               onSelect={(product) => {
                 console.log("QuotationForm: Product selected:", product)
 
                 // Calcular precio con IGV (18%)
                 const priceWithTax = product.sale_price * 1.18
 
-                setFormData((prev) => ({
+                setProductData((prev) => ({
                   ...prev,
                   product_id: product.id,
-                  unique_code: product.code,
+                  product_code: product.code,
+                  product_name: product.name,
                   product_description: product.description || product.name,
                   product_brand: product.brands?.name || "",
                   platform_unit_price_with_tax: priceWithTax.toFixed(2),
@@ -309,8 +323,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
               id="quantity"
               type="number"
               min="1"
-              value={formData.quantity}
-              onChange={(e) => setFormData((prev) => ({ ...prev, quantity: e.target.value }))}
+              value={productData.quantity}
+              onChange={(e) => setProductData((prev) => ({ ...prev, quantity: e.target.value }))}
               required
             />
           </div>
@@ -318,11 +332,11 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="unique_code">Código del Producto</Label>
+            <Label htmlFor="product_code">Código del Producto</Label>
             <Input
-              id="unique_code"
-              value={formData.unique_code}
-              onChange={(e) => setFormData((prev) => ({ ...prev, unique_code: e.target.value }))}
+              id="product_code"
+              value={productData.product_code}
+              onChange={(e) => setProductData((prev) => ({ ...prev, product_code: e.target.value }))}
               placeholder="Se llena automáticamente al seleccionar producto"
               disabled
             />
@@ -331,8 +345,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
             <Label htmlFor="product_brand">Marca</Label>
             <Input
               id="product_brand"
-              value={formData.product_brand}
-              onChange={(e) => setFormData((prev) => ({ ...prev, product_brand: e.target.value }))}
+              value={productData.product_brand}
+              onChange={(e) => setProductData((prev) => ({ ...prev, product_brand: e.target.value }))}
               placeholder="Marca del producto"
             />
           </div>
@@ -342,8 +356,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
           <Label htmlFor="product_description">Descripción del Producto *</Label>
           <Textarea
             id="product_description"
-            value={formData.product_description}
-            onChange={(e) => setFormData((prev) => ({ ...prev, product_description: e.target.value }))}
+            value={productData.product_description}
+            onChange={(e) => setProductData((prev) => ({ ...prev, product_description: e.target.value }))}
             placeholder="Descripción detallada del producto"
             required
           />
@@ -374,8 +388,10 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.platform_unit_price_with_tax}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, platform_unit_price_with_tax: e.target.value }))}
+                  value={productData.platform_unit_price_with_tax}
+                  onChange={(e) =>
+                    setProductData((prev) => ({ ...prev, platform_unit_price_with_tax: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -391,8 +407,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Label htmlFor="reference_image">Imagen Referencial (URL)</Label>
                 <Input
                   id="reference_image"
-                  value={formData.reference_image_url}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, reference_image_url: e.target.value }))}
+                  value={productData.reference_image_url}
+                  onChange={(e) => setProductData((prev) => ({ ...prev, reference_image_url: e.target.value }))}
                   placeholder="URL de la imagen"
                 />
               </div>
@@ -415,8 +431,10 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.supplier_unit_price_with_tax}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, supplier_unit_price_with_tax: e.target.value }))}
+                  value={productData.supplier_unit_price_with_tax}
+                  onChange={(e) =>
+                    setProductData((prev) => ({ ...prev, supplier_unit_price_with_tax: e.target.value }))
+                  }
                   placeholder="Precio del proveedor"
                 />
               </div>
@@ -447,8 +465,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.offer_unit_price_with_tax}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, offer_unit_price_with_tax: e.target.value }))}
+                  value={productData.offer_unit_price_with_tax}
+                  onChange={(e) => setProductData((prev) => ({ ...prev, offer_unit_price_with_tax: e.target.value }))}
                   placeholder="Precio de oferta"
                 />
               </div>
@@ -479,23 +497,99 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.final_unit_price_with_tax}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, final_unit_price_with_tax: e.target.value }))}
+                  value={productData.final_unit_price_with_tax}
+                  onChange={(e) => setProductData((prev) => ({ ...prev, final_unit_price_with_tax: e.target.value }))}
                   placeholder="Precio final"
                 />
               </div>
               <div>
-                <Label htmlFor="budget_ceiling">Techo Presupuestal</Label>
+                <Label htmlFor="budget_ceiling_unit_price">Techo Presupuestal Unitario</Label>
                 <Input
-                  id="budget_ceiling"
+                  id="budget_ceiling_unit_price"
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.budget_ceiling}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, budget_ceiling: e.target.value }))}
-                  placeholder="Límite presupuestal"
+                  value={productData.budget_ceiling_unit_price_with_tax}
+                  onChange={(e) =>
+                    setProductData((prev) => ({ ...prev, budget_ceiling_unit_price_with_tax: e.target.value }))
+                  }
+                  placeholder="Precio máximo por unidad"
                 />
               </div>
+            </div>
+            {totals.budget_ceiling_total > 0 && (
+              <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <Label className="text-sm font-medium text-orange-600">Total Techo Presupuestal</Label>
+                <p className="text-lg font-bold text-orange-700">
+                  S/ {totals.budget_ceiling_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Información de Comisión */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Información de Comisión</CardTitle>
+            <CardDescription>Cálculo de comisión para el contacto/vendedor</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="contact_person">Nombre del Contacto/Vendedor</Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, contact_person: e.target.value }))}
+                  placeholder="Nombre del contacto que gestiona la venta"
+                />
+              </div>
+              <div>
+                <Label htmlFor="commission_percentage">Porcentaje de Comisión (%)</Label>
+                <Input
+                  id="commission_percentage"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={formData.commission_percentage}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, commission_percentage: e.target.value }))}
+                  placeholder="Ej: 5.5 para 5.5%"
+                />
+              </div>
+            </div>
+
+            {/* Mostrar cálculos de comisión */}
+            {totals.commission_base_amount > 0 && (
+              <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Total sin IGV</p>
+                  <p className="text-lg font-bold text-slate-700">
+                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Porcentaje</p>
+                  <p className="text-lg font-bold text-blue-600">{formData.commission_percentage || "0"}%</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-slate-600">Comisión a Pagar</p>
+                  <p className="text-lg font-bold text-green-600">
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="commission_notes">Notas sobre la Comisión</Label>
+              <Textarea
+                id="commission_notes"
+                value={formData.commission_notes}
+                onChange={(e) => setFormData((prev) => ({ ...prev, commission_notes: e.target.value }))}
+                placeholder="Notas adicionales sobre el cálculo o pago de la comisión..."
+              />
             </div>
           </CardContent>
         </Card>

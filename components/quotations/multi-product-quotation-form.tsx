@@ -63,13 +63,12 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
 
-  // Form state
+  // Form state - solo campos que existen en quotations
   const [formData, setFormData] = useState({
     entity_id: "",
     entity_name: "",
     entity_ruc: "",
     delivery_location: "",
-    budget_ceiling: "",
     status: "draft",
     valid_until: undefined as Date | undefined,
     observations: "",
@@ -225,7 +224,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     setLoading(true)
 
     try {
-      // Create quotation
+      // Crear cotización - SOLO con campos que existen en la tabla
       const quotationData = {
         company_id: selectedCompany.id,
         company_name: selectedCompany.name,
@@ -234,16 +233,11 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         entity_name: formData.entity_name,
         entity_ruc: formData.entity_ruc,
         delivery_location: formData.delivery_location,
-        platform_total: totals.platform_total,
-        supplier_total: totals.supplier_total || null,
-        offer_total_with_tax: totals.offer_total_with_tax || null,
-        budget_ceiling_total: totals.budget_ceiling_total || null,
-        budget_ceiling: formData.budget_ceiling ? Number.parseFloat(formData.budget_ceiling) : null,
         status: formData.status,
         valid_until: formData.valid_until?.toISOString().split("T")[0] || null,
         observations: formData.observations,
         created_by: user.id,
-        is_multi_product: true,
+        is_multi_product: items.length > 1,
         items_count: items.length,
         // Campos de comisión
         contact_person: formData.contact_person || null,
@@ -253,7 +247,11 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         commission_base_amount: totals.commission_base_amount,
         commission_amount: totals.commission_amount,
         commission_notes: formData.commission_notes || null,
+        // Total del techo presupuestal (suma de todos los items)
+        budget_ceiling_total: totals.budget_ceiling_total > 0 ? totals.budget_ceiling_total : null,
       }
+
+      console.log("Creating quotation with data:", quotationData)
 
       const { data: quotation, error: quotationError } = await supabase
         .from("quotations")
@@ -261,9 +259,14 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         .select()
         .single()
 
-      if (quotationError) throw quotationError
+      if (quotationError) {
+        console.error("Quotation creation error:", quotationError)
+        throw quotationError
+      }
 
-      // Create quotation items
+      console.log("Quotation created successfully:", quotation.id)
+
+      // Crear quotation items
       const itemsData = items.map((item) => ({
         quotation_id: quotation.id,
         product_id: item.product_id,
@@ -284,9 +287,16 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         reference_image_url: item.reference_image_url,
       }))
 
+      console.log("Creating quotation items:", itemsData.length)
+
       const { error: itemsError } = await supabase.from("quotation_items").insert(itemsData)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error("Items creation error:", itemsError)
+        throw itemsError
+      }
+
+      console.log("Quotation items created successfully")
 
       toast.success("Cotización multi-producto creada exitosamente")
       onSuccess()
