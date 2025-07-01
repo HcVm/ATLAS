@@ -497,7 +497,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
           <div style="flex: 0 0 140px;">
             <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
               <div style="background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%); color: white; padding: 8px;">
-                <h4 style="margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;">🔐 VALIDACIÓN</h4>
+                <h4 style="margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;">VALIDACIÓN</h4>
               </div>
               
               <div style="padding: 15px;">
