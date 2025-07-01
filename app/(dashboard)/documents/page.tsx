@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Plus, Search, Eye, Edit, Trash2, FileText, MoreHorizontal, Loader2, RefreshCw, Filter } from "lucide-react"
-import { format } from "date-fns"
+import { format, differenceInDays } from "date-fns"
 import { es } from "date-fns/locale"
 
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,62 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { toast } from "@/hooks/use-toast"
+
+// Función para determinar el estado del semáforo basado en días transcurridos desde el último movimiento
+const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDate?: string) => {
+  // Solo aplicar semáforo a documentos pendientes o en progreso
+  if (status === "completed" || status === "cancelled") {
+    return null
+  }
+
+  // Usar la fecha del último movimiento si existe, sino usar la fecha de creación
+  const referenceDate = lastMovementDate || createdAt
+  const daysPassed = differenceInDays(new Date(), new Date(referenceDate))
+
+  if (daysPassed >= 3) {
+    return {
+      color: "bg-red-500",
+      textColor: "text-red-700",
+      bgColor: "bg-red-50",
+      borderColor: "border-red-200",
+      message: "¡URGENTE! Sin respuesta por más de 3 días",
+      icon: "🔴",
+    }
+  } else if (daysPassed >= 1) {
+    return {
+      color: "bg-yellow-500",
+      textColor: "text-yellow-700",
+      bgColor: "bg-yellow-50",
+      borderColor: "border-yellow-200",
+      message: "Pendiente de respuesta",
+      icon: "🟡",
+    }
+  } else {
+    // Documentos nuevos o recién movidos (menos de 1 día)
+    return {
+      color: "bg-green-500",
+      textColor: "text-green-700",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-200",
+      message: lastMovementDate ? "Recién movido a este departamento" : "Documento recién creado",
+      icon: "🟢",
+    }
+  }
+}
+
+// Función helper para obtener la fecha del último movimiento al departamento actual
+const getLastMovementToCurrentDepartment = (document: any) => {
+  if (!document.document_movements || document.document_movements.length === 0) {
+    return null
+  }
+
+  // Buscar el último movimiento hacia el departamento actual
+  const movementsToCurrentDept = document.document_movements
+    .filter((movement: any) => movement.to_department_id === document.current_department_id)
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  return movementsToCurrentDept.length > 0 ? movementsToCurrentDept[0].created_at : null
+}
 
 export default function DocumentsPage() {
   const router = useRouter()
@@ -65,14 +121,19 @@ export default function DocumentsPage() {
       }
       setError(null)
 
-      // Primero intentar con la relación específica
+      // Primero intentar con la relación específica incluyendo movimientos
       let query = supabase
         .from("documents")
         .select(`
-          *,
-          profiles!documents_created_by_fkey (id, full_name, email, company_id),
-          departments!documents_current_department_id_fkey (id, name)
-        `)
+    *,
+    profiles!documents_created_by_fkey (id, full_name, email, company_id),
+    departments!documents_current_department_id_fkey (id, name),
+    document_movements!document_movements_document_id_fkey (
+      id, 
+      created_at, 
+      to_department_id
+    )
+  `)
         .order("created_at", { ascending: false })
 
       // Filtrar por empresa seleccionada si el usuario es admin
@@ -100,13 +161,18 @@ export default function DocumentsPage() {
       if (error) {
         console.error("Error with specific relationship, trying fallback:", error)
 
-        // Fallback: intentar sin la relación específica
+        // Fallback: intentar sin la relación específica pero con movimientos
         let fallbackQuery = supabase
           .from("documents")
           .select(`
-            *,
-            profiles!documents_created_by_fkey (id, full_name, email, company_id)
-          `)
+    *,
+    profiles!documents_created_by_fkey (id, full_name, email, company_id),
+    document_movements!document_movements_document_id_fkey (
+      id, 
+      created_at, 
+      to_department_id
+    )
+  `)
           .order("created_at", { ascending: false })
 
         // Aplicar los mismos filtros de empresa
@@ -395,6 +461,28 @@ export default function DocumentsPage() {
         </Alert>
       )}
 
+      {/* Alerta para documentos urgentes */}
+      {(() => {
+        const urgentDocs = filteredDocuments.filter((doc) => {
+          const lastMovementDate = getLastMovementToCurrentDepartment(doc)
+          const trafficLight = getTrafficLightStatus(doc.created_at, doc.status, lastMovementDate)
+          return trafficLight && trafficLight.icon === "🔴"
+        })
+
+        return urgentDocs.length > 0 ? (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertDescription className="text-red-700">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🚨</span>
+                <span>
+                  Tienes <strong>{urgentDocs.length}</strong> documento(s) urgente(s) sin respuesta por más de 3 días.
+                </span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : null
+      })()}
+
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
         <CardHeader className="border-b border-slate-100 dark:border-slate-600 p-4 sm:p-6">
           <div className="flex items-center gap-2">
@@ -533,11 +621,28 @@ export default function DocumentsPage() {
                     >
                       <TableCell className="font-medium p-2 sm:p-4">
                         <div className="flex flex-col">
-                          <div className="flex items-center">
+                          <div className="flex items-center gap-2">
                             <span className="truncate max-w-[120px] sm:max-w-none text-sm text-slate-700 dark:text-slate-200">
                               {document.title || "Sin título"}
                             </span>
                             {getDocumentBadge(document)}
+                            {(() => {
+                              const lastMovementDate = getLastMovementToCurrentDepartment(document)
+                              const trafficLight = getTrafficLightStatus(
+                                document.created_at,
+                                document.status,
+                                lastMovementDate,
+                              )
+                              return trafficLight ? (
+                                <div
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${trafficLight.bgColor} ${trafficLight.textColor} ${trafficLight.borderColor} border shadow-sm`}
+                                  title={trafficLight.message}
+                                >
+                                  <span className="mr-1">{trafficLight.icon}</span>
+                                  {trafficLight.message}
+                                </div>
+                              ) : null
+                            })()}
                           </div>
                           <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 mt-1">
                             {document.document_number || "Sin número"}
