@@ -37,6 +37,9 @@ import RoutePlanner from "@/components/quotations/route-planner"
 import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator"
 import PrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator"
+import ARMEntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator-arm"
+import ARMPrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator-arm"
+
 
 // Interfaces actualizadas después de la migración
 interface QuotationItem {
@@ -1195,8 +1198,18 @@ export default function QuotationsPage() {
               </Button>
               {selectedQuotation && selectedCompany && (
                 <>
-                  <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                  <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                  {/* Mostrar botones según la empresa */}
+                  {selectedCompany.code === "ARM" ? (
+                    <>
+                      <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                      <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                    </>
+                  ) : (
+                    <>
+                      <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                      <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                    </>
+                  )}
                   <QuotationPDFGenerator
                     quotation={selectedQuotation}
                     companyInfo={{
