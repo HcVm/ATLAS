@@ -1,68 +1,7 @@
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import jsPDF from "jspdf"
-import "jspdf-autotable"
-// Define UserOptions type locally since jspdf-autotable types are not available
-type UserOptions = {
-  html?: string | HTMLTableElement;
-  head?: any[][];
-  body?: any[][];
-  foot?: any[][];
-  columns?: any[];
-  startY?: number;
-  margin?: { top?: number; right?: number; bottom?: number; left?: number };
-  pageBreak?: 'auto' | 'avoid' | 'always';
-  rowPageBreak?: 'auto' | 'avoid';
-  showHead?: 'everyPage' | 'firstPage' | 'never';
-  showFoot?: 'everyPage' | 'lastPage' | 'never';
-  theme?: string;
-  styles?: any;
-  headStyles?: any;
-  bodyStyles?: any;
-  footStyles?: any;
-  alternateRowStyles?: any;
-  columnStyles?: any;
-  didParseCell?: (data: any) => void;
-  willDrawCell?: (data: any) => void;
-  didDrawCell?: (data: any) => void;
-  didDrawPage?: (data: any) => void;
-}
-
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: UserOptions) => jsPDF
-}
-
-interface QuotationItem {
-  id: string
-  product_name: string
-  product_brand: string
-  quantity: number
-  unit_price: number
-  total_price: number
-}
-
-interface Quotation {
-  id: string
-  quotation_number: string
-  client_name: string
-  client_email: string
-  client_phone: string
-  client_address: string
-  total_amount: number
-  status: string
-  created_at: string
-  observations?: string
-  quotation_items: QuotationItem[]
-}
-
-interface Company {
-  name: string
-  ruc: string
-  address: string
-  phone: string
-  email: string
-  logo_url?: string
-}
+import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
+import QRCode from "qrcode"
 
 export interface PrivateQuotationPDFData {
   // Información de la empresa
@@ -74,6 +13,9 @@ export interface PrivateQuotationPDFData {
   companyEmail?: string
   companyLogoUrl?: string
   companyAccountInfo: string
+
+  // Información bancaria (se obtiene automáticamente por código de empresa)
+  bankingInfo?: BankingInfo
 
   // Información de la cotización
   quotationNumber: string
@@ -114,23 +56,184 @@ export interface PrivateQuotationPDFData {
   createdBy: string
 }
 
-// Función para obtener logos únicos de marcas
-const getUniqueBrandLogos = (products: PrivateQuotationPDFData["products"]) => {
-  const brandLogos = new Map<string, string>()
+const generateQRForQuotation = async (quotationNumber: string, data: PrivateQuotationPDFData): Promise<string> => {
+  try {
+    console.log("🔐 Creando validación a través de API...")
 
-  products.forEach((product) => {
-    if (product.brand && product.brandLogoUrl && !brandLogos.has(product.brand)) {
-      brandLogos.set(product.brand, product.brandLogoUrl)
+    // Llamar al endpoint de validación - IGUAL QUE PDF ENTIDAD
+    const response = await fetch("/api/create-validation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        quotationNumber: data.quotationNumber,
+        clientRuc: data.clientRuc,
+        clientName: data.clientName,
+        companyRuc: data.companyRuc,
+        companyName: data.companyName,
+        totalAmount: data.total,
+        quotationDate: data.quotationDate,
+        createdBy: data.createdBy,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
     }
-  })
 
-  return brandLogos
+    const validationData = await response.json()
+    const validationHash = validationData.validationHash
+    const validationUrl = validationData.validationUrl
+
+    console.log("✅ Validación creada:", validationHash.substring(0, 16) + "...")
+    console.log("🔗 URL de validación:", validationUrl)
+
+    // Generar QR usando EXACTAMENTE la misma configuración que funciona en documentos
+    console.log("📱 Generando código QR...")
+    const qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+
+    console.log("✅ QR Code generado exitosamente")
+    return qrCodeDataUrl
+  } catch (error) {
+    console.error("Error generating QR code:", error)
+    return ""
+  }
+}
+
+const getStatusLabel = (status: string): string => {
+  const statusLabels: Record<string, string> = {
+    draft: "Borrador",
+    sent: "Enviada",
+    approved: "Aprobada",
+    rejected: "Rechazada",
+    expired: "Expirada",
+  }
+  return statusLabels[status] || status
+}
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("es-PE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
+
+export const generatePrivateQuotationPDF = async (data: PrivateQuotationPDFData) => {
+  console.log("=== Generando PDF Privado ===")
+  console.log("Datos recibidos:", data)
+
+  try {
+    const qrCodeBase64 = await generateQRForQuotation(data.quotationNumber, data)
+    const html = generatePrivateQuotationHTML({
+      ...data,
+      qrCodeBase64,
+      quotationNumber: data.quotationNumber,
+      quotationDate: data.quotationDate,
+      status: data.status,
+      observations: data.observations,
+      createdBy: data.createdBy,
+    })
+
+    // Crear un iframe oculto para generar el PDF
+    const iframe = document.createElement("iframe")
+    iframe.style.position = "absolute"
+    iframe.style.left = "-9999px"
+    iframe.style.width = "210mm"
+    iframe.style.height = "297mm"
+    document.body.appendChild(iframe)
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+    if (!iframeDoc) {
+      throw new Error("No se pudo acceder al documento del iframe")
+    }
+
+    iframeDoc.open()
+    iframeDoc.write(html)
+    iframeDoc.close()
+
+    // Esperar a que se carguen las imágenes
+    await new Promise((resolve) => {
+      const images = iframeDoc.querySelectorAll("img")
+      let loadedImages = 0
+      const totalImages = images.length
+
+      if (totalImages === 0) {
+        resolve(void 0)
+        return
+      }
+
+      images.forEach((img) => {
+        if (img.complete) {
+          loadedImages++
+          if (loadedImages === totalImages) {
+            resolve(void 0)
+          }
+        } else {
+          img.onload = img.onerror = () => {
+            loadedImages++
+            if (loadedImages === totalImages) {
+              resolve(void 0)
+            }
+          }
+        }
+      })
+
+      // Timeout de seguridad
+      setTimeout(() => resolve(void 0), 3000)
+    })
+
+    // Generar el PDF usando la API del navegador
+    if (iframe.contentWindow) {
+      iframe.contentWindow.print()
+    }
+
+    // Limpiar el iframe después de un tiempo
+    setTimeout(() => {
+      document.body.removeChild(iframe)
+    }, 1000)
+
+    console.log("✅ PDF privado generado exitosamente")
+  } catch (error) {
+    console.error("❌ Error generando PDF privado:", error)
+    throw new Error(`Error al generar el PDF privado: ${error}`)
+  }
 }
 
 const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => {
-  const brandLogos = getUniqueBrandLogos(data.products)
   const formattedDate = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
+
+  // Obtener información bancaria automáticamente si tenemos el código de empresa
+  if (data.companyCode && !data.bankingInfo) {
+    const bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
+    if (bankingInfo) {
+      data.bankingInfo = bankingInfo
+    }
+    console.log("✅ Banking info obtained for company:", data.companyCode, data.bankingInfo)
+  }
+
+  // Obtener marcas únicas con logos
+  const uniqueBrands = data.products
+    .filter((product) => product.brand && product.brandLogoUrl)
+    .reduce(
+      (acc, product) => {
+        if (product.brand && product.brandLogoUrl && !acc.some((b) => b.name === product.brand)) {
+          acc.push({ name: product.brand, logoUrl: product.brandLogoUrl })
+        }
+        return acc
+      },
+      [] as Array<{ name: string; logoUrl: string }>,
+    )
 
   return `
     <!DOCTYPE html>
@@ -144,7 +247,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         @page {
           size: A4;
-          margin: 15mm;
+          margin: 10mm;
         }
         
         * {
@@ -155,8 +258,8 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         body {
           font-family: 'Inter', sans-serif;
-          font-size: 11px;
-          line-height: 1.4;
+          font-size: 9px;
+          line-height: 1.3;
           color: #1e293b;
           background: white;
           -webkit-print-color-adjust: exact;
@@ -164,16 +267,17 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .container {
-          max-width: 180mm;
+          width: 100%;
+          max-width: 190mm;
           margin: 0 auto;
         }
         
         .header {
           background: linear-gradient(135deg, #1e40af 0%, #6366f1 100%);
           color: white;
-          padding: 15mm;
-          border-radius: 8px;
-          margin-bottom: 8mm;
+          padding: 8mm;
+          border-radius: 4mm;
+          margin-bottom: 5mm;
           position: relative;
           overflow: hidden;
           page-break-inside: avoid;
@@ -203,95 +307,234 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .company-info {
           display: flex;
           align-items: flex-start;
-          gap: 15mm;
+          gap: 8mm;
+          flex: 1;
         }
         
         .company-logo {
-          background: white;
-          padding: 8mm;
-          border-radius: 6mm;
-          box-shadow: 0 2mm 6mm rgba(0,0,0,0.2);
+          padding: 2mm;
+          border-radius: 3mm;
+          flex-shrink: 0;
         }
         
         .company-logo img {
-          width: 40px;
-          height: 40px;
+          width: 140px;
+          height: 100px;
           object-fit: contain;
+        }
+        
+        .company-details {
+          flex: 1;
         }
         
         .company-details h1 {
           font-size: 18px;
           font-weight: 800;
-          margin-bottom: 3mm;
+          margin-bottom: 2mm;
+        }
+
+        .conditions-qr-combined-section {
+            margin-bottom: 5mm; /* Puedes ajustar este margen */
+            page-break-inside: avoid;
+        }
+
+        .conditions-qr-content {
+            display: flex;
+            justify-content: space-between; /* Distribuye el espacio entre los elementos */
+            align-items: flex-start; /* Alinea los elementos al inicio */
+            gap: 5mm; /* Espacio entre las condiciones y el panel QR */
+        }
+
+        .conditions {
+            /* Mantén los estilos existentes */
+            width: 65%; /* Ajusta el ancho para dar espacio al QR */
+            background: linear-gradient(135deg, #f8fafc, #dbeafe);
+            border: 0.5px solid #e2e8f0;
+            border-radius: 2mm;
+            padding: 4mm;
+            page-break-inside: avoid;
+        }
+
+        .qr-validation-panel {
+            background: white;
+            border: 0.5px solid #e2e8f0;
+            border-radius: 2mm;
+            padding: 4mm;
+            box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
+            width: 35%; /* Ajusta el ancho para el panel QR */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .qr-code-panel {
+            background: white;
+            padding: 2mm;
+            border-radius: 1.5mm;
+            box-shadow: 0 0.5mm 1.5mm rgba(0,0,0,0.1);
+            margin-bottom: 3mm;
+        }
+
+        .qr-code-panel img {
+            width: 25mm; /* Haz el QR un poco más grande para mejor escaneo */
+            height: 25mm;
+            object-fit: contain;
+        }
+
+        .validation-info-panel h3 {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1mm;
+        }
+
+        .validation-info-panel p {
+            color: #64748b;
+            margin-bottom: 0.5mm;
+            font-size: 8px;
+        }
+
+        .system-info-panel {
+            margin-top: auto; /* Empuja la información del sistema al final del panel */
+            padding-top: 3mm;
+            border-top: 0.5px solid #e2e8f0;
+            width: 100%;
+            font-size: 8px;
+            color: #64748b;
+            text-align: center;
         }
         
         .company-details p {
           font-size: 10px;
           opacity: 0.9;
-          margin-bottom: 1mm;
+          margin-bottom: 0.5mm;
+        }
+        
+        .brands-in-header {
+          margin-top: 4mm;
+          padding-top: 3mm;
+          border-top: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .brands-header-title {
+          font-size: 12px;
+          font-weight: 700;
+          margin-bottom: 3mm;
+          color: white;
+          opacity: 0.9;
+        }
+        
+        .brands-grid-header {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4mm;
+          align-items: center;
+        }
+        
+        .brand-card-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          min-width: 60px;
+        }
+        
+        .brand-logo-container-header {
+          margin-bottom: 2mm;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .brand-logo-container-header img {
+          width: 120px;
+          height: auto;
+          object-fit: contain;
+          filter: brightness(1.1) contrast(1.1);
+        }
+
+        .img-logo {
+          width: 120px;
+          height: auto;
+        }
+        
+        .brand-name-header {
+          font-size: 10px;
+          font-weight: 700;
+          color: white;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+          background: rgba(0,0,0,0.2);
+          padding: 1mm 2mm;
+          border-radius: 2mm;
+          backdrop-filter: blur(5px);
         }
         
         .quotation-panel {
           background: white;
           color: #1e293b;
-          padding: 8mm;
-          border-radius: 6mm;
-          box-shadow: 0 3mm 8mm rgba(0,0,0,0.2);
-          min-width: 60mm;
+          padding: 5mm;
+          border-radius: 3mm;
+          box-shadow: 0 2mm 5mm rgba(0,0,0,0.2);
+          min-width: 45mm;
           text-align: center;
+          flex-shrink: 0;
         }
         
         .quotation-panel h2 {
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 700;
           color: #1d4ed8;
-          margin-bottom: 2mm;
+          margin-bottom: 1mm;
         }
         
         .quotation-panel .subtitle {
           font-size: 11px;
           font-weight: 600;
           color: #6366f1;
-          margin-bottom: 4mm;
-          padding-bottom: 3mm;
+          margin-bottom: 3mm;
+          padding-bottom: 2mm;
           border-bottom: 1px solid #e2e8f0;
         }
         
         .quotation-number {
           font-size: 12px;
           font-weight: 700;
-          margin-bottom: 2mm;
+          margin-bottom: 1mm;
         }
         
         .quotation-date {
           color: #64748b;
-          margin-bottom: 3mm;
+          margin-bottom: 2mm;
           font-size: 10px;
         }
         
         .status-badge {
           display: inline-block;
-          padding: 2mm 4mm;
+          padding: 1mm 2mm;
           background: #dbeafe;
           color: #1d4ed8;
-          border-radius: 4mm;
+          border-radius: 2mm;
           font-size: 9px;
           font-weight: 600;
         }
         
         .section {
-          margin-bottom: 8mm;
+          margin-bottom: 5mm;
           page-break-inside: avoid;
         }
+        
         
         .section-title {
           display: flex;
           align-items: center;
-          margin-bottom: 5mm;
+          margin-bottom: 3mm;
         }
         
         .section-title h2 {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 700;
           color: #1e293b;
         }
@@ -299,76 +542,37 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .section-title::after {
           content: '';
           flex: 1;
-          height: 2px;
+          height: 1px;
           background: linear-gradient(90deg, #3b82f6, #6366f1);
-          border-radius: 1px;
-          margin-left: 5mm;
-          max-width: 40mm;
-        }
-        
-        .brands-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 4mm;
-        }
-        
-        .brand-card {
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 4mm;
-          padding: 4mm;
-          text-align: center;
-          box-shadow: 0 1mm 3mm rgba(0,0,0,0.05);
-          page-break-inside: avoid;
-        }
-        
-        .brand-logo-container {
-          background: linear-gradient(135deg, #dbeafe, #f1f5f9);
-          border-radius: 3mm;
-          padding: 3mm;
-          margin-bottom: 2mm;
-          height: 20mm;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .brand-logo-container img {
-          max-width: 24px;
-          max-height: 24px;
-          object-fit: contain;
-        }
-        
-        .brand-name {
-          font-size: 9px;
-          font-weight: 700;
-          color: #1d4ed8;
+          border-radius: 0.5px;
+          margin-left: 3mm;
+          max-width: 30mm;
         }
         
         .client-info {
           background: linear-gradient(135deg, #f8fafc, #dbeafe);
-          border: 1px solid #e2e8f0;
-          border-radius: 6mm;
-          padding: 6mm;
+          border: 0.5px solid #e2e8f0;
+          border-radius: 3mm;
+          padding: 4mm;
           page-break-inside: avoid;
         }
         
         .client-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 6mm;
-          margin-top: 3mm;
+          gap: 4mm;
+          margin-top: 2mm;
         }
         
         .client-field {
-          margin-bottom: 3mm;
+          margin-bottom: 2mm;
         }
         
         .client-field label {
           font-weight: 600;
           color: #64748b;
           display: block;
-          margin-bottom: 1mm;
+          margin-bottom: 0.5mm;
           font-size: 9px;
         }
         
@@ -377,13 +581,31 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           font-weight: 600;
           color: #1e293b;
         }
+
+        
+        .banking-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 4mm;
+        }
+        
+        .banking-text {
+          font-family: 'Inter', monospace;
+          font-size: 9px;
+          line-height: 1.4;
+          color: #1e293b;
+          white-space: pre-wrap;
+          margin: 0;
+          flex: 1;
+        }
         
         .products-table {
           width: 100%;
           border-collapse: collapse;
-          border-radius: 4mm;
+          border-radius: 2mm;
           overflow: hidden;
-          box-shadow: 0 2mm 6mm rgba(0,0,0,0.1);
+          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
           page-break-after: auto;
         }
         
@@ -393,15 +615,15 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .products-table th {
-          padding: 3mm 2mm;
+          padding: 2mm 1mm;
           font-weight: 600;
           text-align: center;
-          font-size: 8px;
+          font-size: 9px;
         }
         
         .products-table td {
-          padding: 3mm 2mm;
-          border-bottom: 0.5px solid #e2e8f0;
+          padding: 2mm 1mm;
+          border-bottom: 0.25px solid #e2e8f0;
           font-size: 9px;
         }
         
@@ -421,10 +643,10 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         .brand-badge {
           display: inline-block;
-          padding: 1mm 2mm;
+          padding: 0.5mm 1mm;
           background: #dbeafe;
           color: #1d4ed8;
-          border-radius: 2mm;
+          border-radius: 1mm;
           font-size: 8px;
           font-weight: 600;
         }
@@ -432,29 +654,28 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .totals-container {
           display: flex;
           justify-content: flex-end;
-          margin-top: 5mm;
           page-break-inside: avoid;
         }
         
         .totals-box {
           background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 4mm;
-          padding: 6mm;
-          box-shadow: 0 2mm 6mm rgba(0,0,0,0.1);
-          min-width: 60mm;
+          border: 0.5px solid #e2e8f0;
+          border-radius: 2mm;
+          padding: 4mm;
+          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
+          min-width: 6mm;
         }
         
         .totals-header {
           background: linear-gradient(135deg, #dbeafe, #f1f5f9);
-          border-radius: 3mm;
-          padding: 3mm;
+          border-radius: 1.5mm;
+          padding: 2mm;
           text-align: center;
-          margin-bottom: 4mm;
+          margin-bottom: 2mm;
         }
         
         .totals-header h3 {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 700;
           color: #1d4ed8;
         }
@@ -463,8 +684,8 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 2mm 0;
-          font-size: 10px;
+          padding: 1mm 0;
+          font-size: 8px;
         }
         
         .totals-row.subtotal,
@@ -476,30 +697,47 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .totals-row.total {
           background: linear-gradient(90deg, #3b82f6, #6366f1);
           color: white;
-          border-radius: 3mm;
-          padding: 3mm;
-          margin-top: 3mm;
-          font-size: 12px;
+          border-radius: 1.5mm;
+          padding: 2mm;
+          margin-top: 2mm;
+          font-size: 11px;
           font-weight: 700;
+        }
+        
+        /* Sección combinada sin espacio extra */
+        .banking-totals-section {
+          page-break-inside: avoid;
+        }
+        
+        .banking-totals-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 4mm;
+        }
+        
+        .banking-info-container {
+          flex: 1;
         }
         
         .conditions {
           background: linear-gradient(135deg, #f8fafc, #dbeafe);
-          border: 1px solid #e2e8f0;
-          border-radius: 4mm;
-          padding: 6mm;
+          border: 0.5px solid #e2e8f0;
+          border-radius: 2mm;
+          padding: 4mm;
           page-break-inside: avoid;
+          width: 60%;
         }
         
         .condition-item {
           display: flex;
           align-items: flex-start;
-          margin-bottom: 3mm;
+          margin-bottom: 2mm;
         }
         
         .condition-number {
-          width: 6mm;
-          height: 6mm;
+          width: 4mm;
+          height: 4mm;
           background: linear-gradient(135deg, #3b82f6, #6366f1);
           color: white;
           border-radius: 50%;
@@ -508,21 +746,21 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           justify-content: center;
           font-weight: 700;
           font-size: 8px;
-          margin-right: 3mm;
+          margin-right: 2mm;
           flex-shrink: 0;
         }
         
         .condition-text {
           color: #374151;
-          line-height: 1.4;
+          line-height: 1.3;
           font-size: 9px;
         }
         
         .footer {
           background: linear-gradient(135deg, #f1f5f9, #dbeafe);
-          border-top: 2px solid #3b82f6;
-          padding: 6mm;
-          border-radius: 0 0 4mm 4mm;
+          border-top: 1px solid #3b82f6;
+          padding: 4mm;
+          border-radius: 0 0 2mm 2mm;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -532,21 +770,21 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .qr-section {
           display: flex;
           align-items: center;
-          gap: 5mm;
+          gap: 3mm;
         }
         
         .qr-code {
           background: white;
-          padding: 3mm;
-          border-radius: 3mm;
-          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
+          padding: 2mm;
+          border-radius: 1.5mm;
+          box-shadow: 0 0.5mm 1.5mm rgba(0,0,0,0.1);
         }
         
         .qr-placeholder {
-          width: 20mm;
-          height: 20mm;
+          width: 12mm;
+          height: 12mm;
           background: #e2e8f0;
-          border-radius: 2mm;
+          border-radius: 1mm;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -556,15 +794,15 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .validation-info h3 {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 700;
           color: #1e293b;
-          margin-bottom: 2mm;
+          margin-bottom: 1mm;
         }
         
         .validation-info p {
           color: #64748b;
-          margin-bottom: 1mm;
+          margin-bottom: 0.5mm;
           font-size: 8px;
         }
         
@@ -574,7 +812,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .system-info p {
-          margin-bottom: 1mm;
+          margin-bottom: 0.5mm;
           font-size: 8px;
         }
         
@@ -584,11 +822,15 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           }
           
           .header {
-            margin-bottom: 5mm;
+            margin-bottom: 3mm;
           }
           
           .section {
-            margin-bottom: 5mm;
+            margin-bottom: 3mm;
+          }
+          
+          .banking-totals-section {
+            margin-bottom: 3mm;
           }
           
           .products-table thead {
@@ -622,6 +864,32 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
                     ? `<p>${[data.companyPhone, data.companyEmail].filter(Boolean).join(" • ")}</p>`
                     : ""
                 }
+
+                <!-- Sección de Marcas dentro del Header - Sin Fondos -->
+                ${
+                  uniqueBrands.length > 0
+                    ? `
+                  <div class="brands-in-header">
+                    <div class="brands-header-title">MARCAS REPRESENTADAS</div>
+                    <div class="brands-grid-header">
+                      ${uniqueBrands
+                        .map(
+                          ({ name, logoUrl }) => `
+                        <div class="brand-card-header">
+                          <div class="brand-logo-container-header">
+                            <img class="img-logo" src="${logoUrl}" alt="${name}" onerror="this.style.display='none'">
+
+                          </div>
+                          <div class="brand-name-header">${name}</div>
+                        </div>
+                      `,
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                `
+                    : ""
+                }
               </div>
             </div>
             
@@ -631,56 +899,10 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
               <div class="subtitle">COMERCIAL PRIVADA</div>
               <div class="quotation-number">N° ${data.quotationNumber}</div>
               <div class="quotation-date">${formattedDate}</div>
-              <div class="status-badge">${data.status}</div>
+              <div class="status-badge">${getStatusLabel(data.status)}</div>
             </div>
           </div>
         </div>
-
-        <!-- Sección de Marcas -->
-        ${
-          Array.from(
-            data.products
-              .reduce((acc, product) => {
-                if (product.brandLogoUrl) {
-                  acc.set(product.brand || "", product.brandLogoUrl)
-                }
-                return acc
-              }, new Map())
-              .entries(),
-          ).length > 0
-            ? `
-          <div class="section">
-            <div class="section-title">
-              <h2>MARCAS REPRESENTADAS</h2>
-            </div>
-            
-            <div class="brands-grid">
-              ${Array.from(
-                data.products
-                  .reduce((acc, product) => {
-                    if (product.brandLogoUrl) {
-                      acc.set(product.brand || "", product.brandLogoUrl)
-                    }
-                    return acc
-                  }, new Map())
-                  .entries(),
-              )
-                .map(
-                  ([brand, logoUrl]) => `
-                <div class="brand-card">
-                  <div class="brand-logo-container">
-                    <img src="${logoUrl}" alt="${brand}" onerror="this.style.display='none'">
-                  </div>
-                  <div class="brand-name">${brand}</div>
-                </div>
-              `,
-                )
-                .join("")}
-            </div>
-          </div>
-        `
-            : ""
-        }
 
         <!-- Información del Cliente -->
         <div class="section">
@@ -723,14 +945,14 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           <table class="products-table">
             <thead>
               <tr>
-                <th style="width: 8%;">#</th>
-                <th style="width: 15%;">Código</th>
-                <th style="width: 35%;">Descripción</th>
-                <th style="width: 12%;">Marca</th>
+                <th style="width: 6%;">#</th>
+                <th style="width: 12%;">Código</th>
+                <th style="width: 40%;">Descripción</th>
+                <th style="width: 10%;">Marca</th>
                 <th style="width: 8%;">Cant.</th>
-                <th style="width: 7%;">Unid.</th>
-                <th style="width: 15%;">P. Unit.</th>
-                <th style="width: 15%;">Total</th>
+                <th style="width: 6%;">Unid.</th>
+                <th style="width: 9%;">P. Unit.</th>
+                <th style="width: 9%;">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -739,7 +961,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
                   (product, index) => `
                 <tr>
                   <td style="text-align: center; font-weight: 600;">${index + 1}</td>
-                  <td style="text-align: center; font-family: monospace; font-size: 8px;">${product.code || "-"}</td>
+                  <td style="text-align: center; font-family: monospace; font-size: 6px;">${product.code || "-"}</td>
                   <td>
                     <div class="product-description">${product.description}</div>
                   </td>
@@ -758,319 +980,138 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           </table>
         </div>
 
-        <!-- Totales -->
-        <div class="totals-container">
-          <div class="totals-box">
-            <div class="totals-header">
-              <h3>RESUMEN DE TOTALES</h3>
+        <!-- Información Bancaria y Totales Combinados -->
+        <div class="banking-totals-section">
+          <div class="section-title">
+            <h2>INFORMACIÓN BANCARIA Y CONTACTO</h2>
+          </div>
+          
+          <div class="banking-totals-content">
+            <div class="banking-info-container">
+              ${
+                data.bankingInfo?.bankAccount
+                  ? `
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
+                  <div style="margin-bottom: 6px;">
+                    <span style="color: black; border-radius: 4px; padding: 2px 5px; font-size: 8px; font-weight: 700;">💳 DATOS BANCARIOS</span>
+                  </div>
+                  <p style="margin: 4px 0; font-size: 9px; color: #374151;"><strong>${data.bankingInfo.bankAccount.type} ${data.bankingInfo.bankAccount.bank}:</strong></p>
+                  <p style="margin: 3px 0; font-size: 9px; color: #374151; font-family: monospace;"><strong>CTA:</strong> ${data.bankingInfo.bankAccount.accountNumber}</p>
+                  <p style="margin: 0; font-size: 9px; color: #374151; font-family: monospace;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
+
+                  <p style="margin: 5px 0 5px 0; color: #374151; font-weight: 600; font-size: 8px;">${data.bankingInfo.fiscalAddress}</p>
+                  <p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 8px;">Email: ${data.bankingInfo.contactInfo?.email}</p>
+                  <p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 8px;">${data.bankingInfo.contactInfo?.phone}</p>
+                </div>
+                `
+                  : data.companyAccountInfo
+                    ? `
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
+                  <p style="margin: 3px 0; font-size: 10px; color: #374151; font-family: monospace;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
+                  <div style="margin-top: 6px;">
+                    <span style="background: #1f2937; color: white; padding: 3px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">BCP</span>
+                  </div>
+                </div>
+                `
+                    : ""
+              }
+
+              
             </div>
-            
-            <div class="totals-row subtotal">
-              <span>Subtotal:</span>
-              <span>S/ ${data.subtotal.toFixed(2)}</span>
-            </div>
-            <div class="totals-row igv">
-              <span>IGV (18%):</span>
-              <span>S/ ${data.igv.toFixed(2)}</span>
-            </div>
-            <div class="totals-row total">
-              <span>TOTAL:</span>
-              <span>S/ ${data.total.toFixed(2)}</span>
+
+            <!-- Totales -->
+            <div class="totals-container">
+              <div class="totals-box">
+                <div class="totals-header">
+                  <h3>RESUMEN DE TOTALES</h3>
+                </div>
+                
+                <div class="totals-row subtotal">
+                  <span>Subtotal:</span>
+                  <span>S/ ${data.subtotal.toFixed(2)}</span>
+                </div>
+                <div class="totals-row igv">
+                  <span>IGV (18%):</span>
+                  <span>S/ ${data.igv.toFixed(2)}</span>
+                </div>
+                <div class="totals-row total">
+                  <span>TOTAL:</span>
+                  <span>S/ ${data.total.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Condiciones de Venta -->
-        <div class="section">
+        <div class="section conditions-qr-combined-section">
           <div class="section-title">
-            <h2>CONDICIONES DE VENTA</h2>
+            <h2>CONDICIONES DE VENTA Y VALIDACIÓN</h2>
           </div>
           
-          <div class="conditions">
-            ${[
-              "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
-              "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
-              "FORMA DE PAGO: Contado.",
-              "Validez de esta oferta: Solo por 3 días hábiles.",
-              "No hay devolución de dinero, posterior al recojo.",
-              "Sí, el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
-              "Todo producto debe ser verificado antes de retirarse de nuestro almacén.",
-            ]
-              .map(
-                (condition, index) => `
-              <div class="condition-item">
-                <div class="condition-number">${index + 1}</div>
-                <div class="condition-text">${condition}</div>
-              </div>
-            `,
-              )
-              .join("")}
+          <div class="conditions-qr-content">
+            <div class="conditions">
+              ${[
+                "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
+                "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
+                "FORMA DE PAGO: Contado.",
+                "Validez de esta oferta: Solo por 3 días hábiles.",
+                "No hay devolución de dinero, posterior al recojo.",
+                "Sí, el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
+                "Todo producto debe ser verificado antes de retirarse de nuestro almacén.",
+              ]
+                .map(
+                  (condition, index) => `
+                <div class="condition-item">
+                  <div class="condition-number">${index + 1}</div>
+                  <div class="condition-text">${condition}</div>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+
+            <div class="qr-validation-panel">
+                <div class="qr-code-panel">
+                    <img src="${data.qrCodeBase64}" alt="QR Code" style="width: 25mm; height: 25mm;">
+                </div>
+                <div class="validation-info-panel">
+                    <h3>VALIDACIÓN DEL DOCUMENTO</h3>
+                    <p>Escanee el código QR para validar la autenticidad</p>
+                    <p>Código: ${data.quotationNumber}</p>
+                    <p>Generado: ${currentDate}</p>
+                </div>
+            </div>
           </div>
         </div>
 
-        <!-- Footer con QR -->
-        <div class="footer">
-          <div class="qr-section">
-            <div class="qr-code">
-              <div class="qr-placeholder">
-                QR Code<br>Validación
+        ${
+          data.observations
+            ? `
+          <!-- Observaciones -->
+          <div class="section">
+            <div class="section-title">
+              <h2>OBSERVACIONES</h2>
+            </div>
+            
+            <div class="conditions">
+              <div class="condition-text" style="margin-left: 0;">
+                ${data.observations}
               </div>
             </div>
-            <div class="validation-info">
-              <h3>VALIDACIÓN DEL DOCUMENTO</h3>
-              <p>Escanee el código QR para validar la autenticidad</p>
-              <p>Código: ${data.quotationNumber}</p>
-              <p>Generado: ${currentDate}</p>
-            </div>
           </div>
-          
-          <div class="system-info">
-            <p>Creado por: ${data.createdBy}</p>
-            <p>Sistema AGPC - Cotización Comercial Privada</p>
-            <p>Documento generado automáticamente</p>
+        `
+            : ""
+        }
+
+        <!-- Información del documento -->
+          <div style="margin-top: 12px; text-align: center; font-size: 8px; color: #9ca3af; padding: 10px; border-top: 1px solid #f3f4f6;">
+            <p style="margin: 0 0 3px 0;">Cotización generada el ${new Date().toLocaleDateString("es-PE")} por <strong>${data.createdBy}</strong></p>
+            <p style="margin: 0;">Estado: <strong>${getStatusLabel(data.status)}</strong> | Válida hasta: <strong>${data.validUntil ? formatDate(data.validUntil) : "No especificado"}</strong></p>
           </div>
         </div>
       </div>
     </body>
     </html>
   `
-}
-
-export const generatePrivateQuotationPDF = async (
-  quotation: Quotation,
-  company: Company,
-  brandLogos: Map<string, string> = new Map(),
-): Promise<Blob> => {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  }) as jsPDFWithAutoTable
-
-  const pageWidth = 210 // A4 width in mm
-  const pageHeight = 297 // A4 height in mm
-  const margin = 15
-
-  // Add custom CSS for print optimization
-  const style = document.createElement("style")
-  style.textContent = `
-    @page {
-      size: A4;
-      margin: 15mm;
-    }
-    .pdf-content {
-      font-family: Arial, sans-serif;
-      font-size: 10px;
-      line-height: 1.2;
-    }
-    .brand-logos {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 10px 0;
-      page-break-inside: avoid;
-    }
-    .brand-logo {
-      text-align: center;
-      page-break-inside: avoid;
-    }
-    .brand-logo img {
-      max-width: 40px;
-      max-height: 30px;
-      object-fit: contain;
-    }
-  `
-  document.head.appendChild(style)
-
-  let yPosition = margin
-
-  // Header with company logo and info
-  if (company.logo_url) {
-    try {
-      const logoImg = new Image()
-      logoImg.crossOrigin = "anonymous"
-      logoImg.src = company.logo_url
-      await new Promise((resolve, reject) => {
-        logoImg.onload = resolve
-        logoImg.onerror = reject
-      })
-      doc.addImage(logoImg, "PNG", margin, yPosition, 30, 20)
-    } catch (error) {
-      console.warn("Error loading company logo:", error)
-    }
-  }
-
-  // Company info
-  doc.setFontSize(16)
-  doc.setFont("helvetica", "bold")
-  doc.text(company.name, margin + 35, yPosition + 8)
-
-  doc.setFontSize(9)
-  doc.setFont("helvetica", "normal")
-  doc.text(`RUC: ${company.ruc}`, margin + 35, yPosition + 14)
-  doc.text(company.address, margin + 35, yPosition + 18)
-  doc.text(`Tel: ${company.phone} | Email: ${company.email}`, margin + 35, yPosition + 22)
-
-  yPosition += 35
-
-  // Title
-  doc.setFontSize(18)
-  doc.setFont("helvetica", "bold")
-  doc.text("COTIZACIÓN PRIVADA", pageWidth / 2, yPosition, { align: "center" })
-  yPosition += 15
-
-  // Quotation info
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  doc.text(`Cotización N°: ${quotation.quotation_number}`, margin, yPosition)
-  doc.text(`Fecha: ${new Date(quotation.created_at).toLocaleDateString("es-PE")}`, pageWidth - margin - 40, yPosition)
-  yPosition += 8
-
-  doc.text(`Estado: ${quotation.status.toUpperCase()}`, margin, yPosition)
-  yPosition += 15
-
-  // Client info
-  doc.setFontSize(12)
-  doc.setFont("helvetica", "bold")
-  doc.text("INFORMACIÓN DEL CLIENTE", margin, yPosition)
-  yPosition += 8
-
-  doc.setFontSize(9)
-  doc.setFont("helvetica", "normal")
-  doc.text(`Cliente: ${quotation.client_name}`, margin, yPosition)
-  yPosition += 5
-  doc.text(`Email: ${quotation.client_email}`, margin, yPosition)
-  yPosition += 5
-  doc.text(`Teléfono: ${quotation.client_phone}`, margin, yPosition)
-  yPosition += 5
-  doc.text(`Dirección: ${quotation.client_address}`, margin, yPosition)
-  yPosition += 15
-
-  // Products table
-  doc.setFontSize(12)
-  doc.setFont("helvetica", "bold")
-  doc.text("DETALLE DE PRODUCTOS", margin, yPosition)
-  yPosition += 10
-
-  const tableData = quotation.quotation_items.map((item) => [
-    item.product_name,
-    item.product_brand,
-    item.quantity.toString(),
-    `S/ ${item.unit_price.toFixed(2)}`,
-    `S/ ${item.total_price.toFixed(2)}`,
-  ])
-
-  doc.autoTable({
-    startY: yPosition,
-    head: [["Producto", "Marca", "Cant.", "P. Unit.", "Total"]],
-    body: tableData,
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-    },
-    headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-      fontStyle: "bold",
-    },
-    columnStyles: {
-      0: { cellWidth: 60 },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 20, halign: "center" },
-      3: { cellWidth: 25, halign: "right" },
-      4: { cellWidth: 25, halign: "right" },
-    },
-    margin: { left: margin, right: margin },
-  })
-
-  yPosition = (doc as any).lastAutoTable.finalY + 10
-
-  // Total
-  doc.setFontSize(12)
-  doc.setFont("helvetica", "bold")
-  doc.text(`TOTAL: S/ ${quotation.total_amount.toFixed(2)}`, pageWidth - margin - 40, yPosition)
-  yPosition += 15
-
-  // Observations
-  if (quotation.observations) {
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "bold")
-    doc.text("OBSERVACIONES:", margin, yPosition)
-    yPosition += 6
-
-    doc.setFont("helvetica", "normal")
-    const splitObservations = doc.splitTextToSize(quotation.observations, pageWidth - 2 * margin)
-    doc.text(splitObservations, margin, yPosition)
-    yPosition += splitObservations.length * 4 + 10
-  }
-
-  // Brand logos section
-  if (brandLogos.size > 0) {
-    // Check if we need a new page
-    if (yPosition > pageHeight - 80) {
-      doc.addPage()
-      yPosition = margin
-    }
-
-    doc.setFontSize(12)
-    doc.setFont("helvetica", "bold")
-    doc.text("MARCAS DISPONIBLES", margin, yPosition)
-    yPosition += 10
-
-    const logosPerRow = 4
-    const logoWidth = 25
-    const logoHeight = 20
-    const logoSpacing = (pageWidth - 2 * margin - logosPerRow * logoWidth) / (logosPerRow - 1)
-
-    let currentRow = 0
-    let currentCol = 0
-
-    for (const [brandName, logoUrl] of brandLogos) {
-      if (logoUrl) {
-        try {
-          const brandImg = new Image()
-          brandImg.crossOrigin = "anonymous"
-          brandImg.src = logoUrl
-
-          await new Promise((resolve, reject) => {
-            brandImg.onload = resolve
-            brandImg.onerror = reject
-          })
-
-          const xPos = margin + currentCol * (logoWidth + logoSpacing)
-          const yPos = yPosition + currentRow * (logoHeight + 15)
-
-          // Add brand logo
-          doc.addImage(brandImg, "PNG", xPos, yPos, logoWidth, logoHeight)
-
-          // Add brand name
-          doc.setFontSize(7)
-          doc.setFont("helvetica", "normal")
-          doc.text(brandName, xPos + logoWidth / 2, yPos + logoHeight + 4, { align: "center" })
-
-          currentCol++
-          if (currentCol >= logosPerRow) {
-            currentCol = 0
-            currentRow++
-          }
-        } catch (error) {
-          console.warn(`Error loading brand logo for ${brandName}:`, error)
-        }
-      }
-    }
-  }
-
-  // Footer
-  const footerY = pageHeight - 20
-  doc.setFontSize(8)
-  doc.setFont("helvetica", "italic")
-  doc.text("Esta cotización es válida por 30 días desde la fecha de emisión.", pageWidth / 2, footerY, {
-    align: "center",
-  })
-  doc.text(`Generado el ${new Date().toLocaleString("es-PE")}`, pageWidth / 2, footerY + 5, { align: "center" })
-
-  // Clean up style
-  document.head.removeChild(style)
-
-  return new Blob([doc.output("blob")], { type: "application/pdf" })
 }

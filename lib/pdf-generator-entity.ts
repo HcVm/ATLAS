@@ -63,7 +63,10 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
   // Obtener información bancaria automáticamente si tenemos el código de empresa
   if (data.companyCode && !data.bankingInfo) {
-    data.bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
+    const bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
+    if (bankingInfo) {
+      data.bankingInfo = bankingInfo
+    }
     console.log("✅ Banking info obtained for company:", data.companyCode, data.bankingInfo)
   }
 

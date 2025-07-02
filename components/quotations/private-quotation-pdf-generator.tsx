@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Building2, Loader2 } from "lucide-react"
+import { FileText, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { generatePrivateQuotationPDF, type PrivateQuotationPDFData } from "@/lib/pdf-generator-private"
-import { supabase } from '@/lib/supabase'
+import { supabase } from "@/lib/supabase"
 
 interface PrivateQuotationPDFGeneratorProps {
   quotation: {
@@ -50,14 +50,6 @@ interface PrivateQuotationPDFGeneratorProps {
   }
 }
 
-// Mapeo correcto de logos de marca de productos
-const BRAND_LOGOS: Record<string, string> = {
-  WORLDLIFE: "logos/worldlife-logo.png",
-  VALHALLA: "logos/valhalla-logo.png",
-  ZEUS: "logos/zeus-logo.png",
-  HOPELIFE: "logos/hopelife-logo.png",
-}
-
 export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }: PrivateQuotationPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -69,6 +61,37 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
       console.log("Quotation data:", quotation)
       console.log("Company info:", companyInfo)
       console.log("Quotation items:", quotation.quotation_items)
+
+      // Obtener información de marcas con logos desde la base de datos
+      const brandNames = quotation.quotation_items
+        ?.map((item) => item.product_brand)
+        .filter((brand): brand is string => Boolean(brand))
+
+      let brandsData: Array<{ name: string; logo_url: string | null }> = []
+
+      if (brandNames && brandNames.length > 0) {
+        const { data: brands, error: brandsError } = await supabase
+          .from("brands")
+          .select("name, logo_url")
+          .in("name", brandNames)
+
+        if (brandsError) {
+          console.error("Error fetching brands:", brandsError)
+        } else {
+          brandsData = brands || []
+        }
+      }
+
+      // Crear un mapa de marcas con sus logos
+      const brandLogosMap = new Map<string, string>()
+      brandsData.forEach((brand) => {
+        if (brand.logo_url) {
+          brandLogosMap.set(brand.name, brand.logo_url)
+        }
+      })
+
+      console.log("Marcas obtenidas de la BD:", brandsData)
+      console.log("Mapa de logos:", brandLogosMap)
 
       // Preparar productos con información de marca y logos
       let products: PrivateQuotationPDFData["products"] = []
@@ -84,12 +107,11 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
           const precioSinIGV = precioConIGV / 1.18
           const totalSinIGV = totalConIGV / 1.18
 
-          // Obtener logo de marca
-          const brandName = item.product_brand?.toUpperCase() || ""
-          const brandLogoUrl = BRAND_LOGOS[brandName] || undefined
+          // Obtener logo de marca desde el mapa
+          const brandLogoUrl = item.product_brand ? brandLogosMap.get(item.product_brand) : undefined
 
           console.log(`Product ${item.product_code}:`, {
-            brand: brandName,
+            brand: item.product_brand,
             brandLogoUrl,
             precioConIGV,
             precioSinIGV,
@@ -209,9 +231,9 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
       onClick={handleGeneratePDF}
       disabled={isGenerating}
       variant="outline"
-      className="flex items-center gap-2 border-red-300 hover:bg-red-50 text-red-700 bg-transparent transition-all duration-200 hover:shadow-md hover:scale-105"
+      className="flex items-center gap-2 border-purple-300 hover:bg-purple-50 text-purple-700 bg-transparent transition-all duration-200 hover:shadow-md hover:scale-105"
     >
-      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
       {isGenerating ? "Generando PDF..." : "PDF Empresa Privada"}
     </Button>
   )
