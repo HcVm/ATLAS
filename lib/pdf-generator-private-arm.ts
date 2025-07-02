@@ -243,11 +243,11 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Cotización ARM Privada ${data.quotationNumber}</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
         @page {
           size: A4;
-          margin: 10mm;
+          margin: 5mm;
         }
         
         * {
@@ -257,1102 +257,959 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
         }
         
         body {
-          font-family: 'Inter', sans-serif;
+          font-family: 'Inter', 'Segoe UI', sans-serif;
           font-size: 9px;
           line-height: 1.3;
-          color: #1e293b;
+          color: #1a1a1a;
           background: white;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         
-        .container {
+        .document-container {
           width: 100%;
-          max-width: 190mm;
+          max-width: 200mm;
           margin: 0 auto;
+          background: white;
+          position: relative;
+          min-height: 287mm;
         }
-        
-        .header {
-          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
-          color: white;
-          padding: 8mm;
+
+        /* Header como tabla única - Usando colores del entity ARM */
+        .header-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 4mm;
+          page-break-inside: avoid;
+          height: 25mm;
+        }
+
+        .header-table td {
+          vertical-align: middle;
+          padding: 3mm;
+          border: none;
+          height: 25mm;
+        }
+
+        .logo-cell {
+          width: 25%;
+          text-align: center;
+          background: white;
+          border: 2px solid #dc2626;
           border-radius: 4mm;
-          margin-bottom: 5mm;
+          position: relative;
+        }
+
+        .company-logo-header {
+          width: 100%;
+          max-width: 80px;
+          height: auto;
+          object-fit: contain;
+          margin-bottom: 1mm;
+        }
+
+        .logo-text-header {
+          font-size: 7px;
+          font-weight: 700;
+          color: #dc2626;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .company-cell {
+          width: 50%;
+          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+          color: white;
+          border-radius: 4mm;
+          text-align: center;
           position: relative;
           overflow: hidden;
-          page-break-inside: avoid;
         }
-        
-        .header::before {
+
+        .company-cell::before {
           content: '';
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background-image: 
-            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
-          pointer-events: none;
+          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+          opacity: 0.3;
         }
-        
-        .header-content {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
+
+        .company-name-header {
+          font-size: 14px;
+          font-weight: 900;
+          margin-bottom: 1mm;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
           position: relative;
           z-index: 1;
         }
-        
-        .company-info {
-          display: flex;
-          align-items: flex-start;
-          gap: 8mm;
-          flex: 1;
-        }
-        
-        .company-logo {
-          padding: 2mm;
-          border-radius: 3mm;
-          background: rgba(255,255,255,0.15);
-          backdrop-filter: blur(10px);
-          flex-shrink: 0;
-        }
-        
-        .company-logo img {
-          width: 140px;
-          height: 100px;
-          object-fit: contain;
-        }
-        
-        .company-details {
-          flex: 1;
-        }
-        
-        .company-details h1 {
-          font-size: 24px;
-          font-weight: 800;
-          margin-bottom: 2mm;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          letter-spacing: -0.5px;
-        }
 
-        .company-details p {
-          font-size: 12px;
-          opacity: 0.9;
-          margin-bottom: 0.5mm;
-        }
-        
-        .brands-in-header {
-          margin-top: 4mm;
-          padding-top: 3mm;
-        }
-        
-        .brands-header-title {
-          font-size: 12px;
-          font-weight: 700;
-          margin-bottom: 3mm;
-          color: white;
-          opacity: 0.9;
-        }
-        
-        .brands-grid-header {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4mm;
-          align-items: center;
-        }
-        
-        .brand-card-header {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          min-width: 60px;
-        }
-        
-        .brand-logo-container-header {
-          margin-bottom: 2mm;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .brand-logo-container-header img {
-          width: 120px;
-          height: auto;
-          object-fit: contain;
-        }
-
-        .img-logo {
-          width: 120px;
-          height: auto;
-        }
-        
-        .brand-name-header {
+        .company-ruc-header {
           font-size: 10px;
-          font-weight: 700;
-          color: white;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-          background: rgba(0,0,0,0.2);
-          padding: 1mm 2mm;
-          border-radius: 2mm;
-          backdrop-filter: blur(5px);
-        }
-        
-        .quotation-panel {
-          background: rgba(255,255,255,0.1);
-          color: white;
-          padding: 5mm;
-          border-radius: 3mm;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.2);
-          min-width: 45mm;
-          text-align: center;
-          flex-shrink: 0;
-        }
-        
-        .quotation-panel h2 {
-          font-size: 13px;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 1mm;
-        }
-        
-        .quotation-panel .subtitle {
-          font-size: 11px;
-          font-weight: 600;
-          color: rgba(255,255,255,0.8);
-          margin-bottom: 3mm;
-          padding-bottom: 2mm;
-          border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        .quotation-number {
-          font-size: 18px;
-          font-weight: 900;
-          margin-bottom: 1mm;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .quotation-date {
-          color: rgba(255,255,255,0.8);
-          margin-bottom: 2mm;
-          font-size: 10px;
-        }
-        
-        .status-badge {
-          display: inline-block;
-          padding: 1mm 2mm;
-          background: rgba(255,255,255,0.2);
-          color: white;
-          border-radius: 2mm;
-          font-size: 9px;
-          font-weight: 600;
-        }
-        
-        .section {
-          margin-bottom: 5mm;
-          page-break-inside: avoid;
-        }
-        
-        .section-title {
-          display: flex;
-          align-items: center;
-          margin-bottom: 3mm;
-        }
-        
-        .section-title h2 {
-          font-size: 14px;
-          font-weight: 700;
-          color: #1e293b;
-        }
-        
-        .section-title::after {
-          content: '';
-          flex: 1;
-          height: 1px;
-          background: linear-gradient(90deg, #dc2626, #b91c1c);
-          border-radius: 0.5px;
-          margin-left: 3mm;
-          max-width: 30mm;
-        }
-        
-        .client-info {
-          background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-          border: 0.5px solid #cbd5e1;
-          border-radius: 3mm;
-          padding: 4mm;
-          page-break-inside: avoid;
+          opacity: 0.9;
           position: relative;
-          overflow: hidden;
+          z-index: 1;
         }
 
-        .client-info::before {
-          content: '';
-          position: absolute;
-          top: -20px;
-          right: -20px;
-          width: 80px;
-          height: 80px;
-          background: linear-gradient(45deg, #dc2626, #f59e0b);
-          border-radius: 50%;
-          opacity: 0.1;
+        .company-ruc-header::before {
+          content: '▶ ';
+          color: rgba(255,255,255,0.7);
+          font-size: 7px;
         }
-        
-        .client-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 4mm;
-          margin-top: 2mm;
+
+        .quotation-cell {
+          width: 25%;
+          text-align: center;
+          background: white;
+          border: 2px solid #dc2626;
+          border-radius: 4mm;
         }
-        
-        .client-field {
-          margin-bottom: 2mm;
+
+        .quotation-badge-header {
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          color: white;
+          padding: 1mm 2mm;
+          border-radius: 12px;
+          font-size: 8px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          margin-bottom: 1mm;
+          display: inline-block;
         }
-        
-        .client-field label {
+
+        .quotation-number-header {
+          font-size: 13px;
+          font-weight: 900;
+          color: #dc2626;
+          margin-bottom: 1mm;
+        }
+
+        .quotation-date-header {
+          font-size: 8px;
+          color: #666;
+          margin-bottom: 1mm;
+        }
+
+        .status-badge-header {
+          background: #f59e0b;
+          color: white;
+          padding: 1mm 2mm;
+          border-radius: 8px;
+          font-size: 7px;
           font-weight: 600;
-          color: #64748b;
-          display: block;
-          margin-bottom: 0.5mm;
-          font-size: 9px;
+          display: inline-block;
+        }
+
+        /* Brands section - Usando colores del entity ARM */
+        .brands-showcase {
+          background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+          border: 1px solid #e5e5e5;
+          border-radius: 3mm;
+          padding: 3mm;
+          margin-bottom: 4mm;
+          page-break-inside: avoid;
+        }
+
+        .brands-title {
+          text-align: center;
+          font-size: 10px;
+          font-weight: 700;
+          color: #1a1a1a;
+          margin-bottom: 2mm;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        
-        .client-field .value {
-          font-size: 11px;
+
+        .brands-horizontal-grid {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 4mm;
+          flex-wrap: wrap;
+        }
+
+        .brand-item-horizontal {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          background: white;
+          padding: 2mm;
+          border-radius: 2mm;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.1);
+          min-width: 60px;
+        }
+
+        .brand-logo-horizontal {
+          width: 60px;
+          height: 45px;
+          object-fit: contain;
+          margin-bottom: 1mm;
+        }
+
+        .brand-name-horizontal {
+          font-size: 7px;
           font-weight: 600;
-          color: #1e293b;
+          color: #1a1a1a;
+          text-align: center;
+        }
+
+        /* Cliente y Condiciones - Usando colores del entity ARM */
+        .client-conditions-combined {
+          background: white;
+          border: 1px solid #e5e5e5;
+          border-radius: 3mm;
+          margin-bottom: 4mm;
+          overflow: hidden;
+          page-break-inside: avoid;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
+        }
+
+        .combined-header {
+          background: #fafafa;
+          color: #1a1a1a;
+          padding: 2mm 3mm;
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          text-align: center;
+          border-bottom: 1px solid #e5e5e5;
+        }
+
+        .combined-content {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0;
+        }
+
+        .client-side {
+          padding: 3mm;
+          background: white;
+          border-right: 1px solid #f0f0f0;
+        }
+
+        .conditions-side {
+          padding: 3mm;
+          background: white;
+        }
+
+        .side-title {
+          font-size: 9px;
+          font-weight: 600;
+          color: #666;
+          margin-bottom: 2mm;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding-bottom: 1mm;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        .client-info-compact {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5mm;
+        }
+
+        .client-field-compact {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5mm 0;
+          border-bottom: 1px solid #fafafa;
+        }
+
+        .client-field-compact:last-child {
+          border-bottom: none;
+        }
+
+        .client-label-compact {
+          font-size: 7px;
+          font-weight: 500;
+          color: #999;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .client-value-compact {
+          font-size: 8px;
+          font-weight: 600;
+          color: #1a1a1a;
+          text-align: right;
+        }
+
+        .conditions-compact {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5mm;
+        }
+
+        .condition-item-compact {
+          display: flex;
+          align-items: flex-start;
+          gap: 2mm;
+          padding: 1.5mm 0;
+          border-bottom: 1px solid #fafafa;
+        }
+
+        .condition-item-compact:last-child {
+          border-bottom: none;
+        }
+
+        .condition-number-compact {
+          background: #666;
+          color: white;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 6px;
+          flex-shrink: 0;
+        }
+
+        .condition-text-compact {
+          font-size: 7px;
+          line-height: 1.3;
+          color: #666;
+        }
+
+        /* Products table - Usando colores del entity ARM */
+        .products-section {
+          margin-bottom: 4mm;
+        }
+
+        .section-header {
+          background: linear-gradient(90deg, #dc2626, #ef4444);
+          color: white;
+          padding: 2mm 3mm;
+          border-radius: 15px 15px 0 0;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .products-table-container {
+          background: white;
+          border: 2px solid #dc2626;
+          border-top: none;
+          border-radius: 0 0 3mm 3mm;
+          overflow: hidden;
         }
 
         .products-table {
           width: 100%;
           border-collapse: collapse;
-          border-radius: 2mm;
-          overflow: hidden;
-          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
-          page-break-after: auto;
         }
-        
+
         .products-table thead {
-          background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-          color: white;
+          background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
         }
-        
+
         .products-table th {
-          padding: 3mm 2mm;
+          color: white;
+          padding: 2mm 1.5mm;
           font-weight: 600;
           text-align: center;
-          font-size: 9px;
-        }
-        
-        .products-table td {
-          padding: 3mm 2mm;
-          border-bottom: 0.25px solid #e2e8f0;
-          font-size: 9px;
-        }
-        
-        .products-table tbody tr {
-          page-break-inside: avoid;
-        }
-        
-        .products-table tbody tr:nth-child(even) {
-          background: #f8fafc;
-        }
-        
-        .product-description {
-          font-weight: 600;
-          color: #1e293b;
-          font-size: 10px;
-          line-height: 1.3;
-        }
-
-        .product-code {
-          background: #f3f4f6;
-          color: #6b7280;
-          padding: 1mm 2mm;
-          border-radius: 1mm;
           font-size: 8px;
-          font-family: monospace;
-          display: inline-block;
-          margin-top: 1mm;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          border-right: 1px solid rgba(255,255,255,0.2);
         }
 
-        .quantity-badge {
-          background: #dc2626;
+        .products-table th:last-child {
+          border-right: none;
+        }
+
+        .products-table td {
+          padding: 2mm 1.5mm;
+          border-bottom: 1px solid #f0f0f0;
+          font-size: 8px;
+          vertical-align: middle;
+        }
+
+        .products-table tbody tr:nth-child(odd) {
+          background: #fefefe;
+        }
+
+        .products-table tbody tr:nth-child(even) {
+          background: #fafafa;
+        }
+
+        .product-index {
+          background: #1a1a1a;
           color: white;
-          width: 28px;
-          height: 28px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto;
-          font-size: 10px;
-          font-weight: 800;
-        }
-
-        .unit-badge {
-          background: #e5e7eb;
-          color: #374151;
-          padding: 1mm 2mm;
-          border-radius: 1mm;
-          font-size: 9px;
-          font-weight: 600;
-        }
-        
-        .brand-badge {
-          display: inline-block;
-          padding: 0.5mm 1mm;
-          background: #dbeafe;
-          color: #1d4ed8;
-          border-radius: 1mm;
+          font-weight: 700;
           font-size: 8px;
-          font-weight: 600;
+          margin: 0 auto;
         }
 
-        .brand-with-logo {
+        .product-description-cell {
+          font-weight: 600;
+          color: #1a1a1a;
+          line-height: 1.2;
+        }
+
+        .product-code-display {
+          background: #1a1a1a;
+          color: white;
+          padding: 0.5mm 1.5mm;
+          border-radius: 2mm;
+          font-size: 6px;
+          font-family: 'Courier New', monospace;
+          display: inline-block;
+          margin-top: 1mm;
+        }
+
+        .quantity-display {
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          color: white;
+          padding: 1.5mm;
+          border-radius: 2mm;
+          font-weight: 800;
+          text-align: center;
+          font-size: 9px;
+        }
+
+        .unit-display {
+          background: #f0f0f0;
+          color: #1a1a1a;
+          padding: 1mm 1.5mm;
+          border-radius: 2mm;
+          font-weight: 600;
+          text-align: center;
+          font-size: 8px;
+        }
+
+        .brand-display {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 1mm;
         }
 
-        .brand-with-logo img {
-          width: 40px;
-          height: 30px;
+        .brand-logo-table {
+          width: 30px;
+          height: 20px;
           object-fit: contain;
         }
 
-        .brand-with-logo span {
-          font-size: 8px;
-          font-weight: 700;
-          color: #374151;
+        .brand-name-table {
+          font-size: 6px;
+          font-weight: 600;
+          color: #1a1a1a;
+          text-align: center;
         }
 
-        .price-cell {
+        .price-display {
           text-align: right;
           font-weight: 700;
           color: #059669;
-          font-size: 10px;
-        }
-
-        .total-cell {
-          text-align: right;
-        }
-
-        .total-badge {
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-          color: white;
-          padding: 2mm;
-          border-radius: 1mm;
-          font-weight: 800;
-          font-size: 10px;
-          text-align: center;
-        }
-        
-        .totals-container {
-          display: flex;
-          justify-content: flex-end;
-          page-break-inside: avoid;
-        }
-        
-        .totals-box {
-          background: white;
-          border: 0.5px solid #e2e8f0;
-          border-radius: 2mm;
-          padding: 4mm;
-          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
-          min-width: 60mm;
-        }
-        
-        .totals-header {
-          background: linear-gradient(135deg, #dbeafe, #f1f5f9);
-          border-radius: 1.5mm;
-          padding: 2mm;
-          text-align: center;
-          margin-bottom: 2mm;
-        }
-        
-        .totals-header h3 {
-          font-size: 11px;
-          font-weight: 700;
-          color: #1d4ed8;
-        }
-        
-        .totals-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1mm 0;
-          font-size: 10px;
-        }
-        
-        .totals-row.subtotal,
-        .totals-row.igv {
-          font-weight: 600;
-          color: #64748b;
-        }
-        
-        .totals-row.total {
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-          color: white;
-          border-radius: 1.5mm;
-          padding: 2mm;
-          margin-top: 2mm;
-          font-size: 12px;
-          font-weight: 700;
-        }
-        
-        .banking-totals-section {
-          page-break-inside: avoid;
-        }
-        
-        .banking-totals-content {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 4mm;
-        }
-        
-        .banking-info-container {
-          flex: 1;
-        }
-
-        .banking-info {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid #93c5fd;
-          border-radius: 2mm;
-          padding: 4mm;
-        }
-
-        .banking-title {
-          font-size: 12px;
-          font-weight: 700;
-          color: #1e40af;
-          margin-bottom: 2mm;
-          display: flex;
-          align-items: center;
-          gap: 2mm;
-        }
-
-        .banking-title::before {
-          content: '';
-          width: 3px;
-          height: 12px;
-          background: linear-gradient(135deg, #1e40af, #3b82f6);
-          border-radius: 1px;
-        }
-
-        .banking-content {
-          background: white;
-          border: 1px solid #bfdbfe;
-          border-radius: 1.5mm;
-          padding: 3mm;
-        }
-
-        .banking-field {
-          margin-bottom: 2mm;
-        }
-
-        .banking-field:last-child {
-          margin-bottom: 0;
-        }
-
-        .banking-field label {
           font-size: 8px;
-          color: #6b7280;
-          font-weight: 600;
-          text-transform: uppercase;
-          display: block;
-          margin-bottom: 0.5mm;
         }
 
-        .banking-field .value {
-          font-size: 10px;
-          color: #1f2937;
-          font-weight: 700;
-          font-family: monospace;
-        }
-        
-        .conditions-qr-combined-section {
-          margin-bottom: 5mm;
-          page-break-inside: avoid;
-        }
-
-        .conditions-qr-content {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 5mm;
-        }
-
-        .conditions {
-          width: 65%;
-          background: linear-gradient(135deg, #f8fafc, #dbeafe);
-          border: 0.5px solid #e2e8f0;
+        .total-display {
+          text-align: right;
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          color: white;
+          padding: 1.5mm;
           border-radius: 2mm;
-          padding: 4mm;
-          page-break-inside: avoid;
+          font-weight: 800;
+          font-size: 8px;
         }
 
-        .qr-validation-panel {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-          border: 1px solid #f59e0b;
-          border-radius: 2mm;
-          padding: 4mm;
-          box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
-          width: 35%;
+        /* Financial summary - Usando colores del entity ARM */
+        .financial-summary-section {
+          background: white;
+          border: 1px solid #e5e5e5;
+          border-radius: 3mm;
+          margin-bottom: 4mm;
+          overflow: hidden;
+          page-break-inside: avoid;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
+        }
+
+        .financial-summary-content {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 0;
+        }
+
+        .banking-column {
+          padding: 3mm;
+          background: white;
+          border-right: 1px solid #f0f0f0;
+        }
+
+        .totals-column {
+          padding: 3mm;
+          background: white;
+          border-right: 1px solid #f0f0f0;
+        }
+
+        .qr-column {
+          padding: 3mm;
+          background: white;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          page-break-inside: avoid;
         }
 
-        .qr-code-panel {
-          background: white;
+        .column-title {
+          font-size: 8px;
+          font-weight: 600;
+          color: #666;
+          margin-bottom: 2mm;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          text-align: center;
+          padding-bottom: 1mm;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        .banking-item-inline {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5mm;
+          padding: 1mm 0;
+          border-bottom: 1px solid #fafafa;
+        }
+
+        .banking-item-inline:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+        }
+
+        .banking-label-inline {
+          font-size: 7px;
+          color: #999;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .banking-value-inline {
+          font-size: 8px;
+          color: #1a1a1a;
+          font-weight: 600;
+          font-family: 'Courier New', monospace;
+        }
+
+        .total-line-inline {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5mm 0;
+          margin-bottom: 1mm;
+          border-bottom: 1px solid #fafafa;
+          font-size: 8px;
+          color: #666;
+        }
+
+        .total-line-inline:last-child {
+          border-bottom: none;
+        }
+
+        .total-line-inline.final {
+          background: #1a1a1a;
+          color: white;
+          font-weight: 700;
+          font-size: 10px;
+          margin: 2mm -3mm -3mm -3mm;
+          padding: 2mm 3mm;
+          border-radius: 0 0 3mm 3mm;
+        }
+
+        .qr-container-inline {
+          background: #fafafa;
           padding: 2mm;
-          border-radius: 1.5mm;
-          box-shadow: 0 0.5mm 1.5mm rgba(0,0,0,0.1);
-          margin-bottom: 3mm;
+          border-radius: 2mm;
+          margin-bottom: 2mm;
+          border: 1px solid #f0f0f0;
         }
 
-        .qr-code-panel img {
-          width: 25mm;
-          height: 25mm;
+        .qr-image-inline {
+          width: 20mm;
+          height: 20mm;
           object-fit: contain;
         }
 
-        .validation-info-panel h3 {
-          font-size: 10px;
-          font-weight: 700;
-          color: #92400e;
-          margin-bottom: 1mm;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        .validation-info-inline {
+          font-size: 7px;
+          color: #666;
+          line-height: 1.2;
         }
 
-        .validation-info-panel p {
-          color: #92400e;
+        .validation-info-inline p {
           margin-bottom: 0.5mm;
-          font-size: 8px;
-          line-height: 1.3;
-        }
-        
-        .condition-item {
-          display: flex;
-          align-items: flex-start;
-          margin-bottom: 2mm;
-        }
-        
-        .condition-number {
-          width: 4mm;
-          height: 4mm;
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
-          color: white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          font-size: 8px;
-          margin-right: 2mm;
-          flex-shrink: 0;
-        }
-        
-        .condition-text {
-          color: #374151;
-          line-height: 1.3;
-          font-size: 9px;
         }
 
+        .validation-info-inline strong {
+          color: #1a1a1a;
+        }
+
+        /* Observations */
         .observations-section {
           background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-          border: 1px solid #c084fc;
-          border-radius: 2mm;
-          padding: 4mm;
-          margin-bottom: 5mm;
-        }
-
-        .observations-title {
-          font-size: 12px;
-          font-weight: 700;
-          color: #7c3aed;
-          margin-bottom: 2mm;
-          display: flex;
-          align-items: center;
-          gap: 2mm;
-        }
-
-        .observations-title::before {
-          content: '';
-          width: 3px;
-          height: 12px;
-          background: linear-gradient(135deg, #7c3aed, #a855f7);
-          border-radius: 1px;
+          border: 2px solid #8b5cf6;
+          border-radius: 3mm;
+          margin-bottom: 4mm;
+          overflow: hidden;
         }
 
         .observations-content {
-          background: white;
-          border: 1px solid #c084fc;
-          border-radius: 1.5mm;
           padding: 3mm;
+          background: white;
         }
 
         .observations-text {
-          font-size: 10px;
-          line-height: 1.5;
-          color: #374151;
+          font-size: 8px;
+          line-height: 1.4;
+          color: #1a1a1a;
           text-align: justify;
-          margin: 0;
         }
-        
-        .footer {
-          background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+
+        /* Footer - Usando colores del entity ARM */
+        .document-footer {
+          background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
           color: white;
-          padding: 4mm;
-          border-radius: 2mm;
-          display: flex;
-          justify-content: space-between;
+          border-radius: 3mm;
+          padding: 3mm;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 3mm;
           align-items: center;
           page-break-inside: avoid;
           position: relative;
           overflow: hidden;
+          margin-top: auto;
         }
 
-        .footer::before {
+        .document-footer::before {
           content: '';
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #dc2626, #f59e0b, #10b981, #3b82f6, #8b5cf6);
+          background: linear-gradient(90deg, #dc2626, #f59e0b, #10b981, #3b82f6);
         }
 
-        .footer-content {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 6mm;
-          width: 100%;
-          margin-top: 2mm;
+        .footer-left {
+          padding-top: 1mm;
         }
 
-        .footer-section h4 {
-          font-size: 10px;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 2mm;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          display: flex;
-          align-items: center;
-          gap: 2mm;
+        .footer-center {
+          text-align: center;
+          padding-top: 1mm;
         }
 
-        .footer-section h4::before {
-          content: '';
-          width: 2px;
-          height: 10px;
-          border-radius: 1px;
-        }
-
-        .footer-section:nth-child(1) h4::before {
-          background: #f59e0b;
-        }
-
-        .footer-section:nth-child(2) h4::before {
-          background: #10b981;
-        }
-
-        .footer-section:nth-child(3) h4::before {
-          background: #3b82f6;
-        }
-
-        .footer-section p {
-          font-size: 9px;
-          color: #d1d5db;
-          margin-bottom: 1mm;
-          line-height: 1.4;
-        }
-
-        .footer-section p:last-child {
-          margin-bottom: 0;
+        .footer-right {
+          text-align: right;
+          padding-top: 1mm;
         }
 
         .footer-logo {
-          text-align: right;
+          width: 60px;
+          height: 45px;
+          object-fit: contain;
+          opacity: 0.8;
         }
 
-        .footer-logo img {
-          width: 100px;
-          height: 75px;
-          object-fit: contain;
-          opacity: 0.9;
-          margin-bottom: 2mm;
+        .footer-text {
+          font-size: 7px;
+          color: #ccc;
+          margin: 0.5mm 0;
         }
 
         .footer-signature {
-          background: rgba(255,255,255,0.1);
-          padding: 2mm;
-          border-radius: 1.5mm;
-          backdrop-filter: blur(10px);
-        }
-
-        .footer-signature p {
-          margin: 0;
-          font-size: 10px;
-          color: white;
-          font-weight: 700;
-        }
-
-        .footer-signature p:last-child {
-          font-size: 9px;
-          color: #d1d5db;
-          font-weight: 400;
-        }
-
-        .footer-bottom {
-          border-top: 1px solid #374151;
-          padding-top: 2mm;
-          margin-top: 3mm;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .footer-dots {
-          display: flex;
-          gap: 1mm;
-        }
-
-        .footer-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-        }
-
-        .footer-dot:nth-child(1) { background: #dc2626; }
-        .footer-dot:nth-child(2) { background: #f59e0b; }
-        .footer-dot:nth-child(3) { background: #10b981; }
-        .footer-dot:nth-child(4) { background: #3b82f6; }
-
-        .footer-info {
-          text-align: right;
-        }
-
-        .footer-info p {
-          margin: 0;
           font-size: 8px;
-          color: #9ca3af;
+          font-weight: 600;
+          color: white;
         }
-        
+
         @media print {
-          .container {
+          .document-container {
             max-width: none;
+            min-height: auto;
           }
           
-          .header {
+          .header-table {
             margin-bottom: 3mm;
           }
           
-          .section {
+          .client-conditions-combined,
+          .products-section,
+          .financial-summary-section {
             margin-bottom: 3mm;
           }
           
-          .banking-totals-section {
+          .brands-showcase {
             margin-bottom: 3mm;
-          }
-          
-          .products-table thead {
-            display: table-header-group;
           }
         }
       </style>
     </head>
     <body>
-      <div class="container">
-        <!-- Header Principal -->
-        <div class="header">
-          <div class="header-content">
-            <!-- Logo y datos de empresa -->
-            <div class="company-info">
+      <div class="document-container">
+        <!-- Header como tabla única -->
+        <table class="header-table">
+          <tr>
+            <!-- Logo Cell -->
+            <td class="logo-cell">
               ${
                 data.companyLogoUrl
-                  ? `
-                <div class="company-logo">
-                  <img src="${data.companyLogoUrl}" alt="${data.companyName}">
-                </div>
-              `
+                  ? `<img src="${data.companyLogoUrl}" alt="${data.companyName}" class="company-logo-header">`
                   : ""
               }
-              <div class="company-details">
-                <h1>${data.companyName}</h1>
-                <p>RUC: ${data.companyRuc}</p>
-                ${data.companyAddress ? `<p>${data.companyAddress}</p>` : ""}
-                ${
-                  data.companyPhone || data.companyEmail
-                    ? `<p>${[data.companyPhone, data.companyEmail].filter(Boolean).join(" • ")}</p>`
-                    : ""
-                }
+              <div class="logo-text-header">ARM CORPORATIONS</div>
+            </td>
 
-                <!-- Sección de Marcas dentro del Header -->
-                ${
-                  uniqueBrands.length > 0
-                    ? `
-                  <div class="brands-in-header">
-                    <div class="brands-header-title">MARCAS REPRESENTADAS</div>
-                    <div class="brands-grid-header">
-                      ${uniqueBrands
-                        .map(
-                          ({ name, logoUrl }) => `
-                        <div class="brand-card-header">
-                          <div class="brand-logo-container-header">
-                            <img class="img-logo" src="${logoUrl}" alt="${name}" onerror="this.style.display='none'">
-                          </div>
-                          <div class="brand-name-header">${name}</div>
-                        </div>
-                      `,
-                        )
-                        .join("")}
-                    </div>
-                  </div>
-                `
-                    : ""
-                }
-              </div>
-            </div>
-            
-            <!-- Panel de cotización -->
-            <div class="quotation-panel">
-              <h2>COTIZACIÓN</h2>
-              <div class="subtitle">COMERCIAL PRIVADA</div>
-              <div class="quotation-number">N° ${data.quotationNumber}</div>
-              <div class="quotation-date">${formattedDate}</div>
-              <div class="status-badge">${getStatusLabel(data.status)}</div>
-            </div>
-          </div>
-        </div>
+            <!-- Company Cell -->
+            <td class="company-cell">
+              <div class="company-name-header">${data.companyName}</div>
+              <div class="company-ruc-header">RUC: ${data.companyRuc}</div>
+            </td>
 
-        <!-- Información del Cliente -->
-        <div class="section">
-          <div class="section-title">
-            <h2>INFORMACIÓN DEL CLIENTE</h2>
-          </div>
-          
-          <div class="client-info">
-            <div class="client-grid">
-              <div>
-                <div class="client-field">
-                  <label>Código Cliente:</label>
-                  <div class="value">${data.clientCode}</div>
-                </div>
-                <div class="client-field">
-                  <label>RUC:</label>
-                  <div class="value">${data.clientRuc}</div>
-                </div>
-              </div>
-              <div>
-                <div class="client-field">
-                  <label>Atención:</label>
-                  <div class="value">${data.clientAttention}</div>
-                </div>
-                <div class="client-field">
-                  <label>Moneda:</label>
-                  <div class="value">${data.currency}</div>
-                </div>
-              </div>
-              <div>
-                <div class="client-field">
-                  <label>Razón Social:</label>
-                  <div class="value">${data.clientName}</div>
-                </div>
-                <div class="client-field">
-                  <label>Dirección:</label>
-                  <div class="value">${data.clientAddress}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+            <!-- Quotation Cell -->
+            <td class="quotation-cell">
+              <div class="quotation-badge-header">Cotización Comercial</div>
+              <div class="quotation-number-header">N° ${data.quotationNumber}</div>
+              <div class="quotation-date-header">${formattedDate}</div>
+              <div class="status-badge-header">${getStatusLabel(data.status)}</div>
+            </td>
+          </tr>
+        </table>
 
-        <!-- Tabla de Productos -->
-        <div class="section">
-          <div class="section-title">
-            <h2>DETALLE DE PRODUCTOS Y SERVICIOS</h2>
-          </div>
-          
-          <table class="products-table">
-            <thead>
-              <tr>
-                <th style="width: 6%;">CANT.</th>
-                <th style="width: 40%;">DESCRIPCIÓN</th>
-                <th style="width: 8%;">UNID.</th>
-                <th style="width: 12%;">MARCA</th>
-                <th style="width: 12%;">P. UNIT.</th>
-                <th style="width: 12%;">TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.products
+        <!-- Brands Showcase - Horizontal -->
+        ${
+          uniqueBrands.length > 0
+            ? `
+          <div class="brands-showcase">
+            <div class="brands-title">Marcas Representadas</div>
+            <div class="brands-horizontal-grid">
+              ${uniqueBrands
                 .map(
-                  (product, index) => `
+                  ({ name, logoUrl }) => `
+                <div class="brand-item-horizontal">
+                  <img src="${logoUrl}" alt="${name}" class="brand-logo-horizontal" onerror="this.style.display='none'">
+                  <div class="brand-name-horizontal">${name}</div>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        <!-- Cliente y Condiciones COMBINADOS -->
+        <div class="client-conditions-combined">
+          <div class="combined-header">Información del Cliente y Condiciones de Venta</div>
+          <div class="combined-content">
+            <!-- Lado del Cliente -->
+            <div class="client-side">
+              <div class="side-title">Datos del Cliente</div>
+              <div class="client-info-compact">
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Código:</span>
+                  <span class="client-value-compact">${data.clientCode}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Razón Social:</span>
+                  <span class="client-value-compact">${data.clientName}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">RUC:</span>
+                  <span class="client-value-compact">${data.clientRuc}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Dirección:</span>
+                  <span class="client-value-compact">${data.clientAddress}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Atención:</span>
+                  <span class="client-value-compact">${data.clientAttention}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Moneda:</span>
+                  <span class="client-value-compact">${data.currency}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lado de las Condiciones -->
+            <div class="conditions-side">
+              <div class="side-title">Condiciones de Venta</div>
+              <div class="conditions-compact">
+                ${[
+                  "Plazo: 07 días hábiles después del pago",
+                  "Entrega: Recojo en almacén 9am-12pm / 2pm-5:30pm",
+                  "Pago: Contado al 100%",
+                  "Validez: Solo por 3 días hábiles",
+                  "Sin devolución posterior al recojo",
+                  "Garantía por defecto de fábrica: 7 días",
+                  "Verificar producto antes del retiro",
+                ]
+                  .map(
+                    (condition, index) => `
+                  <div class="condition-item-compact">
+                    <div class="condition-number-compact">${index + 1}</div>
+                    <div class="condition-text-compact">${condition}</div>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Products Table -->
+        <div class="products-section">
+          <div class="section-header">Detalle de Productos y Servicios</div>
+          <div class="products-table-container">
+            <table class="products-table">
+              <thead>
                 <tr>
-                  <td style="text-align: center;">
-                    <div class="quantity-badge">${product.quantity}</div>
-                  </td>
-                  <td>
-                    <div class="product-description">${product.description}</div>
-                    ${product.code ? `<div class="product-code">${product.code}</div>` : ""}
-                  </td>
-                  <td style="text-align: center;">
-                    <div class="unit-badge">${product.unit}</div>
-                  </td>
-                  <td style="text-align: center;">
-                    ${
-                      product.brand && product.brandLogoUrl
-                        ? `
-                    <div class="brand-with-logo">
-                      <img src="${product.brandLogoUrl}" alt="${product.brand}" />
-                      <span>${product.brand}</span>
-                    </div>
-                  `
-                        : product.brand
-                          ? `<span class="brand-badge">${product.brand}</span>`
-                          : "—"
-                    }
-                  </td>
-                  <td class="price-cell">S/ ${product.unitPrice.toFixed(2)}</td>
-                  <td class="total-cell">
-                    <div class="total-badge">S/ ${product.totalPrice.toFixed(2)}</div>
-                  </td>
+                  <th style="width: 5%;">#</th>
+                  <th style="width: 35%;">Descripción</th>
+                  <th style="width: 8%;">Cant.</th>
+                  <th style="width: 8%;">Unid.</th>
+                  <th style="width: 12%;">Marca</th>
+                  <th style="width: 12%;">P. Unit.</th>
+                  <th style="width: 12%;">Total</th>
                 </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${data.products
+                  .map(
+                    (product, index) => `
+                  <tr>
+                    <td style="text-align: center;">
+                      <div class="product-index">${index + 1}</div>
+                    </td>
+                    <td>
+                      <div class="product-description-cell">${product.description}</div>
+                      ${product.code ? `<div class="product-code-display">${product.code}</div>` : ""}
+                    </td>
+                    <td style="text-align: center;">
+                      <div class="quantity-display">${product.quantity}</div>
+                    </td>
+                    <td style="text-align: center;">
+                      <div class="unit-display">${product.unit}</div>
+                    </td>
+                    <td style="text-align: center;">
+                      ${
+                        product.brand && product.brandLogoUrl
+                          ? `
+                        <div class="brand-display">
+                          <img src="${product.brandLogoUrl}" alt="${product.brand}" class="brand-logo-table" />
+                          <div class="brand-name-table">${product.brand}</div>
+                        </div>
+                      `
+                          : product.brand
+                            ? `<div class="brand-name-table">${product.brand}</div>`
+                            : "—"
+                      }
+                    </td>
+                    <td class="price-display">S/ ${product.unitPrice.toFixed(2)}</td>
+                    <td style="text-align: center;">
+                      <div class="total-display">S/ ${product.totalPrice.toFixed(2)}</div>
+                    </td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- Información Bancaria y Totales Combinados -->
-        <div class="banking-totals-section">
-          <div class="section-title">
-            <h2>INFORMACIÓN BANCARIA Y RESUMEN</h2>
-          </div>
-          
-          <div class="banking-totals-content">
-            <div class="banking-info-container">
+        <!-- Banking, Totals y QR TODO JUNTO -->
+        <div class="financial-summary-section">
+          <div class="combined-header">Resumen Financiero, Información Bancaria y Validación</div>
+          <div class="financial-summary-content">
+            <!-- Columna Banking -->
+            <div class="banking-column">
+              <div class="column-title">Información Bancaria</div>
               ${
-                data.bankingInfo?.bankAccount || data.companyAccountInfo
+                data.bankingInfo?.bankAccount
                   ? `
-                <div class="banking-info">
-                  <div class="banking-title">INFORMACIÓN BANCARIA</div>
-                  <div class="banking-content">
-                    <div class="banking-field">
-                      <label>Empresa:</label>
-                      <div class="value">${data.companyName}</div>
-                    </div>
-                    ${
-                      data.bankingInfo?.bankAccount
-                        ? `
-                      <div class="banking-field">
-                        <label>Banco:</label>
-                        <div class="value">${data.bankingInfo.bankAccount.bank}</div>
-                      </div>
-                      <div class="banking-field">
-                        <label>Tipo:</label>
-                        <div class="value">${data.bankingInfo.bankAccount.type}</div>
-                      </div>
-                      <div class="banking-field">
-                        <label>Cuenta:</label>
-                        <div class="value">${data.bankingInfo.bankAccount.accountNumber}</div>
-                      </div>
-                      <div class="banking-field">
-                        <label>CCI:</label>
-                        <div class="value">${data.bankingInfo.bankAccount.cci}</div>
-                      </div>
-                    `
-                        : data.companyAccountInfo
-                          ? `
-                      <div class="banking-field">
-                        <label>Cuenta:</label>
-                        <div class="value">${data.companyAccountInfo}</div>
-                      </div>
-                    `
-                          : ""
-                    }
-                  </div>
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">Empresa:</span>
+                  <span class="banking-value-inline">${data.companyName}</span>
+                </div>
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">Banco:</span>
+                  <span class="banking-value-inline">${data.bankingInfo.bankAccount.bank}</span>
+                </div>
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">Tipo:</span>
+                  <span class="banking-value-inline">${data.bankingInfo.bankAccount.type}</span>
+                </div>
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">Cuenta:</span>
+                  <span class="banking-value-inline">${data.bankingInfo.bankAccount.accountNumber}</span>
+                </div>
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">CCI:</span>
+                  <span class="banking-value-inline">${data.bankingInfo.bankAccount.cci}</span>
                 </div>
               `
-                  : ""
+                  : data.companyAccountInfo
+                    ? `
+                <div class="banking-item-inline">
+                  <span class="banking-label-inline">Cuenta:</span>
+                  <span class="banking-value-inline">${data.companyAccountInfo}</span>
+                </div>
+              `
+                    : ""
               }
             </div>
 
-            <!-- Totales -->
-            <div class="totals-container">
-              <div class="totals-box">
-                <div class="totals-header">
-                  <h3>RESUMEN FINANCIERO</h3>
-                </div>
-                
-                <div class="totals-row subtotal">
-                  <span>Subtotal:</span>
-                  <span>S/ ${data.subtotal.toFixed(2)}</span>
-                </div>
-                <div class="totals-row igv">
-                  <span>IGV (18%):</span>
-                  <span>S/ ${data.igv.toFixed(2)}</span>
-                </div>
-                <div class="totals-row total">
-                  <span>TOTAL:</span>
-                  <span>S/ ${data.total.toFixed(2)}</span>
-                </div>
+            <!-- Columna Totales -->
+            <div class="totals-column">
+              <div class="column-title">Resumen Financiero</div>
+              <div class="total-line-inline">
+                <span>Subtotal:</span>
+                <span>S/ ${data.subtotal.toFixed(2)}</span>
+              </div>
+              <div class="total-line-inline">
+                <span>IGV (18%):</span>
+                <span>S/ ${data.igv.toFixed(2)}</span>
+              </div>
+              <div class="total-line-inline final">
+                <span>TOTAL:</span>
+                <span>S/ ${data.total.toFixed(2)}</span>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Condiciones de Venta y Validación -->
-        <div class="section conditions-qr-combined-section">
-          <div class="section-title">
-            <h2>CONDICIONES DE VENTA Y VALIDACIÓN</h2>
-          </div>
-          
-          <div class="conditions-qr-content">
-            <div class="conditions">
-              ${[
-                "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
-                "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
-                "FORMA DE PAGO: Contado.",
-                "Validez de esta oferta: Solo por 3 días hábiles.",
-                "No hay devolución de dinero, posterior al recojo.",
-                "Sí, el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
-                "Todo producto debe ser verificado antes de retirarse de nuestro almacén.",
-              ]
-                .map(
-                  (condition, index) => `
-                <div class="condition-item">
-                  <div class="condition-number">${index + 1}</div>
-                  <div class="condition-text">${condition}</div>
-                </div>
-              `,
-                )
-                .join("")}
-            </div>
-
-            <div class="qr-validation-panel">
-                <div class="qr-code-panel">
-                    <img src="${data.qrCodeBase64}" alt="QR Code" style="width: 25mm; height: 25mm;">
-                </div>
-                <div class="validation-info-panel">
-                    <h3>VALIDACIÓN DEL DOCUMENTO</h3>
-                    <p>Escanee el código QR para validar la autenticidad</p>
-                    <p>Código: ${data.quotationNumber}</p>
-                    <p>Generado: ${currentDate}</p>
-                </div>
+            <!-- Columna QR -->
+            <div class="qr-column">
+              <div class="column-title">Validación</div>
+              <div class="qr-container-inline">
+                <img src="${data.qrCodeBase64}" alt="QR Code" class="qr-image-inline">
+              </div>
+              <div class="validation-info-inline">
+                <p><strong>Escanee para validar</strong></p>
+                <p>Código: ${data.quotationNumber}</p>
+                <p>Generado: ${currentDate}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1360,17 +1217,11 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
         ${
           data.observations
             ? `
-          <!-- Observaciones -->
-          <div class="section">
-            <div class="section-title">
-              <h2>OBSERVACIONES COMERCIALES</h2>
-            </div>
-            
-            <div class="observations-section">
-              <div class="observations-title">OBSERVACIONES COMERCIALES</div>
-              <div class="observations-content">
-                <p class="observations-text">${data.observations}</p>
-              </div>
+          <!-- Observations -->
+          <div class="observations-section">
+            <div class="section-header">Observaciones Comerciales</div>
+            <div class="observations-content">
+              <p class="observations-text">${data.observations}</p>
             </div>
           </div>
         `
@@ -1378,54 +1229,21 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
         }
 
         <!-- Footer -->
-        <div class="footer">
-          <div class="footer-content">
-            <!-- Condiciones comerciales -->
-            <div class="footer-section">
-              <h4>Condiciones Comerciales</h4>
-              <p>• Plazo de entrega: 07 días hábiles</p>
-              <p>• Lugar: Recojo en almacén</p>
-              <p>• Forma de pago: Contado</p>
-              <p>• Validez: 3 días hábiles</p>
-              <p>• Garantía: 24 meses</p>
-            </div>
-
-            <!-- Información de contacto -->
-            <div class="footer-section">
-              <h4>Información de Contacto</h4>
-              ${data.companyAddress ? `<p>📍 ${data.companyAddress}</p>` : ""}
-              ${data.companyPhone ? `<p>📞 ${data.companyPhone}</p>` : ""}
-              ${data.companyEmail ? `<p>✉️ ${data.companyEmail}</p>` : ""}
-              <p>🌐 www.armcorporations.pe</p>
-            </div>
-
-            <!-- Logo y firma -->
-            <div class="footer-section footer-logo">
-              ${
-                data.companyLogoUrl
-                  ? `
-              <img src="${data.companyLogoUrl}" alt="ARM Logo" />
-              `
-                  : ""
-              }
-              <div class="footer-signature">
-                <p>${data.createdBy}</p>
-                <p>ARM Corporations S.A.C.</p>
-              </div>
-            </div>
+        <div class="document-footer">
+          <div class="footer-left">
+            <div class="footer-text">ARM Corporations S.A.C.</div>
+            <div class="footer-text">RUC: ${data.companyRuc}</div>
+            ${data.companyPhone ? `<div class="footer-text">Tel: ${data.companyPhone}</div>` : ""}
           </div>
-
-          <!-- Información del documento -->
-          <div class="footer-bottom">
-            <div class="footer-dots">
-              <div class="footer-dot"></div>
-              <div class="footer-dot"></div>
-              <div class="footer-dot"></div>
-              <div class="footer-dot"></div>
-            </div>
-            <div class="footer-info">
-              <p>Generado el ${new Date().toLocaleDateString("es-PE")} a las ${new Date().toLocaleTimeString("es-PE")} | Estado: ${getStatusLabel(data.status)}</p>
-            </div>
+          
+          <div class="footer-center">
+            ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" alt="ARM Logo" class="footer-logo">` : ""}
+          </div>
+          
+          <div class="footer-right">
+            <div class="footer-signature">${data.createdBy}</div>
+            <div class="footer-text">Generado: ${currentDate}</div>
+            <div class="footer-text">Estado: ${getStatusLabel(data.status)}</div>
           </div>
         </div>
       </div>
