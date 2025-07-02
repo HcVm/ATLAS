@@ -314,6 +314,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .company-logo {
           padding: 2mm;
           border-radius: 3mm;
+          background: none;
           flex-shrink: 0;
         }
         
@@ -321,6 +322,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           width: 140px;
           height: 100px;
           object-fit: contain;
+          background: none;
         }
         
         .company-details {
@@ -415,7 +417,6 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .brands-in-header {
           margin-top: 4mm;
           padding-top: 3mm;
-          border-top: 1px solid rgba(255,255,255,0.3);
         }
         
         .brands-header-title {
@@ -446,14 +447,12 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           display: flex;
           align-items: center;
           justify-content: center;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
         
         .brand-logo-container-header img {
           width: 120px;
           height: auto;
           object-fit: contain;
-          filter: brightness(1.1) contrast(1.1);
         }
 
         .img-logo {
