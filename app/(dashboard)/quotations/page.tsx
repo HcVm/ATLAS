@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label"
 import RoutePlanner from "@/components/quotations/route-planner"
 import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator"
+import PrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator"
 
 // Interfaces actualizadas después de la migración
 interface QuotationItem {
@@ -1195,6 +1196,7 @@ export default function QuotationsPage() {
               {selectedQuotation && selectedCompany && (
                 <>
                   <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                  <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
                   <QuotationPDFGenerator
                     quotation={selectedQuotation}
                     companyInfo={{

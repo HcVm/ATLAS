@@ -388,7 +388,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
               ${data.products
                 .map(
                   (product, index) => `
-                <tr style="background: ${index % 2 === 0 ? "#ffffff" : "#f8fafc"}; border-bottom: 1px solid #e5e7eb;">
+                <tr border-bottom: 1px solid #e5e7eb;">
                   <td style="padding: 8px 6px; text-align: center; font-weight: 700; color: #1f2937;">${product.quantity.toLocaleString()}</td>
                   <td style="padding: 8px 6px; text-align: left; font-size: 8px; line-height: 1.3; color: #374151; word-wrap: break-word;">${product.description}</td>
                   <td style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 500;">${product.unit}</td>
