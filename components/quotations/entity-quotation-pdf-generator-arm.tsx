@@ -194,9 +194,9 @@ export default function ARMEntityQuotationPDFGenerator({
 
         // Condiciones por defecto ARM
         conditions: [
-          "Plazo de entrega: 15 días hábiles.",
+          "Plazo de entrega: 10 días hábiles.",
           "Entrega en almacén central.",
-          "Forma de pago: Crédito 30 días.",
+          "Forma de pago: Crédito 15 días.",
           "Garantía por defectos de fábrica 12 meses.",
         ],
 

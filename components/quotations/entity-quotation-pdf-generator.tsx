@@ -194,7 +194,7 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
           "Plazo de entrega: 10 días hábiles.",
           "Entrega en almacén central.",
           "Forma de pago: Crédito 15 días.",
-          "Garantía por defectos de fábrica 24 meses.",
+          "Garantía por defectos de fábrica 12 meses.",
         ],
 
         // Observaciones
