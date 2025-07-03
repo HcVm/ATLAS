@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, Package, ArrowUp, ArrowDown, RotateCcw, Calendar } from "lucide-react"
+import { Plus, Search, Package, ArrowUp, ArrowDown, RotateCcw, Calendar, Building, User } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
@@ -36,15 +36,25 @@ interface Product {
   cost_price: number
 }
 
+interface Department {
+  id: string
+  name: string
+  description: string
+}
+
 interface Movement {
   id: number
   product_id: number
   movement_type: "entrada" | "salida" | "ajuste"
   quantity: number
-  unit_cost: number
-  total_cost: number
+  cost_price: number
+  total_amount: number
   reason: string
+  notes: string
   requested_by: string
+  department_requesting: string
+  supplier: string
+  movement_date: string
   created_at: string
   internal_products: {
     code: string
@@ -57,9 +67,12 @@ interface MovementForm {
   product_id: string
   movement_type: "entrada" | "salida" | "ajuste"
   quantity: number
-  unit_cost: number
+  cost_price: number
   reason: string
+  notes: string
   requested_by: string
+  department_requesting: string
+  supplier: string
 }
 
 const MOVEMENT_TYPES = [
@@ -71,6 +84,7 @@ const MOVEMENT_TYPES = [
 export default function InternalMovementsPage() {
   const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
   const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -81,9 +95,12 @@ export default function InternalMovementsPage() {
     product_id: "",
     movement_type: "entrada",
     quantity: 0,
-    unit_cost: 0,
+    cost_price: 0,
     reason: "",
-    requested_by: user?.email || "",
+    notes: "",
+    requested_by: user?.full_name || "",
+    department_requesting: "",
+    supplier: "",
   })
 
   useEffect(() => {
@@ -93,10 +110,10 @@ export default function InternalMovementsPage() {
   }, [user?.company_id])
 
   useEffect(() => {
-    if (user?.email) {
-      setFormData((prev) => ({ ...prev, requested_by: user.email }))
+    if (user?.full_name) {
+      setFormData((prev) => ({ ...prev, requested_by: user.full_name }))
     }
-  }, [user?.email])
+  }, [user?.full_name])
 
   const fetchData = async () => {
     try {
@@ -111,6 +128,15 @@ export default function InternalMovementsPage() {
         .order("name")
 
       if (productsError) throw productsError
+
+      // Fetch departments
+      const { data: departmentsData, error: departmentsError } = await supabase
+        .from("departments")
+        .select("id, name, description")
+        .eq("company_id", user?.company_id)
+        .order("name")
+
+      if (departmentsError) throw departmentsError
 
       // Fetch movements
       const { data: movementsData, error: movementsError } = await supabase
@@ -130,6 +156,7 @@ export default function InternalMovementsPage() {
       if (movementsError) throw movementsError
 
       setProducts(productsData || [])
+      setDepartments(departmentsData || [])
       setMovements(movementsData || [])
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -145,7 +172,7 @@ export default function InternalMovementsPage() {
       setFormData((prev) => ({
         ...prev,
         product_id: productId,
-        unit_cost: product.cost_price,
+        cost_price: product.cost_price,
       }))
     }
   }
@@ -168,6 +195,21 @@ export default function InternalMovementsPage() {
       return
     }
 
+    // Validaciones específicas por tipo de movimiento
+    if (formData.movement_type === "salida") {
+      if (!formData.department_requesting.trim()) {
+        toast.error("Especifica el departamento que solicita el producto")
+        return
+      }
+    }
+
+    if (formData.movement_type === "entrada") {
+      if (!formData.supplier.trim()) {
+        toast.error("Especifica el proveedor o fuente de entrada")
+        return
+      }
+    }
+
     const product = products.find((p) => p.id.toString() === formData.product_id)
     if (!product) {
       toast.error("Producto no encontrado")
@@ -183,25 +225,18 @@ export default function InternalMovementsPage() {
     try {
       setSaving(true)
 
-      // Calcular nuevo stock
-      let newStock = product.current_stock
-      if (formData.movement_type === "entrada") {
-        newStock += formData.quantity
-      } else if (formData.movement_type === "salida") {
-        newStock -= formData.quantity
-      } else if (formData.movement_type === "ajuste") {
-        newStock = formData.quantity
-      }
-
       // Crear movimiento
       const movementData = {
         product_id: Number.parseInt(formData.product_id),
         movement_type: formData.movement_type,
         quantity: formData.quantity,
-        unit_cost: formData.unit_cost,
-        total_cost: formData.quantity * formData.unit_cost,
+        cost_price: formData.cost_price,
+        total_amount: formData.quantity * formData.cost_price,
         reason: formData.reason.trim(),
+        notes: formData.notes.trim() || null,
         requested_by: formData.requested_by.trim(),
+        department_requesting: formData.department_requesting.trim() || null,
+        supplier: formData.supplier.trim() || null,
         company_id: user?.company_id,
         created_by: user?.id,
       }
@@ -210,26 +245,18 @@ export default function InternalMovementsPage() {
 
       if (movementError) throw movementError
 
-      // Actualizar stock del producto
-      const { error: updateError } = await supabase
-        .from("internal_products")
-        .update({
-          current_stock: newStock,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", formData.product_id)
-
-      if (updateError) throw updateError
-
       toast.success("Movimiento registrado correctamente")
       setDialogOpen(false)
       setFormData({
         product_id: "",
         movement_type: "entrada",
         quantity: 0,
-        unit_cost: 0,
+        cost_price: 0,
         reason: "",
-        requested_by: user?.email || "",
+        notes: "",
+        requested_by: user?.full_name || "",
+        department_requesting: "",
+        supplier: "",
       })
       fetchData()
     } catch (error: any) {
@@ -245,7 +272,10 @@ export default function InternalMovementsPage() {
       movement.internal_products.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       movement.internal_products.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       movement.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.requested_by.toLowerCase().includes(searchTerm.toLowerCase())
+      movement.requested_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (movement.department_requesting &&
+        movement.department_requesting.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (movement.supplier && movement.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesType = typeFilter === "all" || movement.movement_type === typeFilter
 
@@ -260,15 +290,15 @@ export default function InternalMovementsPage() {
   }
 
   const selectedProduct = products.find((p) => p.id.toString() === formData.product_id)
-  const totalCost = formData.quantity * formData.unit_cost
+  const totalAmount = formData.quantity * formData.cost_price
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario</h1>
-          <p className="text-muted-foreground">Registra entradas, salidas y ajustes de productos internos</p>
+          <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario Interno</h1>
+          <p className="text-muted-foreground">Registra entradas, salidas y ajustes de productos de uso interno</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -277,12 +307,12 @@ export default function InternalMovementsPage() {
               Nuevo Movimiento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
-                <DialogTitle>Registrar Movimiento</DialogTitle>
+                <DialogTitle>Registrar Movimiento de Inventario</DialogTitle>
                 <DialogDescription>
-                  Registra un nuevo movimiento de inventario para productos internos
+                  Registra un nuevo movimiento de inventario para productos de uso interno
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -335,7 +365,9 @@ export default function InternalMovementsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">Cantidad *</Label>
+                    <Label htmlFor="quantity">
+                      {formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}
+                    </Label>
                     <Input
                       id="quantity"
                       type="number"
@@ -353,30 +385,86 @@ export default function InternalMovementsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="unit_cost">Costo Unitario (S/)</Label>
+                  <Label htmlFor="cost_price">Costo Unitario (S/)</Label>
                   <Input
-                    id="unit_cost"
+                    id="cost_price"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.unit_cost}
+                    value={formData.cost_price}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        unit_cost: Number.parseFloat(e.target.value) || 0,
+                        cost_price: Number.parseFloat(e.target.value) || 0,
                       }))
                     }
                     placeholder="0.00"
                   />
                 </div>
 
+                {/* Campos específicos por tipo de movimiento */}
+                {formData.movement_type === "salida" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Building className="h-4 w-4" />
+                      Información de Salida
+                    </h4>
+                    <div className="space-y-2">
+                      <Label htmlFor="department_requesting">Departamento Solicitante *</Label>
+                      <Select
+                        value={formData.department_requesting}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, department_requesting: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el departamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {formData.movement_type === "entrada" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Información de Entrada
+                    </h4>
+                    <div className="space-y-2">
+                      <Label htmlFor="supplier">Proveedor/Fuente *</Label>
+                      <Input
+                        id="supplier"
+                        value={formData.supplier}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
+                        placeholder="Nombre del proveedor o fuente de entrada"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="reason">Motivo *</Label>
-                  <Textarea
+                  <Input
                     id="reason"
                     value={formData.reason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
                     placeholder="Describe el motivo del movimiento..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notas Adicionales</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Información adicional (opcional)"
                     rows={3}
                   />
                 </div>
@@ -406,8 +494,8 @@ export default function InternalMovementsPage() {
                       <div>
                         {formData.quantity} {selectedProduct.unit_of_measure}
                       </div>
-                      <div>Costo total:</div>
-                      <div>S/ {totalCost.toFixed(2)}</div>
+                      <div>Valor total:</div>
+                      <div>S/ {totalAmount.toFixed(2)}</div>
                       {formData.movement_type === "entrada" && (
                         <>
                           <div>Nuevo stock:</div>
@@ -482,7 +570,7 @@ export default function InternalMovementsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.salidas}</div>
-            <p className="text-xs text-muted-foreground">Consumos registrados</p>
+            <p className="text-xs text-muted-foreground">Entregas a departamentos</p>
           </CardContent>
         </Card>
         <Card>
@@ -509,7 +597,7 @@ export default function InternalMovementsPage() {
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por producto, motivo o solicitante..."
+                  placeholder="Buscar por producto, motivo, departamento o solicitante..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -556,8 +644,8 @@ export default function InternalMovementsPage() {
                   <TableHead>Producto</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Cantidad</TableHead>
-                  <TableHead>Costo Unit.</TableHead>
-                  <TableHead>Costo Total</TableHead>
+                  <TableHead>Valor Total</TableHead>
+                  <TableHead>Departamento/Proveedor</TableHead>
                   <TableHead>Motivo</TableHead>
                   <TableHead>Solicitante</TableHead>
                 </TableRow>
@@ -584,7 +672,7 @@ export default function InternalMovementsPage() {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <div className="font-medium">
-                                {format(new Date(movement.created_at), "dd/MM/yyyy", { locale: es })}
+                                {format(new Date(movement.movement_date), "dd/MM/yyyy", { locale: es })}
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 {format(new Date(movement.created_at), "HH:mm", { locale: es })}
@@ -617,15 +705,36 @@ export default function InternalMovementsPage() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>S/ {movement.unit_cost.toFixed(2)}</TableCell>
-                        <TableCell>S/ {movement.total_cost.toFixed(2)}</TableCell>
+                        <TableCell>S/ {movement.total_amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {movement.movement_type === "salida" && movement.department_requesting && (
+                              <>
+                                <Building className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm">{movement.department_requesting}</span>
+                              </>
+                            )}
+                            {movement.movement_type === "entrada" && movement.supplier && (
+                              <>
+                                <Package className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm">{movement.supplier}</span>
+                              </>
+                            )}
+                            {movement.movement_type === "ajuste" && (
+                              <span className="text-sm text-muted-foreground">Ajuste de inventario</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] truncate" title={movement.reason}>
                             {movement.reason}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">{movement.requested_by}</div>
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">{movement.requested_by}</span>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

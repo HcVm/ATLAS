@@ -60,7 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json(product)
+    return NextResponse.json({ product })
   } catch (error: any) {
     console.error("Unexpected error in GET /api/internal-products/[id]:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
@@ -100,15 +100,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Validate numeric fields
-    const parsedMinimumStock = Number.parseInt(minimum_stock)
-    const parsedCostPrice = Number.parseFloat(cost_price)
+    const parsedMinimumStock = Number.parseInt(minimum_stock) || 0
+    const parsedCostPrice = Number.parseFloat(cost_price) || 0
 
-    if (isNaN(parsedMinimumStock) || parsedMinimumStock < 0) {
-      return NextResponse.json({ error: "Stock mínimo debe ser un número válido mayor o igual a 0" }, { status: 400 })
+    if (parsedMinimumStock < 0) {
+      return NextResponse.json({ error: "Stock mínimo no puede ser negativo" }, { status: 400 })
     }
 
-    if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
-      return NextResponse.json({ error: "Costo unitario debe ser un número válido mayor o igual a 0" }, { status: 400 })
+    if (parsedCostPrice < 0) {
+      return NextResponse.json({ error: "Costo unitario no puede ser negativo" }, { status: 400 })
     }
 
     // Verify category exists and belongs to company or is global
@@ -129,12 +129,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .update({
         name: name.trim(),
         description: description?.trim() || null,
-        category_id: Number.parseInt(category_id),
+        category_id: category_id,
         unit_of_measure: unit_of_measure || "unidad",
         minimum_stock: parsedMinimumStock,
         cost_price: parsedCostPrice,
         location: location?.trim() || null,
-        is_active: Boolean(is_active),
+        is_active: is_active !== undefined ? is_active : true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", params.id)
@@ -145,6 +145,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (updateError) {
       console.error("Error updating product:", updateError)
       return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    if (!updatedProduct) {
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
     return NextResponse.json({ success: true, product: updatedProduct })
@@ -183,7 +187,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     if (movements && movements.length > 0) {
       return NextResponse.json(
-        { error: "No se puede eliminar un producto que tiene movimientos de inventario" },
+        { error: "No se puede eliminar el producto porque tiene movimientos de inventario asociados" },
         { status: 400 },
       )
     }

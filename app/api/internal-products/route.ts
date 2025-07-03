@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name: name.trim(),
         description: description?.trim() || null,
-        category_id: Number.parseInt(category_id),
+        category_id: category_id,
         unit_of_measure: unit_of_measure || "unidad",
         minimum_stock: parsedMinimumStock,
         cost_price: parsedCostPrice,
@@ -170,14 +170,21 @@ export async function POST(request: NextRequest) {
 
     // If there's initial stock, create an initial movement
     if (parsedInitialStock > 0) {
-      const { error: movementError } = await supabase.from("internal_inventory_movements").insert({
+      const movementData = {
         product_id: newProduct.id,
         movement_type: "entrada",
         quantity: parsedInitialStock,
+        cost_price: parsedCostPrice,
+        total_amount: parsedInitialStock * parsedCostPrice,
         reason: "Stock inicial",
-        requested_by: user.id,
+        notes: `Stock inicial del producto ${name.trim()}`,
+        requested_by: user.email || "Sistema",
+        supplier: "Stock inicial",
         company_id: profile.company_id,
-      })
+        created_by: user.id,
+      }
+
+      const { error: movementError } = await supabase.from("internal_inventory_movements").insert(movementData)
 
       if (movementError) {
         console.error("Error creating initial movement:", movementError)

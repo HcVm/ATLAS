@@ -143,7 +143,7 @@ export default function NewInternalProductPage() {
       return
     }
 
-    if (!formData.category_id) {
+    if (!formData.category_id || formData.category_id.trim() === "") {
       toast.error("Selecciona una categoría")
       return
     }
@@ -175,7 +175,7 @@ export default function NewInternalProductPage() {
         code: generatedCode,
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        category_id: Number.parseInt(formData.category_id),
+        category_id: formData.category_id,
         unit_of_measure: formData.unit_of_measure,
         current_stock: formData.current_stock,
         minimum_stock: formData.minimum_stock,
@@ -199,10 +199,12 @@ export default function NewInternalProductPage() {
           product_id: data.id,
           movement_type: "entrada",
           quantity: formData.current_stock,
-          unit_cost: formData.cost_price,
-          total_cost: formData.current_stock * formData.cost_price,
+          cost_price: formData.cost_price,
+          total_amount: formData.current_stock * formData.cost_price,
           reason: "Stock inicial",
+          notes: `Stock inicial del producto ${formData.name}`,
           requested_by: user.email || "Sistema",
+          supplier: "Stock inicial",
           company_id: user.company_id,
           created_by: user.id,
         }
@@ -211,6 +213,11 @@ export default function NewInternalProductPage() {
 
         if (movementError) {
           console.error("Error creating initial movement:", movementError)
+          // No fallar la creación del producto por esto, solo mostrar advertencia
+          toast("Producto creado correctamente, pero no se pudo registrar el movimiento inicial", {
+            description:
+              "El producto se creó exitosamente, pero hubo un problema al registrar el movimiento de inventario inicial.",
+          })
         }
       }
 

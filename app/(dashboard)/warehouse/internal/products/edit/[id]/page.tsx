@@ -1,5 +1,7 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -11,22 +13,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Trash2, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Package, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 interface Category {
   id: number
@@ -35,22 +26,17 @@ interface Category {
 }
 
 interface Product {
-  id: number
+  id: string
   code: string
   name: string
-  description: string | null
-  category_id: number
+  description: string
+  category_id: string
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
   cost_price: number
-  location: string | null
+  location: string
   is_active: boolean
-  internal_product_categories?: {
-    id: number
-    name: string
-    color: string
-  }
 }
 
 interface FormData {
@@ -85,7 +71,6 @@ export default function EditInternalProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     name: "",
     description: "",
@@ -99,70 +84,51 @@ export default function EditInternalProductPage() {
 
   useEffect(() => {
     if (user?.company_id && params.id) {
-      fetchProduct()
-      fetchCategories()
+      fetchData()
     }
   }, [user?.company_id, params.id])
 
-  const fetchProduct = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from("internal_products")
-        .select(`
-          *,
-          internal_product_categories (
-            id,
-            name,
-            color
-          )
-        `)
-        .eq("id", params.id)
-        .eq("company_id", user?.company_id)
-        .single()
 
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      if (!data) {
-        throw new Error("Producto no encontrado")
-      }
-
-      setProduct(data)
-      setFormData({
-        name: data.name || "",
-        description: data.description || "",
-        category_id: data.category_id ? data.category_id.toString() : "",
-        unit_of_measure: data.unit_of_measure || "unidad",
-        minimum_stock: data.minimum_stock || 0,
-        cost_price: data.cost_price || 0,
-        location: data.location || "",
-        is_active: data.is_active ?? true,
-      })
-    } catch (error: any) {
-      console.error("Error fetching product:", error)
-      toast.error(error.message || "Error al cargar el producto")
-      router.push("/warehouse/internal/products")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
         .select("*")
         .or(`company_id.eq.${user?.company_id},company_id.is.null`)
         .order("name")
 
-      if (error) throw error
-      setCategories(data || [])
+      if (categoriesError) throw categoriesError
+
+      // Fetch product
+      const { data: productData, error: productError } = await supabase
+        .from("internal_products")
+        .select("*")
+        .eq("id", params.id)
+        .eq("company_id", user?.company_id)
+        .single()
+
+      if (productError) throw productError
+
+      setCategories(categoriesData || [])
+      setProduct(productData)
+      setFormData({
+        name: productData.name,
+        description: productData.description || "",
+        category_id: productData.category_id?.toString() || "",
+        unit_of_measure: productData.unit_of_measure,
+        minimum_stock: productData.minimum_stock,
+        cost_price: productData.cost_price,
+        location: productData.location || "",
+        is_active: productData.is_active,
+      })
     } catch (error) {
-      console.error("Error fetching categories:", error)
-      toast.error("Error al cargar las categorías")
+      console.error("Error fetching data:", error)
+      toast.error("Error al cargar los datos del producto")
+      router.push("/warehouse/internal/products")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -174,7 +140,7 @@ export default function EditInternalProductPage() {
       return
     }
 
-    if (!formData.category_id) {
+    if (!formData.category_id || formData.category_id.trim() === "") {
       toast.error("Selecciona una categoría")
       return
     }
@@ -190,7 +156,7 @@ export default function EditInternalProductPage() {
       const updateData = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        category_id: Number.parseInt(formData.category_id),
+        category_id: formData.category_id,
         unit_of_measure: formData.unit_of_measure,
         minimum_stock: formData.minimum_stock,
         cost_price: formData.cost_price,
@@ -220,48 +186,6 @@ export default function EditInternalProductPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!user?.company_id) {
-      toast.error("Error de autenticación")
-      return
-    }
-
-    try {
-      setDeleting(true)
-
-      // Verificar si hay movimientos asociados
-      const { data: movements } = await supabase
-        .from("internal_inventory_movements")
-        .select("id")
-        .eq("product_id", params.id)
-        .limit(1)
-
-      if (movements && movements.length > 0) {
-        toast.error("No se puede eliminar el producto porque tiene movimientos de inventario asociados")
-        return
-      }
-
-      const { error } = await supabase
-        .from("internal_products")
-        .delete()
-        .eq("id", params.id)
-        .eq("company_id", user.company_id)
-
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      toast.success("Producto eliminado correctamente")
-      router.push("/warehouse/internal/products")
-    } catch (error: any) {
-      console.error("Error deleting product:", error)
-      toast.error(error.message || "Error al eliminar el producto")
-    } finally {
-      setDeleting(false)
-    }
-  }
-
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -269,9 +193,9 @@ export default function EditInternalProductPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Cargando producto...</p>
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Cargando producto...</span>
         </div>
       </div>
     )
@@ -279,17 +203,20 @@ export default function EditInternalProductPage() {
 
   if (!product) {
     return (
-      <div className="text-center py-8">
-        <h3 className="text-lg font-semibold">Producto no encontrado</h3>
-        <p className="text-muted-foreground mb-4">El producto que buscas no existe o no tienes permisos para verlo</p>
-        <Button asChild>
-          <Link href="/warehouse/internal/products">Volver a Productos</Link>
-        </Button>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Producto no encontrado</h3>
+          <p className="text-muted-foreground mb-4">
+            El producto que buscas no existe o no tienes permisos para verlo.
+          </p>
+          <Button asChild>
+            <Link href="/warehouse/internal/products">Volver a productos</Link>
+          </Button>
+        </div>
       </div>
     )
   }
-
-  const totalValue = product.current_stock * formData.cost_price
 
   return (
     <div className="space-y-6">
@@ -300,37 +227,10 @@ export default function EditInternalProductPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
+        <div>
           <h1 className="text-3xl font-bold tracking-tight">Editar Producto Interno</h1>
-          <p className="text-muted-foreground">Modifica la información del producto {product.code}</p>
+          <p className="text-muted-foreground">Modifica la información del producto de uso interno</p>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Eliminar
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción no se puede deshacer. Se eliminará permanentemente el producto "{product.name}" y todos sus
-                datos asociados.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deleting ? "Eliminando..." : "Eliminar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -443,7 +343,7 @@ export default function EditInternalProductPage() {
                       className="bg-muted"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Para modificar el stock, registra un movimiento de inventario
+                      Para modificar el stock, usa los movimientos de inventario
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -468,15 +368,6 @@ export default function EditInternalProductPage() {
                     />
                   </div>
                 </div>
-
-                {totalValue > 0 && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Valor Total del Inventario:</span>
-                      <span className="text-lg font-bold">S/ {totalValue.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -512,22 +403,20 @@ export default function EditInternalProductPage() {
                   <span className="font-mono">{product.code}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Categoría:</span>
-                  <span>{product.internal_product_categories?.name || "Sin categoría"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
                   <span>Stock actual:</span>
-                  <span className={product.current_stock <= product.minimum_stock ? "text-red-600 font-semibold" : ""}>
-                    {product.current_stock}
+                  <span className="font-semibold">
+                    {product.current_stock} {formData.unit_of_measure}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Stock mínimo:</span>
-                  <span>{formData.minimum_stock}</span>
+                  <span>Valor en inventario:</span>
+                  <span className="font-semibold">S/ {(product.current_stock * formData.cost_price).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Valor total:</span>
-                  <span className="font-semibold">S/ {totalValue.toFixed(2)}</span>
+                  <span>Estado:</span>
+                  <Badge variant={formData.is_active ? "default" : "secondary"}>
+                    {formData.is_active ? "Activo" : "Inactivo"}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
