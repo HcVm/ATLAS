@@ -127,6 +127,9 @@ const menuSections = {
           "operaciones",
           "acuerdos marco",
           "acuerdos",
+          "ventas",
+          "gerencia logística",
+          "gerencia logistica",
         ],
       },
       {

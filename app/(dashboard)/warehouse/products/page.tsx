@@ -65,7 +65,8 @@ export default function ProductsPage() {
       user?.departments?.name === "Contabilidad" ||
       user?.departments?.name === "Operaciones" ||
       user?.departments?.name === "Acuerdos Marco" ||
-      user?.departments?.name === "Administración"
+      user?.departments?.name === "Administración" ||
+      user?.departments?.name === "Ventas"
 
     // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
