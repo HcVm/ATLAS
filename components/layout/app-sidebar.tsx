@@ -111,7 +111,7 @@ const menuSections = {
         url: "/warehouse",
         icon: Package,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "gerencia logística", "jefatura de ventas"],
       },
       {
         title: "Productos",
@@ -137,7 +137,7 @@ const menuSections = {
         url: "/warehouse/inventory",
         icon: ClipboardList,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "gerencia logística", "jefatura de ventas"],
       },
     ],
   },
