@@ -184,7 +184,9 @@ export default function ProductsPage() {
     user?.departments?.name === "Contabilidad" ||
     user?.departments?.name === "Operaciones" ||
     user?.departments?.name === "Acuerdos Marco" ||
-    user?.departments?.name === "Administración"
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Ventas"
+
 
   // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
