@@ -3,7 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { supabase } from "./supabase"
-import type { Database } from "./supabase"
+import type { Database } from "./database.types"
 import type { User } from "@supabase/supabase-js"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]

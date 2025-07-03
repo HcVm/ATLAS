@@ -19,6 +19,8 @@ import {
   Eye,
   AlertTriangle,
   ShoppingCart,
+  Shield,
+  CreditCard,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -31,6 +33,8 @@ import SaleEditForm from "@/components/sales/sale-edit-form"
 import SalesExportDialog from "@/components/sales/sales-export-dialog"
 import { Label } from "@/components/ui/label"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
+import { generateWarrantyLetter } from "@/lib/warranty-letter-generator"
+import { generateCCILetter } from "@/lib/cci-letter-generator"
 
 interface Sale {
   id: string
@@ -292,6 +296,83 @@ export default function SalesPage() {
     }
   }
 
+  const handleGenerateWarrantyLetter = async (sale: Sale) => {
+    try {
+      toast.info("Generando carta de garantía...")
+
+      // Obtener los productos de la venta
+      const { data: items, error } = await supabase
+        .from("sale_items")
+        .select("product_code, product_name, product_description, product_brand, quantity")
+        .eq("sale_id", sale.id)
+
+      if (error) throw error
+
+      const products = items || []
+
+      // Si es venta simple, usar los datos de la venta principal
+      const finalProducts =
+        products.length > 0
+          ? products
+          : [
+              {
+                product_code: sale.display_product_code,
+                product_name: sale.display_product_name,
+                product_description: sale.display_product_name,
+                product_brand: "",
+                quantity: sale.total_quantity,
+              },
+            ]
+
+      await generateWarrantyLetter({
+        companyName: companyToUse?.name || "",
+        companyRuc: companyToUse?.ruc || "",
+        companyCode: companyToUse?.code || "",
+        letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
+        clientName: sale.entity_name,
+        clientRuc: sale.entity_ruc,
+        clientAddress: sale.final_destination || "Dirección no especificada",
+        products: finalProducts.map((product) => ({
+          quantity: product.quantity,
+          description: product.product_description || product.product_name,
+          brand: product.product_brand || "N/A",
+          code: product.product_code,
+        })),
+        warrantyMonths: 12,
+        createdBy: user?.full_name || "Usuario",
+      })
+
+      toast.success("Carta de garantía generada exitosamente")
+    } catch (error: any) {
+      console.error("Error generating warranty letter:", error)
+      toast.error("Error al generar la carta de garantía: " + error.message)
+    }
+  }
+
+  const handleGenerateCCILetter = async (sale: Sale) => {
+    try {
+      toast.info("Generando carta de CCI...")
+
+      await generateCCILetter({
+        companyName: companyToUse?.name || "",
+        companyRuc: companyToUse?.ruc || "",
+        companyCode: companyToUse?.code || "",
+        letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
+        clientName: sale.entity_name,
+        clientRuc: sale.entity_ruc,
+        clientAddress: sale.final_destination || "Dirección no especificada",
+        ocam: sale.ocam || "N/A",
+        siaf: sale.exp_siaf || "N/A",
+        createdBy: user?.full_name || "Usuario",
+      })
+
+      toast.success("Carta de CCI generada exitosamente")
+    } catch (error: any) {
+      console.error("Error generating CCI letter:", error)
+      toast.error("Error al generar la carta de CCI: " + error.message)
+    }
+  }
+
   const filteredSales = sales.filter(
     (sale) =>
       sale.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -359,7 +440,8 @@ export default function SalesPage() {
             Módulo de Ventas
           </h1>
           <p className="text-muted-foreground">
-            Gestión de ventas de: <span className="font-semibold text-foreground">{selectedCompany?.name || "N/A"}</span>
+            Gestión de ventas de:{" "}
+            <span className="font-semibold text-foreground">{selectedCompany?.name || "N/A"}</span>
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -547,6 +629,7 @@ export default function SalesPage() {
                               size="sm"
                               onClick={() => handleViewDetails(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              title="Ver detalles"
                             >
                               <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </Button>
@@ -555,6 +638,7 @@ export default function SalesPage() {
                               size="sm"
                               onClick={() => handleEditSale(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              title="Editar venta"
                             >
                               <Edit className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </Button>
@@ -563,8 +647,27 @@ export default function SalesPage() {
                               size="sm"
                               onClick={() => handleStatusChange(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                              title="Cambiar estado"
                             >
                               <Badge className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateWarrantyLetter(sale)}
+                              className="hover:bg-green-100 dark:hover:bg-green-900"
+                              title="Generar carta de garantía"
+                            >
+                              <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateCCILetter(sale)}
+                              className="hover:bg-blue-100 dark:hover:bg-blue-900"
+                              title="Generar carta de CCI"
+                            >
+                              <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </Button>
                           </div>
                         </TableCell>
@@ -606,7 +709,7 @@ export default function SalesPage() {
                           S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 w-full">
+                      <div className="grid grid-cols-2 gap-2 w-full mb-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -625,14 +728,34 @@ export default function SalesPage() {
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
                         </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full">
                         <Button
                           variant="outline"
                           size="sm"
                           className="w-full bg-transparent"
                           onClick={() => handleStatusChange(sale)}
                         >
-                          <Badge className="h-4 w-4 mr-2" />
+                          <Badge className="h-4 w-4 mr-1" />
                           Estado
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent text-green-600 hover:bg-green-50"
+                          onClick={() => handleGenerateWarrantyLetter(sale)}
+                        >
+                          <Shield className="h-4 w-4 mr-1" />
+                          Garantía
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleGenerateCCILetter(sale)}
+                        >
+                          <CreditCard className="h-4 w-4 mr-1" />
+                          CCI
                         </Button>
                       </div>
                     </div>

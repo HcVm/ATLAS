@@ -11,11 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, FileText } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
+import NextLink from "next/link"
 
 interface Product {
   id: string
@@ -23,6 +23,8 @@ interface Product {
   description: string | null
   code: string
   barcode: string | null
+  modelo: string | null
+  ficha_tecnica: string | null
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
@@ -64,6 +66,8 @@ export default function EditProductPage() {
     description: "",
     code: "",
     barcode: "",
+    modelo: "",
+    ficha_tecnica: "",
     unit_of_measure: "unidad",
     minimum_stock: 0,
     current_stock: 0,
@@ -141,6 +145,8 @@ export default function EditProductPage() {
         description: productData.description || "",
         code: productData.code || "",
         barcode: productData.barcode || "",
+        modelo: productData.modelo || "",
+        ficha_tecnica: productData.ficha_tecnica || "",
         unit_of_measure: productData.unit_of_measure || "unidad",
         minimum_stock: productData.minimum_stock || 0,
         current_stock: productData.current_stock || 0,
@@ -191,6 +197,8 @@ export default function EditProductPage() {
         description: formData.description.trim() || null,
         code: formData.code.trim(),
         barcode: formData.barcode.trim() || null,
+        modelo: formData.modelo.trim() || null,
+        ficha_tecnica: formData.ficha_tecnica.trim() || null,
         unit_of_measure: formData.unit_of_measure,
         minimum_stock: Number(formData.minimum_stock),
         current_stock: Number(formData.current_stock),
@@ -234,10 +242,10 @@ export default function EditProductPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/warehouse/products">
+            <NextLink href="/warehouse/products">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver
-            </Link>
+            </NextLink>
           </Button>
         </div>
         <Card>
@@ -254,10 +262,10 @@ export default function EditProductPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/warehouse/products">
+            <NextLink href="/warehouse/products">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver
-            </Link>
+            </NextLink>
           </Button>
         </div>
         <Card>
@@ -274,10 +282,10 @@ export default function EditProductPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/warehouse/products/${params.id}`}>
+          <NextLink href={`/warehouse/products/${params.id}`}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
-          </Link>
+          </NextLink>
         </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Editar Producto</h1>
@@ -335,6 +343,35 @@ export default function EditProductPage() {
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     placeholder="Código de barras"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="modelo" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Modelo
+                  </Label>
+                  <Input
+                    id="modelo"
+                    value={formData.modelo}
+                    onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                    placeholder="Modelo del producto"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ficha_tecnica" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Ficha Técnica (URL)
+                  </Label>
+                  <Input
+                    id="ficha_tecnica"
+                    type="url"
+                    value={formData.ficha_tecnica}
+                    onChange={(e) => setFormData({ ...formData, ficha_tecnica: e.target.value })}
+                    placeholder="https://ejemplo.com/ficha-tecnica.pdf"
                   />
                 </div>
               </div>
@@ -514,7 +551,7 @@ export default function EditProductPage() {
         {/* Botones de acción */}
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" asChild>
-            <Link href={`/warehouse/products/${params.id}`}>Cancelar</Link>
+            <NextLink href={`/warehouse/products/${params.id}`}>Cancelar</NextLink>
           </Button>
           <Button type="submit" disabled={saving}>
             {saving ? (

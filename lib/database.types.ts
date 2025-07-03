@@ -512,6 +512,8 @@ export interface Database {
           created_by: string | null
           created_at: string
           updated_at: string
+          modelo: string | null
+          ficha_tecnica: string | null
           brands?: {
             id: string
             name: string
@@ -543,6 +545,8 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          modelo?: string | null
+          ficha_tecnica?: string | null
         }
         Update: {
           id?: string
@@ -564,6 +568,8 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          modelo?: string | null
+          ficha_tecnica?: string | null
         }
         Relationships: [
           {

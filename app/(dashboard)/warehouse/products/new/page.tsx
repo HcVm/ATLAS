@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -11,11 +13,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Package } from "lucide-react"
+import { ArrowLeft, Save, Package, FileText } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
-import Link from "next/link"
 import ProductImageUpload from "@/components/warehouse/product-image-upload"
 
 interface Brand {
@@ -35,6 +36,8 @@ interface ProductForm {
   description: string
   code: string
   barcode: string
+  modelo: string
+  ficha_tecnica: string
   brand_id: string
   category_id: string
   unit_of_measure: string
@@ -61,6 +64,8 @@ export default function NewProductPage() {
     description: "",
     code: "",
     barcode: "",
+    modelo: "",
+    ficha_tecnica: "",
     brand_id: "",
     category_id: "",
     unit_of_measure: "unidad",
@@ -154,6 +159,8 @@ export default function NewProductPage() {
         description: form.description.trim() || null,
         code: form.code.trim(),
         barcode: form.barcode.trim() || null,
+        modelo: form.modelo.trim() || null,
+        ficha_tecnica: form.ficha_tecnica.trim() || null,
         brand_id: form.brand_id || null,
         category_id: form.category_id || null,
         unit_of_measure: form.unit_of_measure,
@@ -273,6 +280,33 @@ export default function NewProductPage() {
                     placeholder="Descripción detallada del producto..."
                     rows={3}
                   />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="modelo" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Modelo
+                    </Label>
+                    <Input
+                      id="modelo"
+                      value={form.modelo}
+                      onChange={(e) => updateForm("modelo", e.target.value)}
+                      placeholder="Ej: PWC-2024-V1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ficha_tecnica" className="flex items-center gap-2">
+                      Ficha Técnica (URL)
+                    </Label>
+                    <Input
+                      id="ficha_tecnica"
+                      type="url"
+                      value={form.ficha_tecnica}
+                      onChange={(e) => updateForm("ficha_tecnica", e.target.value)}
+                      placeholder="https://ejemplo.com/ficha-tecnica.pdf"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

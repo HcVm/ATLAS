@@ -6,7 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Edit, Package, AlertTriangle, MapPin, Barcode, Hash, ImageIcon } from "lucide-react"
+import {
+  ArrowLeft,
+  Edit,
+  Package,
+  AlertTriangle,
+  MapPin,
+  Barcode,
+  Hash,
+  ImageIcon,
+  FileText,
+  ExternalLink,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
@@ -17,6 +28,8 @@ interface Product {
   description: string | null
   code: string
   barcode: string | null
+  modelo: string | null
+  ficha_tecnica: string | null
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
@@ -329,6 +342,37 @@ export default function ProductDetailPage() {
                       Código de barras
                     </label>
                     <p className="text-sm font-mono text-slate-700">{product.barcode}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Nuevos campos: Modelo y Ficha Técnica */}
+              <div className="grid grid-cols-2 gap-4">
+                {product.modelo && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Modelo
+                    </label>
+                    <p className="text-sm text-slate-700">{product.modelo}</p>
+                  </div>
+                )}
+
+                {product.ficha_tecnica && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" />
+                      Ficha Técnica
+                    </label>
+                    <a
+                      href={product.ficha_tecnica}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                    >
+                      Ver ficha técnica
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
                 )}
               </div>
