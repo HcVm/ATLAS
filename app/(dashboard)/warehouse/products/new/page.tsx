@@ -18,11 +18,13 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import ProductImageUpload from "@/components/warehouse/product-image-upload"
+import { BrandCreatorDialog } from "@/components/ui/brand-creator-dialog"
 
 interface Brand {
   id: string
   name: string
   color: string
+  isExternal?: boolean
 }
 
 interface Category {
@@ -98,21 +100,41 @@ export default function NewProductPage() {
       setLoading(true)
       console.log("Fetching data for company:", user.company_id)
 
-      // Obtener marcas
-      const { data: brandsData, error: brandsError } = await supabase
+      // Obtener marcas propias de la empresa
+      const { data: companyBrands, error: companyBrandsError } = await supabase
         .from("brands")
         .select("id, name, color")
         .eq("company_id", user.company_id)
         .order("name")
 
-      console.log("Brands query result:", { brandsData, brandsError })
+      console.log("Company brands query result:", { companyBrands, companyBrandsError })
 
-      if (brandsError) {
-        console.error("Brands error:", brandsError)
-        throw brandsError
+      if (companyBrandsError) {
+        console.error("Company brands error:", companyBrandsError)
+        throw companyBrandsError
       }
 
-      // Obtener categorías
+      // Obtener marcas externas (company_id NULL)
+      const { data: externalBrands, error: externalBrandsError } = await supabase
+        .from("brands")
+        .select("id, name, color")
+        .is("company_id", null)
+        .order("name")
+
+      console.log("External brands query result:", { externalBrands, externalBrandsError })
+
+      if (externalBrandsError) {
+        console.error("External brands error:", externalBrandsError)
+        throw externalBrandsError
+      }
+
+      // Combinar marcas: primero las de la empresa, luego las externas
+      const allBrands = [
+        ...(companyBrands || []).map((brand) => ({ ...brand, isExternal: false })),
+        ...(externalBrands || []).map((brand) => ({ ...brand, isExternal: true })),
+      ]
+
+      // Obtener categorías (solo de la empresa)
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("product_categories")
         .select("id, name, color")
@@ -126,15 +148,33 @@ export default function NewProductPage() {
         throw categoriesError
       }
 
-      setBrands(brandsData || [])
+      setBrands(allBrands)
       setCategories(categoriesData || [])
-      console.log("Set brands:", brandsData?.length || 0, "categories:", categoriesData?.length || 0)
+      console.log("Set brands:", allBrands.length, "categories:", categoriesData?.length || 0)
     } catch (error) {
       console.error("Error fetching data:", error)
       toast.error("No se pudieron cargar los datos necesarios")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBrandCreated = (newBrand: Brand) => {
+    // Agregar la nueva marca a la lista
+    setBrands((prev) => {
+      if (newBrand.isExternal) {
+        // Agregar marca externa al final
+        return [...prev, newBrand]
+      } else {
+        // Agregar marca de empresa al principio (después de las otras marcas de empresa)
+        const companyBrands = prev.filter((b) => !b.isExternal)
+        const externalBrands = prev.filter((b) => b.isExternal)
+        return [...companyBrands, newBrand, ...externalBrands]
+      }
+    })
+
+    // Seleccionar automáticamente la nueva marca
+    setForm((prev) => ({ ...prev, brand_id: newBrand.id }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -342,27 +382,70 @@ export default function NewProductPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Marca</Label>
-                    <Select
-                      value={form.brand_id}
-                      onValueChange={(value) => updateForm("brand_id", value === "none" ? "" : value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar marca" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin marca</SelectItem>
-                        {brands.map((brand) => (
-                          <SelectItem key={brand.id} value={brand.id}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
-                              {brand.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Select
+                        value={form.brand_id}
+                        onValueChange={(value) => updateForm("brand_id", value === "none" ? "" : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar marca" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin marca</SelectItem>
+
+                          {/* Marcas de la empresa */}
+                          {brands.filter((brand) => !brand.isExternal).length > 0 && (
+                            <>
+                              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                                Marcas de la empresa
+                              </div>
+                              {brands
+                                .filter((brand) => !brand.isExternal)
+                                .map((brand) => (
+                                  <SelectItem key={brand.id} value={brand.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
+                                      {brand.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </>
+                          )}
+
+                          {/* Marcas externas */}
+                          {brands.filter((brand) => brand.isExternal).length > 0 && (
+                            <>
+                              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-t mt-1 pt-2">
+                                Marcas externas
+                              </div>
+                              {brands
+                                .filter((brand) => brand.isExternal)
+                                .map((brand) => (
+                                  <SelectItem key={brand.id} value={brand.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
+                                      {brand.name}
+                                      <span className="text-xs text-muted-foreground ml-auto">Externa</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </>
+                          )}
+
+                          {brands.length === 0 && !loading && (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">No hay marcas disponibles</div>
+                          )}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Botón para crear nueva marca */}
+                      <BrandCreatorDialog onBrandCreated={handleBrandCreated} />
+                    </div>
+
                     {brands.length === 0 && !loading && (
-                      <p className="text-sm text-muted-foreground">No hay marcas disponibles para esta empresa.</p>
+                      <p className="text-sm text-muted-foreground">
+                        No hay marcas disponibles. Crea una nueva marca usando el botón de arriba.
+                      </p>
                     )}
                   </div>
                   <div className="space-y-2">
