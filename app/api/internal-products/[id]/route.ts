@@ -60,7 +60,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json({ product })
+    // Get movement count for this product
+    const { count: movementCount } = await supabase
+      .from("internal_inventory_movements")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", params.id)
+
+    return NextResponse.json({
+      product: {
+        ...product,
+        movement_count: movementCount || 0,
+      },
+    })
   } catch (error: any) {
     console.error("Unexpected error in GET /api/internal-products/[id]:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
@@ -178,18 +189,61 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Usuario sin empresa asignada" }, { status: 403 })
     }
 
-    // Check if product has movements
-    const { data: movements } = await supabase
-      .from("internal_inventory_movements")
-      .select("id")
-      .eq("product_id", params.id)
-      .limit(1)
+    // Get the URL search params to check if cascade delete is requested
+    const url = new URL(request.url)
+    const cascade = url.searchParams.get("cascade") === "true"
 
-    if (movements && movements.length > 0) {
+    // Check if product has movements
+    const { data: movements, count: movementCount } = await supabase
+      .from("internal_inventory_movements")
+      .select("id", { count: "exact" })
+      .eq("product_id", params.id)
+
+    if (movementCount && movementCount > 0 && !cascade) {
       return NextResponse.json(
-        { error: "No se puede eliminar el producto porque tiene movimientos de inventario asociados" },
+        {
+          error: "PRODUCT_HAS_MOVEMENTS",
+          message: `El producto tiene ${movementCount} movimiento(s) de inventario asociados`,
+          movementCount,
+        },
         { status: 400 },
       )
+    }
+
+    // If cascade delete is requested, delete movements first
+    if (cascade && movementCount && movementCount > 0) {
+      // Delete movement attachments first
+      const { data: movementIds } = await supabase
+        .from("internal_inventory_movements")
+        .select("id")
+        .eq("product_id", params.id)
+
+      if (movementIds && movementIds.length > 0) {
+        // Delete attachments for all movements
+        const { error: attachmentError } = await supabase
+          .from("inventory_movement_attachments")
+          .delete()
+          .in(
+            "movement_id",
+            movementIds.map((m) => m.id),
+          )
+
+        if (attachmentError) {
+          console.error("Error deleting movement attachments:", attachmentError)
+          // Continue anyway, as attachments are not critical
+        }
+      }
+
+      // Delete movements
+      const { error: movementError } = await supabase
+        .from("internal_inventory_movements")
+        .delete()
+        .eq("product_id", params.id)
+
+      if (movementError) {
+        console.error("Error deleting movements:", movementError)
+        return NextResponse.json({ error: "Error al eliminar los movimientos del producto" }, { status: 500 })
+      }
     }
 
     // Delete product
@@ -204,7 +258,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      message: cascade ? "Producto y movimientos eliminados correctamente" : "Producto eliminado correctamente",
+    })
   } catch (error: any) {
     console.error("Unexpected error in DELETE /api/internal-products/[id]:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })

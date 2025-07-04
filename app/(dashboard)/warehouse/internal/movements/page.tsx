@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import {
   Dialog,
   DialogContent,
@@ -20,12 +22,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, Package, ArrowUp, ArrowDown, RotateCcw, Calendar, Building, User } from "lucide-react"
+import {
+  Plus,
+  Search,
+  Package,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  Calendar,
+  Building,
+  User,
+  Eye,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 interface Product {
   id: string
@@ -91,6 +108,7 @@ export default function InternalMovementsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [productComboOpen, setProductComboOpen] = useState(false)
   const [formData, setFormData] = useState<MovementForm>({
     product_id: "",
     movement_type: "entrada",
@@ -292,6 +310,17 @@ export default function InternalMovementsPage() {
   const selectedProduct = products.find((p) => p.id === formData.product_id)
   const totalAmount = formData.quantity * formData.cost_price
 
+  // Función para formatear el texto del producto en el combobox
+  const formatProductDisplay = (product: Product) => {
+    return `${product.code} - ${product.name}`
+  }
+
+  // Función para obtener el producto seleccionado para mostrar en el trigger
+  const getSelectedProductDisplay = () => {
+    if (!selectedProduct) return "Selecciona un producto"
+    return formatProductDisplay(selectedProduct)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -307,7 +336,7 @@ export default function InternalMovementsPage() {
               Nuevo Movimiento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-5xl max-h-[95vh] overflow-y-auto">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>Registrar Movimiento de Inventario</DialogTitle>
@@ -315,219 +344,299 @@ export default function InternalMovementsPage() {
                   Registra un nuevo movimiento de inventario para productos de uso interno
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="product">Producto *</Label>
-                  <Select value={formData.product_id} onValueChange={handleProductChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un producto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>
-                              {product.code} - {product.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground ml-2">Stock: {product.current_stock}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  {/* Selector de producto con búsqueda */}
                   <div className="space-y-2">
-                    <Label htmlFor="movement_type">Tipo de Movimiento *</Label>
-                    <Select
-                      value={formData.movement_type}
-                      onValueChange={(value: "entrada" | "salida" | "ajuste") =>
-                        setFormData((prev) => ({ ...prev, movement_type: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MOVEMENT_TYPES.map((type) => {
-                          const Icon = type.icon
-                          return (
-                            <SelectItem key={type.value} value={type.value}>
-                              <div className="flex items-center gap-2">
-                                <Icon className={`h-4 w-4 ${type.color}`} />
-                                {type.label}
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="product">Producto *</Label>
+                    <Popover open={productComboOpen} onOpenChange={setProductComboOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={productComboOpen}
+                          className="w-full justify-between bg-transparent"
+                        >
+                          <span className="truncate">{getSelectedProductDisplay()}</span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar producto por código o nombre..." />
+                          <CommandList>
+                            <CommandEmpty>No se encontraron productos.</CommandEmpty>
+                            <CommandGroup>
+                              {products.map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={`${product.code} ${product.name}`}
+                                  onSelect={() => {
+                                    handleProductChange(product.id)
+                                    setProductComboOpen(false)
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2">
+                                      <Check
+                                        className={cn(
+                                          "h-4 w-4",
+                                          formData.product_id === product.id ? "opacity-100" : "opacity-0",
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{formatProductDisplay(product)}</span>
+                                        <span className="text-xs text-muted-foreground">{product.unit_of_measure}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge
+                                        variant={product.current_stock <= 10 ? "destructive" : "default"}
+                                        className="text-xs"
+                                      >
+                                        Stock: {product.current_stock}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="movement_type">Tipo de Movimiento *</Label>
+                      <Select
+                        value={formData.movement_type}
+                        onValueChange={(value: "entrada" | "salida" | "ajuste") =>
+                          setFormData((prev) => ({ ...prev, movement_type: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MOVEMENT_TYPES.map((type) => {
+                            const Icon = type.icon
+                            return (
+                              <SelectItem key={type.value} value={type.value}>
+                                <div className="flex items-center gap-2">
+                                  <Icon className={`h-4 w-4 ${type.color}`} />
+                                  {type.label}
+                                </div>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="quantity">
+                        {formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}
+                      </Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={formData.quantity}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            quantity: Number.parseInt(e.target.value) || 0,
+                          }))
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">
-                      {formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}
-                    </Label>
+                    <Label htmlFor="cost_price">Costo Unitario (S/)</Label>
                     <Input
-                      id="quantity"
+                      id="cost_price"
                       type="number"
-                      min="1"
-                      value={formData.quantity}
+                      min="0"
+                      step="0.01"
+                      value={formData.cost_price}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
-                          quantity: Number.parseInt(e.target.value) || 0,
+                          cost_price: Number.parseFloat(e.target.value) || 0,
                         }))
                       }
-                      placeholder="0"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reason">Motivo *</Label>
+                    <Input
+                      id="reason"
+                      value={formData.reason}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Describe el motivo del movimiento..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="requested_by">Solicitado por</Label>
+                    <Input
+                      id="requested_by"
+                      value={formData.requested_by}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, requested_by: e.target.value }))}
+                      placeholder="Nombre del solicitante"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cost_price">Costo Unitario (S/)</Label>
-                  <Input
-                    id="cost_price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.cost_price}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        cost_price: Number.parseFloat(e.target.value) || 0,
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-
-                {/* Campos específicos por tipo de movimiento */}
-                {formData.movement_type === "salida" && (
-                  <div className="space-y-4 border-t pt-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      Información de Salida
-                    </h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="department_requesting">Departamento Solicitante *</Label>
-                      <Select
-                        value={formData.department_requesting}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, department_requesting: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona el departamento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.map((dept) => (
-                            <SelectItem key={dept.id} value={dept.name}>
-                              {dept.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {formData.movement_type === "entrada" && (
-                  <div className="space-y-4 border-t pt-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Información de Entrada
-                    </h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="supplier">Proveedor/Fuente *</Label>
-                      <Input
-                        id="supplier"
-                        value={formData.supplier}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
-                        placeholder="Nombre del proveedor o fuente de entrada"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="reason">Motivo *</Label>
-                  <Input
-                    id="reason"
-                    value={formData.reason}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
-                    placeholder="Describe el motivo del movimiento..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notas Adicionales</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Información adicional (opcional)"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="requested_by">Solicitado por</Label>
-                  <Input
-                    id="requested_by"
-                    value={formData.requested_by}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, requested_by: e.target.value }))}
-                    placeholder="Nombre del solicitante"
-                  />
-                </div>
-
-                {/* Resumen */}
-                {selectedProduct && formData.quantity > 0 && (
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <h4 className="font-medium">Resumen del Movimiento</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>Producto:</div>
-                      <div>{selectedProduct.name}</div>
-                      <div>Stock actual:</div>
-                      <div>
-                        {selectedProduct.current_stock} {selectedProduct.unit_of_measure}
+                {/* Right Column */}
+                <div className="space-y-4">
+                  {/* Información del producto seleccionado */}
+                  {selectedProduct && (
+                    <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg space-y-2">
+                      <h4 className="font-medium text-blue-800 flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Información del Producto
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Código:</span>
+                          <p className="font-medium font-mono">{selectedProduct.code}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Stock actual:</span>
+                          <p className="font-medium">
+                            {selectedProduct.current_stock} {selectedProduct.unit_of_measure}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Costo unitario:</span>
+                          <p className="font-medium">S/ {selectedProduct.cost_price.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Unidad:</span>
+                          <p className="font-medium">{selectedProduct.unit_of_measure}</p>
+                        </div>
                       </div>
-                      <div>Cantidad:</div>
-                      <div>
-                        {formData.quantity} {selectedProduct.unit_of_measure}
-                      </div>
-                      <div>Valor total:</div>
-                      <div>S/ {totalAmount.toFixed(2)}</div>
-                      {formData.movement_type === "entrada" && (
-                        <>
-                          <div>Nuevo stock:</div>
-                          <div className="text-green-600 font-semibold">
-                            {selectedProduct.current_stock + formData.quantity} {selectedProduct.unit_of_measure}
-                          </div>
-                        </>
-                      )}
-                      {formData.movement_type === "salida" && (
-                        <>
-                          <div>Nuevo stock:</div>
-                          <div
-                            className={`font-semibold ${
-                              selectedProduct.current_stock - formData.quantity < 0 ? "text-red-600" : "text-orange-600"
-                            }`}
-                          >
-                            {selectedProduct.current_stock - formData.quantity} {selectedProduct.unit_of_measure}
-                          </div>
-                        </>
-                      )}
-                      {formData.movement_type === "ajuste" && (
-                        <>
-                          <div>Nuevo stock:</div>
-                          <div className="text-blue-600 font-semibold">
-                            {formData.quantity} {selectedProduct.unit_of_measure}
-                          </div>
-                        </>
-                      )}
                     </div>
+                  )}
+
+                  {/* Campos específicos por tipo de movimiento */}
+                  {formData.movement_type === "salida" && (
+                    <div className="space-y-4 border rounded-lg p-4">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        Información de Salida
+                      </h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="department_requesting">Departamento Solicitante *</Label>
+                        <Select
+                          value={formData.department_requesting}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, department_requesting: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona el departamento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept.id} value={dept.name}>
+                                {dept.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.movement_type === "entrada" && (
+                    <div className="space-y-4 border rounded-lg p-4">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Información de Entrada
+                      </h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier">Proveedor/Fuente *</Label>
+                        <Input
+                          id="supplier"
+                          value={formData.supplier}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
+                          placeholder="Nombre del proveedor o fuente de entrada"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notas Adicionales</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Información adicional (opcional)"
+                      rows={4}
+                    />
                   </div>
-                )}
+
+                  {/* Resumen */}
+                  {selectedProduct && formData.quantity > 0 && (
+                    <div className="p-4 bg-muted rounded-lg space-y-2">
+                      <h4 className="font-medium">Resumen del Movimiento</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>Producto:</div>
+                        <div>{selectedProduct.name}</div>
+                        <div>Stock actual:</div>
+                        <div>
+                          {selectedProduct.current_stock} {selectedProduct.unit_of_measure}
+                        </div>
+                        <div>Cantidad:</div>
+                        <div>
+                          {formData.quantity} {selectedProduct.unit_of_measure}
+                        </div>
+                        <div>Valor total:</div>
+                        <div>S/ {totalAmount.toFixed(2)}</div>
+                        {formData.movement_type === "entrada" && (
+                          <>
+                            <div>Nuevo stock:</div>
+                            <div className="text-green-600 font-semibold">
+                              {selectedProduct.current_stock + formData.quantity} {selectedProduct.unit_of_measure}
+                            </div>
+                          </>
+                        )}
+                        {formData.movement_type === "salida" && (
+                          <>
+                            <div>Nuevo stock:</div>
+                            <div
+                              className={`font-semibold ${
+                                selectedProduct.current_stock - formData.quantity < 0
+                                  ? "text-red-600"
+                                  : "text-orange-600"
+                              }`}
+                            >
+                              {selectedProduct.current_stock - formData.quantity} {selectedProduct.unit_of_measure}
+                            </div>
+                          </>
+                        )}
+                        {formData.movement_type === "ajuste" && (
+                          <>
+                            <div>Nuevo stock:</div>
+                            <div className="text-blue-600 font-semibold">
+                              {formData.quantity} {selectedProduct.unit_of_measure}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
@@ -648,12 +757,13 @@ export default function InternalMovementsPage() {
                   <TableHead>Departamento/Proveedor</TableHead>
                   <TableHead>Motivo</TableHead>
                   <TableHead>Solicitante</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMovements.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         <Package className="h-8 w-8 mx-auto mb-2" />
                         <p>No se encontraron movimientos</p>
@@ -735,6 +845,13 @@ export default function InternalMovementsPage() {
                             <User className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm">{movement.requested_by}</span>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/warehouse/internal/movements/${movement.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     )

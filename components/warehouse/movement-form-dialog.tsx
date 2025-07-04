@@ -11,11 +11,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, DollarSign, MapPin, Building, Info, Upload, X, Paperclip } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import {
+  AlertTriangle,
+  Package,
+  DollarSign,
+  MapPin,
+  Building,
+  Info,
+  Upload,
+  X,
+  Paperclip,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useCompany } from "@/lib/company-context"
+import { cn } from "@/lib/utils"
 
 interface Product {
   id: string
@@ -52,6 +67,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [productComboOpen, setProductComboOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     product_id: selectedProduct?.id || "",
@@ -388,315 +404,369 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     suggestion.toLowerCase().includes(formData.destination_entity_name.toLowerCase()),
   )
 
+  // Función para formatear el texto del producto en el combobox
+  const formatProductDisplay = (product: Product) => {
+    return `${product.code} - ${product.name}`
+  }
+
+  // Función para obtener el producto seleccionado para mostrar en el trigger
+  const getSelectedProductDisplay = () => {
+    if (!selectedProductData) return "Seleccionar producto"
+    return formatProductDisplay(selectedProductData)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nuevo Movimiento de Inventario</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Selección de producto */}
-          <div className="space-y-2">
-            <Label htmlFor="product_id">Producto *</Label>
-            <Select value={formData.product_id} onValueChange={handleProductChange} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar producto" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>
-                        {product.name} ({product.code})
-                      </span>
-                      <Badge variant={product.current_stock <= product.minimum_stock ? "destructive" : "default"}>
-                        {product.current_stock} {product.unit_of_measure}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Información del producto seleccionado */}
-          {selectedProductData && (
-            <Card className="bg-blue-50/50 border-blue-200">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">Información del Producto</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <Label className="text-muted-foreground">Stock actual</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {selectedProductData.current_stock} {selectedProductData.unit_of_measure}
-                      </span>
-                      {getStockWarning()}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Stock mínimo</Label>
-                    <p className="font-medium">
-                      {selectedProductData.minimum_stock} {selectedProductData.unit_of_measure}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground flex items-center gap-1">
-                      <Package className="h-3 w-3" />
-                      Precio de costo (referencia)
-                    </Label>
-                    <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.cost_price)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      Precio de venta (referencia)
-                    </Label>
-                    <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.sale_price)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tipo de movimiento */}
-          <div className="space-y-2">
-            <Label htmlFor="movement_type">Tipo de Movimiento *</Label>
-            <Select
-              value={formData.movement_type}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, movement_type: value }))}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="entrada">Entrada</SelectItem>
-                <SelectItem value="salida">Salida</SelectItem>
-                <SelectItem value="ajuste">Ajuste</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Cantidad y precio */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="quantity">{formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}</Label>
-              <Input
-                id="quantity"
-                type="number"
-                value={formData.quantity}
-                onChange={(e) => setFormData((prev) => ({ ...prev, quantity: e.target.value }))}
-                required
-                min="1"
-                max={formData.movement_type === "salida" ? selectedProductData?.current_stock : undefined}
-              />
-            </div>
-            {formData.movement_type === "salida" && (
-              <div>
-                <Label htmlFor="sale_price">Precio de Venta *</Label>
-                <Input
-                  id="sale_price"
-                  type="number"
-                  step="0.01"
-                  value={formData.sale_price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, sale_price: e.target.value }))}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Campos específicos para salidas */}
-          {formData.movement_type === "salida" && (
-            <div className="space-y-4 border-t pt-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Información de Salida
-              </h4>
-
-              <div>
-                <Label htmlFor="purchase_order_number">Número de Orden de Compra *</Label>
-                <Input
-                  id="purchase_order_number"
-                  value={formData.purchase_order_number}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, purchase_order_number: e.target.value }))}
-                  placeholder="Ej: OC-2024-001"
-                  required
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Selección de producto con búsqueda */}
+              <div className="space-y-2">
+                <Label htmlFor="product_id">Producto *</Label>
+                <Popover open={productComboOpen} onOpenChange={setProductComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={productComboOpen}
+                      className="w-full justify-between bg-transparent"
+                    >
+                      <span className="truncate">{getSelectedProductDisplay()}</span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar producto por código o nombre..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontraron productos.</CommandEmpty>
+                        <CommandGroup>
+                          {products.map((product) => (
+                            <CommandItem
+                              key={product.id}
+                              value={`${product.code} ${product.name}`}
+                              onSelect={() => {
+                                handleProductChange(product.id)
+                                setProductComboOpen(false)
+                              }}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4",
+                                      formData.product_id === product.id ? "opacity-100" : "opacity-0",
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{formatProductDisplay(product)}</span>
+                                    <span className="text-xs text-muted-foreground">{product.unit_of_measure}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant={product.current_stock <= product.minimum_stock ? "destructive" : "default"}
+                                    className="text-xs"
+                                  >
+                                    Stock: {product.current_stock}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div className="relative">
-                <Label htmlFor="destination_entity_name">Nombre de la Entidad/Cliente *</Label>
-                <Input
-                  id="destination_entity_name"
-                  value={formData.destination_entity_name}
-                  onChange={(e) => handleEntityNameChange(e.target.value)}
-                  placeholder="Escribir nombre de la entidad o cliente"
+              {/* Información del producto seleccionado */}
+              {selectedProductData && (
+                <Card className="bg-blue-50/50 border-blue-200">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Info className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Información del Producto</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <Label className="text-muted-foreground">Stock actual</Label>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {selectedProductData.current_stock} {selectedProductData.unit_of_measure}
+                          </span>
+                          {getStockWarning()}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Stock mínimo</Label>
+                        <p className="font-medium">
+                          {selectedProductData.minimum_stock} {selectedProductData.unit_of_measure}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          Precio de costo
+                        </Label>
+                        <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.cost_price)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          Precio de venta
+                        </Label>
+                        <p className="font-medium text-gray-600">{formatCurrency(selectedProductData.sale_price)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tipo de movimiento */}
+              <div className="space-y-2">
+                <Label htmlFor="movement_type">Tipo de Movimiento *</Label>
+                <Select
+                  value={formData.movement_type}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, movement_type: value }))}
                   required
-                />
-                {showEntitySuggestions && filteredSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                    {filteredSuggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
-                        onClick={() => selectEntitySuggestion(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entrada">Entrada</SelectItem>
+                    <SelectItem value="salida">Salida</SelectItem>
+                    <SelectItem value="ajuste">Ajuste</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Cantidad y precio */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quantity">
+                    {formData.movement_type === "ajuste" ? "Nuevo Stock *" : "Cantidad *"}
+                  </Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, quantity: e.target.value }))}
+                    required
+                    min="1"
+                    max={formData.movement_type === "salida" ? selectedProductData?.current_stock : undefined}
+                  />
+                </div>
+                {formData.movement_type === "salida" && (
+                  <div>
+                    <Label htmlFor="sale_price">Precio de Venta *</Label>
+                    <Input
+                      id="sale_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.sale_price}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, sale_price: e.target.value }))}
+                      placeholder="0.00"
+                      required
+                    />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-4 border-t pt-4">
-                <h5 className="font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Ubicación de Destino
-                </h5>
+              {/* Campos específicos para entradas */}
+              {formData.movement_type === "entrada" && (
+                <div>
+                  <Label htmlFor="supplier">Proveedor</Label>
+                  <Input
+                    id="supplier"
+                    value={formData.supplier}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
+                    placeholder="Nombre del proveedor"
+                  />
+                </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="destination_department_id">Departamento</Label>
-                    <Select
-                      value={formData.destination_department_id}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, destination_department_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar departamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Campos específicos para ajustes */}
+              {formData.movement_type === "ajuste" && (
+                <div>
+                  <Label htmlFor="reason">Motivo del Ajuste *</Label>
+                  <Input
+                    id="reason"
+                    value={formData.reason}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
+                    placeholder="Motivo del ajuste"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Campos específicos para salidas */}
+              {formData.movement_type === "salida" && (
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Información de Salida
+                  </h4>
 
                   <div>
-                    <Label htmlFor="destination_address">Dirección Específica</Label>
+                    <Label htmlFor="purchase_order_number">Número de Orden de Compra *</Label>
                     <Input
-                      id="destination_address"
-                      value={formData.destination_address}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, destination_address: e.target.value }))}
-                      placeholder="Dirección completa del destino"
+                      id="purchase_order_number"
+                      value={formData.purchase_order_number}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, purchase_order_number: e.target.value }))}
+                      placeholder="Ej: OC-2024-001"
+                      required
                     />
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Campos específicos para entradas */}
-          {formData.movement_type === "entrada" && (
-            <div>
-              <Label htmlFor="supplier">Proveedor</Label>
-              <Input
-                id="supplier"
-                value={formData.supplier}
-                onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
-                placeholder="Nombre del proveedor"
-              />
-            </div>
-          )}
-
-          {/* Campos específicos para ajustes */}
-          {formData.movement_type === "ajuste" && (
-            <div>
-              <Label htmlFor="reason">Motivo del Ajuste *</Label>
-              <Input
-                id="reason"
-                value={formData.reason}
-                onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
-                placeholder="Motivo del ajuste"
-                required
-              />
-            </div>
-          )}
-
-          {/* Sección de archivos adjuntos */}
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="font-medium flex items-center gap-2">
-              <Paperclip className="h-4 w-4" />
-              Documentos Adjuntos (opcional)
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              Sube facturas, hojas de ruta, órdenes de compra u otros documentos relacionados al movimiento.
-            </p>
-
-            <div>
-              <Label htmlFor="attachments" className="cursor-pointer">
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Haz clic para seleccionar archivos o arrastra y suelta aquí
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. 10MB cada uno)
-                  </p>
-                </div>
-              </Label>
-              <Input
-                id="attachments"
-                type="file"
-                multiple
-                className="hidden"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                onChange={handleFileSelect}
-              />
-            </div>
-
-            {/* Lista de archivos seleccionados */}
-            {attachments.length > 0 && (
-              <div className="space-y-2">
-                <Label>Archivos seleccionados ({attachments.length}):</Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                  {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate font-medium">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {file.type} • {(file.size / 1024 / 1024).toFixed(1)} MB
-                          </p>
-                        </div>
+                  <div className="relative">
+                    <Label htmlFor="destination_entity_name">Nombre de la Entidad/Cliente *</Label>
+                    <Input
+                      id="destination_entity_name"
+                      value={formData.destination_entity_name}
+                      onChange={(e) => handleEntityNameChange(e.target.value)}
+                      placeholder="Escribir nombre de la entidad o cliente"
+                      required
+                    />
+                    {showEntitySuggestions && filteredSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredSuggestions.map((suggestion, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
+                            onClick={() => selectEntitySuggestion(suggestion)}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeAttachment(index)}
-                        className="flex-shrink-0 h-8 w-8 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+                    )}
+                  </div>
 
-          {/* Notas */}
-          <div>
-            <Label htmlFor="notes">Notas Adicionales</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Información adicional (opcional)"
-              rows={3}
-            />
+                  <div className="space-y-4">
+                    <h5 className="font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Ubicación de Destino
+                    </h5>
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="destination_department_id">Departamento</Label>
+                        <Select
+                          value={formData.destination_department_id}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({ ...prev, destination_department_id: value }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar departamento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept.id} value={dept.id}>
+                                {dept.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="destination_address">Dirección Específica</Label>
+                        <Input
+                          id="destination_address"
+                          value={formData.destination_address}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, destination_address: e.target.value }))}
+                          placeholder="Dirección completa del destino"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sección de archivos adjuntos */}
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  Documentos Adjuntos (opcional)
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Sube facturas, hojas de ruta, órdenes de compra u otros documentos relacionados.
+                </p>
+
+                <div>
+                  <Label htmlFor="attachments" className="cursor-pointer">
+                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center hover:border-muted-foreground/50 transition-colors">
+                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Haz clic para seleccionar archivos</p>
+                      <p className="text-xs text-muted-foreground mt-1">PDF, DOC, XLS, JPG, PNG (máx. 10MB)</p>
+                    </div>
+                  </Label>
+                  <Input
+                    id="attachments"
+                    type="file"
+                    multiple
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect}
+                  />
+                </div>
+
+                {/* Lista de archivos seleccionados */}
+                {attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Archivos seleccionados ({attachments.length}):</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                      {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm truncate font-medium">{file.name}</p>
+                              <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAttachment(index)}
+                            className="flex-shrink-0 h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Notas */}
+              <div>
+                <Label htmlFor="notes">Notas Adicionales</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Información adicional (opcional)"
+                  rows={3}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Resumen */}
@@ -704,7 +774,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             <Card className="bg-muted/50">
               <CardContent className="pt-4">
                 <h4 className="font-medium mb-2">Resumen del Movimiento</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Cantidad:</span>
                     <p className="font-medium">
@@ -720,11 +790,15 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                     </div>
                   )}
                   {attachments.length > 0 && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Documentos adjuntos:</span>
+                    <div>
+                      <span className="text-muted-foreground">Documentos:</span>
                       <p className="font-medium">{attachments.length} archivo(s)</p>
                     </div>
                   )}
+                  <div>
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <p className="font-medium capitalize">{formData.movement_type}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

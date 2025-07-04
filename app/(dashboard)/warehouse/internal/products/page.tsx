@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Package, AlertTriangle, Edit } from "lucide-react"
+import { Plus, Search, Package, AlertTriangle, Edit, Eye } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -318,6 +318,11 @@ export default function InternalProductsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/warehouse/internal/products/${product.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
                           <Button variant="ghost" size="sm" asChild>
                             <Link href={`/warehouse/internal/products/edit/${product.id}`}>
                               <Edit className="h-4 w-4" />
