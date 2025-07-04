@@ -28,7 +28,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 interface Product {
-  id: number
+  id: string
   code: string
   name: string
   current_stock: number
@@ -43,8 +43,8 @@ interface Department {
 }
 
 interface Movement {
-  id: number
-  product_id: number
+  id: string
+  product_id: string
   movement_type: "entrada" | "salida" | "ajuste"
   quantity: number
   cost_price: number
@@ -167,7 +167,7 @@ export default function InternalMovementsPage() {
   }
 
   const handleProductChange = (productId: string) => {
-    const product = products.find((p) => p.id.toString() === productId)
+    const product = products.find((p) => p.id === productId)
     if (product) {
       setFormData((prev) => ({
         ...prev,
@@ -210,7 +210,7 @@ export default function InternalMovementsPage() {
       }
     }
 
-    const product = products.find((p) => p.id.toString() === formData.product_id)
+    const product = products.find((p) => p.id === formData.product_id)
     if (!product) {
       toast.error("Producto no encontrado")
       return
@@ -225,9 +225,9 @@ export default function InternalMovementsPage() {
     try {
       setSaving(true)
 
-      // Crear movimiento
+      // Crear movimiento - mantener product_id como string UUID
       const movementData = {
-        product_id: Number.parseInt(formData.product_id),
+        product_id: formData.product_id, // No convertir a número, mantener como UUID string
         movement_type: formData.movement_type,
         quantity: formData.quantity,
         cost_price: formData.cost_price,
@@ -289,7 +289,7 @@ export default function InternalMovementsPage() {
     ajustes: movements.filter((m) => m.movement_type === "ajuste").length,
   }
 
-  const selectedProduct = products.find((p) => p.id.toString() === formData.product_id)
+  const selectedProduct = products.find((p) => p.id === formData.product_id)
   const totalAmount = formData.quantity * formData.cost_price
 
   return (
@@ -324,7 +324,7 @@ export default function InternalMovementsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id.toString()}>
+                        <SelectItem key={product.id} value={product.id}>
                           <div className="flex items-center justify-between w-full">
                             <span>
                               {product.code} - {product.name}
