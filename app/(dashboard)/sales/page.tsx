@@ -80,6 +80,18 @@ interface SaleItem {
   total_amount: number
 }
 
+interface ProductDetails {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  modelo: string | null
+  brand_id: string | null
+  brands?: {
+    name: string
+  } | null
+}
+
 interface SalesStats {
   totalSales: number
   totalAmount: number
@@ -201,6 +213,37 @@ export default function SalesPage() {
     }
   }
 
+  // Nueva función para obtener detalles completos de productos desde la tabla products
+  const fetchProductDetailsByCodes = async (productCodes: string[]): Promise<ProductDetails[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id,
+          code,
+          name,
+          description,
+          modelo,
+          brand_id,
+          brands (
+            name
+          )
+        `)
+        .in("code", productCodes)
+        .eq("company_id", companyToUse?.id)
+
+      if (error) {
+        console.error("Error fetching product details:", error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error("Error in fetchProductDetailsByCodes:", error)
+      return []
+    }
+  }
+
   const handleEditSale = (sale: Sale) => {
     if (sale.is_multi_product) {
       setEditingMultiSale(sale)
@@ -301,28 +344,72 @@ export default function SalesPage() {
       toast.info("Generando carta de garantía...")
 
       // Obtener los productos de la venta
-      const { data: items, error } = await supabase
+      const { data: saleItems, error: saleItemsError } = await supabase
         .from("sale_items")
         .select("product_code, product_name, product_description, product_brand, quantity")
         .eq("sale_id", sale.id)
 
-      if (error) throw error
+      if (saleItemsError) throw saleItemsError
 
-      const products = items || []
+      let productCodes: string[] = []
+      let finalProducts: any[] = []
 
-      // Si es venta simple, usar los datos de la venta principal
-      const finalProducts =
-        products.length > 0
-          ? products
-          : [
-              {
-                product_code: sale.display_product_code,
-                product_name: sale.display_product_name,
-                product_description: sale.display_product_name,
-                product_brand: "",
-                quantity: sale.total_quantity,
-              },
-            ]
+      if (saleItems && saleItems.length > 0) {
+        // Venta multi-producto: obtener códigos de todos los productos
+        productCodes = saleItems.map((item) => item.product_code).filter(Boolean)
+      } else {
+        // Venta simple: usar el código del producto principal
+        if (sale.display_product_code) {
+          productCodes = [sale.display_product_code]
+        }
+      }
+
+      console.log("🔍 Códigos de productos a buscar:", productCodes)
+
+      if (productCodes.length > 0) {
+        // Obtener detalles completos de los productos desde la tabla products
+        const productDetails = await fetchProductDetailsByCodes(productCodes)
+        console.log("📦 Detalles de productos obtenidos:", productDetails)
+
+        if (saleItems && saleItems.length > 0) {
+          // Mapear productos de venta multi-producto con detalles completos
+          finalProducts = saleItems.map((saleItem) => {
+            const productDetail = productDetails.find((p) => p.code === saleItem.product_code)
+            return {
+              quantity: saleItem.quantity,
+              description: saleItem.product_description || saleItem.product_name,
+              modelo: productDetail?.modelo || null, // ✅ Obtener modelo desde la tabla products
+              brand: saleItem.product_brand || productDetail?.brands?.name || "N/A",
+              code: saleItem.product_code,
+            }
+          })
+        } else {
+          // Venta simple: usar datos de la venta principal con detalles del producto
+          const productDetail = productDetails.find((p) => p.code === sale.display_product_code)
+          finalProducts = [
+            {
+              quantity: sale.total_quantity,
+              description: sale.display_product_name,
+              modelo: productDetail?.modelo || null, // ✅ Obtener modelo desde la tabla products
+              brand: productDetail?.brands?.name || "N/A",
+              code: sale.display_product_code,
+            },
+          ]
+        }
+      } else {
+        // Fallback si no hay códigos de productos
+        finalProducts = [
+          {
+            quantity: sale.total_quantity,
+            description: sale.display_product_name,
+            modelo: null,
+            brand: "N/A",
+            code: sale.display_product_code || "N/A",
+          },
+        ]
+      }
+
+      console.log("🎯 Productos finales para garantía:", finalProducts)
 
       await generateWarrantyLetter({
         companyName: companyToUse?.name || "",
@@ -332,12 +419,7 @@ export default function SalesPage() {
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
         clientAddress: sale.final_destination || "Dirección no especificada",
-        products: finalProducts.map((product) => ({
-          quantity: product.quantity,
-          description: product.product_description || product.product_name,
-          brand: product.product_brand || "N/A",
-          code: product.product_code,
-        })),
+        products: finalProducts,
         warrantyMonths: 12,
         createdBy: user?.full_name || "Usuario",
       })

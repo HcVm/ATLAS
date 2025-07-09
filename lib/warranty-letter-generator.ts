@@ -24,6 +24,7 @@ export interface WarrantyLetterData {
   products: Array<{
     quantity: number
     description: string
+    modelo?: string // ✅ Corregido: campo opcional modelo (como en la BD)
     brand: string
     code: string
   }>
@@ -35,22 +36,75 @@ export interface WarrantyLetterData {
   createdBy: string
 }
 
-export const generateWarrantyLetter = async (data: WarrantyLetterData): Promise<void> => {
-  console.log("🚀 Iniciando generación de Carta de Garantía...")
+// Mapeo de marcas a códigos de empresa (CORREGIDO)
+const BRAND_TO_COMPANY: Record<string, string> = {
+  HOPELIFE: "ARM",
+  WORLDLIFE: "ARM",
+  ZEUS: "AGLE",
+  VALHALLA: "AGLE",
+}
 
+// URLs de membretes por marca (CORREGIDO)
+const LETTERHEAD_URLS: Record<string, string> = {
+  HOPELIFE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOPELIFE-HOJAMEMBRETADA.png",
+  WORLDLIFE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-HOJAMEMBRETADA.png",
+  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
+  VALHALLA: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
+}
+
+export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
+  console.log("🚀 Iniciando generación de Cartas de Garantía...")
+
+  // Agrupar productos por marca
+  const productsByBrand = data.products.reduce(
+    (acc, product) => {
+      const brand = product.brand.toUpperCase()
+      if (!acc[brand]) {
+        acc[brand] = []
+      }
+      acc[brand].push(product)
+      return acc
+    },
+    {} as Record<string, typeof data.products>,
+  )
+
+  console.log("📦 Productos agrupados por marca:", productsByBrand)
+
+  // Generar una carta por cada marca
+  for (const [brand, products] of Object.entries(productsByBrand)) {
+    console.log(`🎨 Generando carta para marca: ${brand}`)
+
+    const brandData = {
+      ...data,
+      products: products,
+    }
+
+    await generateSingleWarrantyLetter(brandData, brand)
+  }
+
+  console.log("✅ Todas las cartas de garantía generadas exitosamente")
+}
+
+const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: string): Promise<void> => {
   // Obtener información bancaria automáticamente si tenemos el código de empresa
   if (data.companyCode && !data.bankingInfo) {
     const bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
     if (bankingInfo) {
       data.bankingInfo = bankingInfo
     }
-    console.log("✅ Banking info obtained for company:", data.companyCode, data.bankingInfo)
   }
 
-  console.log("🎨 Creando contenido HTML de la Carta de Garantía...")
+  // Determinar el tipo de empresa (AGLE o ARM)
+  const companyType = BRAND_TO_COMPANY[brand] || "AGLE"
+  const letterheedUrl = LETTERHEAD_URLS[brand]
 
-  // Crear el HTML temporal para el PDF
-  const htmlContent = createWarrantyLetterHTML(data)
+  console.log(`🎨 Creando contenido HTML para ${brand} (${companyType})...`)
+
+  // Crear el HTML según el tipo de empresa
+  const htmlContent =
+    companyType === "AGLE"
+      ? createAGLEWarrantyLetterHTML(data, brand, letterheedUrl)
+      : createARMWarrantyLetterHTML(data, brand, letterheedUrl)
 
   // Crear un elemento temporal en el DOM
   const tempDiv = document.createElement("div")
@@ -67,7 +121,7 @@ export const generateWarrantyLetter = async (data: WarrantyLetterData): Promise<
     console.log("⏳ Esperando renderizado del contenido...")
 
     // Esperar un poco para que el contenido se renderice
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Obtener las dimensiones reales del contenido
     const contentHeight = tempDiv.scrollHeight
@@ -116,12 +170,12 @@ export const generateWarrantyLetter = async (data: WarrantyLetterData): Promise<
     pdf.addImage(imgData, "PNG", 0, 0, a4Width, pdfHeight, undefined, "FAST")
 
     // Descargar el PDF
-    const fileName = `Carta_Garantia_${data.letterNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`
+    const fileName = `Certificado_Garantia_${brand}_${data.letterNumber}_${data.clientName.replace(/\s+/g, "_")}.pdf`
     pdf.save(fileName)
 
-    console.log("✅ Carta de Garantía generada y descargada exitosamente:", fileName)
+    console.log(`✅ Carta de Garantía ${brand} generada y descargada exitosamente:`, fileName)
   } catch (error) {
-    console.error("❌ Error en generación de Carta de Garantía:", error)
+    console.error(`❌ Error en generación de Carta de Garantía ${brand}:`, error)
     throw error
   } finally {
     // Limpiar el elemento temporal
@@ -131,7 +185,13 @@ export const generateWarrantyLetter = async (data: WarrantyLetterData): Promise<
   }
 }
 
-const createWarrantyLetterHTML = (data: WarrantyLetterData): string => {
+// Función helper para obtener el texto del producto con fallback
+const getProductDisplayText = (product: WarrantyLetterData["products"][0]): string => {
+  // Usar modelo si existe, sino usar description, sino usar "PRODUCTO"
+  return product.modelo?.trim() || product.description?.trim() || "PRODUCTO"
+}
+
+const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
   const currentDate = new Date().toLocaleDateString("es-PE", {
     year: "numeric",
     month: "long",
@@ -139,177 +199,243 @@ const createWarrantyLetterHTML = (data: WarrantyLetterData): string => {
   })
 
   return `
-    <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 15mm; margin: 0;">
+    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
-      <!-- Header oficial con acento -->
-      <div style="text-align: center; margin-bottom: 15mm; padding: 8mm; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 6mm; border-left: 3mm solid #dc2626;">
-        <p style="margin: 0; font-size: 11px; font-weight: 700; color: #dc2626; letter-spacing: 0.5px;">
-          "Año de la Recuperación y Consolidación de la Economía Peruana"
-        </p>
-      </div>
-
-      <!-- Header con logo y datos de empresa -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15mm; gap: 10mm;">
-        
-        <!-- Logo y datos de empresa -->
-        <div style="flex: 1;">
-          ${
-            data.companyLogoUrl
-              ? `
-          <div style="margin-bottom: 8mm;">
-            <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 120px; max-height: 80px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" crossorigin="anonymous" />
-          </div>
-          `
-              : ""
-          }
-          
-          <div style="background: #fafafa; padding: 8mm; border-radius: 4mm; border-left: 3mm solid #dc2626;">
-            <h2 style="margin: 0 0 4mm 0; font-size: 16px; font-weight: 800; color: #dc2626;">${data.companyName}</h2>
-            <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.companyRuc}</p>
-            
-            ${
-              data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; line-height: 1.3;">OFICINA: ${data.bankingInfo.fiscalAddress}</p>`
-                : ""
-            }
-            
-            ${
-              data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666;">E-MAIL: ${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
-                : ""
-            }
-            
-            ${
-              data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-                ? `<p style="margin: 0; font-size: 9px; color: #666;">
-                    ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
-                    ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
-                    ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
-                  </p>`
-                : ""
-            }
-          </div>
+      <!-- Membrete de fondo -->
+      ${
+        letterheedUrl
+          ? `
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+          <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
         </div>
-        
-        <!-- Título y número de carta -->
-        <div style="flex: 0 0 80mm; text-align: center;">
-          <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 8mm; border-radius: 6mm; box-shadow: 0 4mm 6mm rgba(220,38,38,0.25);">
-            <h1 style="margin: 0 0 4mm 0; font-size: 18px; font-weight: 800; letter-spacing: 1px;">CARTA DE GARANTÍA</h1>
-            <p style="margin: 0; font-size: 14px; font-weight: 600;">N°${data.letterNumber}</p>
-          </div>
+      `
+          : ""
+      }
+
+      <!-- Contenido principal - Posicionado para no interferir con el membrete -->
+      <div style="position: relative; z-index: 2; padding: 30mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
+
+        <!-- Título principal -->
+        <div style="text-align: center; margin-bottom: 6mm;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
+            CERTIFICADO DE GARANTÍA
+          </h1>
         </div>
-      </div>
 
-      <!-- Fecha -->
-      <div style="text-align: right; margin-bottom: 15mm;">
-        <p style="margin: 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
-      </div>
-
-      <!-- Información del destinatario -->
-      <div style="margin-bottom: 15mm;">
-        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 4mm; overflow: hidden; box-shadow: 0 2mm 6mm rgba(0,0,0,0.08);">
-          <div style="background: linear-gradient(90deg, #374151 0%, #4b5563 100%); color: white; padding: 6mm 10mm;">
-            <h3 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">DESTINATARIO</h3>
-          </div>
-          
-          <div style="padding: 10mm;">
-            <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #374151;">Señor(a)(es):</p>
-            <h3 style="margin: 0 0 6mm 0; font-size: 14px; font-weight: 800; color: #1a1a1a;">${data.clientName}</h3>
-            <p style="margin: 0 0 4mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
-            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.4;">DIRECCIÓN: ${data.clientAddress}</p>
-          </div>
+        <!-- Fecha -->
+        <div style="text-align: right; margin-bottom: 7mm;">
+          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #000;">Lima, ${currentDate}</p>
         </div>
-      </div>
 
-      <!-- Contenido principal -->
-      <div style="margin-bottom: 15mm; line-height: 1.6;">
-        <p style="margin: 0 0 8mm 0; font-size: 11px; color: #374151; text-align: justify;">
-          Por medio de la presente, la empresa <strong style="color: #dc2626;">${data.companyName}</strong> les garantiza que las siguientes herramientas:
-        </p>
+        <!-- Información del destinatario -->
+        <div style="margin-bottom: 5mm;">
+          <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #000;">SEÑORES:</p>
+          <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">Ruc: ${data.clientRuc}</p>
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; line-height: 1.4;">${data.clientAddress}.</p>
+        </div>
 
-        <!-- Lista de productos -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4mm; padding: 8mm; margin: 8mm 0;">
-          ${data.products
-            .map(
-              (product) => `
-            <div style="margin-bottom: 6mm; padding: 4mm; background: white; border-radius: 3mm; border-left: 3mm solid #dc2626;">
-              <p style="margin: 0; font-size: 12px; font-weight: 700; color: #1a1a1a; line-height: 1.4;">
-                ${product.quantity} ${product.description.toUpperCase()} DE MARCA ${product.brand.toUpperCase()}
-                ${product.code ? ` CON CÓDIGO ${product.code.toUpperCase()}` : ""}.
+        <!-- Contenido principal -->
+        <div style="margin-bottom: 5mm; line-height: 1.5; text-align: justify;">
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">
+            Por medio de la presente, <strong>AGLE PERUVIAN COMPANY E.I.R.L.</strong> garantiza este producto por un período de <strong>${data.warrantyMonths === 1 ? "un (1) mes" : data.warrantyMonths === 12 ? "doce (12) meses" : `${data.warrantyMonths} meses`}</strong> contados a partir de la fecha de entrega al usuario final. Esta garantía cubre defectos de fabricación y fallos de funcionamiento en todos los componentes, así como la mano de obra necesaria para su reparación o reemplazo, siempre que dichos defectos sean atribuibles a procesos de fabricación.
+          </p>
+
+          <p style="margin: 0 0  3mm 0; font-size: 10px; color: #000;">
+            El producto ha sido sometido a estrictos procedimientos de control de calidad antes de su distribución. En caso de detectarse alguna falla dentro del periodo de garantía, el cliente deberá contactarse a través de los canales autorizados indicados en este documento, para los siguientes bienes:
+          </p>
+
+          <!-- Lista de productos usando MODELO con fallback a descripción -->
+          <div style="margin: 5mm 0;">
+            <p style="margin: 0 0 3mm 0; font-size: 10px; font-weight: 700; color: #000;">➤ Producto:</p>
+            ${data.products
+              .map(
+                (product) => `
+              <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; font-weight: 700;">
+                ${brand} ${getProductDisplayText(product).toUpperCase()} CÓDIGO ${(product.code || "N/A").toUpperCase()}, ${product.quantity.toString().padStart(2, "0")} UNIDADES.
               </p>
-            </div>
-          `,
-            )
-            .join("")}
+            `,
+              )
+              .join("")}
+          </div>
+
+          <p style="margin: 3mm 0 0 0; font-size: 10px; color: #000;">
+            <strong>➤ Fabricante/Distribuidor:</strong> AGLE PERUVIAN COMPANY E.I.R.L.
+          </p>
         </div>
 
-        <p style="margin: 8mm 0; font-size: 11px; color: #374151; text-align: justify;">
-          Cuentan con una garantía de <strong style="color: #dc2626;">${data.warrantyMonths} MESES</strong>, en todas sus partes y mano de obra, contra cualquier defecto 
-          de fabricación y funcionamiento a partir de la fecha entregada al consumidor final. El producto adquirido 
-          ha sido sometido a los más estrictos procesos de control de calidad antes de llegar a usted; por lo que, si 
-          se presenta algún desperfecto en su funcionamiento, atribuible a su fabricación, durante la vigencia del 
-          plazo de esta garantía, le rogaríamos contactarnos a través de algunos de los medios especificados en el 
-          presente certificado.
-        </p>
-
-        <p style="margin: 8mm 0; font-size: 11px; color: #374151; text-align: justify;">
-          Asimismo, <strong style="color: #dc2626;">${data.companyName}</strong> no se responsabiliza de modo alguno por lucro de 
-          pérdida de utilidades, daños indirectos, ni por ningún otro perjuicio que surja como consecuencia de un 
-          indebido funcionamiento del producto adquirido.
-        </p>
-      </div>
-
-      <!-- Condiciones de garantía -->
-      <div style="margin-bottom: 15mm;">
-        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 4mm; overflow: hidden; box-shadow: 0 2mm 6mm rgba(0,0,0,0.08);">
-          <div style="background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%); color: white; padding: 6mm 10mm;">
-            <h3 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">CONDICIONES DE GARANTÍA</h3>
-          </div>
+        <!-- Exclusiones de garantía -->
+        <div style="margin-bottom: 5mm;">
+          <h3 style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 700; color: #000;">Exclusiones de la Garantía</h3>
           
-          <div style="padding: 10mm;">
-            <p style="margin: 0 0 6mm 0; font-size: 11px; font-weight: 700; color: #dc2626;">ESTA GARANTÍA NO ES VÁLIDA EN CUALQUIERA DE LOS SIGUIENTES CASOS:</p>
+          <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">Esta garantía no será válida en los siguientes casos:</p>
+          
+          <div style="margin-bottom: 3mm;">
+            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+              • Cuando el producto haya sido utilizado en condiciones distintas a las especificadas por el fabricante o fuera de sus parámetros normales de operación.
+            </p>
             
-            <div style="margin-bottom: 4mm;">
-              <div style="display: flex; align-items: flex-start; gap: 4mm; margin-bottom: 3mm;">
-                <div style="width: 6mm; height: 6mm; background: #dc2626; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 8px; flex-shrink: 0;">•</div>
-                <p style="margin: 0; font-size: 10px; line-height: 1.4; color: #374151;">Cuando el producto se hubiese utilizado en condiciones distintas a lo normal.</p>
-              </div>
-              
-              <div style="display: flex; align-items: flex-start; gap: 4mm; margin-bottom: 3mm;">
-                <div style="width: 6mm; height: 6mm; background: #dc2626; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 8px; flex-shrink: 0;">•</div>
-                <p style="margin: 0; font-size: 10px; line-height: 1.4; color: #374151;">Cuando el producto hubiese sido alterado o manipulado por terceros.</p>
-              </div>
-              
-              <div style="display: flex; align-items: flex-start; gap: 4mm; margin-bottom: 3mm;">
-                <div style="width: 6mm; height: 6mm; background: #dc2626; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 8px; flex-shrink: 0;">•</div>
-                <p style="margin: 0; font-size: 10px; line-height: 1.4; color: #374151;">Cuando el producto haya tenido un mal uso por parte del usuario final.</p>
-              </div>
-            </div>
+            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+              • Si el producto ha sido intervenido, modificado, reparado o alterado por personas o servicios técnicos no autorizados por AGLE PERUVIAN COMPANY E.I.R.L.
+            </p>
             
-            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3mm; padding: 6mm; margin-top: 6mm;">
-              <p style="margin: 0; font-size: 11px; font-weight: 700; color: #92400e; text-align: center;">
-                ESTA GARANTÍA AMPARA ÚNICAMENTE AL PRODUCTO DESCRITO EN ESTE DOCUMENTO.
-              </p>
-            </div>
+            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+              • En caso de uso indebido, negligencia, daño intencional o manipulación incorrecta por parte del usuario final.
+            </p>
+
+            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+              • Daños ocasionados por causas externas, tales como: accidentes, desastres naturales, sobrecargas eléctricas, exposición a líquidos, o uso de accesorios no originales.
+            </p>
           </div>
         </div>
-      </div>
 
-      <!-- Firma -->
-      <div style="margin-top: 20mm;">
-        <p style="margin: 0 0 15mm 0; font-size: 11px; color: #374151;">Atentamente,</p>
-        
-        <div style="text-align: center; margin-top: 25mm;">
-          <div style="border-bottom: 1px solid #374151; width: 200px; margin: 0 auto 4mm auto;"></div>
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #374151;">${data.createdBy}</p>
-          <p style="margin: 0; font-size: 10px; color: #666;">${data.companyName}</p>
+        <!-- Limitación de responsabilidad -->
+        <div style="margin-bottom: 5mm;">
+          <h3 style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000;">Limitación de Responsabilidad</h3>
+          
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">AGLE PERUVIAN COMPANY E.I.R.L. no será responsable en ningún caso por:</p>
+          
+          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Pérdida de beneficios o lucro cesante.</p>
+          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Daños indirectos, incidentales o consecuenciales.</p>
+          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Cualquier otro perjuicio económico, personal o material derivado del uso, mal funcionamiento o imposibilidad de uso del producto.</p>
         </div>
-      </div>
 
-      <!-- Footer con información del documento -->
-      <div style="position: absolute; bottom: 10mm; left: 15mm; right: 15mm; text-align: center; font-size: 8px; color: #9ca3af; padding: 6mm; border-top: 1px solid #f3f4f6;">
-        <p style="margin: 0;">Carta de Garantía generada el ${new Date().toLocaleDateString("es-PE")} | ${data.companyName}</p>
+        <!-- Alcance de la garantía -->
+        <div style="margin-bottom: 6mm;">
+          <h3 style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000;">Alcance de la Garantía</h3>
+          
+          <p style="margin: 0 0 5mm 0; font-size: 10px; color: #000; text-align: justify;">
+            Esta garantía ampara únicamente el producto identificado en este documento y no es transferible. Cualquier servicio prestado fuera del periodo de garantía, o que no esté cubierto por las condiciones aquí descritas, estará sujeto a cargos adicionales por parte del proveedor. <strong>¡Gracias por confiar en nosotros!</strong>
+          </p>
+        </div>
+
+        <!-- Firma -->
+        <div style="margin-top: 8mm;">
+          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">Atentamente,</p>
+          
+          <div style="text-align: center; margin-top: 7mm;">
+            <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
+            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">GERALDINE MUÑOZ CARRANZA</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">GERENTE GENERAL</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">AGLE PERUVIAN COMPANY</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">${data.companyRuc}</p>
+          </div>
+        </div>
       </div>
     </div>
   `
 }
+
+const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
+  const currentDate = new Date().toLocaleDateString("es-PE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  return `
+    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
+
+      <!-- Membrete de fondo -->
+      ${
+        letterheedUrl
+          ? `
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+          <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Contenido principal - Posicionado para no interferir con el membrete -->
+      <div style="position: relative; z-index: 2; padding: 60mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
+
+        <!-- Título principal -->
+        <div style="text-align: center; margin-bottom: 20mm;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
+            CARTA DE GARANTÍA
+          </h1>
+          <p style="margin: 3mm 0 0 0; font-size: 13px; font-weight: 600; color: #000;">N°${data.letterNumber}</p>
+        </div>
+
+        <!-- Fecha -->
+        <div style="text-align: right; margin-bottom: 15mm;">
+          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #000;">Lima, ${currentDate}.</p>
+        </div>
+
+        <!-- Información del destinatario -->
+        <div style="margin-bottom: 15mm;">
+          <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #000;">Señor(a)(es):</p>
+          <h3 style="margin: 0 0 4mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
+          <p style="margin: 0 0 4mm 0; font-size: 10px; color: #000;">RUC: ${data.clientRuc}</p>
+          <p style="margin: 0 0 8mm 0; font-size: 10px; color: #000; line-height: 1.4;">DIRECCIÓN: ${data.clientAddress}</p>
+        </div>
+
+        <!-- Contenido principal -->
+        <div style="margin-bottom: 12mm; line-height: 1.5; text-align: justify;">
+          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">
+            Por medio de la presente, la empresa <strong>${data.companyName}</strong> les garantiza que las siguientes herramientas:
+          </p>
+
+          <!-- Lista de productos usando MODELO con fallback a descripción -->
+          <div style="margin: 6mm 0;">
+            ${data.products
+              .map(
+                (product) => `
+              <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000; line-height: 1.3;">
+                ${product.quantity} ${getProductDisplayText(product).toUpperCase()} DE MARCA ${product.brand.toUpperCase()}${product.code ? ` CON CÓDIGO ${product.code.toUpperCase()}` : ""}.
+              </p>
+            `,
+              )
+              .join("")}
+          </div>
+
+          <p style="margin: 6mm 0; font-size: 10px; color: #000;">
+            Cuentan con una garantía de <strong>${data.warrantyMonths} MESES</strong>, en todas sus partes y mano de obra, contra cualquier defecto de fabricación y funcionamiento a partir de la fecha entregada al consumidor final. El producto adquirido ha sido sometido a los más estrictos procesos de control de calidad antes de llegar a usted; por lo que, si se presenta algún desperfecto en su funcionamiento, atribuible a su fabricación, durante la vigencia del plazo de esta garantía, le rogaríamos contactarnos a través de algunos de los medios especificados en el presente certificado.
+          </p>
+
+          <p style="margin: 6mm 0; font-size: 10px; color: #000;">
+            Asimismo, <strong>${data.companyName}</strong> no se responsabiliza de modo alguno por lucro de pérdida de utilidades, daños indirectos, ni por ningún otro perjuicio que surja como consecuencia de un indebido funcionamiento del producto adquirido.
+          </p>
+        </div>
+
+        <!-- Condiciones de garantía -->
+        <div style="margin-bottom: 12mm;">
+          <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">ESTA GARANTÍA NO ES VÁLIDA EN CUALQUIERA DE LOS SIGUIENTES CASOS:</p>
+          
+          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            • Cuando el producto se hubiese utilizado en condiciones distintas a lo normal.
+          </p>
+          
+          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            • Cuando el producto hubiese sido alterado o manipulado por terceros.
+          </p>
+          
+          <p style="margin: 0 0 6mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            • Cuando el producto haya tenido un mal uso por parte del usuario final.
+          </p>
+
+          <div style="text-align: center; padding: 4mm; border: 1px solid #000; margin-top: 4mm;">
+            <p style="margin: 0; font-size: 10px; font-weight: 700; color: #000;">
+              ESTA GARANTÍA AMPARA ÚNICAMENTE AL PRODUCTO DESCRITO EN ESTE DOCUMENTO.
+            </p>
+          </div>
+        </div>
+
+        <!-- Firma -->
+        <div style="margin-top: 15mm;">
+          <p style="margin: 0 0 10mm 0; font-size: 10px; color: #000;">Atentamente,</p>
+          
+          <div style="text-align: center; margin-top: 20mm;">
+            <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
+            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">${data.createdBy}</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">${data.companyName}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+// Función de compatibilidad hacia atrás
+export const generateWarrantyLetter = generateWarrantyLetters
