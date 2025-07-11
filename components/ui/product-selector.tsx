@@ -1,10 +1,10 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, Package, AlertTriangle, Search } from "lucide-react"
+import { Check, ChevronsUpDown, Package, AlertTriangle, Search, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -46,6 +46,28 @@ interface ProductSelectorProps {
   disabled?: boolean
 }
 
+// Cache para resultados de búsqueda
+const searchCache = new Map<string, Product[]>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+const cacheTimestamps = new Map<string, number>()
+
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
 export function ProductSelector({
   value,
   onSelect,
@@ -61,159 +83,225 @@ export function ProductSelector({
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState("")
   const [products, setProducts] = useState<Product[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  const [popularProducts, setPopularProducts] = useState<Product[]>([])
 
-  useEffect(() => {
-    // Cargar productos de todas las empresas, no solo de la empresa seleccionada
-    fetchProducts()
-  }, []) // Remover la dependencia de selectedCompany
+  // Debounce search value
+  const debouncedSearchValue = useDebounce(searchValue, 300)
 
-  useEffect(() => {
-    console.log("ProductSelector: Filtering products", {
-      searchValue,
-      productsCount: products.length,
-      searchTerm: searchValue.toLowerCase(),
-    })
+  // Memoized cache key
+  const cacheKey = useMemo(() => {
+    return `products_${debouncedSearchValue.toLowerCase().trim()}_${selectedCompany?.id || "all"}`
+  }, [debouncedSearchValue, selectedCompany?.id])
 
-    // Filtrar productos basado en el texto de búsqueda
-    if (searchValue.trim() === "") {
-      const initialProducts = products.slice(0, 50)
-      console.log("ProductSelector: No search, showing first 50:", initialProducts.length)
-      setFilteredProducts(initialProducts)
-    } else {
-      const searchTerm = searchValue.toLowerCase()
-      const filtered = products.filter((product) => {
-        const matchesCode = product.code.toLowerCase().includes(searchTerm)
-        const matchesName = product.name.toLowerCase().includes(searchTerm)
-        const matchesDescription = product.description && product.description.toLowerCase().includes(searchTerm)
-        const matchesBrand = product.brands?.name && product.brands.name.toLowerCase().includes(searchTerm)
-        const matchesCategory = product.categories?.name && product.categories.name.toLowerCase().includes(searchTerm)
+  // Check if cache is valid
+  const isCacheValid = useCallback((key: string) => {
+    const timestamp = cacheTimestamps.get(key)
+    if (!timestamp) return false
+    return Date.now() - timestamp < CACHE_DURATION
+  }, [])
 
-        const matches = matchesCode || matchesName || matchesDescription || matchesBrand || matchesCategory
+  // Get cached results
+  const getCachedResults = useCallback(
+    (key: string) => {
+      if (isCacheValid(key)) {
+        return searchCache.get(key) || []
+      }
+      return null
+    },
+    [isCacheValid],
+  )
 
-        if (matches) {
-          console.log("ProductSelector: Match found:", product.name, {
-            matchesCode,
-            matchesName,
-            matchesBrand,
-            matchesCategory,
-          })
-        }
+  // Set cache
+  const setCacheResults = useCallback((key: string, results: Product[]) => {
+    searchCache.set(key, results)
+    cacheTimestamps.set(key, Date.now())
+  }, [])
 
-        return matches
-      })
-
-      console.log("ProductSelector: Filtered results:", filtered.length)
-      setFilteredProducts(filtered.slice(0, 20))
-    }
-  }, [searchValue, products])
-
-  useEffect(() => {
-    // Encontrar el producto seleccionado por ID
-    if (value) {
-      const product = products.find((p) => p.id === value)
-      setSelectedProduct(product || null)
-    } else {
-      setSelectedProduct(null)
-    }
-  }, [value, products])
-
-  const fetchProducts = async () => {
-    console.log("ProductSelector: Fetching products from all companies")
-    setLoading(true)
-
+  // Preload popular products (top 10 most sold or recently used)
+  const preloadPopularProducts = useCallback(async () => {
     try {
-      // Obtener productos de todas las empresas con información de la empresa
-      const { data: simpleData, error: simpleError } = await supabase
+      const { data: popularData, error } = await supabase
         .from("products")
         .select(`
-        id, code, name, description, sale_price, current_stock, unit_of_measure, image_url, brand_id, category_id, company_id,
-        companies!inner(id, name, ruc)
-      `)
+          id, code, name, sale_price, current_stock, unit_of_measure, company_id,
+          companies!inner(id, name, ruc)
+        `)
         .eq("is_active", true)
-        .order("name")
+        .order("current_stock", { ascending: false })
+        .limit(10)
 
-      if (simpleError) {
-        console.error("ProductSelector: Error in query:", simpleError)
-        throw simpleError
+      if (!error && popularData) {
+        const formattedProducts = popularData.map((p) => ({
+          ...p,
+          description: null,
+          image_url: null,
+          brands: null,
+          categories: null,
+          company: p.companies,
+        }))
+        setPopularProducts(formattedProducts)
       }
+    } catch (error) {
+      console.error("Error preloading popular products:", error)
+    }
+  }, [])
 
-      console.log("ProductSelector: Found products from all companies:", simpleData?.length || 0)
+  // Load popular products on mount
+  useEffect(() => {
+    preloadPopularProducts()
+  }, [preloadPopularProducts])
 
-      if (!simpleData || simpleData.length === 0) {
-        console.log("ProductSelector: No products found")
-        setProducts([])
+  // Search products with optimization
+  const searchProducts = useCallback(
+    async (searchTerm: string) => {
+      if (searchTerm.length < 2) {
+        setProducts(popularProducts)
+        setHasSearched(false)
         return
       }
 
-      // Obtener las relaciones por separado
-      const productsWithRelations = await Promise.all(
-        simpleData.map(async (product) => {
-          let brandName = ""
-          let categoryName = ""
+      // Check cache first
+      const cached = getCachedResults(cacheKey)
+      if (cached) {
+        console.log("ProductSelector: Using cached results for:", searchTerm)
+        setProducts(cached)
+        setHasSearched(true)
+        return
+      }
 
-          // Obtener marca si existe
-          if (product.brand_id) {
-            const { data: brand } = await supabase.from("brands").select("name").eq("id", product.brand_id).single()
-            brandName = brand?.name || ""
-          }
+      console.log("ProductSelector: Searching for:", searchTerm)
+      setLoading(true)
+      setHasSearched(true)
 
-          // Obtener categoría si existe
-          if (product.category_id) {
-            const { data: category } = await supabase
-              .from("product_categories")
-              .select("name")
-              .eq("id", product.category_id)
-              .single()
-            categoryName = category?.name || ""
-          }
-
-          return {
-            ...product,
-            brands: brandName ? { name: brandName } : null,
-            categories: categoryName ? { name: categoryName } : null,
-            company: product.companies,
-          }
-        }),
-      )
-
-      console.log("ProductSelector: Products with relations:", productsWithRelations.length)
-      setProducts(productsWithRelations)
-    } catch (error: any) {
-      console.error("ProductSelector: Error fetching products:", error)
-      toast.error("Error al cargar productos: " + error.message)
-
-      // Como fallback, intentar cargar solo los datos básicos
       try {
-        const { data: fallbackData, error: fallbackError } = await supabase
+        // Optimized query - only essential fields first
+        const { data: searchData, error } = await supabase
           .from("products")
           .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure, company_id,
+          id, code, name, description, sale_price, current_stock, unit_of_measure, 
+          company_id, brand_id, category_id,
           companies!inner(id, name, ruc)
         `)
           .eq("is_active", true)
+          .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
           .order("name")
+          .limit(20)
 
-        if (!fallbackError && fallbackData) {
-          console.log("ProductSelector: Fallback data loaded:", fallbackData.length)
-          setProducts(
-            fallbackData.map((p) => ({
-              ...p,
-              brands: null,
-              categories: null,
-              company: p.companies,
-            })),
-          )
+        if (error) throw error
+
+        if (!searchData || searchData.length === 0) {
+          setProducts([])
+          setCacheResults(cacheKey, [])
+          return
         }
-      } catch (fallbackError) {
-        console.error("ProductSelector: Fallback also failed:", fallbackError)
+
+        // Get brand and category info in parallel for found products
+        const brandIds = [...new Set(searchData.filter((p) => p.brand_id).map((p) => p.brand_id))]
+        const categoryIds = [...new Set(searchData.filter((p) => p.category_id).map((p) => p.category_id))]
+
+        const [brandsData, categoriesData] = await Promise.all([
+          brandIds.length > 0
+            ? supabase.from("brands").select("id, name").in("id", brandIds)
+            : Promise.resolve({ data: [] }),
+          categoryIds.length > 0
+            ? supabase.from("product_categories").select("id, name").in("id", categoryIds)
+            : Promise.resolve({ data: [] }),
+        ])
+
+        // Create lookup maps
+        const brandsMap = new Map((brandsData.data || []).map((b) => [b.id, b.name]))
+        const categoriesMap = new Map((categoriesData.data || []).map((c) => [c.id, c.name]))
+
+        // Format products with relations
+        const formattedProducts = searchData.map((product) => ({
+          ...product,
+          image_url: null, // Skip image loading for performance
+          brands: product.brand_id ? { name: brandsMap.get(product.brand_id) || "" } : null,
+          categories: product.category_id ? { name: categoriesMap.get(product.category_id) || "" } : null,
+          company: product.companies,
+        }))
+
+        setProducts(formattedProducts)
+        setCacheResults(cacheKey, formattedProducts)
+      } catch (error: any) {
+        console.error("ProductSelector: Search error:", error)
+        toast.error("Error al buscar productos: " + error.message)
+        setProducts([])
+      } finally {
+        setLoading(false)
       }
-    } finally {
-      setLoading(false)
+    },
+    [cacheKey, getCachedResults, setCacheResults, popularProducts],
+  )
+
+  // Effect for debounced search
+  useEffect(() => {
+    searchProducts(debouncedSearchValue)
+  }, [debouncedSearchValue, searchProducts])
+
+  // Find selected product
+  useEffect(() => {
+    if (value) {
+      // First check in current products
+      let product = products.find((p) => p.id === value)
+
+      // If not found and we have popular products, check there
+      if (!product && popularProducts.length > 0) {
+        product = popularProducts.find((p) => p.id === value)
+      }
+
+      // If still not found, fetch it directly
+      if (!product) {
+        fetchSelectedProduct(value)
+      } else {
+        setSelectedProduct(product)
+      }
+    } else {
+      setSelectedProduct(null)
     }
-  }
+  }, [value, products, popularProducts])
+
+  // Fetch selected product if not in current results
+  const fetchSelectedProduct = useCallback(async (productId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id, code, name, description, sale_price, current_stock, unit_of_measure, 
+          company_id, brand_id, category_id,
+          companies!inner(id, name, ruc)
+        `)
+        .eq("id", productId)
+        .single()
+
+      if (!error && data) {
+        // Get brand and category if they exist
+        const [brandData, categoryData] = await Promise.all([
+          data.brand_id
+            ? supabase.from("brands").select("name").eq("id", data.brand_id).single()
+            : Promise.resolve({ data: null }),
+          data.category_id
+            ? supabase.from("product_categories").select("name").eq("id", data.category_id).single()
+            : Promise.resolve({ data: null }),
+        ])
+
+        const formattedProduct = {
+          ...data,
+          image_url: null,
+          brands: brandData.data ? { name: brandData.data.name } : null,
+          categories: categoryData.data ? { name: categoryData.data.name } : null,
+          company: data.companies,
+        }
+
+        setSelectedProduct(formattedProduct)
+      }
+    } catch (error) {
+      console.error("Error fetching selected product:", error)
+    }
+  }, [])
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product)
@@ -232,6 +320,13 @@ export function ProductSelector({
     if (stock <= 0) return "Sin stock"
     return `${stock} ${unit}`
   }
+
+  const displayProducts = useMemo(() => {
+    if (searchValue.length >= 2) {
+      return products
+    }
+    return popularProducts.slice(0, 10)
+  }, [searchValue, products, popularProducts])
 
   return (
     <div className={className}>
@@ -264,7 +359,6 @@ export function ProductSelector({
                         {selectedProduct.brands.name}
                       </Badge>
                     )}
-                    {/* Badge de empresa si es diferente a la empresa seleccionada */}
                     {selectedCompany && selectedProduct.company_id !== selectedCompany.id && (
                       <Badge variant="destructive" className="text-xs">
                         {selectedProduct.company.name}
@@ -291,16 +385,19 @@ export function ProductSelector({
         <PopoverContent className="w-full p-0 max-h-[400px]" align="start">
           <Command shouldFilter={false} className="h-full">
             <CommandInput
-              placeholder="Buscar por código, nombre, marca o categoría..."
+              placeholder="Escribe al menos 2 caracteres para buscar..."
               value={searchValue}
               onValueChange={setSearchValue}
             />
             <CommandList className="max-h-[300px] overflow-y-auto">
               {loading ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">Cargando productos...</div>
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                  Buscando productos...
+                </div>
               ) : (
                 <>
-                  {filteredProducts.length === 0 && searchValue.trim() !== "" ? (
+                  {displayProducts.length === 0 && searchValue.length >= 2 ? (
                     <CommandEmpty>
                       <div className="text-center p-4">
                         <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -308,18 +405,23 @@ export function ProductSelector({
                           No se encontraron productos para "{searchValue}"
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Intenta con otro término de búsqueda o contacta al área de inventario para agregar nuevos
-                          productos.
+                          Intenta con otro término de búsqueda o contacta al área de inventario.
                         </p>
                       </div>
                     </CommandEmpty>
-                  ) : filteredProducts.length === 0 && searchValue.trim() === "" ? (
+                  ) : displayProducts.length === 0 && searchValue.length < 2 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      {products.length > 0 ? "Escribe para buscar productos..." : "No hay productos disponibles"}
+                      {popularProducts.length > 0
+                        ? "Productos populares aparecerán aquí. Escribe para buscar más productos."
+                        : "Escribe al menos 2 caracteres para buscar productos..."}
                     </div>
                   ) : (
                     <CommandGroup>
-                      {filteredProducts.map((product) => (
+                      {searchValue.length < 2 && popularProducts.length > 0 && (
+                        <div className="px-2 py-1 text-xs text-muted-foreground border-b">Productos populares</div>
+                      )}
+
+                      {displayProducts.map((product) => (
                         <CommandItem
                           key={product.id}
                           value={`${product.id}-${product.code}-${product.name}`}
@@ -352,7 +454,6 @@ export function ProductSelector({
                                     {product.categories.name}
                                   </Badge>
                                 )}
-                                {/* Badge de empresa si es diferente a la empresa seleccionada */}
                                 {selectedCompany && product.company_id !== selectedCompany.id && (
                                   <Badge variant="destructive" className="text-xs">
                                     {product.company.name}
@@ -372,12 +473,13 @@ export function ProductSelector({
                         </CommandItem>
                       ))}
 
-                      {/* Mensaje informativo al final */}
-                      {filteredProducts.length > 0 && (
+                      {/* Info footer */}
+                      {displayProducts.length > 0 && (
                         <div className="border-t p-3 text-center bg-muted/50">
                           <p className="text-xs text-muted-foreground">
-                            Se muestran productos de todas las empresas. Los productos de otras empresas aparecen
-                            marcados con un badge rojo.
+                            {searchValue.length >= 2
+                              ? `${displayProducts.length} productos encontrados. Los productos de otras empresas aparecen marcados.`
+                              : "Productos más utilizados. Escribe para buscar más productos."}
                           </p>
                         </div>
                       )}

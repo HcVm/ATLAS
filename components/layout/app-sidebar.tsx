@@ -132,6 +132,7 @@ const menuSections = {
           "ventas",
           "gerencia logística",
           "gerencia logistica",
+          "jefatura de ventas"
         ],
       },
       {
