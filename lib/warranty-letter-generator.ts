@@ -38,7 +38,7 @@ export interface WarrantyLetterData {
 
 // Mapeo de marcas a códigos de empresa (CORREGIDO)
 const BRAND_TO_COMPANY: Record<string, string> = {
-  HOPELIFE: "ARM",
+  "HOPE LIFE": "ARM",
   WORLDLIFE: "ARM",
   ZEUS: "AGLE",
   VALHALLA: "AGLE",
@@ -46,7 +46,7 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
-  HOPELIFE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOPELIFE-HOJAMEMBRETADA.png",
+  "HOPE LIFE": "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/MEMBRETEPRUEBAHOPELIFE.png",
   WORLDLIFE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-HOJAMEMBRETADA.png",
   ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
   VALHALLA: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
@@ -317,8 +317,8 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
             <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
             <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">GERALDINE MUÑOZ CARRANZA</p>
             <p style="margin: 0; font-size: 9px; color: #000;">GERENTE GENERAL</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">AGLE PERUVIAN COMPANY</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">${data.companyRuc}</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">AGLE PERUVIAN COMPANY E.I.R.L.</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">20608849891</p>
           </div>
         </div>
       </div>
@@ -348,14 +348,13 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
       }
 
       <!-- Contenido principal - Posicionado para no interferir con el membrete -->
-      <div style="position: relative; z-index: 2; padding: 60mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 45mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
 
         <!-- Título principal -->
-        <div style="text-align: center; margin-bottom: 20mm;">
+        <div style="text-align: center; margin-bottom: 7mm;">
           <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
             CARTA DE GARANTÍA
           </h1>
-          <p style="margin: 3mm 0 0 0; font-size: 13px; font-weight: 600; color: #000;">N°${data.letterNumber}</p>
         </div>
 
         <!-- Fecha -->
@@ -364,7 +363,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         </div>
 
         <!-- Información del destinatario -->
-        <div style="margin-bottom: 15mm;">
+        <div style="margin-bottom: 10mm;">
           <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #000;">Señor(a)(es):</p>
           <h3 style="margin: 0 0 4mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
           <p style="margin: 0 0 4mm 0; font-size: 10px; color: #000;">RUC: ${data.clientRuc}</p>
@@ -372,13 +371,13 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         </div>
 
         <!-- Contenido principal -->
-        <div style="margin-bottom: 12mm; line-height: 1.5; text-align: justify;">
+        <div style="margin-bottom: 8mm; line-height: 1.5; text-align: justify;">
           <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">
-            Por medio de la presente, la empresa <strong>${data.companyName}</strong> les garantiza que las siguientes herramientas:
+            Por medio de la presente, la empresa <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> les garantiza que las siguientes herramientas:
           </p>
 
           <!-- Lista de productos usando MODELO con fallback a descripción -->
-          <div style="margin: 6mm 0;">
+          <div style="margin: 5mm 0;">
             ${data.products
               .map(
                 (product) => `
@@ -390,17 +389,17 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
               .join("")}
           </div>
 
-          <p style="margin: 6mm 0; font-size: 10px; color: #000;">
+          <p style="margin: 5mm 0; font-size: 10px; color: #000;">
             Cuentan con una garantía de <strong>${data.warrantyMonths} MESES</strong>, en todas sus partes y mano de obra, contra cualquier defecto de fabricación y funcionamiento a partir de la fecha entregada al consumidor final. El producto adquirido ha sido sometido a los más estrictos procesos de control de calidad antes de llegar a usted; por lo que, si se presenta algún desperfecto en su funcionamiento, atribuible a su fabricación, durante la vigencia del plazo de esta garantía, le rogaríamos contactarnos a través de algunos de los medios especificados en el presente certificado.
           </p>
 
-          <p style="margin: 6mm 0; font-size: 10px; color: #000;">
-            Asimismo, <strong>${data.companyName}</strong> no se responsabiliza de modo alguno por lucro de pérdida de utilidades, daños indirectos, ni por ningún otro perjuicio que surja como consecuencia de un indebido funcionamiento del producto adquirido.
+          <p style="margin: 5mm 0; font-size: 10px; color: #000;">
+            Asimismo, <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> no se responsabiliza de modo alguno por lucro de pérdida de utilidades, daños indirectos, ni por ningún otro perjuicio que surja como consecuencia de un indebido funcionamiento del producto adquirido.
           </p>
         </div>
 
         <!-- Condiciones de garantía -->
-        <div style="margin-bottom: 12mm;">
+        <div style="margin-bottom: 8mm;">
           <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">ESTA GARANTÍA NO ES VÁLIDA EN CUALQUIERA DE LOS SIGUIENTES CASOS:</p>
           
           <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
@@ -428,8 +427,10 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
           
           <div style="text-align: center; margin-top: 20mm;">
             <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">${data.createdBy}</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">${data.companyName}</p>
+            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">MILAGROS VILLADEZA</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">GERENTE GENERAL</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">ARM CORPORATIONS DEL PERÚ E.I.R.L.</p>
+            <p style="margin: 0; font-size: 9px; color: #000;">20608878701</p>
           </div>
         </div>
       </div>
