@@ -17,6 +17,7 @@ import {
   ImageIcon,
   FileText,
   ExternalLink,
+  Eye,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -51,6 +52,13 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Verificar si el usuario puede editar productos
+  const canEditProducts =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    (user?.departments?.name &&
+      !["ventas"].some((dept) => user.departments!.name.toLowerCase().includes(dept.toLowerCase())))
 
   useEffect(() => {
     // Si el ID es "new", redirigir a la página de nuevo producto
@@ -266,15 +274,24 @@ export default function ProductDetailPage() {
               <p className="text-slate-600">Detalles del producto</p>
             </div>
           </div>
-          <Button
-            asChild
-            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-          >
-            <Link href={`/warehouse/products/edit/${product.id}`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Link>
-          </Button>
+          {/* Indicador visual de solo lectura para ventas */}
+          {!canEditProducts && (
+            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+              <Eye className="h-4 w-4" />
+              <span className="text-sm font-medium">Solo lectura</span>
+            </div>
+          )}
+          {canEditProducts && (
+            <Button
+              asChild
+              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+            >
+              <Link href={`/warehouse/products/edit/${product.id}`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">

@@ -56,19 +56,36 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [stockFilter, setStockFilter] = useState<string>("all")
 
+  // Verificar si el usuario es del área de ventas (solo lectura)
+  const isSalesUser =
+    user?.departments?.name?.toLowerCase().includes("ventas") &&
+    !user?.departments?.name?.toLowerCase().includes("jefatura") &&
+    user?.role !== "admin" &&
+    user?.role !== "supervisor"
+
   useEffect(() => {
     // Check if user has warehouse access
     const hasWarehouseAccess =
       user?.role === "admin" ||
       user?.role === "supervisor" ||
       user?.departments?.name === "Almacén" ||
+      user?.departments?.name === "almacén" ||
       user?.departments?.name === "Contabilidad" ||
+      user?.departments?.name === "contabilidad" ||
       user?.departments?.name === "Operaciones" ||
+      user?.departments?.name === "operaciones" ||
       user?.departments?.name === "Acuerdos Marco" ||
+      user?.departments?.name === "acuerdos marco" ||
       user?.departments?.name === "Administración" ||
+      user?.departments?.name === "administración" ||
+      user?.departments?.name === "administracion" ||
       user?.departments?.name === "Ventas" ||
+      user?.departments?.name === "ventas" ||
       user?.departments?.name === "Gerencia Logística" ||
-      user?.departments?.name === "Jefatura de Ventas"
+      user?.departments?.name === "gerencia logística" ||
+      user?.departments?.name === "gerencia logistica" ||
+      user?.departments?.name === "Jefatura de Ventas" ||
+      user?.departments?.name === "jefatura de ventas"
 
     // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -183,14 +200,23 @@ export default function ProductsPage() {
     user?.role === "admin" ||
     user?.role === "supervisor" ||
     user?.departments?.name === "Almacén" ||
+    user?.departments?.name === "almacén" ||
     user?.departments?.name === "Contabilidad" ||
+    user?.departments?.name === "contabilidad" ||
     user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "operaciones" ||
     user?.departments?.name === "Acuerdos Marco" ||
+    user?.departments?.name === "acuerdos marco" ||
     user?.departments?.name === "Administración" ||
+    user?.departments?.name === "administración" ||
+    user?.departments?.name === "administracion" ||
     user?.departments?.name === "Ventas" ||
+    user?.departments?.name === "ventas" ||
     user?.departments?.name === "Gerencia Logística" ||
-    user?.departments?.name === "Jefatura de Ventas"
-
+    user?.departments?.name === "gerencia logística" ||
+    user?.departments?.name === "gerencia logistica" ||
+    user?.departments?.name === "Jefatura de Ventas" ||
+    user?.departments?.name === "jefatura de ventas"
 
   // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
@@ -288,22 +314,33 @@ export default function ProductsPage() {
               Productos
             </h1>
             <p className="text-slate-600 dark:text-slate-300">
-              Gestión de productos del inventario
+              {isSalesUser ? "Consulta de productos" : "Gestión de productos del inventario"}
               {user?.role === "admin" && selectedCompany && (
                 <span className="ml-2 text-slate-700 dark:text-slate-200 font-medium">- {selectedCompany.name}</span>
               )}
             </p>
           </div>
-          <Button
-            asChild
-            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white"
-          >
-            <Link href="/warehouse/products/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
-            </Link>
-          </Button>
+          {!isSalesUser && (
+            <Button
+              asChild
+              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white"
+            >
+              <Link href="/warehouse/products/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Producto
+              </Link>
+            </Button>
+          )}
         </div>
+
+        {isSalesUser && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 text-blue-700">
+              <Eye className="h-4 w-4" />
+              <span className="text-sm font-medium">Modo consulta - Solo visualización de productos</span>
+            </div>
+          </div>
+        )}
 
         <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
           <CardHeader>
@@ -503,16 +540,18 @@ export default function ProductsPage() {
                                   <Eye className="h-4 w-4" />
                                 </Link>
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                                className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              >
-                                <Link href={`/warehouse/products/edit/${product.id}`}>
-                                  <Edit className="h-4 w-4" />
-                                </Link>
-                              </Button>
+                              {!isSalesUser && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                                >
+                                  <Link href={`/warehouse/products/edit/${product.id}`}>
+                                    <Edit className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

@@ -94,14 +94,14 @@ const menuSections = {
         url: "/sales",
         icon: ShoppingCart,
         roles: ["admin", "supervisor", "user"],
-        departments: ["ventas", "administración", "administracion", "operaciones"],
+        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas"],
       },
       {
         title: "Cotizaciones",
         url: "/quotations",
         icon: FileText,
         roles: ["admin", "supervisor", "user"],
-        departments: ["ventas", "administración", "administracion", "operaciones"],
+        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas"],
       },
     ],
   },
@@ -113,7 +113,17 @@ const menuSections = {
         url: "/warehouse",
         icon: Package,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "gerencia logística", "jefatura de ventas"],
+        departments: [
+          "almacén",
+          "almacen",
+          "contabilidad",
+          "administración",
+          "administracion",
+          "operaciones",
+          "gerencia logística",
+          "jefatura de ventas",
+        ],
+        excludeDepartments: ["ventas"], // Excluir ventas del almacén principal
       },
       {
         title: "Productos",
@@ -129,18 +139,29 @@ const menuSections = {
           "operaciones",
           "acuerdos marco",
           "acuerdos",
-          "ventas",
+          "ventas", // Ventas puede ver productos
+          "jefatura de ventas",
           "gerencia logística",
           "gerencia logistica",
-          "jefatura de ventas"
         ],
+        readOnly: ["ventas"], // Solo lectura para ventas
       },
       {
         title: "Inventario",
         url: "/warehouse/inventory",
         icon: ClipboardList,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "contabilidad", "administración", "administracion", "operaciones", "gerencia logística", "jefatura de ventas"],
+        departments: [
+          "almacén",
+          "almacen",
+          "contabilidad",
+          "administración",
+          "administracion",
+          "operaciones",
+          "gerencia logística",
+          "jefatura de ventas",
+        ],
+        excludeDepartments: ["ventas"], // Excluir ventas del inventario
       },
     ],
   },
@@ -278,6 +299,17 @@ export function AppSidebar() {
       // Para usuarios regulares, verificar roles permitidos
       if (!item.roles.includes(user.role)) {
         return false
+      }
+
+      // Verificar exclusiones de departamento
+      if (item.excludeDepartments && user.departments?.name) {
+        const userDepartment = user.departments.name.toLowerCase()
+        const isExcluded = item.excludeDepartments.some(
+          (dept: string) => userDepartment.includes(dept.toLowerCase()) || dept.toLowerCase().includes(userDepartment),
+        )
+        if (isExcluded) {
+          return false
+        }
       }
 
       // Si el item tiene restricciones de departamento, verificarlas
