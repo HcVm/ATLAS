@@ -34,12 +34,10 @@ import { Edit } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import RoutePlanner from "@/components/quotations/route-planner"
-import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
 import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator"
 import PrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator"
 import ARMEntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator-arm"
 import ARMPrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator-arm"
-
 
 // Interfaces actualizadas después de la migración
 interface QuotationItem {
@@ -147,7 +145,16 @@ export default function QuotationsPage() {
     user?.role === "supervisor" ||
     user?.departments?.name === "Ventas" ||
     user?.departments?.name === "Administración" ||
-    user?.departments?.name === "Operaciones"
+    user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "Jefatura de Ventas"
+
+  // Determinar si el usuario puede ver todas las cotizaciones de la empresa o solo las suyas
+  const canViewAllQuotations =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "Jefatura de Ventas"
 
   // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
@@ -158,7 +165,8 @@ export default function QuotationsPage() {
       user?.role === "supervisor" ||
       user?.departments?.name === "Ventas" ||
       user?.departments?.name === "Administración" ||
-      user?.departments?.name === "Operaciones"
+      user?.departments?.name === "Operaciones" ||
+      user?.departments?.name === "Jefatura de Ventas"
 
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
@@ -178,7 +186,7 @@ export default function QuotationsPage() {
       console.log("Cargando cotizaciones para empresa:", companyId)
 
       // Obtener cotizaciones con sus items
-      const { data: quotationsData, error: quotationsError } = await supabase
+      let query = supabase
         .from("quotations")
         .select(`
           *,
@@ -207,7 +215,13 @@ export default function QuotationsPage() {
           )
         `)
         .eq("company_id", companyId)
-        .order("quotation_date", { ascending: false })
+
+      // Si el usuario no puede ver todas las cotizaciones, filtrar solo por las suyas
+      if (!canViewAllQuotations && user?.id) {
+        query = query.eq("created_by", user.id)
+      }
+
+      const { data: quotationsData, error: quotationsError } = await query.order("quotation_date", { ascending: false })
 
       if (quotationsError) {
         console.error("Quotations error:", quotationsError)
@@ -227,7 +241,7 @@ export default function QuotationsPage() {
   const fetchStats = async (companyId: string) => {
     try {
       // Obtener cotizaciones con sus items
-      const { data: quotationsData, error } = await supabase
+      let query = supabase
         .from("quotations")
         .select(`
           *,
@@ -240,6 +254,13 @@ export default function QuotationsPage() {
           )
         `)
         .eq("company_id", companyId)
+
+      // Si el usuario no puede ver todas las cotizaciones, filtrar solo por las suyas
+      if (!canViewAllQuotations && user?.id) {
+        query = query.eq("created_by", user.id)
+      }
+
+      const { data: quotationsData, error } = await query
 
       if (error) throw error
 
@@ -323,6 +344,12 @@ export default function QuotationsPage() {
 
   const updateQuotationStatus = async () => {
     if (!editingQuotation || !newStatus) return
+
+    // Verificar si el usuario puede editar esta cotización
+    if (!canViewAllQuotations && editingQuotation.created_by !== user?.id) {
+      toast.error("No tienes permisos para editar esta cotización")
+      return
+    }
 
     try {
       const { error } = await supabase.from("quotations").update({ status: newStatus }).eq("id", editingQuotation.id)
@@ -535,6 +562,9 @@ export default function QuotationsPage() {
             <p className="text-slate-600">
               Gestiona y crea cotizaciones para tus clientes
               {selectedCompany && <span className="ml-2 text-slate-700 font-medium">- {selectedCompany.name}</span>}
+              {!canViewAllQuotations && (
+                <span className="ml-2 text-sm text-orange-600 font-medium">(Solo tus cotizaciones)</span>
+              )}
             </p>
           </div>
           <Dialog open={showNewQuotationDialog} onOpenChange={setShowNewQuotationDialog}>
@@ -588,7 +618,9 @@ export default function QuotationsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-800">{stats.totalQuotations}</div>
-              <p className="text-xs text-slate-500">Cotizaciones creadas</p>
+              <p className="text-xs text-slate-500">
+                {canViewAllQuotations ? "Cotizaciones creadas" : "Tus cotizaciones"}
+              </p>
             </CardContent>
           </Card>
 
@@ -603,7 +635,9 @@ export default function QuotationsPage() {
               <div className="text-2xl font-bold text-slate-800">
                 S/ {stats.totalQuotedAmount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
               </div>
-              <p className="text-xs text-slate-500">Valor total cotizado</p>
+              <p className="text-xs text-slate-500">
+                {canViewAllQuotations ? "Valor total cotizado" : "Valor de tus cotizaciones"}
+              </p>
             </CardContent>
           </Card>
 
@@ -639,9 +673,13 @@ export default function QuotationsPage() {
         {/* Search and Filters */}
         <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-slate-800">Historial de Cotizaciones</CardTitle>
+            <CardTitle className="text-slate-800">
+              {canViewAllQuotations ? "Historial de Cotizaciones" : "Mis Cotizaciones"}
+            </CardTitle>
             <CardDescription className="text-slate-600">
-              Todas las cotizaciones registradas en el sistema
+              {canViewAllQuotations
+                ? "Todas las cotizaciones registradas en el sistema"
+                : "Tus cotizaciones registradas en el sistema"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -671,13 +709,14 @@ export default function QuotationsPage() {
                     <TableHead className="text-slate-700">Total</TableHead>
                     <TableHead className="text-slate-700">Estado</TableHead>
                     <TableHead className="text-slate-700">Ruta</TableHead>
+                    {canViewAllQuotations && <TableHead className="text-slate-700">Creado por</TableHead>}
                     <TableHead className="text-slate-700">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredQuotations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8">
+                      <TableCell colSpan={canViewAllQuotations ? 11 : 10} className="text-center py-8">
                         <div className="text-slate-500">
                           {searchTerm
                             ? "No se encontraron cotizaciones que coincidan con la búsqueda"
@@ -727,6 +766,9 @@ export default function QuotationsPage() {
                               </div>
                             )}
                           </TableCell>
+                          {canViewAllQuotations && (
+                            <TableCell className="text-slate-600">{quotation.profiles?.full_name || "N/A"}</TableCell>
+                          )}
                           <TableCell>
                             <div className="flex gap-1">
                               <Button
@@ -750,6 +792,7 @@ export default function QuotationsPage() {
                                   setShowEditStatusDialog(true)
                                 }}
                                 className="hover:bg-slate-100"
+                                disabled={!canViewAllQuotations && quotation.created_by !== user?.id}
                               >
                                 <Edit className="h-4 w-4 text-slate-600" />
                               </Button>
@@ -1036,209 +1079,109 @@ export default function QuotationsPage() {
                                           S/{" "}
                                           {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
                                             "es-PE",
-                                            {
-                                              minimumFractionDigits: 2,
-                                            },
+                                            { minimumFractionDigits: 2 },
                                           )}
                                         </p>
                                       </div>
                                     </div>
+
+                                    {item.budget_ceiling_total && (
+                                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                        <Label className="text-sm font-medium text-orange-700">
+                                          Techo Presupuestal
+                                        </Label>
+                                        <p className="text-lg font-bold text-orange-800">
+                                          S/{" "}
+                                          {item.budget_ceiling_total.toLocaleString("es-PE", {
+                                            minimumFractionDigits: 2,
+                                          })}
+                                        </p>
+                                      </div>
+                                    )}
                                   </>
                                 )
                               })()
                             )}
+
+                            {/* Total Summary */}
+                            <div className="border-t border-slate-200 pt-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-lg font-medium text-slate-700">Total de la Cotización:</span>
+                                <span className="text-2xl font-bold text-primary">
+                                  S/{" "}
+                                  {selectedQuotation.quotation_items
+                                    ?.reduce(
+                                      (sum, item) => sum + (item.offer_total_with_tax || item.platform_total || 0),
+                                      0,
+                                    )
+                                    .toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "0.00"}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         ) : (
-                          <div className="text-center p-6 bg-slate-50 rounded-lg border border-slate-200">
-                            <Package className="h-12 w-12 text-slate-400 mx-auto mb-2" />
-                            <p className="text-slate-600">No se encontraron productos para esta cotización</p>
-                            <p className="text-sm text-slate-500">
-                              Los productos pueden no haberse cargado correctamente
-                            </p>
+                          <div className="text-center py-8">
+                            <p className="text-slate-500">No hay productos en esta cotización</p>
                           </div>
                         )}
                       </CardContent>
                     </Card>
 
-                    {/* Route Information (if exists) */}
-                    {selectedQuotation.route_distance_km && (
+                    {/* Additional Information */}
+                    {selectedQuotation.observations && (
                       <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
                         <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
-                            <Route className="h-5 w-5 text-slate-600" />
-                            Información de Ruta
-                          </CardTitle>
+                          <CardTitle className="text-lg text-slate-800">Observaciones</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                              <Route className="h-10 w-10 text-slate-600" />
-                              <div>
-                                <p className="text-sm text-slate-600">Distancia Total</p>
-                                <p className="text-xl font-bold text-slate-700">
-                                  {selectedQuotation.route_distance_km.toFixed(1)} km
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                              <Clock className="h-10 w-10 text-slate-600" />
-                              <div>
-                                <p className="text-sm text-slate-600">Duración Estimada</p>
-                                <p className="text-xl font-bold text-slate-700">
-                                  {selectedQuotation.route_duration_minutes
-                                    ? `${Math.floor(selectedQuotation.route_duration_minutes / 60)}h ${selectedQuotation.route_duration_minutes % 60}m`
-                                    : "N/A"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {selectedQuotation.route_google_maps_url && (
-                            <div className="mt-4">
-                              <Button
-                                variant="outline"
-                                onClick={() => window.open(selectedQuotation.route_google_maps_url!, "_blank")}
-                                className="border-slate-200 hover:bg-slate-100"
-                              >
-                                <MapPin className="h-4 w-4 mr-2" />
-                                Ver Ruta en Google Maps
-                              </Button>
-                            </div>
-                          )}
+                          <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border-l-4 border-slate-400">
+                            {selectedQuotation.observations}
+                          </p>
                         </CardContent>
                       </Card>
                     )}
 
-                    {/* Commission Information */}
-                    {(selectedQuotation.contact_person || selectedQuotation.commission_percentage) && (
-                      <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
-                        <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
-                            <DollarSign className="h-5 w-5 text-slate-600" />
-                            Información de Comisión
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {selectedQuotation.contact_person && (
-                              <div>
-                                <Label className="text-sm font-medium text-slate-600">Contacto/Vendedor</Label>
-                                <p className="text-sm font-medium text-slate-800">{selectedQuotation.contact_person}</p>
-                              </div>
-                            )}
-
-                            {selectedQuotation.commission_percentage && (
-                              <div>
-                                <Label className="text-sm font-medium text-slate-600">Porcentaje de Comisión</Label>
-                                <p className="text-sm font-medium text-slate-800">
-                                  {selectedQuotation.commission_percentage.toFixed(2)}%
-                                </p>
-                              </div>
-                            )}
-
-                            {selectedQuotation.commission_base_amount && (
-                              <div>
-                                <Label className="text-sm font-medium text-slate-600">Base de Cálculo (Sin IGV)</Label>
-                                <p className="text-sm font-medium text-slate-800">
-                                  S/{" "}
-                                  {selectedQuotation.commission_base_amount.toLocaleString("es-PE", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </p>
-                              </div>
-                            )}
-
-                            {selectedQuotation.commission_amount && (
-                              <div>
-                                <Label className="text-sm font-medium text-slate-600">Monto de Comisión</Label>
-                                <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
-                                  <p className="text-lg font-bold text-green-700">
-                                    S/{" "}
-                                    {selectedQuotation.commission_amount.toLocaleString("es-PE", {
-                                      minimumFractionDigits: 2,
-                                    })}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedQuotation.commission_notes && (
-                              <div className="md:col-span-2">
-                                <Label className="text-sm font-medium text-slate-600">Notas de Comisión</Label>
-                                <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                  {selectedQuotation.commission_notes}
-                                </p>
-                              </div>
-                            )}
+                    {/* PDF Generation Buttons */}
+                    <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-slate-800">Generar Documentos</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Cotización para Entidades */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-slate-700">Cotización para Entidades</h4>
+                            <div className="flex gap-2">
+                              {selectedCompany?.code === "ARM" ? (
+                                <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} />
+                              ) : (
+                                <EntityQuotationPDFGenerator quotation={selectedQuotation} />
+                              )}
+                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    )}
+
+                          {/* Cotización para Privados */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-slate-700">Cotización para Privados</h4>
+                            <div className="flex gap-2">
+                              {selectedCompany?.code === "ARM" ? (
+                                <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} />
+                              ) : (
+                                <PrivateQuotationPDFGenerator quotation={selectedQuotation} />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="route" className="max-h-[70vh] overflow-y-auto">
-                  <RoutePlanner
-                    quotationId={selectedQuotation.id}
-                    initialDestination={selectedQuotation.delivery_location}
-                    onRouteCalculated={handleRouteUpdated}
-                  />
+                  <RoutePlanner quotation={selectedQuotation} onRouteUpdated={handleRouteUpdated} />
                 </TabsContent>
               </Tabs>
             )}
-
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowDetailsDialog(false)}
-                className="border-slate-200 hover:bg-slate-100"
-              >
-                Cerrar
-              </Button>
-              {selectedQuotation && selectedCompany && (
-                <>
-                  {/* Mostrar botones según la empresa */}
-                  {selectedCompany.code === "ARM" ? (
-                    <>
-                      <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                      <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                    </>
-                  ) : (
-                    <>
-                      <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                      <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                    </>
-                  )}
-                  <QuotationPDFGenerator
-                    quotation={selectedQuotation}
-                    companyInfo={{
-                      id: selectedCompany.id,
-                      name: selectedCompany.name,
-                      ruc: selectedCompany.ruc || "",
-                      code: selectedCompany.code || "",
-                      description: selectedCompany.description,
-                      logo_url: selectedCompany.logo_url,
-                      color: selectedCompany.color || "#3B82F6",
-                      address: selectedCompany.address,
-                      phone: selectedCompany.phone,
-                      email: selectedCompany.email,
-                    }}
-                  />
-                </>
-              )}
-              <Button
-                onClick={() => {
-                  setShowDetailsDialog(false)
-                  setEditingQuotation(selectedQuotation)
-                  setNewStatus(selectedQuotation?.status || "")
-                  setShowEditStatusDialog(true)
-                }}
-                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800"
-              >
-                Cambiar Estado
-              </Button>
-            </div>
           </DialogContent>
         </Dialog>
       </div>

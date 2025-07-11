@@ -128,7 +128,16 @@ export default function SalesPage() {
     user?.role === "supervisor" ||
     user?.departments?.name === "Ventas" ||
     user?.departments?.name === "Administración" ||
-    user?.departments?.name === "Operaciones"
+    user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "Jefatura de Ventas"
+
+  // Determinar si el usuario puede ver todas las ventas de la empresa o solo las suyas
+  const canViewAllSales =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "Jefatura de Ventas"
 
   const companyToUse =
     user?.role === "admin"
@@ -151,17 +160,24 @@ export default function SalesPage() {
   const fetchSales = async (companyId: string) => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("sales_with_items")
         .select(`
           id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
           quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
           ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
           total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
-          profiles!sales_created_by_fkey (full_name)
+          created_by, profiles!sales_created_by_fkey (full_name)
         `)
         .eq("company_id", companyId)
-        .order("sale_date", { ascending: false })
+
+      // Si el usuario no puede ver todas las ventas, filtrar solo por las suyas
+      if (!canViewAllSales && user?.id) {
+        query = query.eq("created_by", user.id)
+      }
+
+      const { data, error } = await query.order("sale_date", { ascending: false })
 
       if (error) throw error
       setSales(data || [])
@@ -174,10 +190,17 @@ export default function SalesPage() {
 
   const fetchStats = async (companyId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("sales_with_items")
-        .select("total_sale, delivery_date")
+        .select("total_sale, delivery_date, created_by")
         .eq("company_id", companyId)
+
+      // Si el usuario no puede ver todas las ventas, filtrar solo por las suyas
+      if (!canViewAllSales && user?.id) {
+        query = query.eq("created_by", user.id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -245,6 +268,12 @@ export default function SalesPage() {
   }
 
   const handleEditSale = (sale: Sale) => {
+    // Verificar si el usuario puede editar esta venta
+    if (!canViewAllSales && sale.created_by !== user?.id) {
+      toast.error("No tienes permisos para editar esta venta")
+      return
+    }
+
     if (sale.is_multi_product) {
       setEditingMultiSale(sale)
       setShowMultiEditDialog(true)
@@ -309,6 +338,12 @@ export default function SalesPage() {
   }
 
   const handleStatusChange = (sale: Sale) => {
+    // Verificar si el usuario puede cambiar el estado de esta venta
+    if (!canViewAllSales && sale.created_by !== user?.id) {
+      toast.error("No tienes permisos para cambiar el estado de esta venta")
+      return
+    }
+
     setStatusSale(sale)
     setShowStatusDialog(true)
   }
@@ -524,6 +559,7 @@ export default function SalesPage() {
           <p className="text-muted-foreground">
             Gestión de ventas de:{" "}
             <span className="font-semibold text-foreground">{selectedCompany?.name || "N/A"}</span>
+            {!canViewAllSales && <span className="ml-2 text-sm text-orange-600 font-medium">(Solo tus ventas)</span>}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -565,7 +601,9 @@ export default function SalesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.totalSales}</div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Ventas registradas</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {canViewAllSales ? "Ventas registradas" : "Tus ventas"}
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700 shadow-lg">
@@ -579,7 +617,9 @@ export default function SalesPage() {
             <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
               S/ {stats.totalAmount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Valor total de ventas</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {canViewAllSales ? "Valor total de ventas" : "Valor de tus ventas"}
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700 shadow-lg">
@@ -614,9 +654,11 @@ export default function SalesPage() {
 
       <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-slate-800 dark:text-slate-100">Historial de Ventas</CardTitle>
+          <CardTitle className="text-slate-800 dark:text-slate-100">
+            {canViewAllSales ? "Historial de Ventas" : "Mis Ventas"}
+          </CardTitle>
           <CardDescription className="text-slate-600 dark:text-slate-300">
-            Todas las ventas registradas en el sistema
+            {canViewAllSales ? "Todas las ventas registradas en el sistema" : "Tus ventas registradas en el sistema"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -654,6 +696,9 @@ export default function SalesPage() {
                       <TableHead className="text-slate-700 dark:text-slate-200">Cantidad</TableHead>
                       <TableHead className="text-slate-700 dark:text-slate-200">Total</TableHead>
                       <TableHead className="text-slate-700 dark:text-slate-200">Estado</TableHead>
+                      {canViewAllSales && (
+                        <TableHead className="text-slate-700 dark:text-slate-200">Vendedor</TableHead>
+                      )}
                       <TableHead className="text-slate-700 dark:text-slate-200">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -704,6 +749,11 @@ export default function SalesPage() {
                           S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>{renderStatusBadge(sale.sale_status)}</TableCell>
+                        {canViewAllSales && (
+                          <TableCell className="text-slate-600 dark:text-slate-300">
+                            {sale.profiles?.full_name || "N/A"}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
@@ -721,6 +771,7 @@ export default function SalesPage() {
                               onClick={() => handleEditSale(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
                               title="Editar venta"
+                              disabled={!canViewAllSales && sale.created_by !== user?.id}
                             >
                               <Edit className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </Button>
@@ -730,6 +781,7 @@ export default function SalesPage() {
                               onClick={() => handleStatusChange(sale)}
                               className="hover:bg-slate-100 dark:hover:bg-slate-700"
                               title="Cambiar estado"
+                              disabled={!canViewAllSales && sale.created_by !== user?.id}
                             >
                               <Badge className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                             </Button>
@@ -772,6 +824,9 @@ export default function SalesPage() {
                             {sale.entity_name}
                           </p>
                           <p className="text-sm text-muted-foreground">Venta #{sale.sale_number || "N/A"}</p>
+                          {canViewAllSales && (
+                            <p className="text-xs text-muted-foreground">Por: {sale.profiles?.full_name || "N/A"}</p>
+                          )}
                         </div>
                         <div className="flex-shrink-0">{renderStatusBadge(sale.sale_status)}</div>
                       </div>
@@ -806,6 +861,7 @@ export default function SalesPage() {
                           size="sm"
                           className="w-full bg-transparent"
                           onClick={() => handleEditSale(sale)}
+                          disabled={!canViewAllSales && sale.created_by !== user?.id}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
@@ -817,6 +873,7 @@ export default function SalesPage() {
                           size="sm"
                           className="w-full bg-transparent"
                           onClick={() => handleStatusChange(sale)}
+                          disabled={!canViewAllSales && sale.created_by !== user?.id}
                         >
                           <Badge className="h-4 w-4 mr-1" />
                           Estado
