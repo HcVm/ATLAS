@@ -1276,14 +1276,14 @@ export default function SalesPage() {
                 <p className="text-sm font-medium text-slate-700">Nuevo estado:</p>
                 <div className="grid grid-cols-1 gap-2">
                   <Button
-                    variant={statusSale.sale_status === "conformidad" ? "default" : "outline"}
-                    onClick={() => handleStatusUpdate("conformidad")}
+                    variant={statusSale.sale_status === "compromiso" ? "default" : "outline"}
+                    onClick={() => handleStatusUpdate("compromiso")}
                     className="justify-start"
                   >
                     <Badge variant="default" className="mr-2">
-                      CONFORMIDAD
+                      COMPROMISO
                     </Badge>
-                    Conformidad
+                    Compromiso
                   </Button>
                   <Button
                     variant={statusSale.sale_status === "devengado" ? "default" : "outline"}

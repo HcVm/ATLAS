@@ -677,7 +677,7 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="conformidad">Conformidad</SelectItem>
+                <SelectItem value="compromiso">Compromiso</SelectItem>
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>
               </SelectContent>

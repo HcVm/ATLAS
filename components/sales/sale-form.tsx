@@ -56,6 +56,8 @@ interface SaleFormProps {
   onSuccess: () => void
 }
 
+
+
 export default function SaleForm({ onSuccess }: SaleFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -640,7 +642,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="conformidad">Conformidad</SelectItem>
+                <SelectItem value="compromiso">Compromiso</SelectItem>
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>
               </SelectContent>

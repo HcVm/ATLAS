@@ -58,6 +58,46 @@ interface MultiProductQuotationFormProps {
   onSuccess: () => void
 }
 
+// Función para generar número de cotización
+const generateQuotationNumber = async (companyId: string, companyCode: string): Promise<string> => {
+  const currentYear = new Date().getFullYear()
+
+  try {
+    // Buscar el último número de cotización para esta empresa y año
+    const { data: lastQuotation, error } = await supabase
+      .from("quotations")
+      .select("quotation_number")
+      .eq("company_id", companyId)
+      .like("quotation_number", `COT-${currentYear}-${companyCode}-%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error("Error fetching last quotation:", error)
+      // Si hay error, usar número 1
+      return `COT-${currentYear}-${companyCode}-0001`
+    }
+
+    let nextNumber = 1
+
+    if (lastQuotation && lastQuotation.length > 0) {
+      const lastNumber = lastQuotation[0].quotation_number
+      // Extraer el número del formato COT-2025-ARM-0001
+      const match = lastNumber?.match(/-(\d+)$/)
+      if (match) {
+        nextNumber = Number.parseInt(match[1]) + 1
+      }
+    }
+
+    // Formatear con ceros a la izquierda (4 dígitos)
+    const formattedNumber = nextNumber.toString().padStart(4, "0")
+    return `COT-${currentYear}-${companyCode}-${formattedNumber}`
+  } catch (error) {
+    console.error("Error generating quotation number:", error)
+    return `COT-${currentYear}-${companyCode}-0001`
+  }
+}
+
 export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuotationFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -224,8 +264,12 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
     setLoading(true)
 
     try {
+      // Generar número de cotización automático
+      const quotationNumber = await generateQuotationNumber(selectedCompany.id, selectedCompany.code || "GEN")
+
       // Crear cotización - SOLO con campos que existen en la tabla
       const quotationData = {
+        quotation_number: quotationNumber,
         company_id: selectedCompany.id,
         company_name: selectedCompany.name,
         company_ruc: selectedCompany.ruc || "",
@@ -298,7 +342,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
 
       console.log("Quotation items created successfully")
 
-      toast.success("Cotización multi-producto creada exitosamente")
+      toast.success(`Cotización multi-producto creada exitosamente con número: ${quotationNumber}`)
       onSuccess()
     } catch (error: any) {
       console.error("Error creating quotation:", error)
@@ -323,6 +367,14 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
             <Input value={selectedCompany?.ruc || ""} disabled />
           </div>
         </div>
+        {selectedCompany?.code && (
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
+              <strong>Código de empresa:</strong> {selectedCompany.code} - Las cotizaciones se generarán con el formato:
+              COT-{new Date().getFullYear()}-{selectedCompany.code}-XXXX
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator />
