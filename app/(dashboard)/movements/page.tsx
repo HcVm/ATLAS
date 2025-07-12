@@ -108,17 +108,185 @@ export default function MovementsPage() {
         companyFilter,
         selectedCompany: selectedCompany?.name || "null",
         userCompany: user?.company_id,
+        userDepartment: user?.department_id,
+        userRole: user?.role,
       })
 
-      // Construir query base
-      let query = supabase.from("document_movements").select(`
+      // Para usuarios no admin, necesitamos hacer múltiples consultas debido a las limitaciones de Supabase
+      let allMovements: any[] = []
+
+      if (user && !isAdmin && user.department_id) {
+        // Consulta 1: Movimientos donde el usuario creó el documento
+        const { data: userCreatedMovements } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents!inner (
+              id, 
+              title, 
+              document_number,
+              status,
+              company_id,
+              created_by,
+              current_department_id
+            ),
+            from_departments:departments!document_movements_from_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            to_departments:departments!document_movements_to_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            profiles!document_movements_moved_by_fkey (
+              id, 
+              full_name, 
+              email
+            )
+          `)
+          .eq("documents.created_by", user.id)
+          .eq(
+            shouldFilterByCompany && companyFilter ? "documents.company_id" : "id",
+            shouldFilterByCompany && companyFilter ? companyFilter : movements.length > 0 ? movements[0].id : "dummy",
+          )
+
+        // Consulta 2: Movimientos desde el departamento del usuario
+        const { data: fromDeptMovements } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents!inner (
+              id, 
+              title, 
+              document_number,
+              status,
+              company_id,
+              created_by,
+              current_department_id
+            ),
+            from_departments:departments!document_movements_from_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            to_departments:departments!document_movements_to_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            profiles!document_movements_moved_by_fkey (
+              id, 
+              full_name, 
+              email
+            )
+          `)
+          .eq("from_department_id", user.department_id)
+          .eq(
+            shouldFilterByCompany && companyFilter ? "documents.company_id" : "id",
+            shouldFilterByCompany && companyFilter ? companyFilter : movements.length > 0 ? movements[0].id : "dummy",
+          )
+
+        // Consulta 3: Movimientos hacia el departamento del usuario
+        const { data: toDeptMovements } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents!inner (
+              id, 
+              title, 
+              document_number,
+              status,
+              company_id,
+              created_by,
+              current_department_id
+            ),
+            from_departments:departments!document_movements_from_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            to_departments:departments!document_movements_to_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            profiles!document_movements_moved_by_fkey (
+              id, 
+              full_name, 
+              email
+            )
+          `)
+          .eq("to_department_id", user.department_id)
+          .eq(
+            shouldFilterByCompany && companyFilter ? "documents.company_id" : "id",
+            shouldFilterByCompany && companyFilter ? companyFilter : movements.length > 0 ? movements[0].id : "dummy",
+          )
+
+        // Combinar y eliminar duplicados
+        const combinedMovements = [
+          ...(userCreatedMovements || []),
+          ...(fromDeptMovements || []),
+          ...(toDeptMovements || []),
+        ]
+
+        // Eliminar duplicados basado en el ID
+        const uniqueMovements = combinedMovements.filter(
+          (movement, index, self) => index === self.findIndex((m) => m.id === movement.id),
+        )
+
+        allMovements = uniqueMovements
+      } else if (user && !isAdmin && !user.department_id) {
+        // Usuario sin departamento: solo documentos que creó
+        const { data } = await supabase
+          .from("document_movements")
+          .select(`
+            *,
+            documents!inner (
+              id, 
+              title, 
+              document_number,
+              status,
+              company_id,
+              created_by,
+              current_department_id
+            ),
+            from_departments:departments!document_movements_from_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            to_departments:departments!document_movements_to_department_id_fkey (
+              id, 
+              name,
+              color
+            ),
+            profiles!document_movements_moved_by_fkey (
+              id, 
+              full_name, 
+              email
+            )
+          `)
+          .eq("documents.created_by", user.id)
+          .eq(
+            shouldFilterByCompany && companyFilter ? "documents.company_id" : "id",
+            shouldFilterByCompany && companyFilter ? companyFilter : movements.length > 0 ? movements[0].id : "dummy",
+          )
+
+        allMovements = data || []
+      } else {
+        // Admin: ver todos los movimientos
+        let query = supabase.from("document_movements").select(`
           *,
           documents!inner (
             id, 
             title, 
             document_number,
             status,
-            company_id
+            company_id,
+            created_by,
+            current_department_id
           ),
           from_departments:departments!document_movements_from_department_id_fkey (
             id, 
@@ -137,25 +305,31 @@ export default function MovementsPage() {
           )
         `)
 
-      // Aplicar filtro de empresa si es necesario
-      if (shouldFilterByCompany && companyFilter) {
-        query = query.eq("documents.company_id", companyFilter)
+        // Aplicar filtro de empresa si es necesario
+        if (shouldFilterByCompany && companyFilter) {
+          query = query.eq("documents.company_id", companyFilter)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error("Error fetching movements:", error)
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los movimientos. Intente nuevamente.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        allMovements = data || []
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false })
+      // Ordenar por fecha de creación (más reciente primero)
+      allMovements.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      if (error) {
-        console.error("Error fetching movements:", error)
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los movimientos. Intente nuevamente.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      console.log("Movements fetched:", data?.length || 0)
-      setMovements(data || [])
+      console.log("Movements fetched:", allMovements.length)
+      setMovements(allMovements)
     } catch (error) {
       console.error("Error fetching movements:", error)
       toast({
@@ -248,6 +422,14 @@ export default function MovementsPage() {
     return "Movimientos de Documentos"
   }
 
+  const getPageDescription = () => {
+    const isAdmin = user?.role === "admin" || user?.role === "supervisor"
+    if (isAdmin) {
+      return "Historial de todos los movimientos de documentos entre departamentos"
+    }
+    return "Historial de movimientos de documentos relacionados con tu área y documentos creados por ti"
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -267,15 +449,13 @@ export default function MovementsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent mb-2 dark:text-white">
             {getPageTitle()}
           </h1>
-          <p className="text-sm sm:text-base text-slate-500">
-            Historial de todos los movimientos de documentos entre departamentos
-          </p>
+          <p className="text-sm sm:text-base text-slate-500">{getPageDescription()}</p>
         </div>
         <Button
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-slate-200 hover:bg-slate-100 text-slate-700"
+          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
@@ -378,13 +558,15 @@ export default function MovementsPage() {
             <p className="text-sm sm:text-base text-slate-600 mb-6">
               {searchQuery || departmentFilter !== "all"
                 ? "Intente con otros criterios de búsqueda"
-                : "Los movimientos aparecerán aquí cuando se muevan documentos entre departamentos"}
+                : user?.role === "admin" || user?.role === "supervisor"
+                  ? "Los movimientos aparecerán aquí cuando se muevan documentos entre departamentos"
+                  : "Los movimientos de documentos relacionados con tu área aparecerán aquí"}
             </p>
             {movements.length === 0 && (
               <Button
                 onClick={handleRefresh}
                 variant="outline"
-                className="border-slate-200 hover:bg-slate-100 text-slate-700"
+                className="border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
@@ -428,7 +610,7 @@ export default function MovementsPage() {
                       variant="outline"
                       size="sm"
                       asChild
-                      className="w-full sm:w-auto border-slate-200 hover:bg-slate-100 text-slate-700"
+                      className="w-full sm:w-auto border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
                     >
                       <Link href={`/documents/${movement.document_id}`}>
                         <span className="sm:hidden">Ver Doc</span>
