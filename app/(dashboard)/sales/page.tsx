@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Shield,
   CreditCard,
+  MoreHorizontal,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -35,6 +36,13 @@ import { Label } from "@/components/ui/label"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
 import { generateWarrantyLetter } from "@/lib/warranty-letter-generator"
 import { generateCCILetter } from "@/lib/cci-letter-generator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface Sale {
   id: string
@@ -755,55 +763,43 @@ export default function SalesPage() {
                           </TableCell>
                         )}
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetails(sale)}
-                              className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              title="Ver detalles"
-                            >
-                              <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditSale(sale)}
-                              className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              title="Editar venta"
-                              disabled={!canViewAllSales && sale.created_by !== user?.id}
-                            >
-                              <Edit className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleStatusChange(sale)}
-                              className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              title="Cambiar estado"
-                              disabled={!canViewAllSales && sale.created_by !== user?.id}
-                            >
-                              <Badge className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGenerateWarrantyLetter(sale)}
-                              className="hover:bg-green-100 dark:hover:bg-green-900"
-                              title="Generar carta de garantía"
-                            >
-                              <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGenerateCCILetter(sale)}
-                              className="hover:bg-blue-100 dark:hover:bg-blue-900"
-                              title="Generar carta de CCI"
-                            >
-                              <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Abrir menú</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleViewDetails(sale)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver detalles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEditSale(sale)}
+                                disabled={!canViewAllSales && sale.created_by !== user?.id}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar venta
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(sale)}
+                                disabled={!canViewAllSales && sale.created_by !== user?.id}
+                              >
+                                <Badge className="mr-2 h-4 w-4" />
+                                Cambiar estado
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleGenerateWarrantyLetter(sale)}>
+                                <Shield className="mr-2 h-4 w-4 text-green-600" />
+                                Carta de garantía
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGenerateCCILetter(sale)}>
+                                <CreditCard className="mr-2 h-4 w-4 text-blue-600" />
+                                Carta de CCI
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
