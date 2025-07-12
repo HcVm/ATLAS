@@ -37,6 +37,46 @@ interface MultiProductSaleFormProps {
   onSuccess: () => void
 }
 
+// Función para generar número de venta
+const generateSaleNumber = async (companyId: string, companyCode: string): Promise<string> => {
+  const currentYear = new Date().getFullYear()
+
+  try {
+    // Buscar el último número de venta para esta empresa y año
+    const { data: lastSale, error } = await supabase
+      .from("sales")
+      .select("sale_number")
+      .eq("company_id", companyId)
+      .like("sale_number", `VEN-${currentYear}-${companyCode}-%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error("Error fetching last sale:", error)
+      // Si hay error, usar número 1
+      return `VEN-${currentYear}-${companyCode}-0001`
+    }
+
+    let nextNumber = 1
+
+    if (lastSale && lastSale.length > 0) {
+      const lastNumber = lastSale[0].sale_number
+      // Extraer el número del formato VEN-2025-ARM-0001
+      const match = lastNumber?.match(/-(\d+)$/)
+      if (match) {
+        nextNumber = Number.parseInt(match[1]) + 1
+      }
+    }
+
+    // Formatear con ceros a la izquierda (4 dígitos)
+    const formattedNumber = nextNumber.toString().padStart(4, "0")
+    return `VEN-${currentYear}-${companyCode}-${formattedNumber}`
+  } catch (error) {
+    console.error("Error generating sale number:", error)
+    return `VEN-${currentYear}-${companyCode}-0001`
+  }
+}
+
 export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -228,8 +268,11 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
     setLoading(true)
 
     try {
+
+      const saleNumber = await generateSaleNumber(selectedCompany.id, selectedCompany.code || "GEN")
       // Create sale
       const saleData = {
+        sale_number: saleNumber,
         company_id: selectedCompany.id,
         company_name: selectedCompany.name,
         company_ruc: selectedCompany.ruc || "",
@@ -336,6 +379,14 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
             <Input value={selectedCompany?.ruc || ""} disabled />
           </div>
         </div>
+        {selectedCompany?.code && (
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
+              <strong>Código de empresa:</strong> {selectedCompany.code} - Las ventas se generarán con el formato: VEN-
+              {new Date().getFullYear()}-{selectedCompany.code}-XXXX
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator />
