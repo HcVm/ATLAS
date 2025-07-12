@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
+import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
+import { 
   Plus,
   Search,
   FileText,
@@ -1127,61 +1128,185 @@ export default function QuotationsPage() {
                       </CardContent>
                     </Card>
 
-                    {/* Additional Information */}
-                    {selectedQuotation.observations && (
+                    {/* Route Information (if exists) */}
+                    {selectedQuotation.route_distance_km && (
                       <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
                         <CardHeader>
-                          <CardTitle className="text-lg text-slate-800">Observaciones</CardTitle>
+                          <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
+                            <Route className="h-5 w-5 text-slate-600" />
+                            Información de Ruta
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border-l-4 border-slate-400">
-                            {selectedQuotation.observations}
-                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                              <Route className="h-10 w-10 text-slate-600" />
+                              <div>
+                                <p className="text-sm text-slate-600">Distancia Total</p>
+                                <p className="text-xl font-bold text-slate-700">
+                                  {selectedQuotation.route_distance_km.toFixed(1)} km
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                              <Clock className="h-10 w-10 text-slate-600" />
+                              <div>
+                                <p className="text-sm text-slate-600">Duración Estimada</p>
+                                <p className="text-xl font-bold text-slate-700">
+                                  {selectedQuotation.route_duration_minutes
+                                    ? `${Math.floor(selectedQuotation.route_duration_minutes / 60)}h ${selectedQuotation.route_duration_minutes % 60}m`
+                                    : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {selectedQuotation.route_google_maps_url && (
+                            <div className="mt-4">
+                              <Button
+                                variant="outline"
+                                onClick={() => window.open(selectedQuotation.route_google_maps_url!, "_blank")}
+                                className="border-slate-200 hover:bg-slate-100"
+                              >
+                                <MapPin className="h-4 w-4 mr-2" />
+                                Ver Ruta en Google Maps
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     )}
 
-                    {/* PDF Generation Buttons */}
-                    <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
-                      <CardHeader>
-                        <CardTitle className="text-lg text-slate-800">Generar Documentos</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Cotización para Entidades */}
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-slate-700">Cotización para Entidades</h4>
-                            <div className="flex gap-2">
-                              {selectedCompany?.code === "ARM" ? (
-                                <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} />
-                              ) : (
-                                <EntityQuotationPDFGenerator quotation={selectedQuotation} />
-                              )}
-                            </div>
-                          </div>
+                    {/* Commission Information */}
+                    {(selectedQuotation.contact_person || selectedQuotation.commission_percentage) && (
+                      <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
+                            <DollarSign className="h-5 w-5 text-slate-600" />
+                            Información de Comisión
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {selectedQuotation.contact_person && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Contacto/Vendedor</Label>
+                                <p className="text-sm font-medium text-slate-800">{selectedQuotation.contact_person}</p>
+                              </div>
+                            )}
 
-                          {/* Cotización para Privados */}
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-slate-700">Cotización para Privados</h4>
-                            <div className="flex gap-2">
-                              {selectedCompany?.code === "ARM" ? (
-                                <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} />
-                              ) : (
-                                <PrivateQuotationPDFGenerator quotation={selectedQuotation} />
-                              )}
-                            </div>
+                            {selectedQuotation.commission_percentage && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Porcentaje de Comisión</Label>
+                                <p className="text-sm font-medium text-slate-800">
+                                  {selectedQuotation.commission_percentage.toFixed(2)}%
+                                </p>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_base_amount && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Base de Cálculo (Sin IGV)</Label>
+                                <p className="text-sm font-medium text-slate-800">
+                                  S/{" "}
+                                  {selectedQuotation.commission_base_amount.toLocaleString("es-PE", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </p>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_amount && (
+                              <div>
+                                <Label className="text-sm font-medium text-slate-600">Monto de Comisión</Label>
+                                <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+                                  <p className="text-lg font-bold text-green-700">
+                                    S/{" "}
+                                    {selectedQuotation.commission_amount.toLocaleString("es-PE", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedQuotation.commission_notes && (
+                              <div className="md:col-span-2">
+                                <Label className="text-sm font-medium text-slate-600">Notas de Comisión</Label>
+                                <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                  {selectedQuotation.commission_notes}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 </TabsContent>
 
                 <TabsContent value="route" className="max-h-[70vh] overflow-y-auto">
-                  <RoutePlanner quotation={selectedQuotation} onRouteUpdated={handleRouteUpdated} />
+                  <RoutePlanner
+                    quotationId={selectedQuotation.id}
+                    initialDestination={selectedQuotation.delivery_location}
+                    onRouteCalculated={handleRouteUpdated}
+                  />
                 </TabsContent>
               </Tabs>
             )}
+
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowDetailsDialog(false)}
+                className="border-slate-200 hover:bg-slate-100"
+              >
+                Cerrar
+              </Button>
+              {selectedQuotation && selectedCompany && (
+                <>
+                  {/* Mostrar botones según la empresa */}
+                  {selectedCompany.code === "ARM" ? (
+                    <>
+                      <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                      <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                    </>
+                  ) : (
+                    <>
+                      <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                      <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
+                    </>
+                  )}
+                  <QuotationPDFGenerator
+                    quotation={selectedQuotation}
+                    companyInfo={{
+                      id: selectedCompany.id,
+                      name: selectedCompany.name,
+                      ruc: selectedCompany.ruc || "",
+                      code: selectedCompany.code || "",
+                      description: selectedCompany.description,
+                      logo_url: selectedCompany.logo_url,
+                      color: selectedCompany.color || "#3B82F6",
+                      address: selectedCompany.address,
+                      phone: selectedCompany.phone,
+                      email: selectedCompany.email,
+                    }}
+                  />
+                </>
+              )}
+              <Button
+                onClick={() => {
+                  setShowDetailsDialog(false)
+                  setEditingQuotation(selectedQuotation)
+                  setNewStatus(selectedQuotation?.status || "")
+                  setShowEditStatusDialog(true)
+                }}
+                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800"
+              >
+                Cambiar Estado
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
