@@ -273,10 +273,11 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .header {
-          background: linear-gradient(135deg, #1e40af 0%, #6366f1 100%);
-          color: white;
+          background: linear-gradient(135deg, #f8fafc, #dbeafe);
+          color: black;
           padding: 8mm;
           border-radius: 4mm;
+          border: 3px solid #1d4ed8;
           margin-bottom: 5mm;
           position: relative;
           overflow: hidden;
@@ -290,9 +291,6 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           left: 0;
           right: 0;
           bottom: 0;
-          background-image: 
-            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
           pointer-events: none;
         }
         
@@ -423,7 +421,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           font-size: 12px;
           font-weight: 700;
           margin-bottom: 3mm;
-          color: white;
+          color: black;
           opacity: 0.9;
         }
         
