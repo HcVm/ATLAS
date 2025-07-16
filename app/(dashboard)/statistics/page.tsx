@@ -367,7 +367,7 @@ export default function StatisticsPage() {
       // Obtener departamentos con información de empresa
       let departmentsQuery = supabase.from("departments").select(`
         id, name, color, company_id,
-        companies (name)
+        companies!departments_company_id_fkey (name)
       `)
       if (selectedCompany) {
         departmentsQuery = departmentsQuery.eq("company_id", selectedCompany.id)
@@ -408,7 +408,7 @@ export default function StatisticsPage() {
           id, to_department_id, created_at, company_id,
           departments!document_movements_to_department_id_fkey (
             name, color,
-            companies (name)
+            companies!departments_company_id_fkey (name)
           )
         `)
 
@@ -996,7 +996,7 @@ export default function StatisticsPage() {
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300"
+          className="gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 bg-transparent"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : "animate-pulse"}`} />
           {refreshing ? "Actualizando..." : "Actualizar"}
@@ -1079,7 +1079,7 @@ export default function StatisticsPage() {
         </Card>
 
         <Card
-          className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? 'bg-red-50 dark:bg-red-900/10' : ''}`}
+          className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300 ${warehouseStats.inventoryValue.lowStockCount > 0 ? "bg-red-50 dark:bg-red-900/10" : ""}`}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-400/80 to-red-300/80"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">

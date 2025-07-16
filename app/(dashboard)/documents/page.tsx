@@ -125,15 +125,15 @@ export default function DocumentsPage() {
       let query = supabase
         .from("documents")
         .select(`
-    *,
-    profiles!documents_created_by_fkey (id, full_name, email, company_id),
-    departments!documents_current_department_id_fkey (id, name),
-    document_movements!document_movements_document_id_fkey (
-      id, 
-      created_at, 
-      to_department_id
-    )
-  `)
+  *,
+  profiles!documents_created_by_fkey (id, full_name, email, company_id),
+  departments!documents_current_department_id_fkey (id, name),
+  document_movements!document_movements_document_id_fkey (
+    id, 
+    created_at, 
+    to_department_id
+  )
+`)
         .order("created_at", { ascending: false })
 
       // Filtrar por empresa seleccionada si el usuario es admin
@@ -165,14 +165,14 @@ export default function DocumentsPage() {
         let fallbackQuery = supabase
           .from("documents")
           .select(`
-    *,
-    profiles!documents_created_by_fkey (id, full_name, email, company_id),
-    document_movements!document_movements_document_id_fkey (
-      id, 
-      created_at, 
-      to_department_id
-    )
-  `)
+  *,
+  profiles!documents_created_by_fkey (id, full_name, email, company_id),
+  document_movements!document_movements_document_id_fkey (
+    id, 
+    created_at, 
+    to_department_id
+  )
+`)
           .order("created_at", { ascending: false })
 
         // Aplicar los mismos filtros de empresa
@@ -466,7 +466,7 @@ export default function DocumentsPage() {
         const urgentDocs = filteredDocuments.filter((doc) => {
           const lastMovementDate = getLastMovementToCurrentDepartment(doc)
           const trafficLight = getTrafficLightStatus(doc.created_at, doc.status, lastMovementDate)
-          return trafficLight && trafficLight.icon === "🔴"
+          return trafficLight && trafficLight.icon === "🔴" && user?.department_id === doc.current_department_id
         })
 
         return urgentDocs.length > 0 ? (
@@ -475,7 +475,8 @@ export default function DocumentsPage() {
               <div className="flex items-center gap-2">
                 <span className="text-lg">🚨</span>
                 <span>
-                  Tienes <strong>{urgentDocs.length}</strong> documento(s) urgente(s) sin respuesta por más de 3 días, no responder tus documentos a tiempo puede provocar sanciones administrativas.
+                  Tienes <strong>{urgentDocs.length}</strong> documento(s) urgente(s) sin respuesta por más de 3 días,
+                  no responder tus documentos a tiempo puede provocar sanciones administrativas.
                 </span>
               </div>
             </AlertDescription>
@@ -633,7 +634,7 @@ export default function DocumentsPage() {
                                 document.status,
                                 lastMovementDate,
                               )
-                              return trafficLight ? (
+                              return trafficLight && user?.department_id === document.current_department_id ? (
                                 <div
                                   className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${trafficLight.bgColor} ${trafficLight.textColor} ${trafficLight.borderColor} border shadow-sm`}
                                   title={trafficLight.message}

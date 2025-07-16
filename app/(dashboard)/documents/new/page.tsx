@@ -202,9 +202,24 @@ export default function NewDocumentPage() {
         setUploading(false)
       }
 
+      // Generate document number using RPC function
+      const { data: documentNumber, error: rpcError } = await supabase.rpc("generate_document_number", {
+        p_company_id: companyToUse,
+        p_department_id: values.department_id, // <-- MODIFICACIÓN CLAVE: Pasar el department_id
+        p_user_id: user.id,
+      })
+
+      if (rpcError) {
+        console.error("Error generating document number via RPC:", rpcError)
+        throw new Error("Error al generar el número de documento: " + rpcError.message)
+      }
+
+      console.log("Generated document number:", documentNumber)
+
       console.log("Creating document with data:", {
         title: values.title,
         description: values.description || null,
+        document_number: documentNumber, // Include the generated document number
         status: "pending",
         created_by: user.id,
         current_department_id: values.department_id,
@@ -213,13 +228,13 @@ export default function NewDocumentPage() {
         company_id: companyToUse,
       })
 
-      // Crear documento - El número se generará automáticamente por el trigger
+      // Crear documento
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
           title: values.title,
           description: values.description || null,
-          // document_number se omite para que el trigger lo genere automáticamente
+          document_number: documentNumber, // Pass the generated document number
           status: "pending",
           created_by: user.id,
           company_id: companyToUse, // Use determined company
@@ -274,6 +289,44 @@ export default function NewDocumentPage() {
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError)
         // No fallar la creación del documento por un error de notificación
+      }
+
+      // NUEVA LÓGICA: Crear notificaciones para todos los usuarios en el departamento de destino
+      try {
+        // Obtener el nombre del departamento para el mensaje de notificación
+        const { data: departmentData, error: deptError } = await supabase
+          .from("departments")
+          .select("name")
+          .eq("id", values.department_id)
+          .single()
+
+        const departmentName = departmentData?.name || "un departamento"
+
+        const { data: usersInDepartment, error: usersError } = await supabase
+          .from("profiles") // Usar 'profiles' como tu tabla de usuarios
+          .select("id")
+          .eq("department_id", values.department_id)
+          .eq("company_id", companyToUse) // Asegurar que los usuarios son de la misma empresa
+
+        if (usersError) {
+          console.error("Error fetching users for destination department:", usersError)
+        } else {
+          for (const deptUser of usersInDepartment) {
+            if (deptUser.id !== user.id) {
+              // Evitar notificar al creador dos veces
+              await createNotification({
+                userId: deptUser.id,
+                title: "Nuevo Documento Creado",
+                message: `Se ha creado un nuevo documento "${values.title}" (${document.document_number}) en tu departamento (${departmentName}).`,
+                type: "document_created",
+                relatedId: document.id,
+                companyId: companyToUse,
+              })
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating notifications for destination department users:", notificationError)
       }
 
       // Después de crear el documento y antes del router.push
