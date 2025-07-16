@@ -44,7 +44,7 @@ const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDa
       textColor: "text-red-700",
       bgColor: "bg-red-50",
       borderColor: "border-red-200",
-      message: "¡URGENTE! Sin respuesta por más de 3 días, no responder tus documentos a tiempo puede provocar sanciones administrativas",
+      message: "¡URGENTE! Sin respuesta por más de 3 días",
       icon: "🔴",
     }
   } else if (daysPassed >= 1) {
@@ -475,7 +475,7 @@ export default function DocumentsPage() {
               <div className="flex items-center gap-2">
                 <span className="text-lg">🚨</span>
                 <span>
-                  Tienes <strong>{urgentDocs.length}</strong> documento(s) urgente(s) sin respuesta por más de 3 días.
+                  Tienes <strong>{urgentDocs.length}</strong> documento(s) urgente(s) sin respuesta por más de 3 días, no responder tus documentos a tiempo puede provocar sanciones administrativas.
                 </span>
               </div>
             </AlertDescription>

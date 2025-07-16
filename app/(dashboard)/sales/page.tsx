@@ -510,7 +510,7 @@ export default function SalesPage() {
   const renderStatusBadge = (status: string) => (
     <Badge
       variant={
-        status === "conformidad"
+        status === "compromiso"
           ? "default"
           : status === "devengado"
             ? "secondary"
