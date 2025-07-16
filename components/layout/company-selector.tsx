@@ -31,16 +31,16 @@ export function CompanySelector() {
     setSelectedCompanyId(company?.id || null)
 
     if (company) {
-      toast.success(`Company selected: ${company.name}`)
+      toast.success(`Empresa Seleccionada: ${company.name}`)
     } else {
-      toast.success("General mode activated - All users visible")
+      toast.success("Modo General Activado - Toda la información es visible")
     }
     setDialogOpen(false)
   }
 
   const handleReload = async () => {
     setRefreshing(true)
-    toast.info("Reloading company list...")
+    toast.info("Recargando lista de empresas...")
     await refreshCompanies()
     setRefreshing(false)
   }
@@ -90,11 +90,11 @@ export function CompanySelector() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="text-center text-2xl font-bold">What company do you want to manage?</DialogTitle>
+            <DialogTitle className="text-center text-2xl font-bold">Qué Empresa Quieres Administrar?</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-center text-muted-foreground mb-6">
-              Select a company to manage its users and documents, or use general mode to see all users.
+              Selecciona una empresa para administrar sus usuarios y documentos, o usa el modo general para ver todos los usuarios.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {/* Opción General */}
@@ -148,14 +148,14 @@ export function CompanySelector() {
                 className="rounded-lg border-2 border-dashed border-gray-300 hover:border-purple-300 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center"
                 onClick={() => {
                   setDialogOpen(false)
-                  toast.info("Add company functionality in development")
+                  toast.info("Funcionalidad de Añadir Empresa en Desarrollo")
                 }}
               >
                 <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-2">
                   <Plus className="h-8 w-8 text-gray-500" />
                 </div>
                 <h3 className="font-medium text-center">Add</h3>
-                <p className="text-xs text-muted-foreground text-center">New company</p>
+                <p className="text-xs text-muted-foreground text-center">Nueva Empresa</p>
               </div>
             </div>
           </div>
@@ -178,7 +178,7 @@ export function CompanySelector() {
                 <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
                 <path d="M8 16H3v5" />
               </svg>
-              Reload companies
+              Recargar Empresas
             </Button>
           </div>
         </DialogContent>

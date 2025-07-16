@@ -65,7 +65,7 @@ export default function DepartmentsPage() {
 
       let query = supabase.from("departments").select(`
       *,
-      companies(
+      companies!departments_company_id_fkey(
         id,
         name,
         code
@@ -329,43 +329,73 @@ export default function DepartmentsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200 dark:border-slate-700">
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Departamento</TableHead>
-                        {isGeneralView && <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Empresa</TableHead>}
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Descripción</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Color</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Usuarios</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Fecha de creación</TableHead>
-                        <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">Acciones</TableHead>
+                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Departamento
+                        </TableHead>
+                        {isGeneralView && (
+                          <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                            Empresa
+                          </TableHead>
+                        )}
+                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Descripción
+                        </TableHead>
+                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Color
+                        </TableHead>
+                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Usuarios
+                        </TableHead>
+                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Fecha de creación
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
+                          Acciones
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredDepartments.map((dept) => (
-                        <TableRow key={dept.id} className="border-gray-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50 transition-all duration-300">
+                        <TableRow
+                          key={dept.id}
+                          className="border-gray-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50 transition-all duration-300"
+                        >
                           <TableCell className="p-2 sm:p-4">
                             <div className="flex items-center space-x-2 sm:space-x-3">
                               <div
                                 className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl text-white shadow-lg transition-transform duration-300 hover:scale-110 flex-shrink-0"
-                                style={{ background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + 'dd' : "#4B5563"})` }}
+                                style={{
+                                  background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + "dd" : "#4B5563"})`,
+                                }}
                               >
                                 <Building2 className="h-3 w-3 sm:h-5 sm:w-5" />
                               </div>
-                              <div className="font-medium text-gray-900 dark:text-slate-100 text-sm sm:text-base">{dept.name}</div>
+                              <div className="font-medium text-gray-900 dark:text-slate-100 text-sm sm:text-base">
+                                {dept.name}
+                              </div>
                             </div>
                           </TableCell>
                           {isGeneralView && (
                             <TableCell className="p-2 sm:p-4">
-                                {dept.companies && (
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                                        {dept.companies.name || dept.companies.code || "Empresa"}
-                                    </Badge>
-                                )}
+                              {dept.companies && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                  {dept.companies.name || dept.companies.code || "Empresa"}
+                                </Badge>
+                              )}
                             </TableCell>
                           )}
-                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4 max-w-xs truncate">{dept.description || "Sin descripción"}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4 max-w-xs truncate">
+                            {dept.description || "Sin descripción"}
+                          </TableCell>
                           <TableCell className="p-2 sm:p-4">
                             <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-white dark:border-slate-900 shadow-md" style={{ backgroundColor: dept.color || "#6B7280" }} />
-                              <span className="text-xs sm:text-sm text-muted-foreground font-mono hidden lg:inline">{dept.color || "#6B7280"}</span>
+                              <div
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-white dark:border-slate-900 shadow-md"
+                                style={{ backgroundColor: dept.color || "#6B7280" }}
+                              />
+                              <span className="text-xs sm:text-sm text-muted-foreground font-mono hidden lg:inline">
+                                {dept.color || "#6B7280"}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="p-2 sm:p-4">
@@ -373,24 +403,41 @@ export default function DepartmentsPage() {
                               <div className="p-1 rounded-md bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700">
                                 <Users className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-300" />
                               </div>
-                              <span className="font-medium text-gray-700 dark:text-slate-200 text-sm">{dept.userCount || 0}</span>
+                              <span className="font-medium text-gray-700 dark:text-slate-200 text-sm">
+                                {dept.userCount || 0}
+                              </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4">{new Date(dept.created_at).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4">
+                            {new Date(dept.created_at).toLocaleDateString("es-ES")}
+                          </TableCell>
                           <TableCell className="text-right p-2 sm:p-4">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 h-8 w-8">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 h-8 w-8"
+                                >
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="shadow-lg border-gray-200 dark:border-slate-600">
-                                <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)} className="hover:bg-blue-50 transition-colors duration-200">
+                              <DropdownMenuContent
+                                align="end"
+                                className="shadow-lg border-gray-200 dark:border-slate-600"
+                              >
+                                <DropdownMenuItem
+                                  onClick={() => router.push(`/departments/edit/${dept.id}`)}
+                                  className="hover:bg-blue-50 transition-colors duration-200"
+                                >
                                   <Edit className="mr-2 h-4 w-4 text-blue-600" />
                                   <span>Editar</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDeleteClick(dept)} className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200">
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(dept)}
+                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   <span>Eliminar</span>
                                 </DropdownMenuItem>
@@ -409,28 +456,40 @@ export default function DepartmentsPage() {
                 {filteredDepartments.map((dept) => (
                   <div key={dept.id} className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-3">
                     <div className="flex justify-between items-start gap-4">
-                        <div className="flex items-center gap-3 font-bold">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + 'dd' : "#4B5563"})`}}>
-                                <Building2 className="h-4 w-4" />
-                            </div>
-                            <h3 className="flex-1 break-words text-base leading-tight">{dept.name}</h3>
+                      <div className="flex items-center gap-3 font-bold">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-md flex-shrink-0"
+                          style={{
+                            background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + "dd" : "#4B5563"})`,
+                          }}
+                        >
+                          <Building2 className="h-4 w-4" />
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="-mt-2 -mr-2 h-8 w-8 flex-shrink-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)}><Edit className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDeleteClick(dept)} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Eliminar</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <h3 className="flex-1 break-words text-base leading-tight">{dept.name}</h3>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="-mt-2 -mr-2 h-8 w-8 flex-shrink-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(dept)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {dept.description && <p className="text-sm text-muted-foreground pt-1">{dept.description}</p>}
-                    
+
                     <div className="border-t pt-3 space-y-2 text-sm">
                       {isGeneralView && dept.companies && (
                         <div className="flex justify-between items-center">
@@ -439,7 +498,10 @@ export default function DepartmentsPage() {
                         </div>
                       )}
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground flex items-center gap-1.5"><Users className="h-3 w-3"/>Usuarios</span>
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          <Users className="h-3 w-3" />
+                          Usuarios
+                        </span>
                         <span className="font-medium">{dept.userCount || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
