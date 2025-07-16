@@ -262,21 +262,28 @@ export default function NewProductPage() {
 
       const { data, error } = await supabase.from("products").insert(productData).select().single()
 
+      console.log("Supabase response:", { data, error })
+
       if (error) {
         console.error("Supabase error:", error)
         console.error("Error details:", JSON.stringify(error, null, 2))
 
         // Manejar errores específicos de la base de datos
-        if (error.code === "23505" || error.message?.includes("duplicate key")) {
-          if (error.message?.includes("products_code_company_id_key") || error.message?.includes("code")) {
+        if (error.code === "23505") {
+          console.log("Detected duplicate key error")
+          if (error.message?.includes("products_code_company_id_key")) {
             toast.error(`Ya existe un producto con el código "${form.code}" en tu empresa`)
-          } else if (error.message?.includes("products_barcode_company_id_key") || error.message?.includes("barcode")) {
+            return
+          } else if (error.message?.includes("products_barcode_company_id_key")) {
             toast.error(`Ya existe un producto con el código de barras "${form.barcode}" en tu empresa`)
+            return
           } else {
             toast.error("Ya existe un producto con esos datos")
+            return
           }
-          return
-        } else if (error.code === "23503") {
+        }
+
+        if (error.code === "23503") {
           if (error.message?.includes("brand_id")) {
             toast.error("La marca seleccionada no es válida")
           } else if (error.message?.includes("category_id")) {
@@ -287,13 +294,19 @@ export default function NewProductPage() {
             toast.error("Error de referencia en los datos")
           }
           return
-        } else if (error.code === "23514") {
+        }
+
+        if (error.code === "23514") {
           toast.error("Los valores numéricos deben ser positivos")
           return
-        } else if (error.code === "42501") {
+        }
+
+        if (error.code === "42501") {
           toast.error("No tienes permisos para crear productos")
           return
-        } else if (error.code === "PGRST116") {
+        }
+
+        if (error.code === "PGRST116") {
           toast.error("No se encontró la tabla de productos. Contacta al administrador")
           return
         }
@@ -301,7 +314,8 @@ export default function NewProductPage() {
         // Si el error no tiene código específico, verificar el mensaje
         if (
           error.message?.toLowerCase().includes("duplicate") ||
-          error.message?.toLowerCase().includes("already exists")
+          error.message?.toLowerCase().includes("already exists") ||
+          error.message?.toLowerCase().includes("unique constraint")
         ) {
           toast.error("Ya existe un producto con esos datos")
           return
@@ -321,6 +335,8 @@ export default function NewProductPage() {
         toast.error("No se pudo crear el producto. Inténtalo de nuevo.")
         return
       }
+
+      console.log("Product created successfully:", data)
 
       if (form.current_stock > 0) {
         toast.success(

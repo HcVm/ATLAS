@@ -3,6 +3,8 @@
 import type React from "react"
 import { CompanyProvider } from "@/lib/company-context"
 import { AuthProvider } from "@/lib/auth-context"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import DashboardLayoutClient from "./dashboard-layout-client"
 
 export const dynamic = "force-dynamic"
@@ -13,10 +15,14 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthProvider>
-      <CompanyProvider>
-        <DashboardLayoutClient>{children}</DashboardLayoutClient>
-      </CompanyProvider>
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <AuthProvider>
+        <CompanyProvider>
+          <DashboardLayoutClient>{children}
+            <Toaster position="top-right" expand={true} richColors={true} closeButton={true} duration={5000} />
+          </DashboardLayoutClient>
+        </CompanyProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
