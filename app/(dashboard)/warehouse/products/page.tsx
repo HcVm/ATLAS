@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 
 interface Product {
   id: string
@@ -113,27 +114,36 @@ export default function ProductsPage() {
       const { data: productsData, error: productsError } = await supabase
         .from("products")
         .select(`
-          id,
-          name,
-          description,
-          code,
-          barcode,
-          unit_of_measure,
-          minimum_stock,
-          current_stock,
-          cost_price,
-          sale_price,
-          location,
-          is_active,
-          brands!products_brand_id_fkey (id, name, color),
-          product_categories!products_category_id_fkey (id, name, color)
-        `)
+        id,
+        name,
+        description,
+        code,
+        barcode,
+        unit_of_measure,
+        minimum_stock,
+        current_stock,
+        cost_price,
+        sale_price,
+        location,
+        is_active,
+        brands!products_brand_id_fkey (id, name, color),
+        product_categories!products_category_id_fkey (id, name, color)
+      `)
         .eq("company_id", companyId)
         .order("name")
 
       if (productsError) {
         console.error("Products error:", productsError)
-        throw productsError
+
+        if (productsError.code === "42501") {
+          // Error de permisos
+          throw new Error("No tienes permisos para ver los productos de esta empresa")
+        } else if (productsError.code === "PGRST301") {
+          // Error de conexión
+          throw new Error("Error de conexión. Verifica tu conexión a internet")
+        } else {
+          throw new Error("Error al cargar los productos")
+        }
       }
 
       // Obtener marcas
@@ -143,7 +153,11 @@ export default function ProductsPage() {
         .eq("company_id", companyId)
         .order("name")
 
-      if (brandsError) throw brandsError
+      if (brandsError) {
+        console.error("Brands error:", brandsError)
+        // No lanzar error, solo mostrar advertencia
+        console.warn("No se pudieron cargar las marcas para filtros")
+      }
 
       // Obtener categorías
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -152,13 +166,40 @@ export default function ProductsPage() {
         .eq("company_id", companyId)
         .order("name")
 
-      if (categoriesError) throw categoriesError
+      if (categoriesError) {
+        console.error("Categories error:", categoriesError)
+        // No lanzar error, solo mostrar advertencia
+        console.warn("No se pudieron cargar las categorías para filtros")
+      }
 
       setProducts(productsData || [])
       setBrands(brandsData || [])
       setCategories(categoriesData || [])
-    } catch (error) {
+
+      // Mostrar notificación de éxito solo si hay productos
+      if (productsData && productsData.length > 0) {
+        // Solo mostrar en la primera carga
+        if (products.length === 0) {
+          console.log(`${productsData.length} productos cargados correctamente`)
+        }
+      }
+    } catch (error: any) {
       console.error("Error fetching data:", error)
+
+      // Mostrar notificación de error específica
+      if (error.message) {
+        // Error personalizado
+        if (typeof window !== "undefined") {
+          const toast = (await import("sonner")).toast
+          toast.error(error.message)
+        }
+      } else {
+        // Error genérico
+        if (typeof window !== "undefined") {
+          const toast = (await import("sonner")).toast
+          toast.error("Error al cargar los datos. Intenta recargar la página")
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -220,6 +261,36 @@ export default function ProductsPage() {
 
   // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
+
+  // Función para detectar errores de red
+  const handleNetworkError = () => {
+    toast.error("Error de conexión. Verifica tu conexión a internet y recarga la página")
+  }
+
+  // Agregar listener para errores de red
+  useEffect(() => {
+    const handleOnline = () => {
+      if (products.length === 0) {
+        // Reintentar cargar datos cuando vuelva la conexión
+        const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+        if (companyId) {
+          fetchData(companyId)
+        }
+      }
+    }
+
+    const handleOffline = () => {
+      toast.error("Sin conexión a internet. Algunas funciones pueden no estar disponibles")
+    }
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [user, selectedCompany, products.length])
 
   if (!hasWarehouseAccess) {
     return (

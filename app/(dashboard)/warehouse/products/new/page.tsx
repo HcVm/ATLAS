@@ -93,6 +93,7 @@ export default function NewProductPage() {
   const fetchData = async () => {
     if (!user?.company_id) {
       console.log("No company_id available")
+      toast.error("No se pudo identificar la empresa")
       return
     }
 
@@ -111,6 +112,7 @@ export default function NewProductPage() {
 
       if (companyBrandsError) {
         console.error("Company brands error:", companyBrandsError)
+        toast.error("Error al cargar las marcas de la empresa")
         throw companyBrandsError
       }
 
@@ -125,6 +127,7 @@ export default function NewProductPage() {
 
       if (externalBrandsError) {
         console.error("External brands error:", externalBrandsError)
+        toast.error("Error al cargar las marcas externas")
         throw externalBrandsError
       }
 
@@ -145,12 +148,21 @@ export default function NewProductPage() {
 
       if (categoriesError) {
         console.error("Categories error:", categoriesError)
+        toast.error("Error al cargar las categorías")
         throw categoriesError
       }
 
       setBrands(allBrands)
       setCategories(categoriesData || [])
       console.log("Set brands:", allBrands.length, "categories:", categoriesData?.length || 0)
+
+      if (allBrands.length === 0) {
+        toast.warning("No hay marcas disponibles. Puedes crear una nueva marca.")
+      }
+
+      if (categoriesData?.length === 0) {
+        toast.warning("No hay categorías disponibles. Considera crear categorías para organizar mejor tus productos.")
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
       toast.error("No se pudieron cargar los datos necesarios")
@@ -175,6 +187,7 @@ export default function NewProductPage() {
 
     // Seleccionar automáticamente la nueva marca
     setForm((prev) => ({ ...prev, brand_id: newBrand.id }))
+    toast.success(`Marca "${newBrand.name}" creada y seleccionada`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,8 +198,37 @@ export default function NewProductPage() {
       return
     }
 
-    if (!form.name.trim() || !form.code.trim()) {
-      toast.error("El nombre y código del producto son obligatorios")
+    if (!form.name.trim()) {
+      toast.error("El nombre del producto es obligatorio")
+      return
+    }
+
+    if (!form.code.trim()) {
+      toast.error("El código del producto es obligatorio")
+      return
+    }
+
+    // Validar que el precio de venta sea mayor al costo
+    if (form.cost_price > 0 && form.sale_price > 0 && form.sale_price <= form.cost_price) {
+      toast.error("El precio de venta debe ser mayor al precio de costo")
+      return
+    }
+
+    // Validar stock mínimo
+    if (form.minimum_stock < 0) {
+      toast.error("El stock mínimo no puede ser negativo")
+      return
+    }
+
+    // Validar stock actual
+    if (form.current_stock < 0) {
+      toast.error("El stock actual no puede ser negativo")
+      return
+    }
+
+    // Validar URL de ficha técnica si se proporciona
+    if (form.ficha_tecnica.trim() && !isValidUrl(form.ficha_tecnica.trim())) {
+      toast.error("La URL de la ficha técnica no es válida")
       return
     }
 
@@ -222,17 +264,83 @@ export default function NewProductPage() {
 
       if (error) {
         console.error("Supabase error:", error)
-        if (error.code === "23505") {
-          toast.error("Ya existe un producto con ese código")
+        console.error("Error details:", JSON.stringify(error, null, 2))
+
+        // Manejar errores específicos de la base de datos
+        if (error.code === "23505" || error.message?.includes("duplicate key")) {
+          if (error.message?.includes("products_code_company_id_key") || error.message?.includes("code")) {
+            toast.error(`Ya existe un producto con el código "${form.code}" en tu empresa`)
+          } else if (error.message?.includes("products_barcode_company_id_key") || error.message?.includes("barcode")) {
+            toast.error(`Ya existe un producto con el código de barras "${form.barcode}" en tu empresa`)
+          } else {
+            toast.error("Ya existe un producto con esos datos")
+          }
+          return
+        } else if (error.code === "23503") {
+          if (error.message?.includes("brand_id")) {
+            toast.error("La marca seleccionada no es válida")
+          } else if (error.message?.includes("category_id")) {
+            toast.error("La categoría seleccionada no es válida")
+          } else if (error.message?.includes("company_id")) {
+            toast.error("Error de empresa. Contacta al administrador")
+          } else {
+            toast.error("Error de referencia en los datos")
+          }
+          return
+        } else if (error.code === "23514") {
+          toast.error("Los valores numéricos deben ser positivos")
+          return
+        } else if (error.code === "42501") {
+          toast.error("No tienes permisos para crear productos")
+          return
+        } else if (error.code === "PGRST116") {
+          toast.error("No se encontró la tabla de productos. Contacta al administrador")
           return
         }
-        throw error
+
+        // Si el error no tiene código específico, verificar el mensaje
+        if (
+          error.message?.toLowerCase().includes("duplicate") ||
+          error.message?.toLowerCase().includes("already exists")
+        ) {
+          toast.error("Ya existe un producto con esos datos")
+          return
+        }
+
+        if (error.message?.toLowerCase().includes("permission") || error.message?.toLowerCase().includes("access")) {
+          toast.error("No tienes permisos para crear productos")
+          return
+        }
+
+        // Error genérico
+        toast.error(`Error al crear el producto: ${error.message || "Error desconocido"}`)
+        return
       }
 
-      toast.success("Producto creado correctamente")
+      if (!data) {
+        toast.error("No se pudo crear el producto. Inténtalo de nuevo.")
+        return
+      }
+
+      if (form.current_stock > 0) {
+        toast.success(
+          `Producto "${form.name}" creado correctamente con stock inicial de ${form.current_stock} ${form.unit_of_measure}`,
+        )
+      } else {
+        toast.success(`Producto "${form.name}" creado correctamente`)
+      }
+
       router.push("/warehouse/products")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating product:", error)
+
+      // Manejar errores de red
+      if (error.name === "NetworkError" || error.message?.includes("fetch")) {
+        toast.error("Error de conexión. Verifica tu internet e inténtalo de nuevo.")
+        return
+      }
+
+      // Error genérico
       toast.error("No se pudo crear el producto. Verifica que todos los campos estén correctos.")
     } finally {
       setSaving(false)
@@ -241,6 +349,56 @@ export default function NewProductPage() {
 
   const updateForm = (field: keyof ProductForm, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // Función para validar URL
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string)
+      return true
+    } catch (_) {
+      return false
+    }
+  }
+
+  // Función para validar código en tiempo real
+  const validateCode = async (code: string) => {
+    if (!code.trim() || !user?.company_id) return
+
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id")
+        .eq("code", code.trim())
+        .eq("company_id", user.company_id)
+        .single()
+
+      if (data) {
+        toast.error("Este código ya está en uso")
+      }
+    } catch (error) {
+      // Ignorar errores de "no encontrado" ya que eso significa que el código está disponible
+    }
+  }
+
+  // Función para validar código de barras en tiempo real
+  const validateBarcode = async (barcode: string) => {
+    if (!barcode.trim() || !user?.company_id) return
+
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id")
+        .eq("barcode", barcode.trim())
+        .eq("company_id", user.company_id)
+        .single()
+
+      if (data) {
+        toast.error("Este código de barras ya está en uso")
+      }
+    } catch (error) {
+      // Ignorar errores de "no encontrado"
+    }
   }
 
   if (loading) {
@@ -253,7 +411,7 @@ export default function NewProductPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Nuevo Producto</h1>
-            <p className="text-muted-foreground">Cargando...</p>
+            <p className="text-muted-foreground">Cargando datos necesarios...</p>
           </div>
         </div>
       </div>
@@ -304,7 +462,12 @@ export default function NewProductPage() {
                     <Input
                       id="code"
                       value={form.code}
-                      onChange={(e) => updateForm("code", e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        const newCode = e.target.value.toUpperCase()
+                        updateForm("code", newCode)
+                        // Validar después de 1 segundo de inactividad
+                        setTimeout(() => validateCode(newCode), 1000)
+                      }}
                       placeholder="Ej: PWC001"
                       required
                     />
@@ -355,7 +518,12 @@ export default function NewProductPage() {
                     <Input
                       id="barcode"
                       value={form.barcode}
-                      onChange={(e) => updateForm("barcode", e.target.value)}
+                      onChange={(e) => {
+                        const newBarcode = e.target.value
+                        updateForm("barcode", newBarcode)
+                        // Validar después de 1 segundo de inactividad
+                        setTimeout(() => validateBarcode(newBarcode), 1000)
+                      }}
                       placeholder="Código de barras del producto"
                     />
                   </div>

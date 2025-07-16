@@ -99,6 +99,11 @@ export default function EditProductPage() {
 
       if (!companyId) {
         setError("No se pudo determinar la empresa")
+        toast({
+          title: "Error",
+          description: "No se pudo determinar la empresa",
+          variant: "destructive",
+        })
         return
       }
 
@@ -113,7 +118,18 @@ export default function EditProductPage() {
       if (productError) {
         if (productError.code === "PGRST116") {
           setError("Producto no encontrado")
+          toast({
+            title: "Error",
+            description: "El producto no fue encontrado o no tienes permisos para verlo",
+            variant: "destructive",
+          })
         } else {
+          console.error("Product error:", productError)
+          toast({
+            title: "Error",
+            description: "Error al cargar el producto",
+            variant: "destructive",
+          })
           throw productError
         }
         return
@@ -126,7 +142,14 @@ export default function EditProductPage() {
         .eq("company_id", companyId)
         .order("name")
 
-      if (companyBrandsError) throw companyBrandsError
+      if (companyBrandsError) {
+        console.error("Company brands error:", companyBrandsError)
+        toast({
+          title: "Advertencia",
+          description: "No se pudieron cargar las marcas de la empresa",
+          variant: "destructive",
+        })
+      }
 
       // Obtener marcas externas (company_id NULL)
       const { data: externalBrands, error: externalBrandsError } = await supabase
@@ -135,7 +158,14 @@ export default function EditProductPage() {
         .is("company_id", null)
         .order("name")
 
-      if (externalBrandsError) throw externalBrandsError
+      if (externalBrandsError) {
+        console.error("External brands error:", externalBrandsError)
+        toast({
+          title: "Advertencia",
+          description: "No se pudieron cargar las marcas externas",
+          variant: "destructive",
+        })
+      }
 
       // Combinar marcas: primero las de la empresa, luego las externas
       const allBrands = [
@@ -150,7 +180,14 @@ export default function EditProductPage() {
         .eq("company_id", companyId)
         .order("name")
 
-      if (categoriesError) throw categoriesError
+      if (categoriesError) {
+        console.error("Categories error:", categoriesError)
+        toast({
+          title: "Advertencia",
+          description: "No se pudieron cargar las categorías",
+          variant: "destructive",
+        })
+      }
 
       setProduct(productData)
       setBrands(allBrands)
@@ -177,6 +214,11 @@ export default function EditProductPage() {
     } catch (error) {
       console.error("Error fetching data:", error)
       setError("Error al cargar los datos")
+      toast({
+        title: "Error",
+        description: "Error al cargar los datos del producto",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -207,6 +249,34 @@ export default function EditProductPage() {
       toast({
         title: "Error",
         description: "El nombre y código son obligatorios",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validaciones adicionales
+    if (formData.cost_price > 0 && formData.sale_price > 0 && formData.sale_price <= formData.cost_price) {
+      toast({
+        title: "Error",
+        description: "El precio de venta debe ser mayor al precio de costo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (formData.minimum_stock < 0) {
+      toast({
+        title: "Error",
+        description: "El stock mínimo no puede ser negativo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (formData.current_stock < 0) {
+      toast({
+        title: "Error",
+        description: "El stock actual no puede ser negativo",
         variant: "destructive",
       })
       return
@@ -252,11 +322,74 @@ export default function EditProductPage() {
         .eq("id", params.id)
         .eq("company_id", companyId)
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase error:", error)
+
+        // Manejar errores específicos de la base de datos
+        if (error.code === "23505") {
+          if (error.message.includes("products_code_company_id_key")) {
+            toast({
+              title: "Error",
+              description: "Ya existe otro producto con ese código en tu empresa",
+              variant: "destructive",
+            })
+          } else if (error.message.includes("products_barcode_company_id_key")) {
+            toast({
+              title: "Error",
+              description: "Ya existe otro producto con ese código de barras en tu empresa",
+              variant: "destructive",
+            })
+          } else {
+            toast({
+              title: "Error",
+              description: "Ya existe otro producto con esos datos",
+              variant: "destructive",
+            })
+          }
+          return
+        } else if (error.code === "23503") {
+          if (error.message.includes("brand_id")) {
+            toast({
+              title: "Error",
+              description: "La marca seleccionada no es válida",
+              variant: "destructive",
+            })
+          } else if (error.message.includes("category_id")) {
+            toast({
+              title: "Error",
+              description: "La categoría seleccionada no es válida",
+              variant: "destructive",
+            })
+          } else {
+            toast({
+              title: "Error",
+              description: "Error de referencia en los datos",
+              variant: "destructive",
+            })
+          }
+          return
+        } else if (error.code === "23514") {
+          toast({
+            title: "Error",
+            description: "Los valores numéricos deben ser positivos",
+            variant: "destructive",
+          })
+          return
+        } else if (error.code === "42501") {
+          toast({
+            title: "Error",
+            description: "No tienes permisos para editar este producto",
+            variant: "destructive",
+          })
+          return
+        }
+
+        throw error
+      }
 
       toast({
         title: "Éxito",
-        description: "Producto actualizado correctamente",
+        description: `Producto "${formData.name}" actualizado correctamente`,
       })
 
       router.push(`/warehouse/products/${params.id}`)
@@ -264,7 +397,7 @@ export default function EditProductPage() {
       console.error("Error updating product:", error)
       toast({
         title: "Error",
-        description: "Error al actualizar el producto",
+        description: "Error al actualizar el producto. Verifica que todos los campos estén correctos.",
         variant: "destructive",
       })
     } finally {
