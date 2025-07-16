@@ -183,28 +183,38 @@ export default function ProductImageUpload({
       <CardContent className="space-y-4">
         {/* Preview de la imagen */}
         {previewUrl && (
-          <div className="relative">
-            <img
-              src={previewUrl || "/placeholder.svg"}
-              alt="Preview del producto"
-              className="w-full h-48 object-cover rounded-lg border"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.src = "/placeholder.svg?height=200&width=200"
-              }}
-            />
-            {!disabled && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="absolute top-2 right-2"
-                onClick={handleRemoveImage}
-                disabled={isLoading}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+          <div className="relative group">
+            <div className="relative overflow-hidden rounded-lg border bg-gray-50">
+              <img
+                src={previewUrl || "/placeholder.svg"}
+                alt="Preview del producto"
+                className="w-full h-48 object-contain bg-white"
+                style={{
+                  objectFit: "contain",
+                  objectPosition: "center",
+                }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.src = "/placeholder.svg?height=200&width=200"
+                }}
+                onLoad={(e) => {
+                  const target = e.target as HTMLImageElement
+                  console.log("Image loaded successfully:", target.src)
+                }}
+              />
+              {!disabled && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={handleRemoveImage}
+                  disabled={isLoading}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -215,7 +225,7 @@ export default function ProductImageUpload({
               <Info className="h-4 w-4" />
               <span className="text-sm font-medium">Imagen Optimizada</span>
             </div>
-            <div className="text-xs text-green-700 mt-1">
+            <div className="text-xs text-green-700 mt-1 space-y-1">
               <p>Tamaño original: {formatFileSize(compressionInfo.originalSize)}</p>
               <p>Tamaño optimizado: {formatFileSize(compressionInfo.compressedSize)}</p>
               <p>Ahorro: {compressionInfo.ratio}% menos espacio</p>

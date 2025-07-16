@@ -19,7 +19,7 @@ export default function DashboardLayout({
       <AuthProvider>
         <CompanyProvider>
           <DashboardLayoutClient>{children}
-            <Toaster position="top-right" expand={true} richColors={true} closeButton={true} duration={5000} />
+            <Toaster position="bottom-right" expand={true} richColors={true} closeButton={true} duration={5000} />
           </DashboardLayoutClient>
         </CompanyProvider>
       </AuthProvider>
