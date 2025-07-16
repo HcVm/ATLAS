@@ -6,7 +6,7 @@ export interface CreateNotificationParams {
   message: string
   type?: string
   relatedId?: string
-  companyId?: string // Agregar company_id para contexto
+  companyId?: string | null // Cambiado a string | null
 }
 
 export async function createNotification(params: CreateNotificationParams) {
@@ -33,7 +33,7 @@ export async function createNotification(params: CreateNotificationParams) {
   }
 }
 
-export async function getUnreadNotificationsCount(userId: string, companyId?: string): Promise<number> {
+export async function getUnreadNotificationsCount(userId: string, companyId?: string | null): Promise<number> {
   try {
     let query = supabase
       .from("notifications")
@@ -95,7 +95,7 @@ export async function deleteNotification(notificationId: string) {
 export async function getUserNotifications(
   userId: string,
   filter: "all" | "unread" | "read" = "all",
-  companyId?: string,
+  companyId?: string | null,
 ) {
   try {
     let query = supabase
@@ -129,7 +129,7 @@ export async function getUserNotifications(
   }
 }
 
-export async function markAllNotificationsAsRead(userId: string, companyId?: string) {
+export async function markAllNotificationsAsRead(userId: string, companyId?: string | null) {
   try {
     let query = supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false)
 

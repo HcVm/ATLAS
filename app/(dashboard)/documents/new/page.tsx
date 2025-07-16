@@ -269,6 +269,7 @@ export default function NewDocumentPage() {
           message: `Has creado el documento "${values.title}" con número ${document.document_number}`,
           type: "document_created",
           relatedId: document.id,
+          companyId: companyToUse, // Pass companyId here
         })
       } catch (notificationError) {
         console.error("Error creating notification:", notificationError)
@@ -553,7 +554,7 @@ export default function NewDocumentPage() {
                               onClick={() => removeAttachment(index)}
                               className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300 h-8 w-8 p-0 flex-shrink-0 border-slate-200"
                             >
-                              <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <X className="h-3 w-3 sm:h-4 w-4" />
                             </Button>
                           </div>
                         ))}

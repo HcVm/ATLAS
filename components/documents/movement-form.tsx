@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { Upload, X, Paperclip } from "lucide-react"
+import { createNotification } from "@/lib/notifications" // Import createNotification
 
 const formSchema = z.object({
   to_department_id: z.string({
@@ -57,7 +58,7 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
         // Primero obtener la empresa del documento
         const { data: documentData, error: documentError } = await supabase
           .from("documents")
-          .select("company_id")
+          .select("company_id, document_number, title") // Also fetch document_number and title for notifications
           .eq("id", documentId)
           .single()
 
@@ -237,17 +238,85 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
       }
 
       // Update the document's department
-      const { error: documentError } = await supabase
+      const { data: updatedDocument, error: documentError } = await supabase
         .from("documents")
         .update({
           current_department_id: values.to_department_id,
           updated_at: new Date().toISOString(),
         })
         .eq("id", documentId)
+        .select("document_number, title") // Select document_number and title for notifications
+        .single()
 
       if (documentError) {
         console.error("Document update error:", documentError)
         throw documentError
+      }
+
+      // Fetch department names for notification messages
+      const { data: fromDepartment, error: fromDeptError } = await supabase
+        .from("departments")
+        .select("name")
+        .eq("id", fromDepartmentId)
+        .single()
+
+      const { data: toDepartment, error: toDeptError } = await supabase
+        .from("departments")
+        .select("name")
+        .eq("id", values.to_department_id)
+        .single()
+
+      if (fromDeptError || toDeptError) {
+        console.error("Error fetching department names for notification:", fromDeptError || toDeptError)
+      }
+
+      const documentNumber = updatedDocument?.document_number || "desconocido"
+      const documentTitle = updatedDocument?.title || "Documento"
+      const fromDeptName = fromDepartment?.name || "un departamento"
+      const toDeptName = toDepartment?.name || "un departamento"
+
+      // Create notification for the user who moved the document
+      try {
+        await createNotification({
+          userId: user.id,
+          title: "Documento Movido",
+          message: `Has movido el documento "${documentTitle}" (${documentNumber}) de ${fromDeptName} a ${toDeptName}.`,
+          type: "document_moved",
+          relatedId: documentId,
+          companyId: documentCompanyId,
+        })
+      } catch (notificationError) {
+        console.error("Error creating notification for mover:", notificationError)
+      }
+
+      // Create notifications for all users in the destination department
+      try {
+        // Se ha cambiado 'users' a 'profiles' para que coincida con el nombre de tu tabla.
+        const { data: usersInToDepartment, error: usersError } = await supabase
+          .from("profiles") // <-- CAMBIO AQUÍ: de "users" a "profiles"
+          .select("id")
+          .eq("department_id", values.to_department_id)
+          .eq("company_id", documentCompanyId) // Ensure users are from the same company
+
+        if (usersError) {
+          console.error("Error fetching users for destination department:", usersError)
+        } else {
+          for (const deptUser of usersInToDepartment) {
+            if (deptUser.id !== user.id) {
+              // Avoid notifying the mover twice
+              await createNotification({
+                userId: deptUser.id,
+                title: "Documento Recibido",
+                message: `El documento "${documentTitle}" (${documentNumber}) ha sido movido a tu departamento (${toDeptName}).`,
+                type: "document_moved",
+                relatedId: documentId,
+                companyId: documentCompanyId,
+              })
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating notifications for destination department users:", notificationError)
       }
 
       toast({
