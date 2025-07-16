@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FileText, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { generatePrivateQuotationPDF, type PrivateQuotationPDFData } from "@/lib/pdf-generator-private"
+import { generateQRForQuotation, type PrivateQuotationPDFData } from "@/lib/pdf-generator-private"
 import { supabase } from "@/lib/supabase"
 
 interface PrivateQuotationPDFGeneratorProps {
@@ -203,7 +203,11 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         createdBy: quotation.profiles?.full_name || "Sistema de creación AGPC",
       }
 
-      console.log("Final PDF data:", {
+      // Generar QR code en el cliente y añadirlo a los datos del PDF
+      const qrCodeBase64 = await generateQRForQuotation(pdfData.quotationNumber, pdfData)
+      pdfData.qrCodeBase64 = qrCodeBase64
+
+      console.log("Final PDF data to send to server:", {
         companyCode: pdfData.companyCode,
         companyName: pdfData.companyName,
         productsCount: pdfData.products.length,
@@ -212,15 +216,38 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         subtotal: pdfData.subtotal,
         igv: pdfData.igv,
         total: pdfData.total,
+        qrCodePresent: !!pdfData.qrCodeBase64,
       })
 
-      // Generar el PDF
-      await generatePrivateQuotationPDF(pdfData)
+      // Llamar a la nueva ruta de API para generar y descargar el PDF
+      const response = await fetch("/api/generate-quotation-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pdfData, type: "private" }),
+      })
 
-      toast.success("PDF para empresa privada generado exitosamente")
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Server responded with error: ${response.status} - ${errorText}`)
+      }
+
+      // Obtener el blob y crear un enlace de descarga
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `Cotizacion_Privada_${quotation.quotation_number || quotation.id.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
+      toast.success("PDF para empresa privada generado y descargado exitosamente")
     } catch (error) {
       console.error("Error generating private PDF:", error)
-      toast.error("Error al generar el PDF para empresa privada. Por favor, intente nuevamente.")
+      toast.error("Error al generar y descargar el PDF para empresa privada. Por favor, intente nuevamente.")
     } finally {
       setIsGenerating(false)
     }

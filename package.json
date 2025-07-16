@@ -55,6 +55,7 @@
     "next": "15.2.4",
     "next-themes": "latest",
     "pdf-lib": "latest",
+    "puppeteer": "^24.14.0",
     "qrcode": "latest",
     "react": "^19",
     "react-day-picker": "latest",

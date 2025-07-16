@@ -1,10 +1,11 @@
 "use client"
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, Package, AlertTriangle, Search, Loader2 } from "lucide-react"
+import { Check, ChevronsUpDown, Package, AlertTriangle, Search, Loader2, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -15,7 +16,7 @@ interface Product {
   id: string
   code: string
   name: string
-  description: string | null
+  description: string | null // Aseguramos que description está aquí
   sale_price: number
   current_stock: number
   unit_of_measure: string
@@ -126,9 +127,10 @@ export function ProductSelector({
       const { data: popularData, error } = await supabase
         .from("products")
         .select(`
-          id, code, name, sale_price, current_stock, unit_of_measure, company_id,
-          companies!inner(id, name, ruc)
-        `)
+          id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
+          companies!inner(id, name, ruc),
+          brands(name)
+        `) // AHORA INCLUYE description
         .eq("is_active", true)
         .order("current_stock", { ascending: false })
         .limit(10)
@@ -136,11 +138,10 @@ export function ProductSelector({
       if (!error && popularData) {
         const formattedProducts = popularData.map((p) => ({
           ...p,
-          description: null,
-          image_url: null,
-          brands: null,
+          description: p.description, // CORREGIDO: Asignar la descripción real
           categories: null,
           company: p.companies,
+          brands: p.brands,
         }))
         setPopularProducts(formattedProducts)
       }
@@ -177,13 +178,13 @@ export function ProductSelector({
       setHasSearched(true)
 
       try {
-        // Optimized query - only essential fields first
         const { data: searchData, error } = await supabase
           .from("products")
           .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure, 
+          id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
           company_id, brand_id, category_id,
-          companies!inner(id, name, ruc)
+          companies!inner(id, name, ruc),
+          brands(name)
         `)
           .eq("is_active", true)
           .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
@@ -218,7 +219,6 @@ export function ProductSelector({
         // Format products with relations
         const formattedProducts = searchData.map((product) => ({
           ...product,
-          image_url: null, // Skip image loading for performance
           brands: product.brand_id ? { name: brandsMap.get(product.brand_id) || "" } : null,
           categories: product.category_id ? { name: categoriesMap.get(product.category_id) || "" } : null,
           company: product.companies,
@@ -270,9 +270,10 @@ export function ProductSelector({
       const { data, error } = await supabase
         .from("products")
         .select(`
-          id, code, name, description, sale_price, current_stock, unit_of_measure, 
+          id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
           company_id, brand_id, category_id,
-          companies!inner(id, name, ruc)
+          companies!inner(id, name, ruc),
+          brands(name)
         `)
         .eq("id", productId)
         .single()
@@ -290,7 +291,6 @@ export function ProductSelector({
 
         const formattedProduct = {
           ...data,
-          image_url: null,
           brands: brandData.data ? { name: brandData.data.name } : null,
           categories: categoryData.data ? { name: categoryData.data.name } : null,
           company: data.companies,
@@ -354,9 +354,9 @@ export function ProductSelector({
                     <Badge variant="outline" className="text-xs">
                       {selectedProduct.code}
                     </Badge>
-                    {selectedProduct.brands && (
-                      <Badge variant="secondary" className="text-xs">
-                        {selectedProduct.brands.name}
+                    {selectedProduct.brands?.name && (
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        <Tag className="h-3 w-3" /> {selectedProduct.brands.name}
                       </Badge>
                     )}
                     {selectedCompany && selectedProduct.company_id !== selectedCompany.id && (
@@ -444,9 +444,9 @@ export function ProductSelector({
                                 <Badge variant="outline" className="text-xs">
                                   {product.code}
                                 </Badge>
-                                {product.brands && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {product.brands.name}
+                                {product.brands?.name && (
+                                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                                    <Tag className="h-3 w-3" /> {product.brands.name}
                                   </Badge>
                                 )}
                                 {product.categories && (

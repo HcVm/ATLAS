@@ -437,12 +437,6 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
         <div style="position: absolute; bottom: 20mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
-          
-          <div style="text-align: center; margin-top: 10mm;">
-            <div style="border-bottom: 1px solid #1a1a1a; width: 150px; margin: 0 auto 1.5mm auto;"></div>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #1a1a1a;">GERALDINE MUÑOZ CARRANZA</p>
-            <p style="margin: 0; font-size: 9px; color: #666;">${data.companyName || "N/A"}</p>
-          </div>
         </div>
 
         <div style="position: absolute; bottom: 3mm; left: 7mm;">
@@ -569,11 +563,6 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
         <div style="position: absolute; bottom: 35mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
           
-          <div style="text-align: center; margin-top: 10mm;">
-            <div style="border-bottom: 1px solid #1a1a1a; width: 150px; margin: 0 auto 1.5mm auto;"></div>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #1a1a1a;">GERALDINE MUÑOZ CARRANZA</p>
-            <p style="margin: 0; font-size: 9px; color: #666;">${data.companyName || "N/A"}</p>
-          </div>
         </div>
 
         <div style="position: absolute; bottom: 6mm; left: 7mm;">

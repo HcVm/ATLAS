@@ -312,14 +312,6 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
         <!-- Firma -->
         <div style="margin-top: 8mm;">
           <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">Atentamente,</p>
-          
-          <div style="text-align: center; margin-top: 7mm;">
-            <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">GERALDINE MUÑOZ CARRANZA</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">GERENTE GENERAL</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">AGLE PERUVIAN COMPANY E.I.R.L.</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">20608849891</p>
-          </div>
         </div>
       </div>
     </div>
@@ -425,13 +417,6 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         <div style="margin-top: 15mm;">
           <p style="margin: 0 0 10mm 0; font-size: 10px; color: #000;">Atentamente,</p>
           
-          <div style="text-align: center; margin-top: 20mm;">
-            <div style="border-bottom: 1px solid #000; width: 180px; margin: 0 auto 3mm auto;"></div>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #000;">MILAGROS VILLADEZA</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">GERENTE GENERAL</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">ARM CORPORATIONS DEL PERÚ E.I.R.L.</p>
-            <p style="margin: 0; font-size: 9px; color: #000;">20608878701</p>
-          </div>
         </div>
       </div>
     </div>

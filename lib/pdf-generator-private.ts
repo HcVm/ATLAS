@@ -54,9 +54,13 @@ export interface PrivateQuotationPDFData {
 
   // Creado por
   createdBy: string
+  qrCodeBase64?: string // Añadido para pasar el QR al HTML
 }
 
-const generateQRForQuotation = async (quotationNumber: string, data: PrivateQuotationPDFData): Promise<string> => {
+export const generateQRForQuotation = async (
+  quotationNumber: string,
+  data: PrivateQuotationPDFData,
+): Promise<string> => {
   try {
     console.log("🔐 Creando validación a través de API...")
 
@@ -128,88 +132,11 @@ const formatDate = (dateString: string) => {
   })
 }
 
-export const generatePrivateQuotationPDF = async (data: PrivateQuotationPDFData) => {
-  console.log("=== Generando PDF Privado ===")
-  console.log("Datos recibidos:", data)
+// Esta función ahora solo genera el HTML
+export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => {
+  console.log("=== Generando HTML Privado ===")
+  console.log("Datos recibidos para HTML:", data)
 
-  try {
-    const qrCodeBase64 = await generateQRForQuotation(data.quotationNumber, data)
-    const html = generatePrivateQuotationHTML({
-      ...data,
-      qrCodeBase64,
-      quotationNumber: data.quotationNumber,
-      quotationDate: data.quotationDate,
-      status: data.status,
-      observations: data.observations,
-      createdBy: data.createdBy,
-    })
-
-    // Crear un iframe oculto para generar el PDF
-    const iframe = document.createElement("iframe")
-    iframe.style.position = "absolute"
-    iframe.style.left = "-9999px"
-    iframe.style.width = "210mm"
-    iframe.style.height = "297mm"
-    document.body.appendChild(iframe)
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-    if (!iframeDoc) {
-      throw new Error("No se pudo acceder al documento del iframe")
-    }
-
-    iframeDoc.open()
-    iframeDoc.write(html)
-    iframeDoc.close()
-
-    // Esperar a que se carguen las imágenes
-    await new Promise((resolve) => {
-      const images = iframeDoc.querySelectorAll("img")
-      let loadedImages = 0
-      const totalImages = images.length
-
-      if (totalImages === 0) {
-        resolve(void 0)
-        return
-      }
-
-      images.forEach((img) => {
-        if (img.complete) {
-          loadedImages++
-          if (loadedImages === totalImages) {
-            resolve(void 0)
-          }
-        } else {
-          img.onload = img.onerror = () => {
-            loadedImages++
-            if (loadedImages === totalImages) {
-              resolve(void 0)
-            }
-          }
-        }
-      })
-
-      // Timeout de seguridad
-      setTimeout(() => resolve(void 0), 3000)
-    })
-
-    // Generar el PDF usando la API del navegador
-    if (iframe.contentWindow) {
-      iframe.contentWindow.print()
-    }
-
-    // Limpiar el iframe después de un tiempo
-    setTimeout(() => {
-      document.body.removeChild(iframe)
-    }, 1000)
-
-    console.log("✅ PDF privado generado exitosamente")
-  } catch (error) {
-    console.error("❌ Error generando PDF privado:", error)
-    throw new Error(`Error al generar el PDF privado: ${error}`)
-  }
-}
-
-const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => {
   const formattedDate = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
 
@@ -246,8 +173,9 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         @page {
-          size: A4;
-          margin: 10mm;
+          /* Remove size and margin for continuous flow, or keep if you want to define a "virtual" page size */
+          /* size: A4; */
+          /* margin: 10mm; */
         }
         
         * {
@@ -268,7 +196,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         .container {
           width: 100%;
-          max-width: 190mm;
+          max-width: 190mm; /* Keep max-width for layout, but allow height to grow */
           margin: 0 auto;
         }
         
@@ -281,7 +209,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           margin-bottom: 5mm;
           position: relative;
           overflow: hidden;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep header together */
         }
         
         .header::before {
@@ -335,7 +263,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
 
         .conditions-qr-combined-section {
             margin-bottom: 5mm; /* Puedes ajustar este margen */
-            page-break-inside: avoid;
+            page-break-inside: avoid; /* Keep this section together */
         }
 
         .conditions-qr-content {
@@ -352,7 +280,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
             border: 0.5px solid #e2e8f0;
             border-radius: 2mm;
             padding: 4mm;
-            page-break-inside: avoid;
+            page-break-inside: avoid; /* Keep conditions together */
         }
 
         .qr-validation-panel {
@@ -366,7 +294,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
             flex-direction: column;
             align-items: center;
             text-align: center;
-            page-break-inside: avoid;
+            page-break-inside: avoid; /* Keep QR panel together */
         }
 
         .qr-code-panel {
@@ -520,7 +448,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         .section {
           margin-bottom: 5mm;
-          page-break-inside: avoid;
+          /* page-break-inside: avoid; REMOVED to allow content to flow */
         }
         
         
@@ -551,7 +479,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           border: 0.5px solid #e2e8f0;
           border-radius: 3mm;
           padding: 4mm;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep client info together */
         }
         
         .client-grid {
@@ -603,7 +531,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           border-radius: 2mm;
           overflow: hidden;
           box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
-          page-break-after: auto;
+          /* page-break-after: auto; REMOVED to allow continuous flow */
         }
         
         .products-table thead {
@@ -625,7 +553,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         }
         
         .products-table tbody tr {
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep table rows together */
         }
         
         .products-table tbody tr:nth-child(even) {
@@ -651,7 +579,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         .totals-container {
           display: flex;
           justify-content: flex-end;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep totals together */
         }
         
         .totals-box {
@@ -703,7 +631,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
         
         /* Sección combinada sin espacio extra */
         .banking-totals-section {
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep banking and totals together */
         }
         
         .banking-totals-content {
@@ -722,7 +650,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           border: 0.5px solid #e2e8f0;
           border-radius: 2mm;
           padding: 4mm;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep conditions together */
           width: 60%;
         }
         
@@ -761,7 +689,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           display: flex;
           justify-content: space-between;
           align-items: center;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep footer together */
         }
         
         .qr-section {
@@ -812,8 +740,11 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           margin-bottom: 0.5mm;
           font-size: 8px;
         }
+
+        /* Removed .document-info-footer class as it's not needed for single page */
         
-        @media print {
+        /* Remove print media queries if you truly want no pagination */
+        /* @media print {
           .container {
             max-width: none;
           }
@@ -833,7 +764,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
           .products-table thead {
             display: table-header-group;
           }
-        }
+        } */
       </style>
     </head>
     <body>
@@ -958,7 +889,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
                   (product, index) => `
                 <tr>
                   <td style="text-align: center; font-weight: 600;">${index + 1}</td>
-                  <td style="text-align: center; font-family: monospace; font-size: 6px;">${product.code || "-"}</td>
+                  <td style="text-align: center; font-family: monospace; font-size: 8px;">${product.code || "-"}</td>
                   <td>
                     <div class="product-description">${product.description}</div>
                   </td>
@@ -1070,7 +1001,7 @@ const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): string => 
 
             <div class="qr-validation-panel">
                 <div class="qr-code-panel">
-                    <img src="${data.qrCodeBase64}" alt="QR Code" style="width: 25mm; height: 25mm;">
+                    ${data.qrCodeBase64 ? `<img src="${data.qrCodeBase64}" alt="QR Code" style="width: 25mm; height: 25mm;">` : ""}
                 </div>
                 <div class="validation-info-panel">
                     <h3>VALIDACIÓN DEL DOCUMENTO</h3>

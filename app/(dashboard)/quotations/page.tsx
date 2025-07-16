@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import QuotationPDFGenerator from "@/components/quotations/quotation-pdf-generator"
-import { 
+import {
   Plus,
   Search,
   FileText,
@@ -23,6 +23,8 @@ import {
   MapPin,
   AlertTriangle,
   Package,
+  Edit,
+  MoreHorizontal,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -31,7 +33,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import MultiProductQuotationForm from "@/components/quotations/multi-product-quotation-form"
-import { Edit } from "lucide-react"
+import MultiProductQuotationEditForm from "@/components/quotations/multi-product-quotation-edit-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import RoutePlanner from "@/components/quotations/route-planner"
@@ -39,6 +41,17 @@ import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotatio
 import PrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator"
 import ARMEntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator-arm"
 import ARMPrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator-arm"
+import { createNotification } from "@/lib/notifications"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Interfaces actualizadas después de la migración
 interface QuotationItem {
@@ -133,8 +146,10 @@ export default function QuotationsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showNewQuotationDialog, setShowNewQuotationDialog] = useState(false)
-  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null)
+  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null) // For status change
+  const [editingQuotationContent, setEditingQuotationContent] = useState<Quotation | null>(null) // For content edit
   const [showEditStatusDialog, setShowEditStatusDialog] = useState(false)
+  const [showEditContentDialog, setShowEditContentDialog] = useState(false) // New state for content edit dialog
   const [newStatus, setNewStatus] = useState("")
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
@@ -346,9 +361,17 @@ export default function QuotationsPage() {
   const updateQuotationStatus = async () => {
     if (!editingQuotation || !newStatus) return
 
-    // Verificar si el usuario puede editar esta cotización
-    if (!canViewAllQuotations && editingQuotation.created_by !== user?.id) {
-      toast.error("No tienes permisos para editar esta cotización")
+    // Obtener el estado actual de la cotización antes de la actualización
+    const oldStatus = editingQuotation.status
+
+    // Lógica de permisos para cambiar el estado:
+    // El usuario creador (Ventas) siempre puede cambiar el estado.
+    // Otros roles con canViewAllQuotations también pueden.
+    const isCreator = editingQuotation.created_by === user?.id
+    const canChangeStatus = canViewAllQuotations || isCreator
+
+    if (!canChangeStatus) {
+      toast.error("No tienes permisos para cambiar el estado de esta cotización.")
       return
     }
 
@@ -358,6 +381,73 @@ export default function QuotationsPage() {
       if (error) throw error
 
       toast.success("Estado actualizado exitosamente")
+
+      // --- Lógica de Notificaciones ---
+      if (selectedCompany?.id) {
+        console.log("selectedCompany.id:", selectedCompany.id) // Debug: Check company ID
+        // Escenario 1: Usuario de Ventas cambia de "borrador" a "enviada"
+        if (isCreator && oldStatus === "draft" && newStatus === "sent") {
+          console.log("Triggering notification for Sales Head Department...") // Debug: Confirm trigger
+          // Buscar el ID del departamento "Jefatura de Ventas" para la empresa actual
+          const { data: salesHeadDept, error: deptError } = await supabase
+            .from("departments")
+            .select("id")
+            .eq("name", "Jefatura de Ventas")
+            .eq("company_id", selectedCompany.id)
+            .single()
+
+          if (deptError || !salesHeadDept) {
+            console.error("Error al encontrar el departamento 'Jefatura de Ventas':", deptError) // Debug: Department error
+            console.log("salesHeadDept:", salesHeadDept) // Debug: salesHeadDept value
+            // Continuar sin enviar notificación si el departamento no se encuentra
+          } else {
+            console.log("Found Sales Head Department ID:", salesHeadDept.id) // Debug: Found department
+            // Obtener todos los usuarios en ese departamento y empresa
+            const { data: salesHeads, error: usersError } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("department_id", salesHeadDept.id)
+              .eq("company_id", selectedCompany.id) // Asegurar que pertenecen a la misma empresa
+
+            if (usersError) {
+              console.error("Error al obtener jefes de ventas:", usersError) // Debug: Users error
+            } else {
+              console.log("Found Sales Heads:", salesHeads) // Debug: Found sales heads
+              for (const head of salesHeads || []) {
+                console.log("Creating notification for user ID:", head.id) // Debug: User ID for notification
+                await createNotification({
+                  userId: head.id,
+                  title: "Nueva Cotización Enviada para Revisión",
+                  message: `La cotización #${editingQuotation.quotation_number || editingQuotation.id.slice(0, 8)} de ${editingQuotation.entity_name} ha sido enviada por ${user?.full_name} y requiere tu revisión.`,
+                  type: "quotation_review",
+                  relatedId: editingQuotation.id,
+                  companyId: selectedCompany.id,
+                })
+              }
+              toast.info("Notificación enviada a Jefatura de Ventas.")
+            }
+          }
+        }
+
+        // Escenario 2: Jefe de Ventas (o admin/supervisor) cambia a "aprobada" o "rechazada"
+        if ((newStatus === "approved" || newStatus === "rejected") && editingQuotation.created_by) {
+          console.log("Triggering notification for quotation creator...") // Debug: Confirm trigger
+          // Notificar al creador de la cotización
+          await createNotification({
+            userId: editingQuotation.created_by,
+            title: `Cotización ${newStatus === "approved" ? "Aprobada" : "Rechazada"}`,
+            message: `Tu cotización #${editingQuotation.quotation_number || editingQuotation.id.slice(0, 8)} para ${editingQuotation.entity_name} ha sido ${newStatus === "approved" ? "APROBADA" : "RECHAZADA"}.`,
+            type: "quotation_status_update",
+            relatedId: editingQuotation.id,
+            companyId: selectedCompany.id,
+          })
+          toast.info(`Notificación enviada al creador de la cotización.`)
+        }
+      } else {
+        console.log("selectedCompany.id is not available, skipping notification logic.") // Debug: Company ID missing
+      }
+      // --- Fin Lógica de Notificaciones ---
+
       setShowEditStatusDialog(false)
       setEditingQuotation(null)
       setNewStatus("")
@@ -366,8 +456,8 @@ export default function QuotationsPage() {
         fetchStats(companyId)
       }
     } catch (error: any) {
-      console.error("Error updating status:", error)
-      toast.error("Error al actualizar el estado")
+      console.error("Error al actualizar el estado:", error)
+      toast.error("Error al actualizar el estado: " + error.message)
     }
   }
 
@@ -784,19 +874,101 @@ export default function QuotationsPage() {
                               >
                                 <Eye className="h-4 w-4 text-slate-600" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingQuotation(quotation)
-                                  setNewStatus(quotation.status)
-                                  setShowEditStatusDialog(true)
-                                }}
-                                className="hover:bg-slate-100"
-                                disabled={!canViewAllQuotations && quotation.created_by !== user?.id}
-                              >
-                                <Edit className="h-4 w-4 text-slate-600" />
-                              </Button>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="hover:bg-slate-100">
+                                    <MoreHorizontal className="h-4 w-4 text-slate-600" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {/* Edit Content - Only for creator and draft status */}
+                                  {quotation.status === "draft" && quotation.created_by === user?.id && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEditingQuotationContent(quotation)
+                                        setShowEditContentDialog(true)
+                                      }}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" /> Editar Contenido
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {/* Change Status - Always for creator, or for those with full view access */}
+                                  {(canViewAllQuotations || quotation.created_by === user?.id) && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEditingQuotation(quotation)
+                                        setNewStatus(quotation.status)
+                                        setShowEditStatusDialog(true)
+                                      }}
+                                    >
+                                      <Clock className="mr-2 h-4 w-4" /> Cambiar Estado
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+
+                                  {/* PDF Generators in a Submenu */}
+                                  {selectedCompany && (
+                                    <DropdownMenuSub>
+                                      <DropdownMenuSubTrigger>
+                                        <FileText className="mr-2 h-4 w-4" /> Generar PDFs
+                                      </DropdownMenuSubTrigger>
+                                      <DropdownMenuSubContent>
+                                        {selectedCompany.code === "ARM" ? (
+                                          <>
+                                            <DropdownMenuItem asChild>
+                                              <ARMEntityQuotationPDFGenerator
+                                                quotation={quotation}
+                                                companyInfo={selectedCompany}
+                                              />
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                              <ARMPrivateQuotationPDFGenerator
+                                                quotation={quotation}
+                                                companyInfo={selectedCompany}
+                                              />
+                                            </DropdownMenuItem>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <DropdownMenuItem asChild>
+                                              <EntityQuotationPDFGenerator
+                                                quotation={quotation}
+                                                companyInfo={selectedCompany}
+                                              />
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                              <PrivateQuotationPDFGenerator
+                                                quotation={quotation}
+                                                companyInfo={selectedCompany}
+                                              />
+                                            </DropdownMenuItem>
+                                          </>
+                                        )}
+                                        <DropdownMenuItem asChild>
+                                          <QuotationPDFGenerator
+                                            quotation={quotation}
+                                            companyInfo={{
+                                              id: selectedCompany.id,
+                                              name: selectedCompany.name,
+                                              ruc: selectedCompany.ruc || "",
+                                              code: selectedCompany.code || "",
+                                              description: selectedCompany.description,
+                                              logo_url: selectedCompany.logo_url,
+                                              color: selectedCompany.color || "#3B82F6",
+                                              address: selectedCompany.address,
+                                              phone: selectedCompany.phone,
+                                              email: selectedCompany.email,
+                                            }}
+                                          />
+                                        </DropdownMenuItem>
+                                      </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -857,6 +1029,36 @@ export default function QuotationsPage() {
                 Actualizar Estado
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Content Dialog (New) */}
+        <Dialog open={showEditContentDialog} onOpenChange={setShowEditContentDialog}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50">
+            <DialogHeader>
+              <DialogTitle className="text-slate-800">Editar Cotización</DialogTitle>
+              <DialogDescription className="text-slate-600">
+                Modifica el contenido de la cotización:{" "}
+                {editingQuotationContent?.quotation_number || `#${editingQuotationContent?.id.slice(0, 8)}`}
+              </DialogDescription>
+            </DialogHeader>
+            {editingQuotationContent ? (
+              <MultiProductQuotationEditForm
+                quotation={editingQuotationContent}
+                onSuccess={() => {
+                  setShowEditContentDialog(false)
+                  setEditingQuotationContent(null)
+                  if (companyId) {
+                    fetchQuotations(companyId)
+                    fetchStats(companyId)
+                  }
+                }}
+              />
+            ) : (
+              <div className="p-4">
+                <p>Cargando formulario de edición...</p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -1264,48 +1466,7 @@ export default function QuotationsPage() {
               >
                 Cerrar
               </Button>
-              {selectedQuotation && selectedCompany && (
-                <>
-                  {/* Mostrar botones según la empresa */}
-                  {selectedCompany.code === "ARM" ? (
-                    <>
-                      <ARMEntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                      <ARMPrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                    </>
-                  ) : (
-                    <>
-                      <EntityQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                      <PrivateQuotationPDFGenerator quotation={selectedQuotation} companyInfo={selectedCompany} />
-                    </>
-                  )}
-                  <QuotationPDFGenerator
-                    quotation={selectedQuotation}
-                    companyInfo={{
-                      id: selectedCompany.id,
-                      name: selectedCompany.name,
-                      ruc: selectedCompany.ruc || "",
-                      code: selectedCompany.code || "",
-                      description: selectedCompany.description,
-                      logo_url: selectedCompany.logo_url,
-                      color: selectedCompany.color || "#3B82F6",
-                      address: selectedCompany.address,
-                      phone: selectedCompany.phone,
-                      email: selectedCompany.email,
-                    }}
-                  />
-                </>
-              )}
-              <Button
-                onClick={() => {
-                  setShowDetailsDialog(false)
-                  setEditingQuotation(selectedQuotation)
-                  setNewStatus(selectedQuotation?.status || "")
-                  setShowEditStatusDialog(true)
-                }}
-                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800"
-              >
-                Cambiar Estado
-              </Button>
+              {/* The PDF generation buttons are now inside the dropdown menu, so they are removed from here */}
             </div>
           </DialogContent>
         </Dialog>

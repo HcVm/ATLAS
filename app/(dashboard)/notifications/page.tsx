@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context" // Import useCompany
 import {
   getUserNotifications,
   markNotificationAsRead,
@@ -27,42 +28,48 @@ export default function NotificationsPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany() // Use selectedCompany
+
+  const fetchNotifications = useCallback(
+    async (filter: "all" | "unread" | "read") => {
+      if (!user) return
+
+      setLoading(true)
+      try {
+        // Para admins, usar la empresa seleccionada
+        const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
+        const data = await getUserNotifications(user.id, filter, companyId)
+        setNotifications(data)
+
+        // Actualizar contadores
+        const all = await getUserNotifications(user.id, "all", companyId)
+        const unread = await getUserNotifications(user.id, "unread", companyId)
+        const read = await getUserNotifications(user.id, "read", companyId)
+
+        setCounts({
+          all: all.length,
+          unread: unread.length,
+          read: read.length,
+        })
+      } catch (error) {
+        console.error("Error fetching notifications:", error)
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las notificaciones",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [user, selectedCompany, toast],
+  ) // Add selectedCompany to dependencies
 
   useEffect(() => {
     if (user) {
       fetchNotifications(activeTab as "all" | "unread" | "read")
     }
-  }, [user, activeTab])
-
-  const fetchNotifications = async (filter: "all" | "unread" | "read") => {
-    if (!user) return
-
-    setLoading(true)
-    try {
-      const data = await getUserNotifications(user.id, filter)
-      setNotifications(data)
-
-      // Actualizar contadores
-      const all = await getUserNotifications(user.id, "all")
-      const unread = await getUserNotifications(user.id, "unread")
-      const read = await getUserNotifications(user.id, "read")
-
-      setCounts({
-        all: all.length,
-        unread: unread.length,
-        read: read.length,
-      })
-    } catch (error) {
-      console.error("Error fetching notifications:", error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las notificaciones",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [user, activeTab, fetchNotifications])
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -104,7 +111,8 @@ export default function NotificationsPage() {
     if (!user) return
 
     try {
-      await markAllNotificationsAsRead(user.id)
+      const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
+      await markAllNotificationsAsRead(user.id, companyId)
       toast({
         title: "Notificaciones marcadas como leídas",
         description: "Todas las notificaciones han sido marcadas como leídas",
@@ -125,7 +133,15 @@ export default function NotificationsPage() {
   }
 
   const handleNotificationClick = async (notification: any) => {
-    if (!notification.type || !notification.related_id) return
+    if (!notification.type || !notification.related_id) {
+      console.warn("Notification missing type or related_id, cannot navigate.", notification)
+      toast({
+        title: "Información incompleta",
+        description: "Esta notificación no tiene un destino válido.",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       // Marcar como leída al hacer clic
@@ -133,10 +149,26 @@ export default function NotificationsPage() {
         await markNotificationAsRead(notification.id)
       }
 
-      // Navegar según el tipo
       const relatedInfo = await getRelatedInfo(notification.type, notification.related_id)
-      if (!relatedInfo) return
+      console.log("Related Info:", relatedInfo) // Debugging line
 
+      if (!relatedInfo || !relatedInfo.data) {
+        // Ensure data exists
+        console.warn(
+          "No related info found for notification type:",
+          notification.type,
+          "and relatedId:",
+          notification.related_id,
+        )
+        toast({
+          title: "Información no disponible",
+          description: "No se pudo encontrar la información relacionada con esta notificación.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Navegar según el tipo
       switch (relatedInfo.type) {
         case "document":
           router.push(`/documents/${notification.related_id}`)
@@ -147,7 +179,19 @@ export default function NotificationsPage() {
         case "department":
           router.push(`/departments`)
           break
+        case "sale":
+          router.push(`/sales`)
+          break
+        case "quotation":
+          router.push(`/quotations`)
+          break
         default:
+          console.warn("Unhandled notification type for navigation:", relatedInfo.type)
+          toast({
+            title: "Tipo de notificación no soportado",
+            description: "No se puede navegar a la vista para este tipo de notificación.",
+            variant: "destructive",
+          })
           break
       }
 
@@ -155,6 +199,11 @@ export default function NotificationsPage() {
       fetchNotifications(activeTab as "all" | "unread" | "read")
     } catch (error) {
       console.error("Error handling notification click:", error)
+      toast({
+        title: "Error de navegación",
+        description: "Ocurrió un error al intentar navegar a la información relacionada.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -172,6 +221,12 @@ export default function NotificationsPage() {
         return "Departamento creado"
       case "user_created":
         return "Usuario creado"
+      case "sale_created":
+        return "Venta creada"
+      case "quotation_review":
+        return "Cotización en revisión"
+      case "quotation_status_update":
+        return "Estado de cotización"
       default:
         return "Sistema"
     }
@@ -191,6 +246,12 @@ export default function NotificationsPage() {
         return "bg-slate-500 text-white dark:bg-slate-400 dark:text-slate-900"
       case "user_created":
         return "bg-slate-600 text-white dark:bg-slate-300 dark:text-slate-900"
+      case "sale_created":
+        return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300"
+      case "quotation_review":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300"
+      case "quotation_status_update":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300"
       default:
         return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
     }

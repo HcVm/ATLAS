@@ -54,9 +54,13 @@ export interface ARMPrivateQuotationPDFData {
 
   // Creado por
   createdBy: string
+  qrCodeBase64?: string // Añadido para pasar el QR al HTML
 }
 
-const generateQRForQuotation = async (quotationNumber: string, data: ARMPrivateQuotationPDFData): Promise<string> => {
+export const generateQRForQuotation = async (
+  quotationNumber: string,
+  data: ARMPrivateQuotationPDFData,
+): Promise<string> => {
   try {
     console.log("🔐 Creando validación ARM a través de API...")
 
@@ -128,88 +132,11 @@ const formatDate = (dateString: string) => {
   })
 }
 
-export const generateARMPrivateQuotationPDF = async (data: ARMPrivateQuotationPDFData) => {
-  console.log("=== Generando PDF ARM Privado ===")
-  console.log("Datos recibidos:", data)
+// Esta función ahora solo genera el HTML
+export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): string => {
+  console.log("=== Generando HTML ARM Privado ===")
+  console.log("Datos recibidos para HTML:", data)
 
-  try {
-    const qrCodeBase64 = await generateQRForQuotation(data.quotationNumber, data)
-    const html = generateARMPrivateQuotationHTML({
-      ...data,
-      qrCodeBase64,
-      quotationNumber: data.quotationNumber,
-      quotationDate: data.quotationDate,
-      status: data.status,
-      observations: data.observations,
-      createdBy: data.createdBy,
-    })
-
-    // Crear un iframe oculto para generar el PDF - IGUAL QUE AGLE
-    const iframe = document.createElement("iframe")
-    iframe.style.position = "absolute"
-    iframe.style.left = "-9999px"
-    iframe.style.width = "210mm"
-    iframe.style.height = "297mm"
-    document.body.appendChild(iframe)
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-    if (!iframeDoc) {
-      throw new Error("No se pudo acceder al documento del iframe")
-    }
-
-    iframeDoc.open()
-    iframeDoc.write(html)
-    iframeDoc.close()
-
-    // Esperar a que se carguen las imágenes
-    await new Promise((resolve) => {
-      const images = iframeDoc.querySelectorAll("img")
-      let loadedImages = 0
-      const totalImages = images.length
-
-      if (totalImages === 0) {
-        resolve(void 0)
-        return
-      }
-
-      images.forEach((img) => {
-        if (img.complete) {
-          loadedImages++
-          if (loadedImages === totalImages) {
-            resolve(void 0)
-          }
-        } else {
-          img.onload = img.onerror = () => {
-            loadedImages++
-            if (loadedImages === totalImages) {
-              resolve(void 0)
-            }
-          }
-        }
-      })
-
-      // Timeout de seguridad
-      setTimeout(() => resolve(void 0), 3000)
-    })
-
-    // Generar el PDF usando la API del navegador
-    if (iframe.contentWindow) {
-      iframe.contentWindow.print()
-    }
-
-    // Limpiar el iframe después de un tiempo
-    setTimeout(() => {
-      document.body.removeChild(iframe)
-    }, 1000)
-
-    console.log("✅ PDF ARM privado generado exitosamente")
-  } catch (error) {
-    console.error("❌ Error generando PDF ARM privado:", error)
-    throw new Error(`Error al generar el PDF ARM privado: ${error}`)
-  }
-}
-
-const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): string => {
   const formattedDate = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
 
@@ -246,8 +173,9 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
         @page {
-          size: A4;
-          margin: 5mm;
+          /* Remove size and margin for continuous flow, or keep if you want to define a "virtual" page size */
+          /* size: A4; */
+          /* margin: 5mm; */
         }
         
         * {
@@ -268,11 +196,11 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
         
         .document-container {
           width: 100%;
-          max-width: 200mm;
+          max-width: 200mm; /* Keep max-width for layout, but allow height to grow */
           margin: 0 auto;
           background: white;
           position: relative;
-          min-height: 287mm;
+          /* min-height: 287mm; REMOVED TO ALLOW CONTENT TO FLOW */
         }
 
         /* Header como tabla única - Usando colores del entity ARM */
@@ -280,7 +208,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           width: 100%;
           border-collapse: collapse;
           margin-bottom: 4mm;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep header together */
           height: 25mm;
         }
 
@@ -410,7 +338,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           border-radius: 3mm;
           padding: 3mm;
           margin-bottom: 4mm;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep brands together */
         }
 
         .brands-title {
@@ -463,7 +391,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           border-radius: 3mm;
           margin-bottom: 4mm;
           overflow: hidden;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep client and conditions together */
           box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
         }
 
@@ -666,7 +594,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           color: white;
           padding: 0.5mm 1.5mm;
           border-radius: 2mm;
-          font-size: 6px;
+          font-size: 8px;
           font-family: 'Courier New', monospace;
           display: inline-block;
           margin-top: 1mm;
@@ -736,7 +664,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           border-radius: 3mm;
           margin-bottom: 4mm;
           overflow: hidden;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep financial summary together */
           box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
         }
 
@@ -892,7 +820,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           grid-template-columns: 1fr auto 1fr;
           gap: 3mm;
           align-items: center;
-          page-break-inside: avoid;
+          page-break-inside: avoid; /* Keep footer together */
           position: relative;
           overflow: hidden;
           margin-top: auto;
@@ -941,7 +869,8 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           color: white;
         }
 
-        @media print {
+        /* Remove print media queries if you truly want no pagination */
+        /* @media print {
           .document-container {
             max-width: none;
             min-height: auto;
@@ -960,7 +889,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
           .brands-showcase {
             margin-bottom: 3mm;
           }
-        }
+        } */
       </style>
     </head>
     <body>
@@ -1203,7 +1132,7 @@ const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData): stri
             <div class="qr-column">
               <div class="column-title">Validación</div>
               <div class="qr-container-inline">
-                <img src="${data.qrCodeBase64}" alt="QR Code" class="qr-image-inline">
+                ${data.qrCodeBase64 ? `<img src="${data.qrCodeBase64}" alt="QR Code" class="qr-image-inline">` : ""}
               </div>
               <div class="validation-info-inline">
                 <p><strong>Escanee para validar</strong></p>

@@ -167,15 +167,12 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
           .eq("id", relatedId)
           .single()
         return { type: "document", data: document }
-
       case "news_published":
         const { data: news } = await supabase.from("news").select("id, title").eq("id", relatedId).single()
         return { type: "news", data: news }
-
       case "department_created":
         const { data: department } = await supabase.from("departments").select("id, name").eq("id", relatedId).single()
         return { type: "department", data: department }
-
       case "sale_created":
         const { data: sale } = await supabase
           .from("sales")
@@ -183,7 +180,14 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
           .eq("id", relatedId)
           .single()
         return { type: "sale", data: sale }
-
+      case "quotation_review": // Nuevo caso para notificaciones de cotización
+      case "quotation_status_update":
+        const { data: quotation } = await supabase
+          .from("quotations")
+          .select("id, quotation_number, entity_name, status")
+          .eq("id", relatedId)
+          .single()
+        return { type: "quotation", data: quotation }
       default:
         return null
     }
