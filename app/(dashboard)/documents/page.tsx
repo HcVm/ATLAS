@@ -623,7 +623,7 @@ export default function DocumentsPage() {
                       <TableCell className="font-medium p-2 sm:p-4">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="truncate max-w-[120px] sm:max-w-none text-sm text-slate-700 dark:text-slate-200">
+                            <span className="break-words whitespace-normal text-sm text-slate-700 dark:text-slate-200">
                               {document.title || "Sin título"}
                             </span>
                             {getDocumentBadge(document)}

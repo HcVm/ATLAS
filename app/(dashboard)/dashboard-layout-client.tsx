@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { NotificationBadge } from "@/components/notifications/notification-badge"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -134,104 +135,106 @@ export default function DashboardLayoutClient({
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium text-slate-700">Sistema de Seguimiento de Documentos</span>
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-2 px-4">
-            {user.role === "admin" && (
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-slate-500" />
-                <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
-                  <CompanySelector />
-                </Suspense>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-slate-700">Sistema de Seguimiento de Documentos</span>
               </div>
-            )}
-            <ThemeToggle />
-            <NotificationBadge />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-slate-100">
-                  <Avatar className="h-8 w-8 ring-2 ring-slate-200">
-                    <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
-                    <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
-                      {user.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border-slate-200" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none text-slate-700">{user.full_name}</p>
-                    <p className="text-xs leading-none text-slate-500">{user.email}</p>
-                    <p className="text-xs leading-none text-slate-500">Rol: {user.role}</p>
-                    {user.company_id && (
-                      <p className="text-xs leading-none text-muted-foreground">
-                        Empresa: {user.companies?.name || "Sin asignar"}
-                      </p>
-                    )}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/profile")} className="text-slate-700 hover:bg-slate-100">
-                  <User className="mr-2 h-4 w-4 text-slate-600" />
-                  <span>Perfil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push("/settings")}
-                  className="text-slate-700 hover:bg-slate-100"
-                >
-                  <Sun className="mr-2 h-4 w-4 text-slate-600" />
-                  <span>Configuración</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="text-slate-700 hover:bg-slate-100"
-                >
-                  {refreshing ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 text-slate-600 animate-spin" />
-                      <span>Actualizando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 text-slate-600" />
-                      <span>Actualizar Sesión</span>
-                    </>
-                  )}
-                </DropdownMenuItem>
-                {user.role !== "admin" && (
+            </div>
+            <div className="ml-auto flex items-center gap-2 px-4">
+              {user.role === "admin" && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-slate-500" />
+                  <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
+                    <CompanySelector />
+                  </Suspense>
+                </div>
+              )}
+              <ThemeToggle />
+              <NotificationBadge />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-slate-100">
+                    <Avatar className="h-8 w-8 ring-2 ring-slate-200">
+                      <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
+                      <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
+                        {user.full_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border-slate-200" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none text-slate-700">{user.full_name}</p>
+                      <p className="text-xs leading-none text-slate-500">{user.email}</p>
+                      <p className="text-xs leading-none text-slate-500">Rol: {user.role}</p>
+                      {user.company_id && (
+                        <p className="text-xs leading-none text-muted-foreground">
+                          Empresa: {user.companies?.name || "Sin asignar"}
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/profile")} className="text-slate-700 hover:bg-slate-100">
+                    <User className="mr-2 h-4 w-4 text-slate-600" />
+                    <span>Perfil</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => router.push("/user-debug")}
+                    onClick={() => router.push("/settings")}
                     className="text-slate-700 hover:bg-slate-100"
                   >
-                    <span>Diagnóstico</span>
+                    <Sun className="mr-2 h-4 w-4 text-slate-600" />
+                    <span>Configuración</span>
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-slate-700 hover:bg-slate-100">
-                  <span>Cerrar sesión</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="text-slate-700 hover:bg-slate-100"
+                  >
+                    {refreshing ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 text-slate-600 animate-spin" />
+                        <span>Actualizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 text-slate-600" />
+                        <span>Actualizar Sesión</span>
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  {user.role !== "admin" && (
+                    <DropdownMenuItem
+                      onClick={() => router.push("/user-debug")}
+                      className="text-slate-700 hover:bg-slate-100"
+                    >
+                      <span>Diagnóstico</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-slate-700 hover:bg-slate-100">
+                    <span>Cerrar sesión</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <main className="flex-1">{children}</main>
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <main className="flex-1">{children}</main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </ThemeProvider>
   )
 }
