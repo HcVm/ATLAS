@@ -44,7 +44,7 @@ const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDa
       textColor: "text-red-700",
       bgColor: "bg-red-50",
       borderColor: "border-red-200",
-      message: "¡URGENTE! Sin respuesta por más de 3 días",
+      message: "¡URGENTE! Sin respuesta por más de 3 días, no responder tus documentos a tiempo puede provocar sanciones administrativas",
       icon: "🔴",
     }
   } else if (daysPassed >= 1) {
@@ -53,7 +53,7 @@ const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDa
       textColor: "text-yellow-700",
       bgColor: "bg-yellow-50",
       borderColor: "border-yellow-200",
-      message: "Pendiente de respuesta",
+      message: "Pendiente de respuesta, no olvides responder a tiempo",
       icon: "🟡",
     }
   } else {
