@@ -63,7 +63,7 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
       style={{
         backgroundColor,
         color: textColor,
-        ringColor: isDestination ? backgroundColor : undefined,
+        borderColor: isDestination ? backgroundColor : undefined,
       }}
     >
       {department.name}
