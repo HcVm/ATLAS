@@ -1,47 +1,60 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase" // Client-side Supabase client
+import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Package, AlertTriangle, Edit, Eye } from "lucide-react"
+import { Plus, Search, Package, AlertTriangle, Edit, Eye, MoreHorizontal, QrCode, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
-import { toast } from "sonner"
+import { deleteInternalProduct } from "@/app/actions/internal-products" // Import the new Server Action
 
 interface Category {
-  id: number
+  id: string
   name: string
   color: string
 }
 
 interface Product {
-  id: string // Changed to string for UUID
+  id: string
   code: string
   name: string
   description: string | null
-  category_id: string // Changed to string for UUID
+  category_id: string
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
-  cost_price: number
+  cost_price: number | null // Changed to allow null
   location: string | null
   is_active: boolean
-  is_serialized: boolean // New field
+  is_serialized: boolean
   created_at: string
   internal_product_categories?: {
-    id: number
+    id: string
     name: string
     color: string
   }
 }
 
 export default function InternalProductsPage() {
+  const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -49,33 +62,41 @@ export default function InternalProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
+  const companyId = useMemo(() => {
+    return user?.role === "admin" ? selectedCompany?.id : user?.company_id
+  }, [user, selectedCompany])
+
   useEffect(() => {
-    if (user?.company_id) {
+    if (companyId) {
       fetchData()
     }
-  }, [user?.company_id])
+  }, [companyId, selectedCategory, statusFilter]) // Re-fetch when filters change
 
   const fetchData = async () => {
     try {
       setLoading(true)
-
-      // Fetch products (models)
-      const { data: productsData, error: productsError } = await supabase
+      let productsQuery = supabase
         .from("internal_products")
-        .select(`
+        .select(
+          `
           *,
           internal_product_categories (
             id,
             name,
             color
           )
-        `)
-        .eq("company_id", user?.company_id)
+        `,
+        )
+        .eq("company_id", companyId)
         .order("created_at", { ascending: false })
 
+      if (selectedCategory !== "all") {
+        productsQuery = productsQuery.eq("category_id", selectedCategory)
+      }
+
+      const { data: productsData, error: productsError } = await productsQuery
       if (productsError) throw productsError
 
-      // For serialized products, calculate current_stock from internal_product_serials
       const productsWithAggregatedStock = await Promise.all(
         (productsData || []).map(async (product) => {
           if (product.is_serialized) {
@@ -84,11 +105,11 @@ export default function InternalProductsPage() {
               .select("id", { count: "exact", head: true })
               .eq("product_id", product.id)
               .eq("status", "in_stock")
-              .eq("company_id", user?.company_id)
+              .eq("company_id", companyId)
 
             if (serialCountError) {
               console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
-              return { ...product, current_stock: 0 } // Default to 0 on error
+              return { ...product, current_stock: 0 }
             }
             return { ...product, current_stock: count || 0 }
           }
@@ -96,13 +117,11 @@ export default function InternalProductsPage() {
         }),
       )
 
-      // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
-        .select("*")
-        .or(`company_id.eq.${user?.company_id},company_id.is.null`)
+        .select("id, name, color")
+        .or(`company_id.eq.${companyId},company_id.is.null`)
         .order("name")
-
       if (categoriesError) throw categoriesError
 
       setProducts(productsWithAggregatedStock || [])
@@ -115,28 +134,57 @@ export default function InternalProductsPage() {
     }
   }
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    const matchesCategory = selectedCategory === "all" || product.category_id.toString() === selectedCategory
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && product.is_active) ||
+        (statusFilter === "inactive" && !product.is_active) ||
+        (statusFilter === "low_stock" && product.current_stock <= product.minimum_stock)
 
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && product.is_active) ||
-      (statusFilter === "inactive" && !product.is_active) ||
-      (statusFilter === "low_stock" && product.current_stock <= product.minimum_stock)
+      return matchesSearch && matchesStatus
+    })
+  }, [products, searchTerm, statusFilter])
 
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+  const handleProductDelete = async (productId: string) => {
+    const result = await deleteInternalProduct(productId)
+    if (result.success) {
+      toast.success(result.message)
+      fetchData() // Re-fetch data to update the list
+    } else {
+      toast.error(result.message)
+    }
+  }
 
-  const stats = {
-    total: products.length,
-    active: products.filter((p) => p.is_active).length,
-    lowStock: products.filter((p) => p.current_stock <= p.minimum_stock).length,
-    totalValue: products.reduce((sum, p) => sum + p.current_stock * p.cost_price, 0),
+  const stats = useMemo(() => {
+    const totalValue = products.reduce((sum, p) => sum + p.current_stock * (p.cost_price ?? 0), 0) // Handle null cost_price
+    return {
+      total: products.length,
+      active: products.filter((p) => p.is_active).length,
+      lowStock: products.filter((p) => p.current_stock <= p.minimum_stock).length,
+      totalValue: totalValue,
+    }
+  }, [products])
+
+  if (!companyId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <h2 className="text-2xl font-bold">Selecciona una Empresa</h2>
+        <p className="text-muted-foreground mt-2">
+          Por favor, selecciona una empresa para ver y gestionar los productos internos.
+        </p>
+        {user?.role === "admin" && (
+          <Button onClick={() => router.push("/settings")} className="mt-4">
+            Ir a Configuración de Empresa
+          </Button>
+        )}
+      </div>
+    )
   }
 
   if (loading) {
@@ -148,7 +196,7 @@ export default function InternalProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-10">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -277,7 +325,7 @@ export default function InternalProductsPage() {
                   <TableHead>Costo Unit.</TableHead>
                   <TableHead>Valor Total</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Tipo</TableHead> {/* New column */}
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -332,8 +380,8 @@ export default function InternalProductsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>S/ {product.cost_price.toFixed(2)}</TableCell>
-                      <TableCell>S/ {(product.current_stock * product.cost_price).toFixed(2)}</TableCell>
+                      <TableCell>S/ {product.cost_price !== null ? product.cost_price.toFixed(2) : "N/A"}</TableCell>
+                      <TableCell>S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge variant={product.is_active ? "default" : "secondary"}>
                           {product.is_active ? "Activo" : "Inactivo"}
@@ -345,18 +393,38 @@ export default function InternalProductsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/warehouse/internal/products/${product.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/warehouse/internal/products/edit/${product.id}`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/warehouse/internal/products/${product.id}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/warehouse/internal/products/edit/${product.id}`}>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
+                              </Link>
+                            </DropdownMenuItem>
+                            {product.is_serialized && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/public/internal-product/${product.id}`}>
+                                  <QrCode className="mr-2 h-4 w-4" /> Ver QRs
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleProductDelete(product.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))

@@ -30,7 +30,7 @@ import { useCompany } from "@/lib/company-context"
 import { v4 as uuidv4 } from "uuid"
 
 interface Category {
-  id: string
+  id: number
   name: string
 }
 
@@ -38,20 +38,18 @@ interface Product {
   id: string
   name: string
   description: string | null
-  category_id: string
+  category_id: number
   unit_of_measure: string
-  cost_price: number
-  sale_price: number
+  cost_price: number | null
   minimum_stock: number
   current_stock: number
   location: string | null
-  supplier: string | null
   notes: string | null
   is_active: boolean
   created_at: string
   updated_at: string
   qr_code_hash: string | null
-  serial_number: string | null // Added serial_number
+  is_serialized: boolean
 }
 
 export default function EditInternalProductPage({ params }: { params: { id: string } }) {
@@ -78,15 +76,13 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     category_id: "",
     unit_of_measure: "",
     cost_price: "",
-    sale_price: "",
     minimum_stock: "",
     current_stock: "",
     location: "",
-    supplier: "",
     notes: "",
     is_active: true,
     qr_code_hash: "",
-    serial_number: "", // Added serial_number
+    is_serialized: false,
   })
 
   useEffect(() => {
@@ -110,7 +106,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         return
       }
 
-      // Obtener categorías (removed is_active filter)
+      // Obtener categorías
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
         .select("id, name")
@@ -123,17 +119,16 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
       }
 
       // Obtener producto
-      const response = await fetch(`/api/internal-products/${params.id}`)
-      if (!response.ok) {
-        throw new Error("Producto no encontrado")
-      }
+      const { data: fetchedProduct, error: productError } = await supabase
+        .from("internal_products")
+        .select("*")
+        .eq("id", params.id)
+        .eq("company_id", companyId)
+        .single()
 
-      const productData = await response.json()
-      const fetchedProduct = productData.product // Access the product object from the response
-
-      // Verificar que el producto pertenece a la empresa correcta
-      if (fetchedProduct.company_id !== companyId) {
-        throw new Error("No tienes permisos para editar este producto")
+      if (productError || !fetchedProduct) {
+        console.error("Error fetching product:", productError)
+        throw new Error("Producto no encontrado o no tienes permisos para editarlo")
       }
 
       // Obtener conteo de movimientos
@@ -141,13 +136,14 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         .from("internal_inventory_movements")
         .select("*", { count: "exact", head: true })
         .eq("product_id", params.id)
+        .eq("company_id", companyId)
 
       if (movementsError) {
         console.error("Error counting movements:", movementsError)
       }
 
       setCategories(categoriesData || [])
-      setProduct(fetchedProduct)
+      setProduct(fetchedProduct as Product)
       setMovementCount(movementsCount || 0)
 
       // Generate QR code hash if missing
@@ -156,18 +152,16 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
       setFormData({
         name: fetchedProduct.name || "",
         description: fetchedProduct.description || "",
-        category_id: fetchedProduct.category_id || "",
+        category_id: fetchedProduct.category_id?.toString() || "",
         unit_of_measure: fetchedProduct.unit_of_measure || "",
-        cost_price: fetchedProduct.cost_price?.toString() || "",
-        sale_price: fetchedProduct.sale_price?.toString() || "",
+        cost_price: fetchedProduct.cost_price?.toString() || "", // Handle null cost_price
         minimum_stock: fetchedProduct.minimum_stock?.toString() || "",
         current_stock: fetchedProduct.current_stock?.toString() || "",
         location: fetchedProduct.location || "",
-        supplier: fetchedProduct.supplier || "",
         notes: fetchedProduct.notes || "",
         is_active: fetchedProduct.is_active ?? true,
         qr_code_hash: qrHash,
-        serial_number: fetchedProduct.serial_number || "", // Set serial_number
+        is_serialized: fetchedProduct.is_serialized ?? false,
       })
 
       // If a new QR hash was generated, update the product in the DB
@@ -209,45 +203,48 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         throw new Error("La unidad de medida es requerida")
       }
 
-      const costPrice = Number.parseFloat(formData.cost_price)
-      const salePrice = Number.parseFloat(formData.sale_price)
+      const costPrice = formData.cost_price === "" ? null : Number.parseFloat(formData.cost_price)
       const minStock = Number.parseInt(formData.minimum_stock)
       const currStock = Number.parseInt(formData.current_stock)
+      const categoryId = Number.parseInt(formData.category_id)
 
-      if (isNaN(costPrice) || costPrice < 0) {
-        throw new Error("El precio de costo debe ser un número válido")
+      if (costPrice !== null && (isNaN(costPrice) || costPrice < 0)) {
+        throw new Error("El precio de costo debe ser un número válido o estar vacío.")
       }
 
-      if (isNaN(salePrice) || salePrice < 0) {
-        throw new Error("El precio de venta debe ser un número válido")
+      if (!formData.is_serialized && (isNaN(minStock) || minStock < 0)) {
+        throw new Error("El stock mínimo debe ser un número válido para productos no serializados")
       }
 
-      if (isNaN(minStock) || minStock < 0) {
-        throw new Error("El stock mínimo debe ser un número válido")
+      if (!formData.is_serialized && (isNaN(currStock) || currStock < 0)) {
+        throw new Error("El stock actual debe ser un número válido para productos no serializados")
       }
 
-      if (isNaN(currStock) || currStock < 0) {
-        throw new Error("El stock actual debe ser un número válido")
-      }
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-      const response = await fetch(`/api/internal-products/${params.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          cost_price: costPrice,
-          sale_price: salePrice,
-          minimum_stock: minStock,
-          current_stock: currStock,
-          serial_number: formData.serial_number.trim() || null, // Send serial_number
-        }),
-      })
+      const { error } = await supabase
+        .from("internal_products")
+        .update({
+          name: formData.name,
+          description: formData.description || null,
+          category_id: formData.category_id,
+          unit_of_measure: formData.unit_of_measure,
+          cost_price: costPrice, // Use null if empty
+          minimum_stock: formData.is_serialized ? 0 : minStock,
+          current_stock: formData.is_serialized ? product?.current_stock || 0 : currStock,
+          location: formData.location || null,
+          notes: formData.notes || null,
+          is_active: formData.is_active,
+          qr_code_hash: formData.qr_code_hash || null,
+          is_serialized: formData.is_serialized,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", params.id)
+        .eq("company_id", companyId)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Error al actualizar el producto")
+      if (error) {
+        console.error("Error updating product:", error)
+        throw new Error(error.message || "Error al actualizar el producto")
       }
 
       toast({
@@ -273,29 +270,59 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     setDeleteError(null)
 
     try {
-      const url = cascade ? `/api/internal-products/${params.id}?cascade=true` : `/api/internal-products/${params.id}`
-      const response = await fetch(url, {
-        method: "DELETE",
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (data.error === "PRODUCT_HAS_MOVEMENTS") {
-          setDeleteError({
-            type: "PRODUCT_HAS_MOVEMENTS",
-            message: data.message,
-            movementCount: data.movementCount,
-          })
-          setDeleting(false)
-          return
-        }
-        throw new Error(data.error || "Error al eliminar el producto")
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+      if (!companyId || !product) {
+        throw new Error("No se pudo determinar la empresa o el producto a eliminar.")
       }
+
+      // Check for movements first
+      const { count: movementsCount, error: movementsCountError } = await supabase
+        .from("internal_inventory_movements")
+        .select("*", { count: "exact", head: true })
+        .eq("product_id", product.id)
+        .eq("company_id", companyId)
+
+      if (movementsCountError) {
+        console.error("Error counting movements for delete:", movementsCountError)
+        throw new Error("Error al verificar movimientos asociados.")
+      }
+
+      if (movementsCount && movementsCount > 0 && !cascade) {
+        setDeleteError({
+          type: "PRODUCT_HAS_MOVEMENTS",
+          message: `Este producto tiene ${movementsCount} movimiento(s) asociado(s). No se puede eliminar directamente.`,
+          movementCount: movementsCount,
+        })
+        setDeleting(false)
+        return
+      }
+
+      // If serialized, delete all associated serials first
+      if (product.is_serialized) {
+        const { error: deleteSerialsError } = await supabase
+          .from("internal_product_serials")
+          .delete()
+          .eq("product_id", product.id)
+          .eq("company_id", companyId)
+
+        if (deleteSerialsError) {
+          console.error("Error deleting associated serials:", deleteSerialsError)
+          throw new Error("Error al eliminar los números de serie asociados.")
+        }
+      }
+
+      // Then delete the product
+      const { error: deleteProductError } = await supabase
+        .from("internal_products")
+        .delete()
+        .eq("id", params.id)
+        .eq("company_id", companyId)
+
+      if (deleteProductError) throw deleteProductError
 
       toast({
         title: "Producto eliminado",
-        description: data.message,
+        description: "El producto y sus movimientos/seriales asociados han sido eliminados.",
       })
 
       setShowDeleteDialog(false)
@@ -401,6 +428,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
             </Badge>
           </div>
         </CardHeader>
+        <CardContent>{/* Additional content can be added here if needed */}</CardContent>
       </Card>
 
       {/* Edit Form */}
@@ -435,7 +463,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
+                      <SelectItem key={category.id} value={category.id.toString()}>
                         {category.name}
                       </SelectItem>
                     ))}
@@ -486,7 +514,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="cost_price">Precio de Costo *</Label>
+                <Label htmlFor="cost_price">Precio de Costo</Label>
                 <Input
                   id="cost_price"
                   type="number"
@@ -495,89 +523,60 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
                   value={formData.cost_price}
                   onChange={(e) => setFormData((prev) => ({ ...prev, cost_price: e.target.value }))}
                   placeholder="0.00"
-                  required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sale_price">Precio de Venta *</Label>
-                <Input
-                  id="sale_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.sale_price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, sale_price: e.target.value }))}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
+              {!formData.is_serialized && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="minimum_stock">Stock Mínimo *</Label>
+                    <Input
+                      id="minimum_stock"
+                      type="number"
+                      min="0"
+                      value={formData.minimum_stock}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, minimum_stock: e.target.value }))}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="minimum_stock">Stock Mínimo *</Label>
-                <Input
-                  id="minimum_stock"
-                  type="number"
-                  min="0"
-                  value={formData.minimum_stock}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, minimum_stock: e.target.value }))}
-                  placeholder="0"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="current_stock">Stock Actual *</Label>
-                <Input
-                  id="current_stock"
-                  type="number"
-                  min="0"
-                  value={formData.current_stock}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, current_stock: e.target.value }))}
-                  placeholder="0"
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="current_stock">Stock Actual *</Label>
+                    <Input
+                      id="current_stock"
+                      type="number"
+                      min="0"
+                      value={formData.current_stock}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, current_stock: e.target.value }))}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Información Adicional</CardTitle>
-            <CardDescription>Datos complementarios del producto</CardDescription>
+            <CardTitle>Configuración Avanzada</CardTitle>
+            <CardDescription>Opciones de serialización y estado del producto.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="serial_number">Número de Serie</Label>
-              <Input
-                id="serial_number"
-                value={formData.serial_number}
-                onChange={(e) => setFormData((prev) => ({ ...prev, serial_number: e.target.value }))}
-                placeholder="Ej: SN123456789"
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_serialized"
+                checked={formData.is_serialized}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_serialized: checked }))}
+                disabled // Disable editing this property after creation
               />
+              <Label htmlFor="is_serialized">Producto Serializado</Label>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="supplier">Proveedor</Label>
-              <Input
-                id="supplier"
-                value={formData.supplier}
-                onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
-                placeholder="Nombre del proveedor"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notas adicionales"
-                rows={3}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              El estado de serialización no se puede cambiar después de la creación.
+            </p>
 
             <div className="flex items-center space-x-2">
               <Switch
@@ -635,6 +634,11 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
               ) : (
                 <div className="space-y-2">
                   <p>¿Estás seguro de que deseas eliminar el producto "{product?.name}"?</p>
+                  {product?.is_serialized && (
+                    <p className="text-sm text-destructive font-medium">
+                      Esto eliminará también todas las unidades serializadas asociadas a este producto.
+                    </p>
+                  )}
                   {movementCount > 0 && (
                     <p className="text-sm text-muted-foreground">
                       Este producto tiene {movementCount} movimiento(s) asociado(s).

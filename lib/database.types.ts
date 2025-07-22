@@ -1,6 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       companies: {
@@ -977,36 +977,34 @@ export interface Database {
       }
       internal_product_categories: {
         Row: {
-          id: number
-          name: string
-          description: string | null
-          color: string
+          color: string | null
           company_id: string | null
           created_at: string
+          id: string // Changed to string (UUID)
+          name: string
           updated_at: string
         }
         Insert: {
-          id?: number
-          name: string
-          description?: string | null
-          color?: string
+          color?: string | null
           company_id?: string | null
           created_at?: string
+          id?: string // Changed to string (UUID)
+          name: string
           updated_at?: string
         }
         Update: {
-          id?: number
-          name?: string
-          description?: string | null
-          color?: string
+          color?: string | null
           company_id?: string | null
           created_at?: string
+          id?: string // Changed to string (UUID)
+          name?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "internal_product_categories_company_id_fkey"
             columns: ["company_id"]
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -1014,72 +1012,77 @@ export interface Database {
       }
       internal_products: {
         Row: {
-          id: string
-          code: string
-          name: string
-          description: string | null
-          category_id: string
-          unit_of_measure: string
-          current_stock: number
-          minimum_stock: number
-          cost_price: number
-          location: string | null
-          is_active: boolean
-          company_id: string
-          created_by: string
+          category_id: string // Changed to string (UUID)
+          cost_price: number | null
           created_at: string
-          updated_at: string
+          current_stock: number
+          description: string | null
+          id: string
+          is_active: boolean
+          is_serialized: boolean
+          location: string | null
+          minimum_stock: number
+          name: string
           qr_code_hash: string | null
-          is_serialized: boolean // Added is_serialized
+          unit_of_measure: string
+          updated_at: string
+          company_id: string
+          code: string
+          created_by: string
+          notes: string | null
         }
         Insert: {
-          id?: string
-          code: string
-          name: string
-          description?: string | null
-          category_id: string
-          unit_of_measure?: string
-          current_stock?: number
-          minimum_stock?: number
-          cost_price?: number
-          location?: string | null
-          is_active?: boolean
-          company_id: string
-          created_by: string
+          category_id: string // Changed to string (UUID)
+          cost_price?: number | null
           created_at?: string
-          updated_at?: string
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_serialized?: boolean
+          location?: string | null
+          minimum_stock?: number
+          name: string
           qr_code_hash?: string | null
-          is_serialized?: boolean // Added is_serialized
+          unit_of_measure: string
+          updated_at?: string
+          company_id: string
+          code: string
+          created_by: string
+          notes?: string | null
         }
         Update: {
-          id?: string
-          code?: string
-          name?: string
-          description?: string | null
-          category_id?: string
-          unit_of_measure?: string
-          current_stock?: number
-          minimum_stock?: number
-          cost_price?: number
-          location?: string | null
-          is_active?: boolean
-          company_id?: string
-          created_by?: string
+          category_id?: string // Changed to string (UUID)
+          cost_price?: number | null
           created_at?: string
-          updated_at?: string
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_serialized?: boolean
+          location?: string | null
+          minimum_stock?: number
+          name?: string
           qr_code_hash?: string | null
-          is_serialized?: boolean // Added is_serialized
+          unit_of_measure?: string
+          updated_at?: string
+          company_id?: string
+          code?: string
+          created_by?: string
+          notes?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "internal_products_category_id_fkey"
             columns: ["category_id"]
+            isOneToOne: false
             referencedRelation: "internal_product_categories"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "internal_products_company_id_fkey"
             columns: ["company_id"]
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -1157,8 +1160,8 @@ export interface Database {
           serial_id: string | null // Added serial_id
           movement_type: "entrada" | "salida" | "ajuste"
           quantity: number
-          cost_price: number
-          total_amount: number
+          cost_price: number | null // Changed to allow null
+          total_amount: number | null // Changed to allow null
           reason: string
           notes: string | null
           requested_by: string
@@ -1175,8 +1178,8 @@ export interface Database {
           serial_id?: string | null // Added serial_id
           movement_type: "entrada" | "salida" | "ajuste"
           quantity: number
-          cost_price: number
-          total_amount: number
+          cost_price?: number | null // Changed to allow null
+          total_amount?: number | null // Changed to allow null
           reason: string
           notes?: string | null
           requested_by: string
@@ -1193,8 +1196,8 @@ export interface Database {
           serial_id?: string | null // Added serial_id
           movement_type?: "entrada" | "salida" | "ajuste"
           quantity?: number
-          cost_price?: number
-          total_amount?: number
+          cost_price?: number | null // Changed to allow null
+          total_amount?: number | null // Changed to allow null
           reason?: string
           notes?: string | null
           requested_by?: string

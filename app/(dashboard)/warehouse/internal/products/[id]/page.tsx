@@ -36,11 +36,11 @@ interface Product {
   code: string
   name: string
   description: string | null
-  category_id: string // Changed to string based on your database.types.ts
+  category_id: string
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
-  cost_price: number
+  cost_price: number | null // Changed to allow null
   location: string | null
   is_active: boolean
   created_at: string
@@ -86,7 +86,7 @@ interface SerializedProduct {
 
 const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
-  { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" }, // Changed label
+  { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
   { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
 ]
 
@@ -95,7 +95,7 @@ export default function InternalProductDetailPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [product, setProduct] = useState<Product | null>(null)
-  const [serials, setSerials] = useState<SerializedProduct[]>([]) // State for individual serials
+  const [serials, setSerials] = useState<SerializedProduct[]>([])
   const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(true)
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
@@ -145,7 +145,7 @@ export default function InternalProductDetailPage() {
         if (serialsError) throw serialsError
         setSerials(serialsData || [])
       } else {
-        setSerials([]) // Clear serials if not serialized
+        setSerials([])
       }
 
       // Fetch product movements
@@ -311,7 +311,9 @@ export default function InternalProductDetailPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Costo Unitario</label>
-                  <p className="text-sm font-semibold">S/ {product.cost_price.toFixed(2)}</p>
+                  <p className="text-sm font-semibold">
+                    {product.cost_price !== null ? `S/ ${product.cost_price.toFixed(2)}` : "N/A"}
+                  </p>
                 </div>
                 {product.location && (
                   <div>
@@ -388,7 +390,7 @@ export default function InternalProductDetailPage() {
                                 {serial.status === "in_stock"
                                   ? "En Stock"
                                   : serial.status === "out_of_stock"
-                                    ? "Asignado" // Changed label
+                                    ? "Asignado"
                                     : serial.status === "in_repair"
                                       ? "En Reparación"
                                       : "Desechado"}
@@ -546,7 +548,9 @@ export default function InternalProductDetailPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Valor total:</span>
-                  <span className="font-semibold">S/ {(product.current_stock * product.cost_price).toFixed(2)}</span>
+                  <span className="font-semibold">
+                    S/ {(product.current_stock * (product.cost_price || 0)).toFixed(2)}
+                  </span>
                 </div>
               </div>
 

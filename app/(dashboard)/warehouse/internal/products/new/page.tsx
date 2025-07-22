@@ -16,9 +16,10 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { ChevronLeft, Save, Package } from "lucide-react"
 import Link from "next/link"
+import { useCompany } from "@/lib/company-context"
 
 interface Category {
-  id: string
+  id: string // Confirmed as string (UUID)
   name: string
   color: string
 }
@@ -26,38 +27,44 @@ interface Category {
 export default function NewInternalProductPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [generatedCodeDisplay, setGeneratedCodeDisplay] = useState<string>("Se generará automáticamente al guardar.")
+
   const [formData, setFormData] = useState({
-    code: "", // This will be the model code
     name: "",
     description: "",
-    category_id: "",
+    category_id: "", // Kept as string
     unit_of_measure: "unidad",
-    minimum_stock: "0", // Default for non-serialized
+    minimum_stock: "0",
     cost_price: "",
     location: "",
-    initial_stock: "0", // Default for non-serialized
-    is_serialized: false, // New field
-    serial_numbers_input: "", // For serialized products, comma or newline separated
+    initial_stock: "0",
+    is_serialized: false,
+    serial_numbers_input: "",
   })
 
   useEffect(() => {
-    if (user?.company_id) {
-      fetchCategories()
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+    if (companyId) {
+      fetchCategories(companyId)
+      setGeneratedCodeDisplay("Se generará automáticamente al guardar.")
+    } else {
+      setGeneratedCodeDisplay("Selecciona una empresa para generar el código.")
+      setLoading(false)
     }
-  }, [user?.company_id])
+  }, [user, selectedCompany])
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (companyId: string) => {
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from("internal_product_categories")
         .select("id, name, color")
-        .or(`company_id.eq.${user?.company_id},company_id.is.null`)
+        .or(`company_id.eq.${companyId},company_id.is.null`)
         .order("name")
-
       if (error) throw error
       setCategories(data || [])
     } catch (error) {
@@ -81,9 +88,9 @@ export default function NewInternalProductPage() {
     setFormData((prev) => ({
       ...prev,
       is_serialized: checked,
-      // Reset stock fields if switching to serialized, or serials if switching to non-serialized
       minimum_stock: checked ? "0" : prev.minimum_stock,
       initial_stock: checked ? "0" : prev.initial_stock,
+      unit_of_measure: checked ? "unidad" : prev.unit_of_measure,
       serial_numbers_input: checked ? prev.serial_numbers_input : "",
     }))
   }
@@ -92,43 +99,90 @@ export default function NewInternalProductPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!companyId) {
+      toast.error("No hay empresa seleccionada. Por favor, selecciona una empresa.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!user?.id) {
+      toast.error("Usuario no autenticado.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.name.trim() || !formData.category_id || !formData.unit_of_measure.trim()) {
+      toast.error("Por favor, completa todos los campos requeridos.")
+      setIsSubmitting(false)
+      return
+    }
+
+    const parsedCostPrice = Number.parseFloat(formData.cost_price)
+    const parsedMinimumStock = Number.parseInt(formData.minimum_stock)
+    const parsedInitialStock = Number.parseInt(formData.initial_stock)
+    // category_id is now passed as string (UUID) directly
+
+    if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
+      toast.error("El precio de costo debe ser un número válido y no negativo.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.is_serialized && (isNaN(parsedInitialStock) || parsedInitialStock < 0)) {
+      toast.error("El stock inicial debe ser un número válido y no negativo para productos no serializados.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.is_serialized && (isNaN(parsedMinimumStock) || parsedMinimumStock < 0)) {
+      toast.error("El stock mínimo debe ser un número válido y no negativo para productos no serializados.")
+      setIsSubmitting(false)
+      return
+    }
+
+    let serialNumbers: string[] = []
+    let currentStock = 0
+
+    if (formData.is_serialized) {
+      serialNumbers = formData.serial_numbers_input
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (serialNumbers.length === 0) {
+        toast.error("Debes ingresar al menos un número de serie para productos serializados.")
+        setIsSubmitting(false)
+        return
+      }
+      const uniqueSerials = new Set(serialNumbers)
+      if (uniqueSerials.size !== serialNumbers.length) {
+        toast.error("Se detectaron números de serie duplicados. Por favor, ingresa números de serie únicos.")
+        setIsSubmitting(false)
+        return
+      }
+      currentStock = serialNumbers.length
+    } else {
+      currentStock = parsedInitialStock
+    }
+
     try {
       const payload: any = {
         name: formData.name,
         description: formData.description,
-        category_id: formData.category_id,
-        unit_of_measure: formData.unit_of_measure,
-        cost_price: Number.parseFloat(formData.cost_price),
+        category_id: formData.category_id, // Pass as string (UUID)
+        unit_of_measure: formData.is_serialized ? "unidad" : formData.unit_of_measure,
+        cost_price: parsedCostPrice,
         location: formData.location,
-        code: formData.code, // This is the model code
         is_serialized: formData.is_serialized,
+        minimum_stock: formData.is_serialized ? 0 : parsedMinimumStock,
+        current_stock: currentStock,
+        company_id: companyId,
+        created_by: user.id,
       }
 
       if (formData.is_serialized) {
-        const serialNumbers = formData.serial_numbers_input
-          .split(/[\n,]+/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0)
-
-        if (serialNumbers.length === 0) {
-          toast.error("Debes ingresar al menos un número de serie para productos serializados.")
-          setIsSubmitting(false)
-          return
-        }
-        // Check for duplicates within the input
-        const uniqueSerialNumbers = new Set(serialNumbers)
-        if (uniqueSerialNumbers.size !== serialNumbers.length) {
-          toast.error("Hay números de serie duplicados en la lista ingresada. Por favor, revisa.")
-          setIsSubmitting(false)
-          return
-        }
-
         payload.serial_numbers = serialNumbers
-        payload.initial_stock = serialNumbers.length // Initial stock is the count of serials
-        payload.minimum_stock = 0 // Minimum stock is not directly applicable per model for serialized items
-      } else {
-        payload.minimum_stock = Number.parseInt(formData.minimum_stock)
-        payload.initial_stock = Number.parseInt(formData.initial_stock)
       }
 
       const response = await fetch("/api/internal-products", {
@@ -141,14 +195,14 @@ export default function NewInternalProductPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Error al crear el producto")
+        throw new Error(errorData.error || "Error al crear el producto.")
       }
 
-      toast.success("Producto creado exitosamente!")
+      toast.success("Producto interno creado exitosamente.")
       router.push("/warehouse/internal/products")
     } catch (error: any) {
       console.error("Error creating product:", error)
-      toast.error(error.message || "Error al crear el producto. Intente nuevamente.")
+      toast.error(error.message || "No se pudo crear el producto. Intente nuevamente.")
     } finally {
       setIsSubmitting(false)
     }
@@ -163,7 +217,7 @@ export default function NewInternalProductPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-10">
       <div className="flex items-center justify-between">
         <Button variant="outline" asChild>
           <Link href="/warehouse/internal/products">
@@ -172,9 +226,8 @@ export default function NewInternalProductPage() {
           </Link>
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Nuevo Producto Interno</h1>
-        <div /> {/* Placeholder for alignment */}
+        <div />
       </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
@@ -184,13 +237,6 @@ export default function NewInternalProductPage() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="code">Código de Modelo *</Label>
-                <Input id="code" value={formData.code} onChange={handleChange} placeholder="Ej: INT-001" required />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Código identificador del modelo de producto (ej. LAP-001 para un modelo de laptop).
-                </p>
-              </div>
-              <div>
                 <Label htmlFor="name">Nombre del Producto *</Label>
                 <Input
                   id="name"
@@ -199,6 +245,13 @@ export default function NewInternalProductPage() {
                   placeholder="Ej: Laptop HP ProBook 450 G9"
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="code">Código del Producto</Label>
+                <Input id="code" value={generatedCodeDisplay} readOnly disabled />
+                <p className="text-sm text-muted-foreground mt-1">
+                  El código se generará automáticamente al guardar el producto.
+                </p>
               </div>
               <div>
                 <Label htmlFor="description">Descripción</Label>
@@ -233,16 +286,31 @@ export default function NewInternalProductPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="unit_of_measure">Unidad de Medida</Label>
-                <Input
-                  id="unit_of_measure"
+                <Label htmlFor="unit_of_measure">Unidad de Medida *</Label>
+                <Select
                   value={formData.unit_of_measure}
-                  onChange={handleChange}
-                  placeholder="Ej: unidad, caja, litro"
-                />
+                  onValueChange={(value) => handleSelectChange("unit_of_measure", value)}
+                  required={!formData.is_serialized}
+                  disabled={formData.is_serialized}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una unidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["unidad", "caja", "litro", "kilogramo", "metro", "galon", "paquete"].map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.is_serialized && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    La unidad de medida para productos serializados es siempre "unidad".
+                  </p>
+                )}
               </div>
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
@@ -255,15 +323,14 @@ export default function NewInternalProductPage() {
                 </div>
                 <Switch id="is_serialized" checked={formData.is_serialized} onCheckedChange={handleSwitchChange} />
               </div>
-
               {formData.is_serialized ? (
                 <div>
-                  <Label htmlFor="serial_numbers_input">Números de Serie *</Label>
+                  <Label htmlFor="serial_numbers_input">Números de Serie (uno por línea o separados por coma) *</Label>
                   <Textarea
                     id="serial_numbers_input"
                     value={formData.serial_numbers_input}
                     onChange={handleChange}
-                    placeholder="Ingresa un número de serie por línea o separados por coma"
+                    placeholder="Ej: SN001&#10;SN002&#10;SN003"
                     rows={5}
                     required
                   />
@@ -295,12 +362,14 @@ export default function NewInternalProductPage() {
                       placeholder="0"
                       min="0"
                     />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Recibirás una alerta cuando el stock baje de este número.
+                    </p>
                   </div>
                 </>
               )}
-
               <div>
-                <Label htmlFor="cost_price">Precio de Costo Unitario *</Label>
+                <Label htmlFor="cost_price">Precio de Costo Unitario (S/)</Label>
                 <Input
                   id="cost_price"
                   type="number"
@@ -309,7 +378,6 @@ export default function NewInternalProductPage() {
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  required
                 />
               </div>
               <div>
@@ -324,7 +392,6 @@ export default function NewInternalProductPage() {
             </div>
           </CardContent>
         </Card>
-
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Guardando..." : "Crear Producto"}

@@ -31,56 +31,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Get user profile to check company
-    const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single()
-
-    if (!profile?.company_id) {
-      return NextResponse.json({ error: "Usuario sin empresa asignada" }, { status: 403 })
-    }
-
-    const searchParams = request.nextUrl.searchParams
-    const category = searchParams.get("category")
-    const search = searchParams.get("search")
-    const active = searchParams.get("active")
-
-    let query = supabase
+    const { data: products, error } = await supabase
       .from("internal_products")
-      .select(`
-        *,
-        internal_product_categories (
-          id,
-          name,
-          color
-        )
-      `)
-      .eq("company_id", profile.company_id)
-      .order("created_at", { ascending: false })
-
-    if (category && category !== "all") {
-      query = query.eq("category_id", category)
-    }
-
-    if (search) {
-      // Search by product model name/code/description
-      query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%,description.ilike.%${search}%`)
-      // If searching for serial numbers, we'd need a separate query or a join,
-      // but for the main product list, we search models.
-    }
-
-    if (active === "true") {
-      query = query.eq("is_active", true)
-    } else if (active === "false") {
-      query = query.eq("is_active", false)
-    }
-
-    const { data: products, error } = await query
+      .select("id, name, code, current_stock, minimum_stock, unit_of_measure, cost_price, is_active, is_serialized")
+      .eq("company_id", user.company_id)
+      .order("name")
 
     if (error) {
-      console.error("Error fetching products:", error)
+      console.error("Error fetching internal products:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // For serialized products, aggregate current_stock from internal_product_serials
     const productsWithAggregatedStock = await Promise.all(
       (products || []).map(async (product) => {
         if (product.is_serialized) {
@@ -88,12 +49,12 @@ export async function GET(request: NextRequest) {
             .from("internal_product_serials")
             .select("id", { count: "exact", head: true })
             .eq("product_id", product.id)
-            .eq("status", "in_stock") // Only count items currently in stock
-            .eq("company_id", profile.company_id)
+            .eq("status", "in_stock")
+            .eq("company_id", user.company_id)
 
           if (serialCountError) {
             console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
-            return { ...product, current_stock: 0 } // Default to 0 on error
+            return { ...product, current_stock: 0 }
           }
           return { ...product, current_stock: count || 0 }
         }
@@ -101,7 +62,7 @@ export async function GET(request: NextRequest) {
       }),
     )
 
-    return NextResponse.json({ products: productsWithAggregatedStock || [] })
+    return NextResponse.json(productsWithAggregatedStock)
   } catch (error: any) {
     console.error("Unexpected error in GET /api/internal-products:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
@@ -121,252 +82,171 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Get user profile to check company
-    const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single()
-
-    if (!profile?.company_id) {
-      return NextResponse.json({ error: "Usuario sin empresa asignada" }, { status: 403 })
-    }
-
     const body = await request.json()
     const {
       name,
       description,
-      category_id,
-      unit_of_measure,
+      category_id, // This is now expected to be a string (UUID)
       minimum_stock,
+      unit_of_measure,
       cost_price,
       location,
-      initial_stock,
-      code: modelCode, // This is the model code from the client
+      company_id,
       is_serialized,
-      serial_numbers, // Array of serial numbers for serialized products
+      serial_numbers,
+      current_stock, // This is the initial_stock from the client
     } = body
 
-    // Validate required fields
-    if (!name?.trim()) {
-      return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 })
+    if (
+      !name ||
+      !company_id ||
+      cost_price === undefined ||
+      category_id === undefined ||
+      unit_of_measure === undefined
+    ) {
+      return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    if (!category_id) {
-      return NextResponse.json({ error: "La categoría es obligatoria" }, { status: 400 })
+    if (is_serialized && (!serial_numbers || serial_numbers.length === 0)) {
+      return NextResponse.json({ error: "Se requieren números de serie para productos serializados" }, { status: 400 })
     }
 
-    // Validate numeric fields
-    const parsedCostPrice = Number.parseFloat(cost_price) || 0
-
-    if (parsedCostPrice < 0) {
-      return NextResponse.json({ error: "Costo unitario no puede ser negativo" }, { status: 400 })
-    }
-
-    // Verify category exists and belongs to company or is global
-    const { data: categoryExists } = await supabase
-      .from("internal_product_categories")
-      .select("id")
-      .eq("id", category_id)
-      .or(`company_id.eq.${profile.company_id},company_id.is.null`)
+    // --- Server-side code generation ---
+    const { data: companyData, error: companyError } = await supabase
+      .from("companies")
+      .select("code")
+      .eq("id", company_id)
       .single()
 
-    if (!categoryExists) {
-      return NextResponse.json({ error: "Categoría no válida" }, { status: 400 })
+    if (companyError || !companyData?.code) {
+      console.error("Error fetching company code:", companyError)
+      return NextResponse.json({ error: "No se pudo obtener el código de la empresa." }, { status: 500 })
+    }
+    const companyCode = companyData.code
+
+    const { data: latestProduct, error: latestProductError } = await supabase
+      .from("internal_products")
+      .select("code")
+      .eq("company_id", company_id)
+      .like("code", `INT-${companyCode}-%`)
+      .order("code", { ascending: false })
+      .limit(1)
+      .single()
+
+    let nextNumber = 1
+    if (latestProduct && latestProduct.code) {
+      const parts = latestProduct.code.split("-")
+      const lastNumberStr = parts[parts.length - 1]
+      const lastNumber = Number.parseInt(lastNumberStr, 10)
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1
+      }
     }
 
-    // Common data for the product model
-    const productModelData = {
-      code: modelCode,
-      name: name.trim(),
-      description: description?.trim() || null,
-      category_id: category_id,
-      unit_of_measure: unit_of_measure || "unidad",
-      cost_price: parsedCostPrice,
-      location: location?.trim() || null,
-      is_active: true,
-      company_id: profile.company_id,
-      created_by: user.id,
-      is_serialized: is_serialized,
-      qr_code_hash: uuidv4(), // QR for the model
+    const generatedCode = `INT-${companyCode}-${String(nextNumber).padStart(3, "0")}`
+
+    const { data: existingProduct, error: existingProductError } = await supabase
+      .from("internal_products")
+      .select("id")
+      .eq("code", generatedCode)
+      .eq("company_id", company_id)
+      .single()
+
+    if (existingProductError && existingProductError.code !== "PGRST116") {
+      console.error("Error checking existing product:", existingProductError)
+      throw existingProductError
     }
 
-    if (is_serialized) {
-      if (!Array.isArray(serial_numbers) || serial_numbers.length === 0) {
-        return NextResponse.json(
-          { error: "Se requieren números de serie para productos serializados" },
-          { status: 400 },
-        )
-      }
-
-      // Check for duplicate serial numbers in the database for this company
-      const { data: existingSerials, error: serialCheckError } = await supabase
-        .from("internal_product_serials")
-        .select("serial_number")
-        .in("serial_number", serial_numbers)
-        .eq("company_id", profile.company_id)
-
-      if (serialCheckError) {
-        console.error("Error checking existing serial numbers:", serialCheckError)
-        return NextResponse.json({ error: "Error al verificar números de serie existentes" }, { status: 500 })
-      }
-
-      const duplicatedInDb = serial_numbers.filter((sn) =>
-        existingSerials?.some((existing) => existing.serial_number === sn),
+    if (existingProduct) {
+      return NextResponse.json(
+        { error: "Ya existe un producto con este código generado. Intente de nuevo." },
+        { status: 409 },
       )
-      if (duplicatedInDb.length > 0) {
-        return NextResponse.json(
-          { error: `Los siguientes números de serie ya existen en el inventario: ${duplicatedInDb.join(", ")}` },
-          { status: 409 },
-        )
-      }
+    }
+    // --- End server-side code generation ---
 
-      // Create the product model first (current_stock will be updated by serials)
-      const { data: newProductModel, error: createModelError } = await supabase
-        .from("internal_products")
-        .insert({
-          ...productModelData,
-          current_stock: 0, // Initial stock for model is 0, will be updated by serials
-          minimum_stock: 0, // Minimum stock for model is not directly applicable here
-        })
-        .select()
-        .single()
-
-      if (createModelError) {
-        console.error("Error creating serialized product model:", createModelError)
-        return NextResponse.json({ error: createModelError.message }, { status: 500 })
-      }
-
-      const serialsToInsert = serial_numbers.map((sn: string) => ({
-        product_id: newProductModel.id,
-        serial_number: sn,
-        status: "in_stock",
-        current_location: location?.trim() || null,
-        company_id: profile.company_id,
+    const { data: newProduct, error: productError } = await supabase
+      .from("internal_products")
+      .insert({
+        name,
+        description,
+        code: generatedCode,
+        category_id: category_id, // Pass as string (UUID)
+        current_stock: current_stock,
+        minimum_stock: is_serialized ? 0 : minimum_stock,
+        unit_of_measure: is_serialized ? "unidad" : unit_of_measure,
+        cost_price,
+        location,
+        company_id,
         created_by: user.id,
-        qr_code_hash: uuidv4(), // Unique QR for each serial
+        is_active: true,
+        is_serialized,
+      })
+      .select()
+      .single()
+
+    if (productError) {
+      console.error("Error creating product:", productError)
+      return NextResponse.json({ error: productError.message }, { status: 500 })
+    }
+
+    if (is_serialized && newProduct) {
+      const serialsToInsert = serial_numbers.map((serialNum: string) => ({
+        product_id: newProduct.id,
+        serial_number: serialNum,
+        status: "in_stock",
+        current_location: location || null,
+        company_id: company_id,
+        created_by: user.id,
+        qr_code_hash: uuidv4(),
       }))
 
-      const { data: newSerials, error: createSerialsError } = await supabase
-        .from("internal_product_serials")
-        .insert(serialsToInsert)
-        .select()
+      const { error: serialsError } = await supabase.from("internal_product_serials").insert(serialsToInsert)
 
-      if (createSerialsError) {
-        console.error("Error creating internal product serials:", createSerialsError)
-        // Attempt to delete the product model if serials creation fails
-        await supabase.from("internal_products").delete().eq("id", newProductModel.id)
-        return NextResponse.json({ error: createSerialsError.message }, { status: 500 })
-      }
-
-      // Update the product model's current_stock based on the number of new serials
-      const { error: updateStockError } = await supabase
-        .from("internal_products")
-        .update({ current_stock: newSerials?.length || 0 })
-        .eq("id", newProductModel.id)
-
-      if (updateStockError) {
-        console.error("Error updating product model stock:", updateStockError)
-        // Log error but don't block the main product creation
-      }
-
-      // Create an entry movement for each serialized product
-      const movementsToInsert =
-        newSerials?.map((serial) => ({
-          product_id: newProductModel.id,
-          serial_id: serial.id, // Link to the specific serial
-          movement_type: "entrada",
-          quantity: 1, // Always 1 for serialized movements
-          cost_price: parsedCostPrice,
-          total_amount: parsedCostPrice,
-          reason: "Stock inicial (serializado)",
-          notes: `Stock inicial del producto serializado ${newProductModel.name} (SN: ${serial.serial_number})`,
-          requested_by: user.email || "Sistema",
-          supplier: "Stock inicial",
-          company_id: user.company_id,
-          created_by: user.id,
-        })) || []
-
-      const { error: movementError } = await supabase.from("internal_inventory_movements").insert(movementsToInsert)
-
-      if (movementError) {
-        console.error("Error creating initial movements for serialized products:", movementError)
-        // Log error but don't block the main product creation
-      }
-
-      return NextResponse.json({ success: true, product: newProductModel, serials: newSerials })
-    } else {
-      // Non-serialized product creation
-      const parsedMinimumStock = Number.parseInt(minimum_stock) || 0
-      const parsedInitialStock = Number.parseInt(initial_stock) || 0
-
-      if (parsedMinimumStock < 0) {
-        return NextResponse.json({ error: "Stock mínimo no puede ser negativo" }, { status: 400 })
-      }
-
-      if (parsedInitialStock < 0) {
-        return NextResponse.json({ error: "Stock inicial no puede ser negativo" }, { status: 400 })
-      }
-
-      // For non-serialized products, the 'code' should be unique per company
-      const { data: existingProductCode, error: checkCodeError } = await supabase
-        .from("internal_products")
-        .select("id")
-        .eq("code", modelCode)
-        .eq("company_id", profile.company_id)
-        .eq("is_serialized", false) // Ensure we only check non-serialized products
-        .maybeSingle()
-
-      if (checkCodeError) {
-        console.error("Error checking existing product code:", checkCodeError)
-        return NextResponse.json({ error: "Error al verificar el código de producto existente" }, { status: 500 })
-      }
-
-      if (existingProductCode) {
+      if (serialsError) {
+        console.error("Error inserting serial numbers:", serialsError)
         return NextResponse.json(
-          { error: "Ya existe un producto no serializado con este código para esta empresa." },
-          { status: 409 },
+          { error: "Producto creado, pero error al registrar números de serie." },
+          { status: 500 },
         )
       }
 
-      const productData = {
-        ...productModelData,
-        current_stock: parsedInitialStock,
-        minimum_stock: parsedMinimumStock,
-      }
+      const movementPromises = serialsToInsert.map(async (serial) => {
+        const { data: insertedSerial, error: fetchSerialError } = await supabase
+          .from("internal_product_serials")
+          .select("id")
+          .eq("product_id", newProduct.id)
+          .eq("serial_number", serial.serial_number)
+          .single()
 
-      const { data: newProduct, error: createError } = await supabase
-        .from("internal_products")
-        .insert([productData])
-        .select()
-        .single()
+        if (fetchSerialError || !insertedSerial) {
+          console.error(`Error fetching inserted serial ${serial.serial_number}:`, fetchSerialError)
+          return
+        }
 
-      if (createError) {
-        console.error("Error creating non-serialized product:", createError)
-        return NextResponse.json({ error: createError.message }, { status: 500 })
-      }
-
-      if (parsedInitialStock > 0) {
-        const movementData = {
+        const { error: movementError } = await supabase.from("internal_inventory_movements").insert({
           product_id: newProduct.id,
-          serial_id: null, // No serial for non-serialized
+          serial_id: insertedSerial.id,
           movement_type: "entrada",
-          quantity: parsedInitialStock,
-          cost_price: parsedCostPrice,
-          total_amount: parsedInitialStock * parsedCostPrice,
-          reason: "Stock inicial",
-          notes: `Stock inicial del producto ${name.trim()}`,
-          requested_by: user.email || "Sistema",
-          supplier: "Stock inicial",
-          company_id: user.company_id,
+          quantity: 1,
+          cost_price: newProduct.cost_price,
+          total_amount: newProduct.cost_price,
+          reason: "Ingreso inicial por creación de producto serializado",
+          notes: `Número de serie: ${serial.serial_number}`,
+          requested_by: user.email,
+          company_id: company_id,
           created_by: user.id,
-        }
-
-        const { error: movementError } = await supabase.from("internal_inventory_movements").insert(movementData)
-
+          movement_date: new Date().toISOString(),
+          supplier: "Creación de Producto",
+        })
         if (movementError) {
-          console.error("Error creating initial movement:", movementError)
+          console.error(`Error creating initial movement for serial ${serial.serial_number}:`, movementError)
         }
-      }
-
-      return NextResponse.json({ success: true, product: newProduct })
+      })
+      await Promise.all(movementPromises)
     }
+
+    return NextResponse.json({ success: true, product: newProduct })
   } catch (error: any) {
     console.error("Unexpected error in POST /api/internal-products:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
