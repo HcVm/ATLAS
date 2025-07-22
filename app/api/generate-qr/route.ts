@@ -1,7 +1,7 @@
 // /app/api/generate-qr/route.ts
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createCanvas } from "canvas"
+import { createCanvas } from '@napi-rs/canvas'
 import QRCode from "qrcode"
 
 export async function GET(req: NextRequest) {
