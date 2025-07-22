@@ -1,18 +1,22 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Package, MapPin, AlertTriangle, Calendar, Tag } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import QRCodeDisplay from "@/components/qr-code-display"
+import { Package, Tag, MapPin, Calendar, Loader2, AlertTriangle, ArrowLeft } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 interface Product {
   id: string
   code: string
   name: string
   description: string | null
+  category_id: string
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
@@ -21,189 +25,343 @@ interface Product {
   is_active: boolean
   created_at: string
   updated_at: string
-  qr_code_hash: string
-  serial_number: string | null
+  qr_code_hash: string | null
+  is_serialized: boolean
   internal_product_categories?: {
     id: number
     name: string
     color: string
-  } | null
-  companies?: {
-    name: string
-    logo_url: string | null
-    color: string
-  } | null
+  }
 }
 
-export default async function PublicInternalProductPage({ params }: { params: { hash: string } }) {
-  // Await cookies() call
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: () => {},
-        remove: () => {},
-      },
-    },
-  )
+interface SerializedProduct {
+  id: string
+  serial_number: string
+  status: string
+  current_location: string | null
+  created_at: string
+  updated_at: string
+  product_id: string
+  qr_code_hash: string | null
+  internal_products: {
+    name: string
+    code: string
+    unit_of_measure: string
+    is_serialized: boolean
+    internal_product_categories?: {
+      id: number
+      name: string
+      color: string
+    }
+  }
+}
 
-  // params.hash is now safely accessible after the async function declaration
-  const { data: product, error } = await supabase
-    .from("internal_products")
-    .select(
-      `
-    *,
-    internal_product_categories (
-      id,
-      name,
-      color
-    ),
-    companies (
-      name,
-      logo_url,
-      color
-    )
-  `,
-    )
-    .eq("qr_code_hash", params.hash)
-    .single()
+export default function PublicInternalProductPage() {
+  const params = useParams()
+  const [data, setData] = useState<Product | SerializedProduct | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (error || !product) {
-    console.error("Error fetching public product:", error)
+  useEffect(() => {
+    if (params.hash) {
+      fetchProductOrSerial()
+    }
+  }, [params.hash])
+
+  const fetchProductOrSerial = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // First, try to fetch as a product model
+      const { data: productData, error: productError } = await supabase
+        .from("internal_products")
+        .select(
+          `
+          *,
+          internal_product_categories (
+            id,
+            name,
+            color
+          )
+        `,
+        )
+        .eq("qr_code_hash", params.hash)
+        .single()
+
+      if (productData) {
+        setData(productData as Product)
+        return
+      }
+
+      // If not found as a product, try to fetch as a serialized product
+      const { data: serialData, error: serialError } = await supabase
+        .from("internal_product_serials")
+        .select(
+          `
+          *,
+          internal_products (
+            name,
+            code,
+            unit_of_measure,
+            is_serialized,
+            internal_product_categories (
+              id,
+              name,
+              color
+            )
+          )
+        `,
+        )
+        .eq("qr_code_hash", params.hash)
+        .single()
+
+      if (serialData) {
+        setData(serialData as SerializedProduct)
+        return
+      }
+
+      if (productError || serialError) {
+        // Log both errors for debugging, but only show a generic not found message
+        console.error("Error fetching product:", productError)
+        console.error("Error fetching serial:", serialError)
+        setError("Producto o número de serie no encontrado.")
+      } else {
+        setError("Producto o número de serie no encontrado.")
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err)
+      setError("Ocurrió un error inesperado al cargar la información.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <CardTitle>Producto no encontrado</CardTitle>
-            <CardDescription>
-              El código QR no es válido o el producto no existe o no está disponible públicamente.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Verifica el enlace o contacta al administrador.</p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     )
   }
 
-  const stockStatus = product.current_stock <= product.minimum_stock ? "low" : "normal"
-  const totalValue = product.current_stock * product.cost_price
-  const publicProductUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/public/internal-product/${product.qr_code_hash}`
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 text-center">
+        <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Error</h1>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
+        <Button asChild>
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver al inicio
+          </Link>
+        </Button>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 text-center">
+        <Package className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Información no disponible</h1>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">No se pudo cargar la información del producto o serie.</p>
+        <Button asChild>
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver al inicio
+          </Link>
+        </Button>
+      </div>
+    )
+  }
+
+  const isSerializedUnit = "serial_number" in data
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader className="flex flex-col items-center text-center pb-4">
-          {product.companies?.logo_url && (
-            <img
-              src={product.companies.logo_url || "/placeholder.svg"}
-              alt={`${product.companies.name} Logo`}
-              className="h-16 w-16 object-contain mb-4"
-            />
-          )}
-          <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">{product.name}</CardTitle>
-          <CardDescription className="text-lg text-gray-600 dark:text-gray-400">Código: {product.code}</CardDescription>
-          {product.companies?.name && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Gestionado por: <span className="font-medium">{product.companies.name}</span>
-            </p>
-          )}
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold flex items-center justify-center gap-2">
+            {isSerializedUnit ? (
+              <>
+                <Tag className="h-7 w-7" />
+                Detalles de Serie
+              </>
+            ) : (
+              <>
+                <Package className="h-7 w-7" />
+                Detalles de Producto
+              </>
+            )}
+          </CardTitle>
+          <CardDescription className="text-lg">{isSerializedUnit ? data.serial_number : data.name}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Detalles del Producto</h3>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="font-medium text-muted-foreground">Descripción:</span> {product.description || "N/A"}
-                </p>
-                {product.serial_number && (
-                  <p className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Número de Serie:</span> {product.serial_number}
-                  </p>
-                )}
-                <p className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-muted-foreground">Unidad de Medida:</span> {product.unit_of_measure}
-                </p>
-                {product.internal_product_categories && (
-                  <p className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: product.internal_product_categories.color }}
-                    />
-                    <span className="font-medium text-muted-foreground">Categoría:</span>{" "}
-                    {product.internal_product_categories.name}
-                  </p>
-                )}
-                {product.location && (
-                  <p className="flex items-center gap-2">
+          {isSerializedUnit && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Número de Serie</label>
+                  <p className="text-lg font-semibold">{data.serial_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Estado</label>
+                  <Badge
+                    variant={
+                      data.status === "in_stock"
+                        ? "default"
+                        : data.status === "out_of_stock"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                    className="text-base"
+                  >
+                    {data.status === "in_stock"
+                      ? "En Stock"
+                      : data.status === "out_of_stock"
+                        ? "Asignado"
+                        : data.status === "in_repair"
+                          ? "En Reparación"
+                          : "Desechado"}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Ubicación Actual</label>
+                  <div className="flex items-center gap-1">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Ubicación:</span> {product.location}
-                  </p>
+                    <p className="text-base">{data.current_location || "No asignado"}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Registrado</label>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-base">{format(new Date(data.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Última Actualización</label>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-base">{format(new Date(data.updated_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                  </div>
+                </div>
+              </div>
+              <hr className="my-4" />
+              <h3 className="text-xl font-semibold mb-4">Información del Modelo Asociado</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Nombre del Modelo</label>
+                  <p className="text-base">{data.internal_products.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Código del Modelo</label>
+                  <p className="text-base font-mono">{data.internal_products.code}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Unidad de Medida</label>
+                  <p className="text-base">{data.internal_products.unit_of_measure}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Categoría</label>
+                  {data.internal_products.internal_product_categories ? (
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: data.internal_products.internal_product_categories.color }}
+                      />
+                      <span className="text-base">{data.internal_products.internal_product_categories.name}</span>
+                    </div>
+                  ) : (
+                    <p className="text-base text-muted-foreground">Sin categoría</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {!isSerializedUnit && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Código</label>
+                <p className="text-base font-mono">{data.code}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Nombre</label>
+                <p className="text-base">{data.name}</p>
+              </div>
+              {data.description && (
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Descripción</label>
+                  <p className="text-base">{data.description}</p>
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Unidad de Medida</label>
+                <p className="text-base">{data.unit_of_measure}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Stock Actual</label>
+                <p className="text-base font-semibold">
+                  {data.current_stock} {data.unit_of_measure}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Stock Mínimo</label>
+                <p className="text-base">
+                  {data.minimum_stock} {data.unit_of_measure}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Costo Unitario</label>
+                <p className="text-base">S/ {data.cost_price.toFixed(2)}</p>
+              </div>
+              {data.location && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Ubicación</label>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-base">{data.location}</p>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Categoría</label>
+                {data.internal_product_categories ? (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: data.internal_product_categories.color }}
+                    />
+                    <span className="text-base">{data.internal_product_categories.name}</span>
+                  </div>
+                ) : (
+                  <p className="text-base text-muted-foreground">Sin categoría</p>
                 )}
               </div>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Información de Inventario</h3>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="font-medium text-muted-foreground">Stock Actual:</span>{" "}
-                  <span className={`font-bold ${stockStatus === "low" ? "text-red-600" : "text-green-600"}`}>
-                    {product.current_stock} {product.unit_of_measure}
-                  </span>
-                  {stockStatus === "low" && (
-                    <Badge variant="destructive" className="ml-2">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Bajo
-                    </Badge>
-                  )}
-                </p>
-                <p>
-                  <span className="font-medium text-muted-foreground">Stock Mínimo:</span> {product.minimum_stock}{" "}
-                  {product.unit_of_measure}
-                </p>
-                <p>
-                  <span className="font-medium text-muted-foreground">Costo Unitario:</span> S/{" "}
-                  {product.cost_price.toFixed(2)}
-                </p>
-                <p>
-                  <span className="font-medium text-muted-foreground">Valor Total:</span> S/ {totalValue.toFixed(2)}
-                </p>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Estado</label>
+                <Badge variant={data.is_active ? "default" : "secondary"} className="text-base">
+                  {data.is_active ? "Activo" : "Inactivo"}
+                </Badge>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Creado</label>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-base">{format(new Date(data.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Última Actualización</label>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-base">{format(new Date(data.updated_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                </div>
               </div>
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Fechas</h3>
-              <div className="space-y-2 text-sm">
-                <p className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-muted-foreground">Creado el:</span>{" "}
-                  {format(new Date(product.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                </p>
-                <p className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-muted-foreground">Última Actualización:</span>{" "}
-                  {format(new Date(product.updated_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center justify-center">
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Código QR</h3>
-              <QRCodeDisplay value={publicProductUrl} size={128} />
-              <p className="text-xs text-muted-foreground mt-2">Este QR enlaza a esta página de información.</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

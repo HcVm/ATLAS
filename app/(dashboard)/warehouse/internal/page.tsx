@@ -21,6 +21,7 @@ interface InternalProduct {
   unit_of_measure: string
   cost_price: number
   location: string | null
+  is_serialized: boolean // New field
   internal_product_categories: {
     name: string
     color: string
@@ -47,6 +48,10 @@ interface RecentMovement {
     name: string
     code: string
   }
+  internal_product_serials: {
+    // New relation
+    serial_number: string
+  } | null
 }
 
 export default function InternalWarehousePage() {
@@ -73,7 +78,7 @@ export default function InternalWarehousePage() {
     try {
       setLoading(true)
 
-      // Obtener productos internos
+      // Obtener productos internos (modelos)
       const { data: productsData, error: productsError } = await supabase
         .from("internal_products")
         .select(`
@@ -89,8 +94,29 @@ export default function InternalWarehousePage() {
 
       if (productsError) throw productsError
 
-      // Obtener alertas de stock bajo
-      const lowStockProducts = productsData?.filter((p) => p.current_stock <= p.minimum_stock) || []
+      // For serialized products, calculate current_stock from internal_product_serials
+      const productsWithAggregatedStock = await Promise.all(
+        (productsData || []).map(async (product) => {
+          if (product.is_serialized) {
+            const { count, error: serialCountError } = await supabase
+              .from("internal_product_serials")
+              .select("id", { count: "exact", head: true })
+              .eq("product_id", product.id)
+              .eq("status", "in_stock")
+              .eq("company_id", user?.company_id)
+
+            if (serialCountError) {
+              console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
+              return { ...product, current_stock: 0 } // Default to 0 on error
+            }
+            return { ...product, current_stock: count || 0 }
+          }
+          return product
+        }),
+      )
+
+      // Obtener alertas de stock bajo (considerando el stock agregado)
+      const lowStockProducts = productsWithAggregatedStock?.filter((p) => p.current_stock <= p.minimum_stock) || []
 
       // Obtener movimientos recientes
       const { data: movementsData, error: movementsError } = await supabase
@@ -100,6 +126,9 @@ export default function InternalWarehousePage() {
           internal_products (
             name,
             code
+          ),
+          internal_product_serials (
+            serial_number
           )
         `)
         .eq("company_id", user?.company_id)
@@ -110,13 +139,13 @@ export default function InternalWarehousePage() {
 
       // Calcular estadísticas
       const totalValue =
-        productsData?.reduce((sum, product) => sum + product.current_stock * product.cost_price, 0) || 0
+        productsWithAggregatedStock?.reduce((sum, product) => sum + product.current_stock * product.cost_price, 0) || 0
 
-      setProducts(productsData || [])
+      setProducts(productsWithAggregatedStock || [])
       setStockAlerts(lowStockProducts)
       setRecentMovements(movementsData || [])
       setStats({
-        totalProducts: productsData?.length || 0,
+        totalProducts: productsWithAggregatedStock?.length || 0,
         lowStockItems: lowStockProducts.length,
         totalValue,
         recentMovements: movementsData?.length || 0,
@@ -207,7 +236,7 @@ export default function InternalWarehousePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Productos activos</p>
+            <p className="text-xs text-muted-foreground">Modelos de productos activos</p>
           </CardContent>
         </Card>
 
@@ -218,7 +247,7 @@ export default function InternalWarehousePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{stats.lowStockItems}</div>
-            <p className="text-xs text-muted-foreground">Requieren atención</p>
+            <p className="text-xs text-muted-foreground">Modelos requieren atención</p>
           </CardContent>
         </Card>
 
@@ -323,6 +352,14 @@ export default function InternalWarehousePage() {
                         <span className="text-sm">{product.location}</span>
                       </div>
                     )}
+                    {product.is_serialized && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Tipo:</span>
+                        <Badge variant="outline" className="text-xs">
+                          Serializado
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -400,7 +437,14 @@ export default function InternalWarehousePage() {
                           <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                             {movement.internal_products.name}
                           </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{movement.internal_products.code}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Código: {movement.internal_products.code}
+                            {movement.internal_product_serials?.serial_number && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (SN: {movement.internal_product_serials.serial_number})
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">

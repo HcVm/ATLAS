@@ -21,6 +21,7 @@ import {
   Eye,
   QrCode,
   Tag,
+  ListOrdered,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -28,14 +29,14 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import QRCodeDisplay from "@/components/qr-code-display"
+import { QRDisplayDialog } from "@/components/qr-code-display"
 
 interface Product {
   id: string
   code: string
   name: string
   description: string | null
-  category_id: number
+  category_id: string // Changed to string based on your database.types.ts
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
@@ -45,7 +46,7 @@ interface Product {
   created_at: string
   updated_at: string
   qr_code_hash: string | null
-  serial_number: string | null // Added serial_number
+  is_serialized: boolean
   internal_product_categories?: {
     id: number
     name: string
@@ -66,11 +67,26 @@ interface Movement {
   supplier: string | null
   movement_date: string
   created_at: string
+  serial_id: string | null
+  internal_product_serials: {
+    serial_number: string
+  } | null
+}
+
+interface SerializedProduct {
+  id: string
+  serial_number: string
+  status: string
+  current_location: string | null
+  created_at: string
+  updated_at: string
+  product_id: string
+  qr_code_hash: string | null
 }
 
 const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
-  { value: "salida", label: "Salida", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
+  { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" }, // Changed label
   { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
 ]
 
@@ -79,9 +95,12 @@ export default function InternalProductDetailPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [product, setProduct] = useState<Product | null>(null)
+  const [serials, setSerials] = useState<SerializedProduct[]>([]) // State for individual serials
   const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(true)
-  const [publicProductUrl, setPublicProductUrl] = useState<string | null>(null)
+  const [qrDialogOpen, setQrDialogOpen] = useState(false)
+  const [qrData, setQrData] = useState("")
+  const [qrTitle, setQrTitle] = useState("")
 
   useEffect(() => {
     if (params.id && user?.company_id) {
@@ -96,38 +115,60 @@ export default function InternalProductDetailPage() {
       // Fetch product details
       const { data: productData, error: productError } = await supabase
         .from("internal_products")
-        .select(`
+        .select(
+          `
           *,
           internal_product_categories (
             id,
             name,
             color
           )
-        `)
+        `,
+        )
         .eq("id", params.id)
         .eq("company_id", user?.company_id)
         .single()
 
       if (productError) throw productError
 
+      setProduct(productData as Product)
+
+      // If product is serialized, fetch its individual serials
+      if (productData?.is_serialized) {
+        const { data: serialsData, error: serialsError } = await supabase
+          .from("internal_product_serials")
+          .select("*")
+          .eq("product_id", params.id)
+          .eq("company_id", user?.company_id)
+          .order("serial_number", { ascending: true })
+
+        if (serialsError) throw serialsError
+        setSerials(serialsData || [])
+      } else {
+        setSerials([]) // Clear serials if not serialized
+      }
+
       // Fetch product movements
       const { data: movementsData, error: movementsError } = await supabase
         .from("internal_inventory_movements")
-        .select("*")
+        .select(
+          `
+          *,
+          internal_products (
+            is_serialized
+          ),
+          internal_product_serials (
+            serial_number
+          )
+        `,
+        )
         .eq("product_id", params.id)
         .eq("company_id", user?.company_id)
         .order("created_at", { ascending: false })
 
       if (movementsError) throw movementsError
 
-      setProduct(productData)
       setMovements(movementsData || [])
-
-      if (productData?.qr_code_hash) {
-        // Construct the public URL for the QR code
-        const origin = window.location.origin
-        setPublicProductUrl(`${origin}/public/internal-product/${productData.qr_code_hash}`)
-      }
     } catch (error) {
       console.error("Error fetching product details:", error)
       toast.error("Error al cargar los detalles del producto")
@@ -135,6 +176,23 @@ export default function InternalProductDetailPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGenerateQR = (type: "product" | "serial", item: Product | SerializedProduct) => {
+    let qrContent = ""
+    let qrTitleText = ""
+
+    if (type === "product" && "code" in item) {
+      qrContent = `${window.location.origin}/public/internal-product/${item.qr_code_hash}`
+      qrTitleText = `QR para Modelo: ${item.name} (${item.code})`
+    } else if (type === "serial" && "serial_number" in item) {
+      qrContent = `${window.location.origin}/public/internal-product/${item.qr_code_hash}`
+      qrTitleText = `QR para Serie: ${item.serial_number}`
+    }
+
+    setQrData(qrContent)
+    setQrTitle(qrTitleText)
+    setQrDialogOpen(true)
   }
 
   if (loading) {
@@ -162,7 +220,6 @@ export default function InternalProductDetailPage() {
   }
 
   const stockStatus = product.current_stock <= product.minimum_stock ? "low" : "normal"
-  const stockPercentage = product.minimum_stock > 0 ? (product.current_stock / product.minimum_stock) * 100 : 100
 
   const movementStats = {
     total: movements.length,
@@ -227,15 +284,13 @@ export default function InternalProductDetailPage() {
                     <p className="text-sm">{product.description}</p>
                   </div>
                 )}
-                {product.serial_number && ( // Display serial number if it exists
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Número de Serie</label>
-                    <div className="flex items-center gap-1">
-                      <Tag className="h-3 w-3 text-muted-foreground" />
-                      <p className="text-sm">{product.serial_number}</p>
-                    </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo de Producto</label>
+                  <div className="flex items-center gap-1">
+                    <ListOrdered className="h-3 w-3 text-muted-foreground" />
+                    <Badge variant="outline">{product.is_serialized ? "Serializado" : "No Serializado"}</Badge>
                   </div>
-                )}
+                </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Categoría</label>
                   {product.internal_product_categories ? (
@@ -289,6 +344,76 @@ export default function InternalProductDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Serialized Units Table (if applicable) */}
+          {product.is_serialized && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Unidades Serializadas</CardTitle>
+                <CardDescription>{serials.length} unidades registradas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {serials.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Tag className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      No hay unidades serializadas registradas para este producto.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>N° Serie</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Ubicación Actual</TableHead>
+                          <TableHead>Creado</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {serials.map((serial) => (
+                          <TableRow key={serial.id}>
+                            <TableCell className="font-medium">{serial.serial_number}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  serial.status === "in_stock"
+                                    ? "default"
+                                    : serial.status === "out_of_stock"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                              >
+                                {serial.status === "in_stock"
+                                  ? "En Stock"
+                                  : serial.status === "out_of_stock"
+                                    ? "Asignado" // Changed label
+                                    : serial.status === "in_repair"
+                                      ? "En Reparación"
+                                      : "Desechado"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{serial.current_location || "N/A"}</TableCell>
+                            <TableCell>
+                              {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
+                                <QrCode className="h-4 w-4" />
+                                <span className="sr-only">Generar QR para serial</span>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Movement History */}
           <Card>
             <CardHeader>
@@ -309,6 +434,7 @@ export default function InternalProductDetailPage() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Cantidad</TableHead>
+                        {product.is_serialized && <TableHead>N° Serie</TableHead>}
                         <TableHead>Valor</TableHead>
                         <TableHead>Motivo</TableHead>
                         <TableHead>Solicitante</TableHead>
@@ -349,6 +475,18 @@ export default function InternalProductDetailPage() {
                                 <span className="text-muted-foreground text-sm">{product.unit_of_measure}</span>
                               </div>
                             </TableCell>
+                            {product.is_serialized && (
+                              <TableCell>
+                                {movement.internal_product_serials?.serial_number ? (
+                                  <div className="flex items-center gap-1">
+                                    <Tag className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-sm">{movement.internal_product_serials.serial_number}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">N/A</span>
+                                )}
+                              </TableCell>
+                            )}
                             <TableCell>S/ {movement.total_amount.toFixed(2)}</TableCell>
                             <TableCell>
                               <div className="max-w-[200px] truncate" title={movement.reason}>
@@ -425,27 +563,24 @@ export default function InternalProductDetailPage() {
           </Card>
 
           {/* QR Code Section */}
-          {publicProductUrl && (
+          {product.qr_code_hash && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <QrCode className="h-5 w-5" />
-                  Código QR del Producto
+                  Código QR del Modelo
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-center">
                 <div className="flex justify-center">
-                  <QRCodeDisplay value={publicProductUrl} size={180} />
+                  <Button variant="outline" size="sm" onClick={() => handleGenerateQR("product", product)}>
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Generar QR
+                  </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Escanea este código para ver la información pública del producto.
+                  Genera y escanea este código para ver la información pública del modelo de producto.
                 </p>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={publicProductUrl} target="_blank" rel="noopener noreferrer">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver Página Pública
-                  </a>
-                </Button>
               </CardContent>
             </Card>
           )}
@@ -465,7 +600,7 @@ export default function InternalProductDetailPage() {
                 <div className="text-center p-3 bg-red-50 rounded-lg">
                   <ArrowDown className="h-6 w-6 mx-auto mb-1 text-red-600" />
                   <div className="text-2xl font-bold text-red-600">{movementStats.salidas}</div>
-                  <p className="text-xs text-red-700">Salidas</p>
+                  <p className="text-xs text-red-700">Asignaciones</p>
                 </div>
               </div>
               <div className="text-center p-3 bg-blue-50 rounded-lg">
@@ -482,6 +617,7 @@ export default function InternalProductDetailPage() {
           </Card>
         </div>
       </div>
+      <QRDisplayDialog open={qrDialogOpen} onOpenChange={setQrDialogOpen} qrData={qrData} title={qrTitle} />
     </div>
   )
 }

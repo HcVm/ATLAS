@@ -5,82 +5,56 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Package } from "lucide-react"
-import Link from "next/link"
+import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
-import { toast } from "sonner"
-import { v4 as uuidv4 } from "uuid"
+import { ChevronLeft, Save, Package } from "lucide-react"
+import Link from "next/link"
 
 interface Category {
-  id: number
+  id: string
   name: string
   color: string
 }
-
-interface FormData {
-  name: string
-  description: string
-  category_id: string
-  unit_of_measure: string
-  current_stock: number
-  minimum_stock: number
-  cost_price: number
-  location: string
-  is_active: boolean
-  serial_number: string // Added serial_number
-}
-
-const UNIT_OPTIONS = [
-  { value: "unidad", label: "Unidad" },
-  { value: "paquete", label: "Paquete" },
-  { value: "caja", label: "Caja" },
-  { value: "resma", label: "Resma" },
-  { value: "rollo", label: "Rollo" },
-  { value: "botella", label: "Botella" },
-  { value: "frasco", label: "Frasco" },
-  { value: "sobre", label: "Sobre" },
-  { value: "kit", label: "Kit" },
-  { value: "par", label: "Par" },
-]
 
 export default function NewInternalProductPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(false)
-  const [generatedCode, setGeneratedCode] = useState("")
-  const [formData, setFormData] = useState<FormData>({
+  const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    code: "", // This will be the model code
     name: "",
     description: "",
     category_id: "",
     unit_of_measure: "unidad",
-    current_stock: 0,
-    minimum_stock: 0,
-    cost_price: 0,
+    minimum_stock: "0", // Default for non-serialized
+    cost_price: "",
     location: "",
-    is_active: true,
-    serial_number: "", // Added serial_number
+    initial_stock: "0", // Default for non-serialized
+    is_serialized: false, // New field
+    serial_numbers_input: "", // For serialized products, comma or newline separated
   })
 
   useEffect(() => {
     if (user?.company_id) {
       fetchCategories()
-      generateCode()
     }
   }, [user?.company_id])
 
   const fetchCategories = async () => {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from("internal_product_categories")
-        .select("*")
+        .select("id, name, color")
         .or(`company_id.eq.${user?.company_id},company_id.is.null`)
         .order("name")
 
@@ -88,391 +62,274 @@ export default function NewInternalProductPage() {
       setCategories(data || [])
     } catch (error) {
       console.error("Error fetching categories:", error)
-      toast.error("Error al cargar las categorías")
-    }
-  }
-
-  const generateCode = async () => {
-    try {
-      // Intentar usar la función de la base de datos
-      const { data, error } = await supabase.rpc("generate_internal_product_code")
-      if (error) {
-        console.warn("Function not found, generating code manually:", error)
-        // If the function does not exist or fails, generate code manually
-        await generateCodeManually()
-        return
-      }
-      setGeneratedCode(data)
-    } catch (error) {
-      console.error("Error generating code:", error)
-      await generateCodeManually()
-    }
-  }
-
-  const generateCodeManually = async () => {
-    try {
-      // Obtener el último código usado
-      const { data, error } = await supabase
-        .from("internal_products")
-        .select("code")
-        .like("code", "INT-%")
-        .order("code", { ascending: false })
-        .limit(1)
-
-      if (error) throw error
-
-      let nextNumber = 1
-      if (data && data.length > 0) {
-        const lastCode = data[0].code
-        const match = lastCode.match(/INT-(\d+)/)
-        if (match) {
-          nextNumber = Number.parseInt(match[1]) + 1
-        }
-      }
-
-      const newCode = `INT-${nextNumber.toString().padStart(3, "0")}`
-      setGeneratedCode(newCode)
-    } catch (error) {
-      console.error("Error generating code manually:", error)
-      setGeneratedCode("INT-001")
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.name.trim()) {
-      toast.error("El nombre del producto es obligatorio")
-      return
-    }
-
-    if (!formData.category_id || formData.category_id.trim() === "") {
-      toast.error("Selecciona una categoría")
-      return
-    }
-
-    if (!user?.id || !user?.company_id) {
-      toast.error("Error de autenticación")
-      return
-    }
-
-    try {
-      setLoading(true)
-
-      // Verify that the code is not duplicated
-      const { data: existingProduct } = await supabase
-        .from("internal_products")
-        .select("id")
-        .eq("code", generatedCode)
-        .maybeSingle()
-
-      if (existingProduct) {
-        // If the code already exists, generate a new one
-        await generateCode()
-        toast.error("El código ya existe, se ha generado uno nuevo. Intenta de nuevo.")
-        setLoading(false)
-        return
-      }
-
-      const productData = {
-        code: generatedCode,
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        category_id: formData.category_id,
-        unit_of_measure: formData.unit_of_measure,
-        current_stock: formData.current_stock,
-        minimum_stock: formData.minimum_stock,
-        cost_price: formData.cost_price,
-        location: formData.location.trim() || null,
-        is_active: formData.is_active,
-        company_id: user.company_id,
-        created_by: user.id,
-        qr_code_hash: uuidv4(),
-        serial_number: formData.serial_number.trim() || null, // Include serial_number
-      }
-
-      const { data, error } = await supabase.from("internal_products").insert([productData]).select().single()
-
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      // If there is initial stock, create an entry movement
-      if (formData.current_stock > 0) {
-        const movementData = {
-          product_id: data.id,
-          movement_type: "entrada",
-          quantity: formData.current_stock,
-          cost_price: formData.cost_price,
-          total_amount: formData.current_stock * formData.cost_price,
-          reason: "Stock inicial",
-          notes: `Stock inicial del producto ${formData.name}`,
-          requested_by: user.email || "Sistema",
-          supplier: "Stock inicial",
-          company_id: user.company_id,
-          created_by: user.id,
-        }
-
-        const { error: movementError } = await supabase.from("internal_inventory_movements").insert([movementData])
-
-        if (movementError) {
-          console.error("Error creating initial movement:", movementError)
-          // Do not fail product creation for this, just show a warning
-          toast("Producto creado correctamente, pero no se pudo registrar el movimiento inicial", {
-            description:
-              "El producto se creó exitosamente, pero hubo un problema al registrar el movimiento de inventario inicial.",
-          })
-        }
-      }
-
-      toast.success("Producto interno creado correctamente")
-      router.push("/warehouse/internal/products")
-    } catch (error: any) {
-      console.error("Error creating product:", error)
-      toast.error(error.message || "Error al crear el producto")
+      toast.error("Error al cargar categorías")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    setFormData((prev) => ({ ...prev, [id]: value }))
   }
 
-  const totalValue = formData.current_stock * formData.cost_price
+  const handleSelectChange = (id: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleSwitchChange = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      is_serialized: checked,
+      // Reset stock fields if switching to serialized, or serials if switching to non-serialized
+      minimum_stock: checked ? "0" : prev.minimum_stock,
+      initial_stock: checked ? "0" : prev.initial_stock,
+      serial_numbers_input: checked ? prev.serial_numbers_input : "",
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const payload: any = {
+        name: formData.name,
+        description: formData.description,
+        category_id: formData.category_id,
+        unit_of_measure: formData.unit_of_measure,
+        cost_price: Number.parseFloat(formData.cost_price),
+        location: formData.location,
+        code: formData.code, // This is the model code
+        is_serialized: formData.is_serialized,
+      }
+
+      if (formData.is_serialized) {
+        const serialNumbers = formData.serial_numbers_input
+          .split(/[\n,]+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+
+        if (serialNumbers.length === 0) {
+          toast.error("Debes ingresar al menos un número de serie para productos serializados.")
+          setIsSubmitting(false)
+          return
+        }
+        // Check for duplicates within the input
+        const uniqueSerialNumbers = new Set(serialNumbers)
+        if (uniqueSerialNumbers.size !== serialNumbers.length) {
+          toast.error("Hay números de serie duplicados en la lista ingresada. Por favor, revisa.")
+          setIsSubmitting(false)
+          return
+        }
+
+        payload.serial_numbers = serialNumbers
+        payload.initial_stock = serialNumbers.length // Initial stock is the count of serials
+        payload.minimum_stock = 0 // Minimum stock is not directly applicable per model for serialized items
+      } else {
+        payload.minimum_stock = Number.parseInt(formData.minimum_stock)
+        payload.initial_stock = Number.parseInt(formData.initial_stock)
+      }
+
+      const response = await fetch("/api/internal-products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al crear el producto")
+      }
+
+      toast.success("Producto creado exitosamente!")
+      router.push("/warehouse/internal/products")
+    } catch (error: any) {
+      console.error("Error creating product:", error)
+      toast.error(error.message || "Error al crear el producto. Intente nuevamente.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Package className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
+      <div className="flex items-center justify-between">
+        <Button variant="outline" asChild>
           <Link href="/warehouse/internal/products">
-            <ArrowLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Volver a Productos
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nuevo Producto Interno</h1>
-          <p className="text-muted-foreground">Agrega un nuevo producto de uso interno</p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">Nuevo Producto Interno</h1>
+        <div /> {/* Placeholder for alignment */}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Information */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Información Básica</CardTitle>
-                <CardDescription>Datos principales del producto interno</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="code">Código</Label>
-                    <Input id="code" value={generatedCode} disabled className="font-mono bg-muted" />
-                    <p className="text-xs text-muted-foreground">Código generado automáticamente</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nombre *</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Detalles del Producto</CardTitle>
+            <CardDescription>Información básica y de inventario del nuevo artículo.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="code">Código de Modelo *</Label>
+                <Input id="code" value={formData.code} onChange={handleChange} placeholder="Ej: INT-001" required />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Código identificador del modelo de producto (ej. LAP-001 para un modelo de laptop).
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="name">Nombre del Producto *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Ej: Laptop HP ProBook 450 G9"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Descripción detallada del producto"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="category_id">Categoría *</Label>
+                <Select
+                  value={formData.category_id}
+                  onValueChange={(value) => handleSelectChange("category_id", value)}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                          {category.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="unit_of_measure">Unidad de Medida</Label>
+                <Input
+                  id="unit_of_measure"
+                  value={formData.unit_of_measure}
+                  onChange={handleChange}
+                  placeholder="Ej: unidad, caja, litro"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_serialized" className="text-base">
+                    Producto Serializado
+                  </Label>
+                  <CardDescription>
+                    Cada unidad tiene un número de serie único (ej. laptops, celulares).
+                  </CardDescription>
+                </div>
+                <Switch id="is_serialized" checked={formData.is_serialized} onCheckedChange={handleSwitchChange} />
+              </div>
+
+              {formData.is_serialized ? (
+                <div>
+                  <Label htmlFor="serial_numbers_input">Números de Serie *</Label>
+                  <Textarea
+                    id="serial_numbers_input"
+                    value={formData.serial_numbers_input}
+                    onChange={handleChange}
+                    placeholder="Ingresa un número de serie por línea o separados por coma"
+                    rows={5}
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Cada línea o número separado por coma creará una unidad individual.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label htmlFor="initial_stock">Stock Inicial *</Label>
                     <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
-                      placeholder="Ej: Hojas Bond A4"
+                      id="initial_stock"
+                      type="number"
+                      value={formData.initial_stock}
+                      onChange={handleChange}
+                      placeholder="0"
+                      min="0"
                       required
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    placeholder="Descripción detallada del producto..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoría *</Label>
-                    <Select
-                      value={formData.category_id}
-                      onValueChange={(value) => handleInputChange("category_id", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">Unidad de Medida</Label>
-                    <Select
-                      value={formData.unit_of_measure}
-                      onValueChange={(value) => handleInputChange("unit_of_measure", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNIT_OPTIONS.map((unit) => (
-                          <SelectItem key={unit.value} value={unit.value}>
-                            {unit.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="serial_number">Número de Serie</Label>
-                  <Input
-                    id="serial_number"
-                    value={formData.serial_number}
-                    onChange={(e) => handleInputChange("serial_number", e.target.value)}
-                    placeholder="Ej: SN123456789"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    placeholder="Ej: Almacén Principal, Oficina Central"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventario y Costos</CardTitle>
-                <CardDescription>Información de stock y precios</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="current_stock">Stock Inicial</Label>
-                    <Input
-                      id="current_stock"
-                      type="number"
-                      min="0"
-                      value={formData.current_stock}
-                      onChange={(e) => handleInputChange("current_stock", Number.parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="minimum_stock">Stock Mínimo</Label>
                     <Input
                       id="minimum_stock"
                       type="number"
-                      min="0"
                       value={formData.minimum_stock}
-                      onChange={(e) => handleInputChange("minimum_stock", Number.parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cost_price">Costo Unitario (S/)</Label>
-                    <Input
-                      id="cost_price"
-                      type="number"
+                      onChange={handleChange}
+                      placeholder="0"
                       min="0"
-                      step="0.01"
-                      value={formData.cost_price}
-                      onChange={(e) => handleInputChange("cost_price", Number.parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                </div>
+                </>
+              )}
 
-                {totalValue > 0 && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Valor Total del Inventario:</span>
-                      <span className="text-lg font-bold">S/ {totalValue.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="is_active">Producto Activo</Label>
-                  <Switch
-                    id="is_active"
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => handleInputChange("is_active", checked)}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Los productos inactivos no aparecerán en las listas principales
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Código:</span>
-                  <span className="font-mono">{generatedCode}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Unidad:</span>
-                  <span>{UNIT_OPTIONS.find((u) => u.value === formData.unit_of_measure)?.label}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Stock inicial:</span>
-                  <span>{formData.current_stock}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Valor total:</span>
-                  <span className="font-semibold">S/ {totalValue.toFixed(2)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-2">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? (
-                  <>
-                    <Package className="h-4 w-4 mr-2 animate-spin" />
-                    Creando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Crear Producto
-                  </>
-                )}
-              </Button>
+              <div>
+                <Label htmlFor="cost_price">Precio de Costo Unitario *</Label>
+                <Input
+                  id="cost_price"
+                  type="number"
+                  step="0.01"
+                  value={formData.cost_price}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Ubicación Predeterminada</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Ej: Almacén Principal, Estante A1"
+                />
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Crear Producto"}
+            <Save className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </form>
     </div>

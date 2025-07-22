@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { v4 as uuidv4 } from "uuid" // Import uuid for QR hash generation
+import { v4 as uuidv4 } from "uuid"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -61,7 +61,30 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    // Get movement count for this product
+    // If serialized, fetch associated serials and update current_stock
+    const finalProduct = { ...product }
+    if (product.is_serialized) {
+      const {
+        data: serials,
+        count: serialCount,
+        error: serialsError,
+      } = await supabase
+        .from("internal_product_serials")
+        .select("*", { count: "exact" })
+        .eq("product_id", product.id)
+        .eq("company_id", profile.company_id)
+        .order("serial_number")
+
+      if (serialsError) {
+        console.error("Error fetching serials for product:", serialsError)
+        // Continue with product data, but serials will be empty
+      } else {
+        finalProduct.serials = serials || []
+        finalProduct.current_stock = serialCount || 0 // Update aggregated stock
+      }
+    }
+
+    // Get movement count for this product model
     const { count: movementCount } = await supabase
       .from("internal_inventory_movements")
       .select("*", { count: "exact", head: true })
@@ -69,7 +92,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({
       product: {
-        ...product,
+        ...finalProduct,
         movement_count: movementCount || 0,
       },
     })
@@ -109,7 +132,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       cost_price,
       location,
       is_active,
-      qr_code_hash,
+      qr_code_hash, // This is for the model's QR code
+      is_serialized, // New field
+      // serial_number is removed from internal_products
     } = body
 
     // Validate required fields
@@ -151,7 +176,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       finalQrCodeHash = uuidv4()
     }
 
-    // Update product
+    // Update product model
     const { data: updatedProduct, error: updateError } = await supabase
       .from("internal_products")
       .update({
@@ -159,12 +184,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         description: description?.trim() || null,
         category_id: category_id,
         unit_of_measure: unit_of_measure || "unidad",
-        minimum_stock: parsedMinimumStock,
+        minimum_stock: parsedMinimumStock, // Still relevant for model's low stock alert
         cost_price: parsedCostPrice,
         location: location?.trim() || null,
         is_active: is_active !== undefined ? is_active : true,
         updated_at: new Date().toISOString(),
-        qr_code_hash: finalQrCodeHash, // Update QR code hash
+        qr_code_hash: finalQrCodeHash,
+        is_serialized: is_serialized,
+        // current_stock is not directly updated here, it's derived from serials or movements
       })
       .eq("id", params.id)
       .eq("company_id", profile.company_id)
@@ -183,105 +210,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ success: true, product: updatedProduct })
   } catch (error: any) {
     console.error("Unexpected error in PUT /api/internal-products/[id]:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const supabase = await getSupabaseServerClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    // Get user profile to check company
-    const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single()
-
-    if (!profile?.company_id) {
-      return NextResponse.json({ error: "Usuario sin empresa asignada" }, { status: 403 })
-    }
-
-    // Get the URL search params to check if cascade delete is requested
-    const url = new URL(request.url)
-    const cascade = url.searchParams.get("cascade") === "true"
-
-    // Check if product has movements
-    const { data: movements, count: movementCount } = await supabase
-      .from("internal_inventory_movements")
-      .select("id", { count: "exact" })
-      .eq("product_id", params.id)
-
-    if (movementCount && movementCount > 0 && !cascade) {
-      return NextResponse.json(
-        {
-          error: "PRODUCT_HAS_MOVEMENTS",
-          message: `El producto tiene ${movementCount} movimiento(s) de inventario asociados`,
-          movementCount,
-        },
-        { status: 400 },
-      )
-    }
-
-    // If cascade delete is requested, delete movements first
-    if (cascade && movementCount && movementCount > 0) {
-      // Delete movement attachments first
-      const { data: movementIds } = await supabase
-        .from("internal_inventory_movements")
-        .select("id")
-        .eq("product_id", params.id)
-
-      if (movementIds && movementIds.length > 0) {
-        // Delete attachments for all movements
-        const { error: attachmentError } = await supabase
-          .from("inventory_movement_attachments")
-          .delete()
-          .in(
-            "movement_id",
-            movementIds.map((m) => m.id),
-          )
-
-        if (attachmentError) {
-          console.error("Error deleting movement attachments:", attachmentError)
-          // Continue anyway, as attachments are not critical
-        }
-      }
-
-      // Delete movements
-      const { error: movementError } = await supabase
-        .from("internal_inventory_movements")
-        .delete()
-        .eq("product_id", params.id)
-
-      if (movementError) {
-        console.error("Error deleting movements:", movementError)
-        return NextResponse.json({ error: "Error al eliminar los movimientos del producto" }, { status: 500 })
-      }
-    }
-
-    // Delete product
-    const { error: deleteError } = await supabase
-      .from("internal_products")
-      .delete()
-      .eq("id", params.id)
-      .eq("company_id", profile.company_id)
-
-    if (deleteError) {
-      console.error("Error deleting product:", deleteError)
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: cascade ? "Producto y movimientos eliminados correctamente" : "Producto eliminado correctamente",
-    })
-  } catch (error: any) {
-    console.error("Unexpected error in DELETE /api/internal-products/[id]:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

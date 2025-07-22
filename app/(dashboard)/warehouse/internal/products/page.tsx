@@ -20,17 +20,18 @@ interface Category {
 }
 
 interface Product {
-  id: number
+  id: string // Changed to string for UUID
   code: string
   name: string
   description: string | null
-  category_id: number
+  category_id: string // Changed to string for UUID
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
   cost_price: number
   location: string | null
   is_active: boolean
+  is_serialized: boolean // New field
   created_at: string
   internal_product_categories?: {
     id: number
@@ -58,7 +59,7 @@ export default function InternalProductsPage() {
     try {
       setLoading(true)
 
-      // Fetch products
+      // Fetch products (models)
       const { data: productsData, error: productsError } = await supabase
         .from("internal_products")
         .select(`
@@ -74,6 +75,27 @@ export default function InternalProductsPage() {
 
       if (productsError) throw productsError
 
+      // For serialized products, calculate current_stock from internal_product_serials
+      const productsWithAggregatedStock = await Promise.all(
+        (productsData || []).map(async (product) => {
+          if (product.is_serialized) {
+            const { count, error: serialCountError } = await supabase
+              .from("internal_product_serials")
+              .select("id", { count: "exact", head: true })
+              .eq("product_id", product.id)
+              .eq("status", "in_stock")
+              .eq("company_id", user?.company_id)
+
+            if (serialCountError) {
+              console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
+              return { ...product, current_stock: 0 } // Default to 0 on error
+            }
+            return { ...product, current_stock: count || 0 }
+          }
+          return product
+        }),
+      )
+
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
@@ -83,7 +105,7 @@ export default function InternalProductsPage() {
 
       if (categoriesError) throw categoriesError
 
-      setProducts(productsData || [])
+      setProducts(productsWithAggregatedStock || [])
       setCategories(categoriesData || [])
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -145,7 +167,7 @@ export default function InternalProductsPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Modelos</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -160,7 +182,7 @@ export default function InternalProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{stats.lowStock}</div>
-            <p className="text-xs text-muted-foreground">Requieren atención</p>
+            <p className="text-xs text-muted-foreground">Modelos requieren atención</p>
           </CardContent>
         </Card>
         <Card>
@@ -240,7 +262,7 @@ export default function InternalProductsPage() {
         <CardHeader>
           <CardTitle>Lista de Productos</CardTitle>
           <CardDescription>
-            {filteredProducts.length} de {products.length} productos
+            {filteredProducts.length} de {products.length} modelos de productos
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -255,13 +277,14 @@ export default function InternalProductsPage() {
                   <TableHead>Costo Unit.</TableHead>
                   <TableHead>Valor Total</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Tipo</TableHead> {/* New column */}
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         <Package className="h-8 w-8 mx-auto mb-2" />
                         <p>No se encontraron productos</p>
@@ -314,6 +337,11 @@ export default function InternalProductsPage() {
                       <TableCell>
                         <Badge variant={product.is_active ? "default" : "secondary"}>
                           {product.is_active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {product.is_serialized ? "Serializado" : "No Serializado"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

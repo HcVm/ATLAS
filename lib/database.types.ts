@@ -1030,7 +1030,7 @@ export interface Database {
           created_at: string
           updated_at: string
           qr_code_hash: string | null
-          serial_number: string | null // Added serial_number
+          is_serialized: boolean // Added is_serialized
         }
         Insert: {
           id?: string
@@ -1049,7 +1049,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           qr_code_hash?: string | null
-          serial_number?: string | null // Added serial_number
+          is_serialized?: boolean // Added is_serialized
         }
         Update: {
           id?: string
@@ -1068,7 +1068,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           qr_code_hash?: string | null
-          serial_number?: string | null // Added serial_number
+          is_serialized?: boolean // Added is_serialized
         }
         Relationships: [
           {
@@ -1091,10 +1091,70 @@ export interface Database {
           },
         ]
       }
+      internal_product_serials: {
+        // NEW TABLE
+        Row: {
+          id: string
+          product_id: string
+          serial_number: string
+          status: string
+          current_location: string | null
+          company_id: string
+          created_by: string
+          created_at: string
+          updated_at: string
+          qr_code_hash: string | null
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          serial_number: string
+          status?: string
+          current_location?: string | null
+          company_id: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+          qr_code_hash?: string | null
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          serial_number?: string
+          status?: string
+          current_location?: string | null
+          company_id?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+          qr_code_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_product_serials_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_product_serials_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_product_serials_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "internal_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_inventory_movements: {
         Row: {
           id: string
           product_id: string
+          serial_id: string | null // Added serial_id
           movement_type: "entrada" | "salida" | "ajuste"
           quantity: number
           cost_price: number
@@ -1112,6 +1172,7 @@ export interface Database {
         Insert: {
           id?: string
           product_id: string
+          serial_id?: string | null // Added serial_id
           movement_type: "entrada" | "salida" | "ajuste"
           quantity: number
           cost_price: number
@@ -1129,6 +1190,7 @@ export interface Database {
         Update: {
           id?: string
           product_id?: string
+          serial_id?: string | null // Added serial_id
           movement_type?: "entrada" | "salida" | "ajuste"
           quantity?: number
           cost_price?: number
@@ -1160,6 +1222,12 @@ export interface Database {
             foreignKeyName: "internal_inventory_movements_product_id_fkey"
             columns: ["product_id"]
             referencedRelation: "internal_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_inventory_movements_serial_id_fkey"
+            columns: ["serial_id"]
+            referencedRelation: "internal_product_serials"
             referencedColumns: ["id"]
           },
         ]
