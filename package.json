@@ -60,7 +60,7 @@
     "pdf-lib": "latest",
     "puppeteer": "^24.14.0",
     "qrcode": "latest",
-    "qrcode.react": "^latest",
+    "qrcode.react": "^4.2.0",
     "react": "^19",
     "react-day-picker": "latest",
     "react-dom": "^19",
