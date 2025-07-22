@@ -19,6 +19,8 @@ import {
   RotateCcw,
   User,
   Eye,
+  QrCode,
+  Tag,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -26,6 +28,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import QRCodeDisplay from "@/components/qr-code-display"
 
 interface Product {
   id: string
@@ -41,6 +44,8 @@ interface Product {
   is_active: boolean
   created_at: string
   updated_at: string
+  qr_code_hash: string | null
+  serial_number: string | null // Added serial_number
   internal_product_categories?: {
     id: number
     name: string
@@ -76,6 +81,7 @@ export default function InternalProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(true)
+  const [publicProductUrl, setPublicProductUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (params.id && user?.company_id) {
@@ -116,6 +122,12 @@ export default function InternalProductDetailPage() {
 
       setProduct(productData)
       setMovements(movementsData || [])
+
+      if (productData?.qr_code_hash) {
+        // Construct the public URL for the QR code
+        const origin = window.location.origin
+        setPublicProductUrl(`${origin}/public/internal-product/${productData.qr_code_hash}`)
+      }
     } catch (error) {
       console.error("Error fetching product details:", error)
       toast.error("Error al cargar los detalles del producto")
@@ -213,6 +225,15 @@ export default function InternalProductDetailPage() {
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-muted-foreground">Descripción</label>
                     <p className="text-sm">{product.description}</p>
+                  </div>
+                )}
+                {product.serial_number && ( // Display serial number if it exists
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Número de Serie</label>
+                    <div className="flex items-center gap-1">
+                      <Tag className="h-3 w-3 text-muted-foreground" />
+                      <p className="text-sm">{product.serial_number}</p>
+                    </div>
                   </div>
                 )}
                 <div>
@@ -402,6 +423,32 @@ export default function InternalProductDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* QR Code Section */}
+          {publicProductUrl && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5" />
+                  Código QR del Producto
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-center">
+                <div className="flex justify-center">
+                  <QRCodeDisplay value={publicProductUrl} size={180} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Escanea este código para ver la información pública del producto.
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={publicProductUrl} target="_blank" rel="noopener noreferrer">
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver Página Pública
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Movement Statistics */}
           <Card>

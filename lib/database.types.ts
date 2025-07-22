@@ -975,6 +975,195 @@ export interface Database {
           },
         ]
       }
+      internal_product_categories: {
+        Row: {
+          id: number
+          name: string
+          description: string | null
+          color: string
+          company_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          description?: string | null
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          description?: string | null
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_product_categories_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_products: {
+        Row: {
+          id: string
+          code: string
+          name: string
+          description: string | null
+          category_id: string
+          unit_of_measure: string
+          current_stock: number
+          minimum_stock: number
+          cost_price: number
+          location: string | null
+          is_active: boolean
+          company_id: string
+          created_by: string
+          created_at: string
+          updated_at: string
+          qr_code_hash: string | null
+          serial_number: string | null // Added serial_number
+        }
+        Insert: {
+          id?: string
+          code: string
+          name: string
+          description?: string | null
+          category_id: string
+          unit_of_measure?: string
+          current_stock?: number
+          minimum_stock?: number
+          cost_price?: number
+          location?: string | null
+          is_active?: boolean
+          company_id: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+          qr_code_hash?: string | null
+          serial_number?: string | null // Added serial_number
+        }
+        Update: {
+          id?: string
+          code?: string
+          name?: string
+          description?: string | null
+          category_id?: string
+          unit_of_measure?: string
+          current_stock?: number
+          minimum_stock?: number
+          cost_price?: number
+          location?: string | null
+          is_active?: boolean
+          company_id?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+          qr_code_hash?: string | null
+          serial_number?: string | null // Added serial_number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_products_category_id_fkey"
+            columns: ["category_id"]
+            referencedRelation: "internal_product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_products_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_products_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_inventory_movements: {
+        Row: {
+          id: string
+          product_id: string
+          movement_type: "entrada" | "salida" | "ajuste"
+          quantity: number
+          cost_price: number
+          total_amount: number
+          reason: string
+          notes: string | null
+          requested_by: string
+          department_requesting: string | null
+          supplier: string | null
+          movement_date: string
+          company_id: string
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          movement_type: "entrada" | "salida" | "ajuste"
+          quantity: number
+          cost_price: number
+          total_amount: number
+          reason: string
+          notes?: string | null
+          requested_by: string
+          department_requesting?: string | null
+          supplier?: string | null
+          movement_date?: string
+          company_id: string
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          movement_type?: "entrada" | "salida" | "ajuste"
+          quantity?: number
+          cost_price?: number
+          total_amount?: number
+          reason?: string
+          notes?: string | null
+          requested_by?: string
+          department_requesting?: string | null
+          supplier?: string | null
+          movement_date?: string
+          company_id?: string
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_inventory_movements_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_inventory_movements_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "internal_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       quotations_with_items: {
@@ -1062,16 +1251,16 @@ export interface Database {
         Relationships: []
       }
     }
-    }
-    Views: {
-      [_ in never]: never
-    }
     Functions: {
       generate_document_number: {
         Args: {
           p_company_id: string
           p_user_id: string
         }
+        Returns: string
+      }
+      generate_internal_product_code: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
     }
@@ -1082,4 +1271,4 @@ export interface Database {
       [_ in never]: never
     }
   }
-
+}

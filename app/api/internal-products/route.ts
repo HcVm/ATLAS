@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { v4 as uuidv4 } from "uuid"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -104,7 +105,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category_id, unit_of_measure, minimum_stock, cost_price, location, initial_stock } = body
+    const {
+      name,
+      description,
+      category_id,
+      unit_of_measure,
+      minimum_stock,
+      cost_price,
+      location,
+      initial_stock,
+      code,
+      serial_number, // Added serial_number
+    } = body
 
     // Validate required fields
     if (!name?.trim()) {
@@ -148,6 +160,7 @@ export async function POST(request: NextRequest) {
     const { data: newProduct, error: createError } = await supabase
       .from("internal_products")
       .insert({
+        code: code,
         name: name.trim(),
         description: description?.trim() || null,
         category_id: category_id,
@@ -159,6 +172,8 @@ export async function POST(request: NextRequest) {
         company_id: profile.company_id,
         created_by: user.id,
         is_active: true,
+        qr_code_hash: uuidv4(),
+        serial_number: serial_number?.trim() || null, // Include serial_number
       })
       .select()
       .single()
@@ -180,7 +195,7 @@ export async function POST(request: NextRequest) {
         notes: `Stock inicial del producto ${name.trim()}`,
         requested_by: user.email || "Sistema",
         supplier: "Stock inicial",
-        company_id: profile.company_id,
+        company_id: user.company_id,
         created_by: user.id,
       }
 

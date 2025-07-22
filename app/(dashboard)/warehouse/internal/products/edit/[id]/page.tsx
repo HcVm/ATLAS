@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
+import { v4 as uuidv4 } from "uuid"
 
 interface Category {
   id: string
@@ -49,6 +50,8 @@ interface Product {
   is_active: boolean
   created_at: string
   updated_at: string
+  qr_code_hash: string | null
+  serial_number: string | null // Added serial_number
 }
 
 export default function EditInternalProductPage({ params }: { params: { id: string } }) {
@@ -82,6 +85,8 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     supplier: "",
     notes: "",
     is_active: true,
+    qr_code_hash: "",
+    serial_number: "", // Added serial_number
   })
 
   useEffect(() => {
@@ -105,12 +110,11 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         return
       }
 
-      // Obtener categorías
+      // Obtener categorías (removed is_active filter)
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
         .select("id, name")
-        .eq("company_id", companyId)
-        .eq("is_active", true)
+        .or(`company_id.eq.${companyId},company_id.is.null`)
         .order("name")
 
       if (categoriesError) {
@@ -125,9 +129,10 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
       }
 
       const productData = await response.json()
+      const fetchedProduct = productData.product // Access the product object from the response
 
       // Verificar que el producto pertenece a la empresa correcta
-      if (productData.company_id !== companyId) {
+      if (fetchedProduct.company_id !== companyId) {
         throw new Error("No tienes permisos para editar este producto")
       }
 
@@ -142,22 +147,37 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
       }
 
       setCategories(categoriesData || [])
-      setProduct(productData)
+      setProduct(fetchedProduct)
       setMovementCount(movementsCount || 0)
+
+      // Generate QR code hash if missing
+      const qrHash = fetchedProduct.qr_code_hash || uuidv4()
+
       setFormData({
-        name: productData.name || "",
-        description: productData.description || "",
-        category_id: productData.category_id || "",
-        unit_of_measure: productData.unit_of_measure || "",
-        cost_price: productData.cost_price?.toString() || "",
-        sale_price: productData.sale_price?.toString() || "",
-        minimum_stock: productData.minimum_stock?.toString() || "",
-        current_stock: productData.current_stock?.toString() || "",
-        location: productData.location || "",
-        supplier: productData.supplier || "",
-        notes: productData.notes || "",
-        is_active: productData.is_active ?? true,
+        name: fetchedProduct.name || "",
+        description: fetchedProduct.description || "",
+        category_id: fetchedProduct.category_id || "",
+        unit_of_measure: fetchedProduct.unit_of_measure || "",
+        cost_price: fetchedProduct.cost_price?.toString() || "",
+        sale_price: fetchedProduct.sale_price?.toString() || "",
+        minimum_stock: fetchedProduct.minimum_stock?.toString() || "",
+        current_stock: fetchedProduct.current_stock?.toString() || "",
+        location: fetchedProduct.location || "",
+        supplier: fetchedProduct.supplier || "",
+        notes: fetchedProduct.notes || "",
+        is_active: fetchedProduct.is_active ?? true,
+        qr_code_hash: qrHash,
+        serial_number: fetchedProduct.serial_number || "", // Set serial_number
       })
+
+      // If a new QR hash was generated, update the product in the DB
+      if (!fetchedProduct.qr_code_hash && qrHash) {
+        await supabase
+          .from("internal_products")
+          .update({ qr_code_hash: qrHash })
+          .eq("id", params.id)
+          .eq("company_id", companyId)
+      }
     } catch (error: any) {
       console.error("Error fetching data:", error)
       toast({
@@ -215,7 +235,14 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          cost_price: costPrice,
+          sale_price: salePrice,
+          minimum_stock: minStock,
+          current_stock: currStock,
+          serial_number: formData.serial_number.trim() || null, // Send serial_number
+        }),
       })
 
       if (!response.ok) {
@@ -521,6 +548,16 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
             <CardDescription>Datos complementarios del producto</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="serial_number">Número de Serie</Label>
+              <Input
+                id="serial_number"
+                value={formData.serial_number}
+                onChange={(e) => setFormData((prev) => ({ ...prev, serial_number: e.target.value }))}
+                placeholder="Ej: SN123456789"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="supplier">Proveedor</Label>
               <Input

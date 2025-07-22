@@ -243,9 +243,9 @@ export default function InternalMovementsPage() {
     try {
       setSaving(true)
 
-      // Crear movimiento - mantener product_id como string UUID
+      // Crear movimiento
       const movementData = {
-        product_id: formData.product_id, // No convertir a número, mantener como UUID string
+        product_id: formData.product_id,
         movement_type: formData.movement_type,
         quantity: formData.quantity,
         cost_price: formData.cost_price,
@@ -263,7 +263,30 @@ export default function InternalMovementsPage() {
 
       if (movementError) throw movementError
 
-      toast.success("Movimiento registrado correctamente")
+      // Update product stock
+      let newStock = product.current_stock
+      if (formData.movement_type === "entrada") {
+        newStock += formData.quantity
+      } else if (formData.movement_type === "salida") {
+        newStock -= formData.quantity
+      } else if (formData.movement_type === "ajuste") {
+        newStock = formData.quantity // For adjustment, quantity is the new absolute stock
+      }
+
+      const { error: updateProductError } = await supabase
+        .from("internal_products")
+        .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+        .eq("id", formData.product_id)
+        .eq("company_id", user?.company_id)
+
+      if (updateProductError) {
+        console.error("Error updating product stock:", updateProductError)
+        toast.error("Movimiento registrado, pero hubo un error al actualizar el stock del producto.")
+        // Even if stock update fails, we want to show success for movement creation
+      } else {
+        toast.success("Movimiento registrado y stock actualizado correctamente")
+      }
+
       setDialogOpen(false)
       setFormData({
         product_id: "",
@@ -276,7 +299,7 @@ export default function InternalMovementsPage() {
         department_requesting: "",
         supplier: "",
       })
-      fetchData()
+      fetchData() // Re-fetch data to update tables and stats
     } catch (error: any) {
       console.error("Error creating movement:", error)
       toast.error(error.message || "Error al registrar el movimiento")

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { v4 as uuidv4 } from "uuid" // Import uuid for QR hash generation
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -99,7 +100,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
-    const { name, description, category_id, unit_of_measure, minimum_stock, cost_price, location, is_active } = body
+    const {
+      name,
+      description,
+      category_id,
+      unit_of_measure,
+      minimum_stock,
+      cost_price,
+      location,
+      is_active,
+      qr_code_hash,
+    } = body
 
     // Validate required fields
     if (!name?.trim()) {
@@ -134,6 +145,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Categoría no válida" }, { status: 400 })
     }
 
+    // Ensure qr_code_hash exists, generate if not provided or null
+    let finalQrCodeHash = qr_code_hash
+    if (!finalQrCodeHash) {
+      finalQrCodeHash = uuidv4()
+    }
+
     // Update product
     const { data: updatedProduct, error: updateError } = await supabase
       .from("internal_products")
@@ -147,6 +164,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         location: location?.trim() || null,
         is_active: is_active !== undefined ? is_active : true,
         updated_at: new Date().toISOString(),
+        qr_code_hash: finalQrCodeHash, // Update QR code hash
       })
       .eq("id", params.id)
       .eq("company_id", profile.company_id)

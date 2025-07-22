@@ -16,6 +16,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { v4 as uuidv4 } from "uuid"
 
 interface Category {
   id: number
@@ -33,6 +34,7 @@ interface FormData {
   cost_price: number
   location: string
   is_active: boolean
+  serial_number: string // Added serial_number
 }
 
 const UNIT_OPTIONS = [
@@ -64,6 +66,7 @@ export default function NewInternalProductPage() {
     cost_price: 0,
     location: "",
     is_active: true,
+    serial_number: "", // Added serial_number
   })
 
   useEffect(() => {
@@ -95,7 +98,7 @@ export default function NewInternalProductPage() {
       const { data, error } = await supabase.rpc("generate_internal_product_code")
       if (error) {
         console.warn("Function not found, generating code manually:", error)
-        // Si la función no existe, generar código manualmente
+        // If the function does not exist or fails, generate code manually
         await generateCodeManually()
         return
       }
@@ -156,7 +159,7 @@ export default function NewInternalProductPage() {
     try {
       setLoading(true)
 
-      // Verificar que el código no esté duplicado
+      // Verify that the code is not duplicated
       const { data: existingProduct } = await supabase
         .from("internal_products")
         .select("id")
@@ -164,7 +167,7 @@ export default function NewInternalProductPage() {
         .maybeSingle()
 
       if (existingProduct) {
-        // Si el código ya existe, generar uno nuevo
+        // If the code already exists, generate a new one
         await generateCode()
         toast.error("El código ya existe, se ha generado uno nuevo. Intenta de nuevo.")
         setLoading(false)
@@ -184,6 +187,8 @@ export default function NewInternalProductPage() {
         is_active: formData.is_active,
         company_id: user.company_id,
         created_by: user.id,
+        qr_code_hash: uuidv4(),
+        serial_number: formData.serial_number.trim() || null, // Include serial_number
       }
 
       const { data, error } = await supabase.from("internal_products").insert([productData]).select().single()
@@ -193,7 +198,7 @@ export default function NewInternalProductPage() {
         throw error
       }
 
-      // Si hay stock inicial, crear movimiento de entrada
+      // If there is initial stock, create an entry movement
       if (formData.current_stock > 0) {
         const movementData = {
           product_id: data.id,
@@ -213,7 +218,7 @@ export default function NewInternalProductPage() {
 
         if (movementError) {
           console.error("Error creating initial movement:", movementError)
-          // No fallar la creación del producto por esto, solo mostrar advertencia
+          // Do not fail product creation for this, just show a warning
           toast("Producto creado correctamente, pero no se pudo registrar el movimiento inicial", {
             description:
               "El producto se creó exitosamente, pero hubo un problema al registrar el movimiento de inventario inicial.",
@@ -331,6 +336,16 @@ export default function NewInternalProductPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="serial_number">Número de Serie</Label>
+                  <Input
+                    id="serial_number"
+                    value={formData.serial_number}
+                    onChange={(e) => handleInputChange("serial_number", e.target.value)}
+                    placeholder="Ej: SN123456789"
+                  />
                 </div>
 
                 <div className="space-y-2">
