@@ -17,13 +17,9 @@ export default function PublicLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <main className="min-h-screen bg-background">{children}</main>
-          <Toaster />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <main className="min-h-screen bg-background">{children}</main>
+      <Toaster />
+    </ThemeProvider>
   )
 }

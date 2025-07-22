@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Package, MapPin, AlertTriangle, Calendar, Tag } from "lucide-react" // Added Tag for serial number
+import { Package, MapPin, AlertTriangle, Calendar, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import QRCodeDisplay from "@/components/qr-code-display"
@@ -22,7 +22,7 @@ interface Product {
   created_at: string
   updated_at: string
   qr_code_hash: string
-  serial_number: string | null // Added serial_number
+  serial_number: string | null
   internal_product_categories?: {
     id: number
     name: string
@@ -36,7 +36,8 @@ interface Product {
 }
 
 export default async function PublicInternalProductPage({ params }: { params: { hash: string } }) {
-  const cookieStore = cookies()
+  // Await cookies() call
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,22 +50,23 @@ export default async function PublicInternalProductPage({ params }: { params: { 
     },
   )
 
+  // params.hash is now safely accessible after the async function declaration
   const { data: product, error } = await supabase
     .from("internal_products")
     .select(
       `
-      *,
-      internal_product_categories (
-        id,
-        name,
-        color
-      ),
-      companies (
-        name,
-        logo_url,
-        color
-      )
-    `,
+    *,
+    internal_product_categories (
+      id,
+      name,
+      color
+    ),
+    companies (
+      name,
+      logo_url,
+      color
+    )
+  `,
     )
     .eq("qr_code_hash", params.hash)
     .single()
@@ -91,7 +93,7 @@ export default async function PublicInternalProductPage({ params }: { params: { 
 
   const stockStatus = product.current_stock <= product.minimum_stock ? "low" : "normal"
   const totalValue = product.current_stock * product.cost_price
-  const publicProductUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/internal-product/${product.qr_code_hash}`
+  const publicProductUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/public/internal-product/${product.qr_code_hash}`
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
@@ -120,7 +122,7 @@ export default async function PublicInternalProductPage({ params }: { params: { 
                 <p>
                   <span className="font-medium text-muted-foreground">Descripción:</span> {product.description || "N/A"}
                 </p>
-                {product.serial_number && ( // Display serial number if it exists
+                {product.serial_number && (
                   <p className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium text-muted-foreground">Número de Serie:</span> {product.serial_number}
@@ -132,7 +134,7 @@ export default async function PublicInternalProductPage({ params }: { params: { 
                 </p>
                 {product.internal_product_categories && (
                   <p className="flex items-center gap-2">
-                    <div
+                    <span
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: product.internal_product_categories.color }}
                     />
