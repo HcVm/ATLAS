@@ -1153,6 +1153,64 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          id: string
+          user_id: string
+          company_id: string | null
+          title: string
+          description: string | null
+          event_date: string
+          importance: string
+          color: string | null
+          is_completed: boolean
+          notification_sent: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_id?: string | null
+          title: string
+          description?: string | null
+          event_date: string
+          importance?: string
+          color?: string | null
+          is_completed?: boolean
+          notification_sent?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_id?: string | null
+          title?: string
+          description?: string | null
+          event_date?: string
+          importance?: string
+          color?: string | null
+          is_completed?: boolean
+          notification_sent?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_company_id_fkey"
+            columns: ["company_id"]
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_inventory_movements: {
         Row: {
           id: string

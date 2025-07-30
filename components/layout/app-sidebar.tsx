@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Headphones,
   ShoppingCart,
+  CalendarDays,
 } from "lucide-react"
 
 import {
@@ -59,6 +60,12 @@ const menuSections = {
         title: "Notificaciones",
         url: "/notifications",
         icon: Bell,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Calendario",
+        url: "/calendar",
+        icon: CalendarDays,
         roles: ["admin", "supervisor", "user"],
       },
     ],
