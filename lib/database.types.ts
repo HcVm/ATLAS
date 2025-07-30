@@ -1167,6 +1167,7 @@ export type Database = {
           notification_sent: boolean
           created_at: string
           updated_at: string
+          category: string | null // Added category field
         }
         Insert: {
           id?: string
@@ -1181,6 +1182,7 @@ export type Database = {
           notification_sent?: boolean
           created_at?: string
           updated_at?: string
+          category?: string | null // Added category field
         }
         Update: {
           id?: string
@@ -1195,6 +1197,7 @@ export type Database = {
           notification_sent?: boolean
           created_at?: string
           updated_at?: string
+          category?: string | null // Added category field
         }
         Relationships: [
           {

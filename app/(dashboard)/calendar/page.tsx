@@ -21,7 +21,7 @@ import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/database.types"
 import { EventFormDialog } from "@/components/calendar/event-form-dialog"
-import { EventDetailsDialog } from "@/components/calendar/event-details-dialog" // New import
+import { EventDetailsDialog } from "@/components/calendar/event-details-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -47,6 +47,22 @@ const importanceLabels: Record<string, string> = {
   completed: "Completada",
 }
 
+const eventCategoryColors: Record<string, string> = {
+  personal: "bg-purple-100 text-purple-700 border-purple-300",
+  work: "bg-blue-100 text-blue-700 border-blue-300",
+  meeting: "bg-green-100 text-green-700 border-green-300",
+  reminder: "bg-indigo-100 text-indigo-700 border-indigo-300",
+  other: "bg-gray-100 text-gray-700 border-gray-300",
+}
+
+const eventCategoryLabels: Record<string, string> = {
+  personal: "Personal",
+  work: "Trabajo",
+  meeting: "Reunión",
+  reminder: "Recordatorio",
+  other: "Otro",
+}
+
 // Helper function to parse YYYY-MM-DD string into a local Date object
 const parseDateStringAsLocal = (dateString: string): Date => {
   const [year, month, day] = dateString.split("-").map(Number)
@@ -61,9 +77,10 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [isEventFormOpen, setIsEventFormOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
-  const [isEventDetailsOpen, setIsEventDetailsOpen] = useState(false) // New state for details dialog
-  const [selectedEventForDetails, setSelectedEventForDetails] = useState<CalendarEvent | null>(null) // New state for details dialog
-  const [filterImportance, setFilterImportance] = useState<string[]>(["low", "medium", "high", "critical", "completed"])
+  const [isEventDetailsOpen, setIsEventDetailsOpen] = useState(false)
+  const [selectedEventForDetails, setSelectedEventForDetails] = useState<CalendarEvent | null>(null)
+  const [filterImportance, setFilterImportance] = useState<string[]>(Object.keys(importanceLabels)) // Filter all by default
+  const [filterCategory, setFilterCategory] = useState<string[]>(Object.keys(eventCategoryLabels)) // Filter all by default
 
   const firstDayOfMonth = startOfMonth(currentMonth)
   const lastDayOfMonth = endOfMonth(currentMonth)
@@ -137,7 +154,8 @@ export default function CalendarPage() {
           importance: eventData.importance,
           color: eventData.color,
           is_completed: eventData.is_completed,
-          notification_sent: eventData.notification_sent, // Reset notification status on update
+          notification_sent: eventData.notification_sent,
+          category: eventData.category, // Save new category
         })
         .eq("id", eventData.id)
     } else {
@@ -152,6 +170,7 @@ export default function CalendarPage() {
         color: eventData.color,
         is_completed: eventData.is_completed || false,
         notification_sent: false,
+        category: eventData.category || "personal", // Save new category with default
       })
     }
 
@@ -167,11 +186,11 @@ export default function CalendarPage() {
         title: "Éxito",
         description: "Evento guardado correctamente.",
       })
-      fetchEvents() // Re-fetch events to update the calendar
+      fetchEvents()
       setIsEventFormOpen(false)
       setSelectedEvent(null)
-      setIsEventDetailsOpen(false) // Close details if open
-      setSelectedEventForDetails(null) // Clear details event
+      setIsEventDetailsOpen(false)
+      setSelectedEventForDetails(null)
     }
   }
 
@@ -193,44 +212,43 @@ export default function CalendarPage() {
       fetchEvents()
       setIsEventFormOpen(false)
       setSelectedEvent(null)
-      setIsEventDetailsOpen(false) // Close details if open
-      setSelectedEventForDetails(null) // Clear details event
+      setIsEventDetailsOpen(false)
+      setSelectedEventForDetails(null)
     }
   }
 
-  // Function to open the EventFormDialog for a new event or to edit an existing one
   const handleOpenEventForm = (event?: CalendarEvent, date?: Date) => {
     if (event) {
       setSelectedEvent(event)
     } else if (date) {
       setSelectedEvent({
-        id: "", // Temporary ID for new event
+        id: "",
         user_id: user?.id || "",
         company_id: user?.company_id || selectedCompany?.id || null,
         title: "",
         description: null,
-        event_date: format(date, "yyyy-MM-dd"), // Pass the formatted date string
+        event_date: format(date, "yyyy-MM-dd"),
         importance: "medium",
         color: null,
         is_completed: false,
         notification_sent: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        category: "personal", // Default category for new events
       })
     } else {
       setSelectedEvent(null)
     }
     setIsEventFormOpen(true)
-    setIsEventDetailsOpen(false) // Close details dialog if it was open
-    setSelectedEventForDetails(null) // Clear selected event for details
+    setIsEventDetailsOpen(false)
+    setSelectedEventForDetails(null)
   }
 
-  // Function to open the EventDetailsDialog
   const handleOpenEventDetails = (event: CalendarEvent) => {
     setSelectedEventForDetails(event)
     setIsEventDetailsOpen(true)
-    setIsEventFormOpen(false) // Ensure form dialog is closed
-    setSelectedEvent(null) // Clear selected event for form
+    setIsEventFormOpen(false)
+    setSelectedEvent(null)
   }
 
   const handleCloseEventForm = () => {
@@ -247,7 +265,7 @@ export default function CalendarPage() {
     if (!user || !user.id) return
 
     const today = new Date()
-    const tomorrow = addMonths(today, 0) // Just checking for today and tomorrow for simplicity
+    const tomorrow = addMonths(today, 0)
     tomorrow.setDate(today.getDate() + 1)
 
     const upcomingEvents = events.filter(
@@ -273,7 +291,6 @@ export default function CalendarPage() {
         companyId: event.company_id,
       })
 
-      // Mark notification as sent
       await supabase.from("calendar_events").update({ notification_sent: true }).eq("id", event.id)
     }
   }
@@ -282,12 +299,18 @@ export default function CalendarPage() {
     setFilterImportance((prev) => (checked ? [...prev, importance] : prev.filter((item) => item !== importance)))
   }
 
+  const handleCategoryFilterChange = (category: string, checked: boolean) => {
+    setFilterCategory((prev) => (checked ? [...prev, category] : prev.filter((item) => item !== category)))
+  }
+
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       const eventImportance = event.is_completed ? "completed" : event.importance
-      return filterImportance.includes(eventImportance)
+      const eventCategory = event.category || "personal" // Default to 'personal' if null
+
+      return filterImportance.includes(eventImportance) && filterCategory.includes(eventCategory)
     })
-  }, [events, filterImportance])
+  }, [events, filterImportance, filterCategory])
 
   if (loading) {
     return (
@@ -313,7 +336,7 @@ export default function CalendarPage() {
           <Button
             variant="outline"
             className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-800"
-            onClick={() => handleOpenEventForm()} // This button still opens the form for new event
+            onClick={() => handleOpenEventForm()}
           >
             <Plus className="h-4 w-4 mr-2" />
             <span>Nuevo Evento</span>
@@ -334,13 +357,29 @@ export default function CalendarPage() {
                 {Object.keys(importanceLabels).map((key) => (
                   <div key={key} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`filter-${key}`}
+                      id={`filter-importance-${key}`}
                       checked={filterImportance.includes(key)}
                       onCheckedChange={(checked) => handleImportanceFilterChange(key, checked as boolean)}
                       className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
                     />
-                    <Label htmlFor={`filter-${key}`} className="text-sm font-normal">
+                    <Label htmlFor={`filter-importance-${key}`} className="text-sm font-normal">
                       {importanceLabels[key]}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-2 mt-4">
+                <p className="text-sm font-medium mb-2">Categoría</p>
+                {Object.keys(eventCategoryLabels).map((key) => (
+                  <div key={key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`filter-category-${key}`}
+                      checked={filterCategory.includes(key)}
+                      onCheckedChange={(checked) => handleCategoryFilterChange(key, checked as boolean)}
+                      className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                    />
+                    <Label htmlFor={`filter-category-${key}`} className="text-sm font-normal">
+                      {eventCategoryLabels[key]}
                     </Label>
                   </div>
                 ))}
@@ -361,7 +400,7 @@ export default function CalendarPage() {
           </CardHeader>
           <CardContent className="p-4 space-y-6">
             <div>
-              <h3 className="text-md font-semibold text-slate-700 mb-3">Tipo de Contenido</h3>
+              <h3 className="text-md font-semibold text-slate-700 mb-3">Importancia</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(importanceLabels).map(([key, label]) => (
                   <Badge
@@ -375,6 +414,25 @@ export default function CalendarPage() {
                         : "opacity-70 hover:opacity-100"
                     }`}
                     onClick={() => handleImportanceFilterChange(key, !filterImportance.includes(key))}
+                  >
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-md font-semibold text-slate-700 mb-3">Categoría</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {Object.entries(eventCategoryLabels).map(([key, label]) => (
+                  <Badge
+                    key={key}
+                    variant="outline"
+                    className={`px-3 py-1 rounded-md cursor-pointer transition-all duration-200 ${
+                      eventCategoryColors[key]
+                    } ${
+                      filterCategory.includes(key) ? "opacity-100 ring-2 ring-blue-500" : "opacity-70 hover:opacity-100"
+                    }`}
+                    onClick={() => handleCategoryFilterChange(key, !filterCategory.includes(key))}
                   >
                     {label}
                   </Badge>
@@ -430,7 +488,7 @@ export default function CalendarPage() {
                       ${isCurrentMonth ? "bg-slate-50 hover:bg-slate-100" : "bg-white text-slate-400"}
                       ${isTodayDate ? "border-2 border-blue-500 ring-2 ring-blue-500" : "border border-slate-200"}
                     `}
-                    onClick={() => handleOpenEventForm(undefined, day)} // Click on day cell opens form for new event
+                    onClick={() => handleOpenEventForm(undefined, day)}
                   >
                     <span
                       className={`text-sm font-semibold ${
@@ -450,8 +508,8 @@ export default function CalendarPage() {
                               : importanceColors[event.importance] || importanceColors.medium
                           }`}
                           onClick={(e) => {
-                            e.stopPropagation() // Prevent opening new event form
-                            handleOpenEventDetails(event) // Open details card instead of edit form
+                            e.stopPropagation()
+                            handleOpenEventDetails(event)
                           }}
                         >
                           {event.title}
@@ -475,6 +533,8 @@ export default function CalendarPage() {
           event={selectedEvent}
           importanceColors={importanceColors}
           importanceLabels={importanceLabels}
+          eventCategoryColors={eventCategoryColors} // Pass new props
+          eventCategoryLabels={eventCategoryLabels} // Pass new props
         />
       )}
 
@@ -483,9 +543,11 @@ export default function CalendarPage() {
           isOpen={isEventDetailsOpen}
           onClose={handleCloseEventDetails}
           event={selectedEventForDetails}
-          onEdit={handleOpenEventForm} // Pass handleOpenEventForm to allow editing from details
+          onEdit={handleOpenEventForm}
           importanceColors={importanceColors}
           importanceLabels={importanceLabels}
+          eventCategoryColors={eventCategoryColors} // Pass new props
+          eventCategoryLabels={eventCategoryLabels} // Pass new props
         />
       )}
     </div>

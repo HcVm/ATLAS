@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2, Save, X } from "lucide-react"
 import { format } from "date-fns"
-import { DatePickerImproved } from "@/components/ui/date-picker-improved" // Changed import
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import type { Database } from "@/lib/database.types"
 import { toast } from "@/components/ui/use-toast"
 
@@ -24,6 +24,8 @@ interface EventFormDialogProps {
   event: Partial<CalendarEvent> | null
   importanceColors: Record<string, string>
   importanceLabels: Record<string, string>
+  eventCategoryColors: Record<string, string> // New prop
+  eventCategoryLabels: Record<string, string> // New prop
 }
 
 export function EventFormDialog({
@@ -34,6 +36,8 @@ export function EventFormDialog({
   event,
   importanceColors,
   importanceLabels,
+  eventCategoryColors,
+  eventCategoryLabels,
 }: EventFormDialogProps) {
   const [title, setTitle] = useState(event?.title || "")
   const [description, setDescription] = useState(event?.description || "")
@@ -46,6 +50,7 @@ export function EventFormDialog({
       : undefined,
   )
   const [importance, setImportance] = useState(event?.importance || "medium")
+  const [category, setCategory] = useState(event?.category || "personal") // New state for category
   const [isCompleted, setIsCompleted] = useState(event?.is_completed || false)
 
   useEffect(() => {
@@ -60,6 +65,7 @@ export function EventFormDialog({
         setEventDate(undefined)
       }
       setImportance(event.importance || "medium")
+      setCategory(event.category || "personal") // Set category from event
       setIsCompleted(event.is_completed || false)
     } else {
       // Reset form for new event
@@ -67,6 +73,7 @@ export function EventFormDialog({
       setDescription("")
       setEventDate(undefined)
       setImportance("medium")
+      setCategory("personal") // Default category for new events
       setIsCompleted(false)
     }
   }, [event])
@@ -87,6 +94,7 @@ export function EventFormDialog({
       description,
       event_date: eventDate ? format(eventDate, "yyyy-MM-dd") : undefined,
       importance,
+      category, // Save new category
       is_completed: isCompleted,
       notification_sent: event?.notification_sent,
     })
@@ -134,7 +142,6 @@ export function EventFormDialog({
             <Label htmlFor="eventDate" className="text-right text-slate-700">
               Fecha
             </Label>
-            {/* Replaced Popover with DatePickerImproved */}
             <div className="col-span-3">
               <DatePickerImproved date={eventDate} setDate={setEventDate} />
             </div>
@@ -154,6 +161,26 @@ export function EventFormDialog({
                       className={`inline-block h-3 w-3 rounded-full mr-2 ${importanceColors[key].split(" ")[0]}`}
                     ></span>
                     {importanceLabels[key]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category" className="text-right text-slate-700">
+              Categoría
+            </Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="col-span-3 bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500">
+                <SelectValue placeholder="Selecciona categoría" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 text-slate-900">
+                {Object.keys(eventCategoryLabels).map((key) => (
+                  <SelectItem key={key} value={key} className="hover:bg-slate-100">
+                    <span
+                      className={`inline-block h-3 w-3 rounded-full mr-2 ${eventCategoryColors[key].split(" ")[0]}`}
+                    ></span>
+                    {eventCategoryLabels[key]}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -24,6 +24,7 @@ import {
   Headphones,
   ShoppingCart,
   CalendarDays,
+  BookText,
 } from "lucide-react"
 
 import {
@@ -243,7 +244,20 @@ const menuSections = {
       },
     ],
   },
+  help: {
+    // Nueva sección de ayuda
+    title: "AYUDA",
+    items: [
+      {
+        title: "Documentación",
+        url: "/documentation",
+        icon: BookText,
+        roles: ["admin", "supervisor", "user"],
+      },
+    ],
+  },
 }
+
 
 export function AppSidebar() {
   const pathname = usePathname()
