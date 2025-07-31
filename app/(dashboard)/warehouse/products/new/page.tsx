@@ -469,7 +469,7 @@ export default function NewProductPage() {
                       id="name"
                       value={form.name}
                       onChange={(e) => updateForm("name", e.target.value)}
-                      placeholder="Ej: Proteína Whey Chocolate"
+                      placeholder="Ej: Silla Giratoria"
                       required
                     />
                   </div>
