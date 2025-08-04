@@ -2,6 +2,7 @@
 
 import { DialogTrigger } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -120,6 +121,10 @@ interface SalesStats {
 export default function SalesPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const voucherParam = searchParams.get("voucher")
+
   const [sales, setSales] = useState<Sale[]>([])
   const [stats, setStats] = useState<SalesStats>({
     totalSales: 0,
@@ -178,6 +183,31 @@ export default function SalesPage() {
       setLoading(false)
     }
   }, [user, selectedCompany])
+
+  // Handle voucher parameter from notification
+  useEffect(() => {
+    if (voucherParam && sales.length > 0) {
+      console.log("🔍 Buscando venta con voucher:", voucherParam)
+
+      // Find the sale that has this voucher
+      const saleWithVoucher = sales.find((sale) =>
+        sale.payment_vouchers?.some((voucher) => voucher.id === voucherParam),
+      )
+
+      console.log("📋 Venta encontrada:", saleWithVoucher)
+
+      if (saleWithVoucher) {
+        setVoucherSale(saleWithVoucher)
+        setShowVoucherDialog(true)
+        // Clean up the URL parameter
+        router.replace("/sales", { scroll: false })
+      } else {
+        console.warn("⚠️ No se encontró venta con el voucher:", voucherParam)
+        toast.error("No se encontró la venta asociada al comprobante")
+        router.replace("/sales", { scroll: false })
+      }
+    }
+  }, [voucherParam, sales, router])
 
   const fetchSales = async (companyId: string) => {
     try {

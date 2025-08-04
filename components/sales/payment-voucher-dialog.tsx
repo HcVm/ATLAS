@@ -1,56 +1,62 @@
 "use client"
 
-import React from "react"
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, Check, Clock, AlertTriangle, Download, Eye } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Upload,
+  FileText,
+  Check,
+  X,
+  Clock,
+  AlertTriangle,
+  Download,
+  Eye,
+  User,
+  Calendar,
+  DollarSign,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { createNotification } from "@/lib/notifications"
 
-interface PaymentVoucher {
-  id: string
-  sale_id: string
-  file_url: string
-  file_name: string
-  file_size: number
-  status: "pending" | "confirmed" | "rejected"
-  admin_confirmed: boolean
-  accounting_confirmed: boolean
-  admin_confirmed_by?: string
-  accounting_confirmed_by?: string
-  admin_confirmed_at?: string
-  accounting_confirmed_at?: string
-  notes?: string
-  uploaded_by: string
-  uploaded_at: string
-  profiles?: {
-    full_name: string
-  }
-}
-
-interface Sale {
-  id: string
-  sale_number?: string
-  entity_name: string
-  total_sale: number
-  sale_date: string
-}
-
 interface PaymentVoucherDialogProps {
-  sale: Sale
+  sale: {
+    id: string
+    sale_number?: string
+    entity_name: string
+    total_sale: number
+    sale_date: string
+    payment_vouchers?: Array<{
+      id: string
+      status: "pending" | "confirmed" | "rejected"
+      admin_confirmed: boolean
+      accounting_confirmed: boolean
+      file_name: string
+      file_url?: string
+      upload_date: string
+      uploaded_by: string
+      admin_notes?: string
+      accounting_notes?: string
+      profiles?: {
+        full_name: string
+      }
+    }>
+  }
   open: boolean
   onOpenChange: (open: boolean) => void
-  onVoucherUploaded?: () => void
+  onVoucherUploaded: () => void
 }
 
 export default function PaymentVoucherDialog({
@@ -61,120 +67,77 @@ export default function PaymentVoucherDialog({
 }: PaymentVoucherDialogProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
-  const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [voucher, setVoucher] = useState<PaymentVoucher | null>(null)
-  const [notes, setNotes] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [confirmingAdmin, setConfirmingAdmin] = useState(false)
+  const [confirmingAccounting, setConfirmingAccounting] = useState(false)
+  const [adminNotes, setAdminNotes] = useState("")
+  const [accountingNotes, setAccountingNotes] = useState("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Determinar si el usuario puede confirmar comprobantes
-  const canConfirmVoucher =
-    user?.departments?.name === "Administración" || user?.departments?.name === "Contabilidad" || user?.role === "admin"
+  const currentVoucher = sale.payment_vouchers?.[0]
+  const canUpload = user?.departments?.name === "Ventas" || user?.role === "admin"
+  const canConfirmAdmin = user?.departments?.name === "Administración" || user?.role === "admin"
+  const canConfirmAccounting = user?.departments?.name === "Contabilidad" || user?.role === "admin"
 
-  const isAdminUser = user?.departments?.name === "Administración" || user?.role === "admin"
-  const isAccountingUser = user?.departments?.name === "Contabilidad"
-
-  React.useEffect(() => {
-    if (open && sale.id) {
-      fetchVoucher()
-    }
-  }, [open, sale.id])
-
-  const fetchVoucher = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("payment_vouchers")
-        .select(`
-          *,
-          profiles!payment_vouchers_uploaded_by_fkey (full_name)
-        `)
-        .eq("sale_id", sale.id)
-        .single()
-
-      if (error && error.code !== "PGRST116") {
-        throw error
-      }
-
-      setVoucher(data || null)
-    } catch (error: any) {
-      console.error("Error fetching voucher:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      // Validar tipo de archivo
-      const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Solo se permiten archivos JPG, PNG o PDF")
-        return
-      }
+    if (!file) return
 
-      // Validar tamaño (máximo 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("El archivo no puede ser mayor a 10MB")
-        return
-      }
-
-      setSelectedFile(file)
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "application/pdf"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Solo se permiten archivos JPG, PNG o PDF")
+      return
     }
-  }
 
-  const uploadVoucher = async () => {
-    if (!selectedFile || !user || !selectedCompany) return
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("El archivo no puede ser mayor a 10MB")
+      return
+    }
+
+    setUploading(true)
 
     try {
-      setUploading(true)
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${sale.id}_${Date.now()}.${fileExt}`
+      const filePath = `payment-vouchers/${fileName}`
 
-      // Generar nombre único para el archivo
-      const fileExt = selectedFile.name.split(".").pop()
-      const fileName = `voucher_${sale.id}_${Date.now()}.${fileExt}`
-      const filePath = `${selectedCompany.id}/payment-vouchers/${fileName}`
-
-      // Subir archivo a Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(filePath, selectedFile)
+      const { error: uploadError } = await supabase.storage.from("payment-vouchers").upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // Obtener URL pública del archivo
+      // Get public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from("documents").getPublicUrl(filePath)
+      } = supabase.storage.from("payment-vouchers").getPublicUrl(filePath)
 
-      // Guardar información del comprobante en la base de datos
-      const { data: voucherData, error: voucherError } = await supabase
+      // Save voucher record to database
+      const { data: voucherData, error: dbError } = await supabase
         .from("payment_vouchers")
         .insert({
           sale_id: sale.id,
+          file_name: file.name,
+          file_path: filePath,
           file_url: publicUrl,
-          file_name: selectedFile.name,
-          file_size: selectedFile.size,
+          uploaded_by: user?.id,
           status: "pending",
           admin_confirmed: false,
           accounting_confirmed: false,
-          notes: notes || null,
-          uploaded_by: user.id,
-          company_id: selectedCompany.id,
         })
         .select()
         .single()
 
-      if (voucherError) throw voucherError
+      if (dbError) throw dbError
 
-      // Enviar notificaciones a Administración y Contabilidad
+      console.log("🧾 Comprobante subido exitosamente:", voucherData)
+
+      // Send notifications
       await sendVoucherNotifications(voucherData.id)
 
       toast.success("Comprobante de pago subido exitosamente")
-      setSelectedFile(null)
-      setNotes("")
-      await fetchVoucher()
-      onVoucherUploaded?.()
+      onVoucherUploaded()
     } catch (error: any) {
       console.error("Error uploading voucher:", error)
       toast.error("Error al subir el comprobante: " + error.message)
@@ -184,16 +147,16 @@ export default function PaymentVoucherDialog({
   }
 
   const sendVoucherNotifications = async (voucherId: string) => {
+    if (!selectedCompany) {
+      console.warn("⚠️ No hay empresa seleccionada para enviar notificaciones")
+      return
+    }
+
+    console.log("📧 Enviando notificaciones para comprobante:", voucherId)
+    console.log("🏢 Empresa seleccionada:", selectedCompany.id)
+
     try {
-      console.log("🔔 Enviando notificaciones para comprobante:", voucherId)
-      console.log("🏢 Empresa seleccionada:", selectedCompany?.id)
-
-      if (!selectedCompany?.id) {
-        console.error("❌ No hay empresa seleccionada")
-        return
-      }
-
-      // Primero obtener los IDs de los departamentos de Administración y Contabilidad
+      // Primero obtener los departamentos específicos de la empresa
       const { data: departments, error: deptError } = await supabase
         .from("departments")
         .select("id, name")
@@ -208,23 +171,24 @@ export default function PaymentVoucherDialog({
       console.log("🏢 Departamentos encontrados:", departments)
 
       if (!departments || departments.length === 0) {
-        console.log("⚠️ No se encontraron departamentos de Administración o Contabilidad")
-        toast.warning("No se encontraron departamentos de Administración o Contabilidad")
+        console.warn("⚠️ No se encontraron departamentos de Administración o Contabilidad")
         return
       }
 
       const departmentIds = departments.map((dept) => dept.id)
-      console.log("📋 IDs de departamentos:", departmentIds)
+      console.log("🆔 IDs de departamentos:", departmentIds)
 
-      // Ahora buscar usuarios que pertenezcan a estos departamentos
+      // Luego obtener usuarios de esos departamentos específicos
       const { data: targetUsers, error: usersError } = await supabase
         .from("profiles")
         .select(`
           id, 
           full_name, 
-          email, 
           department_id,
-          departments!profiles_department_id_fkey(id, name)
+          departments!profiles_department_id_fkey (
+            id,
+            name
+          )
         `)
         .eq("company_id", selectedCompany.id)
         .in("department_id", departmentIds)
@@ -235,27 +199,27 @@ export default function PaymentVoucherDialog({
       }
 
       console.log("👥 Usuarios encontrados:", targetUsers?.length || 0)
-      console.log("👥 Detalle de usuarios:", targetUsers)
+      console.log("📋 Detalle de usuarios:", targetUsers)
 
       if (!targetUsers || targetUsers.length === 0) {
-        console.log("⚠️ No se encontraron usuarios de Administración o Contabilidad")
-        toast.warning("No se encontraron usuarios de Administración o Contabilidad para notificar")
+        console.warn("⚠️ No se encontraron usuarios de Administración o Contabilidad")
         return
       }
 
-      // Enviar notificaciones usando la función de notifications.ts
+      // Enviar notificaciones
       let successCount = 0
       let errorCount = 0
 
       for (const targetUser of targetUsers) {
-        const departmentName = targetUser.departments?.name || "Departamento desconocido"
-        console.log(`📧 Enviando notificación a ${targetUser.full_name} (${departmentName})`)
-
         try {
+          console.log(
+            `📧 Enviando notificación a ${targetUser.full_name} (${targetUser.departments?.name || "undefined"})`,
+          )
+
           const result = await createNotification({
             userId: targetUser.id,
             title: "🧾 Nuevo Comprobante de Pago",
-            message: `Se ha subido un comprobante de pago para la venta ${sale.sale_number || sale.id} de ${sale.entity_name}. Monto: S/ ${sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}. Requiere su aprobación.`,
+            message: `Se ha subido un comprobante de pago para la venta de ${sale.entity_name} por S/ ${sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}. Requiere confirmación.`,
             type: "payment_voucher_uploaded",
             relatedId: voucherId,
             companyId: selectedCompany.id,
@@ -269,106 +233,93 @@ export default function PaymentVoucherDialog({
             errorCount++
           }
         } catch (error) {
-          console.error(`❌ Excepción enviando notificación a ${targetUser.full_name}:`, error)
+          console.error(`❌ Error enviando notificación a ${targetUser.full_name}:`, error)
           errorCount++
         }
       }
 
       console.log(`📊 Resumen de notificaciones: ${successCount} exitosas, ${errorCount} fallidas`)
-
-      if (successCount > 0) {
-        toast.success(`✅ Notificaciones enviadas a ${successCount} usuario(s) de Administración y Contabilidad`)
-      }
-
-      if (errorCount > 0) {
-        toast.warning(`⚠️ ${errorCount} notificación(es) no pudieron ser enviadas`)
-      }
-
-      if (successCount === 0) {
-        toast.error("❌ No se pudieron enviar las notificaciones")
-      }
     } catch (error) {
       console.error("❌ Error general enviando notificaciones:", error)
-      toast.error("Error al enviar notificaciones: " + (error as any).message)
     }
   }
 
-  const confirmVoucher = async () => {
-    if (!voucher || !user || !canConfirmVoucher) return
+  const handleAdminConfirmation = async (confirmed: boolean) => {
+    if (!currentVoucher) return
+
+    setConfirmingAdmin(true)
 
     try {
-      setLoading(true)
-
-      const updateData: any = {}
-
-      if (isAdminUser && !voucher.admin_confirmed) {
-        updateData.admin_confirmed = true
-        updateData.admin_confirmed_by = user.id
-        updateData.admin_confirmed_at = new Date().toISOString()
-      }
-
-      if (isAccountingUser && !voucher.accounting_confirmed) {
-        updateData.accounting_confirmed = true
-        updateData.accounting_confirmed_by = user.id
-        updateData.accounting_confirmed_at = new Date().toISOString()
-      }
-
-      // Si ambas áreas ya confirmaron o esta confirmación completa ambas, cambiar estado
-      const willBeFullyConfirmed =
-        (voucher.admin_confirmed || updateData.admin_confirmed) &&
-        (voucher.accounting_confirmed || updateData.accounting_confirmed)
-
-      if (willBeFullyConfirmed) {
-        updateData.status = "confirmed"
-      }
-
-      const { error } = await supabase.from("payment_vouchers").update(updateData).eq("id", voucher.id)
+      const { error } = await supabase
+        .from("payment_vouchers")
+        .update({
+          admin_confirmed: confirmed,
+          admin_notes: adminNotes || null,
+          status: confirmed && currentVoucher.accounting_confirmed ? "confirmed" : !confirmed ? "rejected" : "pending",
+        })
+        .eq("id", currentVoucher.id)
 
       if (error) throw error
 
-      const departmentName = isAdminUser ? "Administración" : "Contabilidad"
-      toast.success(`Comprobante confirmado por ${departmentName}`)
-      await fetchVoucher()
-
-      // Notificar al vendedor si el comprobante está completamente confirmado
-      if (willBeFullyConfirmed) {
-        await createNotification({
-          userId: voucher.uploaded_by,
-          title: "✅ Comprobante de Pago Confirmado",
-          message: `El comprobante de pago para la venta ${sale.sale_number || sale.id} ha sido confirmado por todas las áreas requeridas`,
-          type: "payment_voucher_confirmed",
-          relatedId: voucher.id,
-          companyId: selectedCompany?.id || null,
-        })
-
-        toast.success("Comprobante completamente confirmado. Vendedor notificado.")
-      }
+      toast.success(
+        confirmed ? "Comprobante confirmado por Administración" : "Comprobante rechazado por Administración",
+      )
+      onVoucherUploaded()
     } catch (error: any) {
-      console.error("Error confirming voucher:", error)
-      toast.error("Error al confirmar el comprobante: " + error.message)
+      console.error("Error updating admin confirmation:", error)
+      toast.error("Error al actualizar confirmación: " + error.message)
     } finally {
-      setLoading(false)
+      setConfirmingAdmin(false)
     }
   }
 
-  const downloadVoucher = () => {
-    if (voucher?.file_url) {
-      window.open(voucher.file_url, "_blank")
+  const handleAccountingConfirmation = async (confirmed: boolean) => {
+    if (!currentVoucher) return
+
+    setConfirmingAccounting(true)
+
+    try {
+      const { error } = await supabase
+        .from("payment_vouchers")
+        .update({
+          accounting_confirmed: confirmed,
+          accounting_notes: accountingNotes || null,
+          status: confirmed && currentVoucher.admin_confirmed ? "confirmed" : !confirmed ? "rejected" : "pending",
+        })
+        .eq("id", currentVoucher.id)
+
+      if (error) throw error
+
+      toast.success(confirmed ? "Comprobante confirmado por Contabilidad" : "Comprobante rechazado por Contabilidad")
+      onVoucherUploaded()
+    } catch (error: any) {
+      console.error("Error updating accounting confirmation:", error)
+      toast.error("Error al actualizar confirmación: " + error.message)
+    } finally {
+      setConfirmingAccounting(false)
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-            <Clock className="h-3 w-3 mr-1" />
-            Pendiente
-          </Badge>
-        )
+  const handleDownloadVoucher = () => {
+    if (currentVoucher?.file_url) {
+      window.open(currentVoucher.file_url, "_blank")
+    }
+  }
+
+  const getStatusBadge = () => {
+    if (!currentVoucher) {
+      return (
+        <Badge variant="outline" className="text-gray-500">
+          <FileText className="h-3 w-3 mr-1" />
+          Sin comprobante
+        </Badge>
+      )
+    }
+
+    switch (currentVoucher.status) {
       case "confirmed":
         return (
-          <Badge variant="default" className="text-green-600 border-green-600 bg-green-50">
+          <Badge variant="default" className="text-green-600 bg-green-50 border-green-200">
             <Check className="h-3 w-3 mr-1" />
             Confirmado
           </Badge>
@@ -376,212 +327,292 @@ export default function PaymentVoucherDialog({
       case "rejected":
         return (
           <Badge variant="destructive">
-            <AlertTriangle className="h-3 w-3 mr-1" />
+            <X className="h-3 w-3 mr-1" />
             Rechazado
           </Badge>
         )
       default:
-        return <Badge variant="outline">Desconocido</Badge>
+        const confirmations = []
+        if (currentVoucher.admin_confirmed) confirmations.push("Admin")
+        if (currentVoucher.accounting_confirmed) confirmations.push("Contab")
+
+        if (confirmations.length > 0) {
+          return (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+              <Clock className="h-3 w-3 mr-1" />
+              Parcial ({confirmations.join(", ")})
+            </Badge>
+          )
+        }
+
+        return (
+          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+            <Clock className="h-3 w-3 mr-1" />
+            Pendiente
+          </Badge>
+        )
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Comprobante de Pago</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Comprobante de Pago
+          </DialogTitle>
           <DialogDescription>
-            Venta: {sale.sale_number || sale.id} - {sale.entity_name}
+            Gestiona el comprobante de pago para la venta #{sale.sale_number || sale.id.slice(0, 8)}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Información de la venta */}
+          {/* Sale Information */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Información de la Venta</CardTitle>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Información de la Venta
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
-                  <p className="text-sm font-semibold">{sale.entity_name}</p>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase">Cliente</Label>
+                  <p className="font-medium">{sale.entity_name}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Total</Label>
-                  <p className="text-sm font-semibold">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase">Monto Total</Label>
+                  <p className="font-bold text-lg">
                     S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Fecha</Label>
-                  <p className="text-sm">{new Date(sale.sale_date).toLocaleDateString("es-PE")}</p>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase">Fecha de Venta</Label>
+                  <p>{format(new Date(sale.sale_date), "dd/MM/yyyy", { locale: es })}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">N° Venta</Label>
-                  <p className="text-sm">{sale.sale_number || "N/A"}</p>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase">Estado</Label>
+                  {getStatusBadge()}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {loading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-sm text-muted-foreground mt-2">Cargando...</p>
-            </div>
-          ) : voucher ? (
-            /* Mostrar comprobante existente */
+          {/* Upload Section */}
+          {!currentVoucher && canUpload && (
             <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Comprobante Actual</CardTitle>
-                  {getStatusBadge(voucher.status)}
-                </div>
+              <CardHeader>
+                <CardTitle className="text-lg">Subir Comprobante</CardTitle>
+                <CardDescription>Sube el comprobante de pago en formato JPG, PNG o PDF (máximo 10MB)</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Archivo</Label>
-                    <p className="text-sm font-semibold">{voucher.file_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Tamaño</Label>
-                    <p className="text-sm">{(voucher.file_size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Subido por</Label>
-                    <p className="text-sm">{voucher.profiles?.full_name || "N/A"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Fecha de subida</Label>
-                    <p className="text-sm">{new Date(voucher.uploaded_at).toLocaleDateString("es-PE")}</p>
-                  </div>
-                </div>
-
-                {voucher.notes && (
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Notas</Label>
-                    <p className="text-sm bg-muted p-2 rounded">{voucher.notes}</p>
-                  </div>
-                )}
-
-                {/* Estado de confirmaciones */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Estado de Confirmaciones</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      {voucher.admin_confirmed ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                      )}
-                      <span className="text-sm">
-                        Administración: {voucher.admin_confirmed ? "Confirmado" : "Pendiente"}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {voucher.accounting_confirmed ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                      )}
-                      <span className="text-sm">
-                        Contabilidad: {voucher.accounting_confirmed ? "Confirmado" : "Pendiente"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botones de acción */}
-                <div className="flex space-x-2">
-                  <Button variant="outline" onClick={downloadVoucher} className="flex-1 bg-transparent">
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
+              <CardContent>
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Arrastra y suelta tu archivo aquí, o haz clic para seleccionar
+                  </p>
+                  <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    {uploading ? "Subiendo..." : "Seleccionar Archivo"}
                   </Button>
-                  <Button variant="outline" onClick={() => window.open(voucher.file_url, "_blank")} className="flex-1">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver
-                  </Button>
-                  {canConfirmVoucher && voucher.status === "pending" && (
-                    <>
-                      {isAdminUser && !voucher.admin_confirmed && (
-                        <Button onClick={confirmVoucher} disabled={loading} className="flex-1">
-                          <Check className="h-4 w-4 mr-2" />
-                          Confirmar (Admin)
-                        </Button>
-                      )}
-                      {isAccountingUser && !voucher.accounting_confirmed && (
-                        <Button onClick={confirmVoucher} disabled={loading} className="flex-1">
-                          <Check className="h-4 w-4 mr-2" />
-                          Confirmar (Contab.)
-                        </Button>
-                      )}
-                    </>
-                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            /* Formulario para subir comprobante */
+          )}
+
+          {/* Current Voucher */}
+          {currentVoucher && (
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Subir Comprobante de Pago</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Comprobante Actual
+                  </span>
+                  {getStatusBadge()}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    El comprobante será enviado a Administración y Contabilidad para su confirmación. Solo se aceptan
-                    archivos JPG, PNG o PDF de máximo 10MB.
-                  </AlertDescription>
-                </Alert>
-
-                <div>
-                  <Label htmlFor="voucher-file">Seleccionar Archivo *</Label>
-                  <Input
-                    id="voucher-file"
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={handleFileSelect}
-                    className="mt-1"
-                  />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Archivo seleccionado: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground uppercase">Archivo</Label>
+                    <p className="font-medium">{currentVoucher.file_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground uppercase">Subido por</Label>
+                    <p className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {currentVoucher.profiles?.full_name || "Usuario"}
                     </p>
-                  )}
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground uppercase">Fecha de subida</Label>
+                    <p className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(currentVoucher.upload_date), "dd/MM/yyyy HH:mm", { locale: es })}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="notes">Notas (Opcional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Agregar notas sobre el comprobante..."
-                    className="mt-1"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>
-                    Cancelar
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleDownloadVoucher}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar
                   </Button>
-                  <Button onClick={uploadVoucher} disabled={!selectedFile || uploading}>
-                    {uploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Subiendo...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Subir Comprobante
-                      </>
+                  <Button variant="outline" onClick={handleDownloadVoucher}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver
+                  </Button>
+                </div>
+
+                <Separator />
+
+                {/* Confirmation Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Estado de Administración</Label>
+                    <div className="flex items-center gap-2">
+                      {currentVoucher.admin_confirmed ? (
+                        <Badge variant="default" className="text-green-600 bg-green-50">
+                          <Check className="h-3 w-3 mr-1" />
+                          Confirmado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-600">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pendiente
+                        </Badge>
+                      )}
+                    </div>
+                    {currentVoucher.admin_notes && (
+                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">{currentVoucher.admin_notes}</p>
                     )}
-                  </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Estado de Contabilidad</Label>
+                    <div className="flex items-center gap-2">
+                      {currentVoucher.accounting_confirmed ? (
+                        <Badge variant="default" className="text-green-600 bg-green-50">
+                          <Check className="h-3 w-3 mr-1" />
+                          Confirmado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-600">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pendiente
+                        </Badge>
+                      )}
+                    </div>
+                    {currentVoucher.accounting_notes && (
+                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                        {currentVoucher.accounting_notes}
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Admin Confirmation */}
+                {canConfirmAdmin && !currentVoucher.admin_confirmed && currentVoucher.status !== "rejected" && (
+                  <Card className="border-blue-200 bg-blue-50/50">
+                    <CardHeader>
+                      <CardTitle className="text-base text-blue-800">Confirmación de Administración</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label htmlFor="admin-notes">Notas (opcional)</Label>
+                        <Textarea
+                          id="admin-notes"
+                          placeholder="Agregar comentarios sobre el comprobante..."
+                          value={adminNotes}
+                          onChange={(e) => setAdminNotes(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleAdminConfirmation(true)}
+                          disabled={confirmingAdmin}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {confirmingAdmin ? "Confirmando..." : "Confirmar"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleAdminConfirmation(false)}
+                          disabled={confirmingAdmin}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Rechazar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Accounting Confirmation */}
+                {canConfirmAccounting &&
+                  !currentVoucher.accounting_confirmed &&
+                  currentVoucher.status !== "rejected" && (
+                    <Card className="border-purple-200 bg-purple-50/50">
+                      <CardHeader>
+                        <CardTitle className="text-base text-purple-800">Confirmación de Contabilidad</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <Label htmlFor="accounting-notes">Notas (opcional)</Label>
+                          <Textarea
+                            id="accounting-notes"
+                            placeholder="Agregar comentarios sobre el comprobante..."
+                            value={accountingNotes}
+                            onChange={(e) => setAccountingNotes(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleAccountingConfirmation(true)}
+                            disabled={confirmingAccounting}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            {confirmingAccounting ? "Confirmando..." : "Confirmar"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleAccountingConfirmation(false)}
+                            disabled={confirmingAccounting}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                {/* Rejection Notice */}
+                {currentVoucher.status === "rejected" && (
+                  <Card className="border-red-200 bg-red-50/50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="font-medium">Comprobante Rechazado</span>
+                      </div>
+                      <p className="text-sm text-red-700 mt-2">
+                        Este comprobante ha sido rechazado. Contacta con el departamento correspondiente para más
+                        información.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
           )}

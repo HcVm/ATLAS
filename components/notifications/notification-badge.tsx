@@ -9,13 +9,15 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { getUnreadNotificationsCount } from "@/lib/notifications"
-import { NotificationDropdown } from "./notification-dropdown" // Import the new component
+import { NotificationDropdown } from "./notification-dropdown"
+import { supabase } from "@/lib/supabase"
 
 export function NotificationBadge() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user) return
@@ -30,16 +32,69 @@ export function NotificationBadge() {
   }, [user, selectedCompany])
 
   useEffect(() => {
+    if (!user) return
+
+    // Fetch initial count
     fetchUnreadCount()
 
-    // Actualizar cada 30 segundos
-    const interval = setInterval(fetchUnreadCount, 30000)
+    // Set up more frequent polling for better responsiveness
+    const interval = setInterval(fetchUnreadCount, 10000) // Every 10 seconds
 
-    return () => clearInterval(interval)
-  }, [fetchUnreadCount])
+    // Set up realtime subscription as backup
+    const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
+
+    console.log("🔔 Setting up realtime notifications for user:", user.id, "company:", companyId)
+
+    const channel = supabase
+      .channel("notifications-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("🔔 Notification change detected:", payload)
+
+          const notification = payload.new || payload.old
+
+          // For admins, filter by company if one is selected
+          if (user.role === "admin" && selectedCompany) {
+            if (notification?.company_id !== selectedCompany.id) {
+              console.log("🔔 Notification filtered out - different company")
+              return
+            }
+          }
+
+          // Refresh the count immediately
+          fetchUnreadCount()
+        },
+      )
+      .subscribe((status) => {
+        console.log("🔔 Realtime subscription status:", status)
+      })
+
+    // Cleanup
+    return () => {
+      clearInterval(interval)
+      console.log("🔔 Cleaning up realtime subscription")
+      supabase.removeChannel(channel)
+    }
+  }, [user, selectedCompany, fetchUnreadCount])
+
+  // More frequent polling when dropdown is open
+  useEffect(() => {
+    if (!isDropdownOpen || !user) return
+
+    const activeInterval = setInterval(fetchUnreadCount, 3000) // Every 3 seconds when active
+
+    return () => clearInterval(activeInterval)
+  }, [isDropdownOpen, fetchUnreadCount, user])
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={setIsDropdownOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -50,7 +105,7 @@ export function NotificationBadge() {
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 text-white"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 text-white animate-pulse"
             >
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
@@ -58,7 +113,7 @@ export function NotificationBadge() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80 sm:w-96 p-0" align="end" forceMount>
-        <NotificationDropdown />
+        <NotificationDropdown onCountChange={setUnreadCount} />
       </DropdownMenuContent>
     </DropdownMenu>
   )

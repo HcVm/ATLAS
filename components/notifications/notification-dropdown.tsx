@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Check, Trash2, ExternalLink, Loader2, Settings } from "lucide-react"
+import { Check, Trash2, ExternalLink, Loader2, Settings, RefreshCw, Clock } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,37 +20,52 @@ import {
 } from "@/lib/notifications"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { supabase } from "@/lib/supabase"
 
-export function NotificationDropdown() {
+interface NotificationDropdownProps {
+  onCountChange?: (count: number) => void
+}
+
+export function NotificationDropdown({ onCountChange }: NotificationDropdownProps) {
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
   const [counts, setCounts] = useState({ all: 0, unread: 0, read: 0 })
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
 
   const fetchNotifications = useCallback(
-    async (filter: "all" | "unread" | "read") => {
+    async (filter: "all" | "unread" | "read", showLoading = true) => {
       if (!user) return
 
-      setLoading(true)
+      if (showLoading) setLoading(true)
       try {
         const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
         const data = await getUserNotifications(user.id, filter, companyId)
         setNotifications(data)
 
-        // Actualizar contadores
+        // Update counters
         const all = await getUserNotifications(user.id, "all", companyId)
         const unread = await getUserNotifications(user.id, "unread", companyId)
         const read = await getUserNotifications(user.id, "read", companyId)
 
-        setCounts({
+        const newCounts = {
           all: all.length,
           unread: unread.length,
           read: read.length,
-        })
+        }
+
+        setCounts(newCounts)
+        setLastUpdate(new Date())
+
+        // Notify parent component of unread count change
+        if (onCountChange) {
+          onCountChange(newCounts.unread)
+        }
       } catch (error) {
         console.error("Error fetching notifications:", error)
         toast({
@@ -59,17 +74,66 @@ export function NotificationDropdown() {
           variant: "destructive",
         })
       } finally {
-        setLoading(false)
+        if (showLoading) setLoading(false)
       }
     },
-    [user, selectedCompany, toast],
+    [user, selectedCompany, toast, onCountChange],
   )
 
+  // Set up polling and realtime subscription
   useEffect(() => {
-    if (user) {
-      fetchNotifications(activeTab as "all" | "unread" | "read")
+    if (!user) return
+
+    // Initial fetch
+    fetchNotifications(activeTab as "all" | "unread" | "read")
+
+    // Set up frequent polling for better responsiveness
+    const pollingInterval = setInterval(() => {
+      fetchNotifications(activeTab as "all" | "unread" | "read", false)
+    }, 5000) // Every 5 seconds
+
+    // Set up realtime subscription as backup
+    const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
+
+    console.log("📋 Setting up realtime notifications dropdown for user:", user.id, "company:", companyId)
+
+    const channel = supabase
+      .channel("notifications-dropdown-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("📋 Dropdown notification change detected:", payload)
+
+          const notification = payload.new || payload.old
+
+          // For admins, filter by company if one is selected
+          if (user.role === "admin" && selectedCompany) {
+            if (notification?.company_id !== selectedCompany.id) {
+              console.log("📋 Dropdown notification filtered out - different company")
+              return
+            }
+          }
+
+          // Refresh notifications without showing loading
+          fetchNotifications(activeTab as "all" | "unread" | "read", false)
+        },
+      )
+      .subscribe((status) => {
+        console.log("📋 Dropdown realtime subscription status:", status)
+      })
+
+    return () => {
+      clearInterval(pollingInterval)
+      console.log("📋 Cleaning up dropdown realtime subscription")
+      supabase.removeChannel(channel)
     }
-  }, [user, activeTab, fetchNotifications])
+  }, [user, selectedCompany, activeTab, fetchNotifications])
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -78,7 +142,10 @@ export function NotificationDropdown() {
         title: "Notificación marcada como leída",
         description: "La notificación ha sido marcada como leída",
       })
-      fetchNotifications(activeTab as "all" | "unread" | "read")
+      // Immediate refresh after action
+      setTimeout(() => {
+        fetchNotifications(activeTab as "all" | "unread" | "read", false)
+      }, 500)
     } catch (error) {
       console.error("Error marking notification as read:", error)
       toast({
@@ -96,7 +163,10 @@ export function NotificationDropdown() {
         title: "Notificación eliminada",
         description: "La notificación ha sido eliminada",
       })
-      fetchNotifications(activeTab as "all" | "unread" | "read")
+      // Immediate refresh after action
+      setTimeout(() => {
+        fetchNotifications(activeTab as "all" | "unread" | "read", false)
+      }, 500)
     } catch (error) {
       console.error("Error deleting notification:", error)
       toast({
@@ -117,7 +187,10 @@ export function NotificationDropdown() {
         title: "Notificaciones marcadas como leídas",
         description: "Todas las notificaciones han sido marcadas como leídas",
       })
-      fetchNotifications(activeTab as "all" | "unread" | "read")
+      // Immediate refresh after action
+      setTimeout(() => {
+        fetchNotifications(activeTab as "all" | "unread" | "read", false)
+      }, 500)
     } catch (error) {
       console.error("Error marking all notifications as read:", error)
       toast({
@@ -128,8 +201,14 @@ export function NotificationDropdown() {
     }
   }
 
-  const handleRefresh = () => {
-    fetchNotifications(activeTab as "all" | "unread" | "read")
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchNotifications(activeTab as "all" | "unread" | "read", false)
+    setRefreshing(false)
+    toast({
+      title: "Notificaciones actualizadas",
+      description: "Las notificaciones se han actualizado correctamente",
+    })
   }
 
   const handleNotificationClick = async (notification: any) => {
@@ -144,16 +223,15 @@ export function NotificationDropdown() {
     }
 
     try {
-      // Marcar como leída al hacer clic
+      // Mark as read when clicking
       if (!notification.read) {
         await markNotificationAsRead(notification.id)
       }
 
       const relatedInfo = await getRelatedInfo(notification.type, notification.related_id)
-      console.log("Related Info:", relatedInfo) // Debugging line
+      console.log("Related Info:", relatedInfo)
 
       if (!relatedInfo || !relatedInfo.data) {
-        // Ensure data exists
         console.warn(
           "No related info found for notification type:",
           notification.type,
@@ -168,7 +246,7 @@ export function NotificationDropdown() {
         return
       }
 
-      // Navegar según el tipo
+      // Navigate based on type
       switch (relatedInfo.type) {
         case "document":
           router.push(`/documents/${notification.related_id}`)
@@ -198,8 +276,10 @@ export function NotificationDropdown() {
           break
       }
 
-      // Actualizar la lista después de marcar como leída
-      fetchNotifications(activeTab as "all" | "unread" | "read")
+      // Update notifications after marking as read
+      setTimeout(() => {
+        fetchNotifications(activeTab as "all" | "unread" | "read", false)
+      }, 500)
     } catch (error) {
       console.error("Error handling notification click:", error)
       toast({
@@ -272,6 +352,19 @@ export function NotificationDropdown() {
     return notification.type && notification.related_id
   }
 
+  const getTimeSinceLastUpdate = () => {
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000)
+
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds}s`
+    } else if (diffInSeconds < 3600) {
+      return `${Math.floor(diffInSeconds / 60)}m`
+    } else {
+      return `${Math.floor(diffInSeconds / 3600)}h`
+    }
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-40">
@@ -284,7 +377,21 @@ export function NotificationDropdown() {
     <div className="w-80 sm:w-96 p-2">
       <div className="flex items-center justify-between px-2 py-1">
         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Notificaciones</h3>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
+          <div className="flex items-center gap-1 text-xs text-slate-400">
+            <Clock className="h-3 w-3" />
+            <span>{getTimeSinceLastUpdate()}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-7 w-7 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+            title="Actualizar notificaciones"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
           {counts.unread > 0 && (
             <Button
               variant="ghost"
@@ -331,7 +438,7 @@ export function NotificationDropdown() {
           >
             No leídas
             {counts.unread > 0 && (
-              <Badge variant="destructive" className="ml-1 bg-red-500 text-white text-xs h-4 px-1">
+              <Badge variant="destructive" className="ml-1 bg-red-500 text-white text-xs h-4 px-1 animate-pulse">
                 {counts.unread}
               </Badge>
             )}
@@ -396,6 +503,9 @@ export function NotificationDropdown() {
                               <div className="p-0.5 rounded-sm bg-slate-600 text-white">
                                 <ExternalLink className="h-2.5 w-2.5" />
                               </div>
+                            )}
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                             )}
                           </div>
                           <p className="text-xs text-slate-500 leading-relaxed break-words">{notification.message}</p>
