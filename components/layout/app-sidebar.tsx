@@ -25,6 +25,7 @@ import {
   ShoppingCart,
   CalendarDays,
   BookText,
+  Database,
 } from "lucide-react"
 
 import {
@@ -254,10 +255,15 @@ const menuSections = {
         icon: BookText,
         roles: ["admin", "supervisor", "user"],
       },
+      {
+        title: "Datos Abiertos",
+        url: "/open-data",
+        icon: Database,
+        roles: ["admin", "supervisor", "user"],
+      },
     ],
   },
 }
-
 
 export function AppSidebar() {
   const pathname = usePathname()

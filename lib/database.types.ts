@@ -1295,9 +1295,179 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      open_data_entries: {
+        Row: {
+          acuerdo_marco: string
+          cantidad_entrega: number
+          catalogo: string
+          categoria: string
+          codigo_acuerdo_marco: string
+          created_at: string
+          dep_entrega: string
+          descripcion_ficha_producto: string | null
+          direccion_entrega: string | null
+          direccion_proveedor: string | null
+          dist_entrega: string
+          estado_orden_electronica: string
+          fecha_aceptacion: string
+          fecha_fin_entrega: string
+          fecha_inicio_entrega: string
+          fecha_publicacion: string
+          id: string
+          igv_entrega: number
+          link_ficha_producto: string | null
+          marca_ficha_producto: string | null
+          monto_total_entrega: number
+          nro_entrega: number
+          nro_orden_fisica: string
+          nro_parte: string | null
+          orden_digitalizada: string | null
+          orden_electronica: string
+          plazo_entrega: number
+          precio_unitario: number
+          procedimiento: string
+          prov_entrega: string
+          razon_social_entidad: string
+          razon_social_proveedor: string
+          ruc_entidad: string
+          ruc_proveedor: string
+          sub_total: number
+          tipo_compra: string
+          total_entregas: number
+          unidad_ejecutora: string
+          updated_at: string
+        }
+        Insert: {
+          acuerdo_marco: string
+          cantidad_entrega: number
+          catalogo: string
+          categoria: string
+          codigo_acuerdo_marco: string
+          created_at?: string
+          dep_entrega: string
+          descripcion_ficha_producto?: string | null
+          direccion_entrega?: string | null
+          direccion_proveedor?: string | null
+          dist_entrega: string
+          estado_orden_electronica: string
+          fecha_aceptacion: string
+          fecha_fin_entrega: string
+          fecha_inicio_entrega: string
+          fecha_publicacion: string
+          id?: string
+          igv_entrega: number
+          link_ficha_producto?: string | null
+          marca_ficha_producto?: string | null
+          monto_total_entrega: number
+          nro_entrega: number
+          nro_orden_fisica: string
+          nro_parte?: string | null
+          orden_digitalizada?: string | null
+          orden_electronica: string
+          plazo_entrega: number
+          precio_unitario: number
+          procedimiento: string
+          prov_entrega: string
+          razon_social_entidad: string
+          razon_social_proveedor: string
+          ruc_entidad: string
+          ruc_proveedor: string
+          sub_total: number
+          tipo_compra: string
+          total_entregas: number
+          unidad_ejecutora: string
+          updated_at?: string
+        }
+        Update: {
+          acuerdo_marco?: string
+          cantidad_entrega?: number
+          catalogo?: string
+          categoria?: string
+          codigo_acuerdo_marco?: string
+          created_at?: string
+          dep_entrega?: string
+          descripcion_ficha_producto?: string | null
+          direccion_entrega?: string | null
+          direccion_proveedor?: string | null
+          dist_entrega?: string
+          estado_orden_electronica?: string
+          fecha_aceptacion?: string
+          fecha_fin_entrega?: string
+          fecha_inicio_entrega?: string
+          fecha_publicacion?: string
+          id?: string
+          igv_entrega?: number
+          link_ficha_producto?: string | null
+          marca_ficha_producto?: string | null
+          monto_total_entrega?: number
+          nro_entrega?: number
+          nro_orden_fisica?: string
+          nro_parte?: string | null
+          orden_digitalizada?: string | null
+          orden_electronica?: string
+          plazo_entrega?: number
+          precio_unitario?: number
+          procedimiento?: string
+          prov_entrega?: string
+          razon_social_entidad?: string
+          razon_social_proveedor?: string
+          ruc_entidad?: string
+          ruc_proveedor?: string
+          sub_total?: number
+          tipo_compra?: string
+          total_entregas?: number
+          unidad_ejecutora?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       }
     }
     Views: {
+      open_data_view: {
+        Row: {
+          acuerdo_marco: string | null
+          cantidad_entrega: number | null
+          catalogo: string | null
+          categoria: string | null
+          codigo_acuerdo_marco: string | null
+          created_at: string | null
+          dep_entrega: string | null
+          descripcion_ficha_producto: string | null
+          direccion_entrega: string | null
+          direccion_proveedor: string | null
+          dist_entrega: string | null
+          estado_orden_electronica: string | null
+          fecha_aceptacion: string | null
+          fecha_fin_entrega: string | null
+          fecha_inicio_entrega: string | null
+          fecha_publicacion: string | null
+          id: string | null
+          igv_entrega: number | null
+          link_ficha_producto: string | null
+          marca_ficha_producto: string | null
+          monto_total_entrega: number | null
+          nro_entrega: number | null
+          nro_orden_fisica: string | null
+          nro_parte: string | null
+          orden_digitalizada: string | null
+          orden_electronica: string | null
+          plazo_entrega: number | null
+          precio_unitario: number | null
+          procedimiento: string | null
+          prov_entrega: string | null
+          razon_social_entidad: string | null
+          razon_social_proveedor: string | null
+          ruc_entidad: string | null
+          ruc_proveedor: string | null
+          sub_total: number | null
+          tipo_compra: string | null
+          total_entregas: number | null
+          unidad_ejecutora: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       quotations_with_items: {
         Row: {
           id: string | null
@@ -1404,3 +1574,75 @@ export type Database = {
     }
   }
 }
+
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] & PublicSchema["Views"]) | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    ? (PublicSchema["Tables"] & PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends keyof PublicSchema["Enums"] | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
