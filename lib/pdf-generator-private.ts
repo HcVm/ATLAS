@@ -49,9 +49,6 @@ export interface PrivateQuotationPDFData {
   igv: number
   total: number
 
-  // Observaciones
-  observations?: string
-
   // Creado por
   createdBy: string
   qrCodeBase64?: string // Añadido para pasar el QR al HTML
@@ -1012,25 +1009,6 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
             </div>
           </div>
         </div>
-
-        ${
-          data.observations
-            ? `
-          <!-- Observaciones -->
-          <div class="section">
-            <div class="section-title">
-              <h2>OBSERVACIONES</h2>
-            </div>
-            
-            <div class="conditions">
-              <div class="condition-text" style="margin-left: 0;">
-                ${data.observations}
-              </div>
-            </div>
-          </div>
-        `
-            : ""
-        }
 
         <!-- Información del documento -->
           <div style="margin-top: 12px; text-align: center; font-size: 8px; color: #9ca3af; padding: 10px; border-top: 1px solid #f3f4f6;">

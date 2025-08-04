@@ -17,7 +17,6 @@ interface PrivateQuotationPDFGeneratorProps {
     entity_name: string
     entity_ruc: string
     delivery_location: string
-    observations?: string | null
     is_multi_product?: boolean | null
     quotation_items?: Array<{
       id: string
@@ -195,9 +194,6 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         subtotal: subtotalSinIGV,
         igv: igvCalculado,
         total: totalCalculado,
-
-        // Observaciones
-        observations: quotation.observations || undefined,
 
         // Creado por
         createdBy: quotation.profiles?.full_name || "Sistema de creación AGPC",
