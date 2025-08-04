@@ -71,7 +71,8 @@ export interface QuotationPDFData {
     duration: string
     mapImageUrl?: string
   }
-
+  // Observaciones
+  observations?: string
 
   // Creado por
   createdBy: string
@@ -532,6 +533,24 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           </div>
           `
           }
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      ${
+        data.observations
+          ? `
+      <!-- Observaciones -->
+      <div style="margin-bottom: 25px;">
+        <h3 style="color: #374151; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+          📝 OBSERVACIONES Y NOTAS IMPORTANTES
+        </h3>
+        <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px;">
+          <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">${data.observations}</p>
+          </div>
         </div>
       </div>
       `
