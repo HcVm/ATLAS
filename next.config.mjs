@@ -1,29 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   webpack: (config, { isServer }) => {
-    // Ignorar archivos .map que rompen el build
+    // Ignorar .map para evitar errores de puppeteer
     config.module.rules.push({
       test: /\.map$/,
       use: 'ignore-loader',
     });
 
-    // No incluir Puppeteer en el bundle del cliente
+    // Evitar incluir Puppeteer/Chromium en el cliente
     if (isServer) {
-      config.externals.push('@sparticuz/chrome-aws-lambda', 'puppeteer-core');
+      config.externals.push('@sparticuz/chromium', 'puppeteer-core');
     }
 
-    // 🔹 MUY IMPORTANTE: devolver config siempre
-    return config;
+    return config; // IMPORTANTE: siempre retornar config
   },
-  images: {
-    unoptimized: true,
-  },
+  images: { unoptimized: true },
   async headers() {
     return [
       {
@@ -33,7 +26,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
         ],
       },
-    ];
+    ]
   },
 };
 

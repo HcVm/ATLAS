@@ -1,65 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server";
+import puppeteer from "puppeteer-core";
+import chromiumImport from "@sparticuz/chromium";
+import type { Viewport } from "puppeteer-core";
+
+const chromium = chromiumImport as unknown as {
+  args: string[];
+  defaultViewport: Viewport;
+  executablePath: () => Promise<string>;
+  headless: boolean;
+};
+
 import { generatePrivateQuotationHTML } from "@/lib/pdf-generator-private";
 import { generateARMPrivateQuotationHTML } from "@/lib/pdf-generator-private-arm";
 import type { PrivateQuotationPDFData } from "@/lib/pdf-generator-private";
 import type { ARMPrivateQuotationPDFData } from "@/lib/pdf-generator-private-arm";
 
-// 👇 Garantiza que corre en Node.js (no en Edge)
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
     const { pdfData, type } = await req.json();
-
     if (!pdfData || !type) {
-      return NextResponse.json(
-        { error: "Missing pdfData or type" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing pdfData or type" }, { status: 400 });
     }
 
-    let htmlContent: string;
-    let filenamePrefix: string;
+    const htmlContent =
+      type === "private"
+        ? generatePrivateQuotationHTML(pdfData as PrivateQuotationPDFData)
+        : type === "arm-private"
+        ? generateARMPrivateQuotationHTML(pdfData as ARMPrivateQuotationPDFData)
+        : null;
 
-    if (type === "private") {
-      htmlContent = generatePrivateQuotationHTML(
-        pdfData as PrivateQuotationPDFData
-      );
-      filenamePrefix = `Cotizacion_Privada_${pdfData.quotationNumber.replace(
-        /[^a-zA-Z0-9]/g,
-        "_"
-      )}`;
-    } else if (type === "arm-private") {
-      htmlContent = generateARMPrivateQuotationHTML(
-        pdfData as ARMPrivateQuotationPDFData
-      );
-      filenamePrefix = `Cotizacion_ARM_Privada_${pdfData.quotationNumber.replace(
-        /[^a-zA-Z0-9]/g,
-        "_"
-      )}`;
-    } else {
-      return NextResponse.json(
-        { error: "Invalid PDF type" },
-        { status: 400 }
-      );
+    if (!htmlContent) {
+      return NextResponse.json({ error: "Invalid PDF type" }, { status: 400 });
     }
 
-    // 📌 Importar dinámicamente para evitar incluir en el bundle
-    const chromiumModule = await import("@sparticuz/chrome-aws-lambda");
-    const chromium = chromiumModule.default;
-
-    const puppeteerModule = await import("puppeteer-core");
-    const puppeteer = puppeteerModule.default;
-
-    // Determinar executablePath según entorno
-    const executablePath = process.env.AWS_REGION
-      ? await chromium.executablePath // Lambda / Vercel
-      : puppeteer.executablePath(); // Local
+    const filenamePrefix = `${type === "private" ? "Cotizacion_Privada" : "Cotizacion_ARM_Privada"}_${pdfData.quotationNumber.replace(/[^a-zA-Z0-9]/g, "_")}`;
 
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath,
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
 
@@ -74,19 +55,14 @@ export async function POST(req: NextRequest) {
 
     await browser.close();
 
-    const headers = new Headers();
-    headers.set("Content-Type", "application/pdf");
-    headers.set(
-      "Content-Disposition",
-      `attachment; filename="${filenamePrefix}.pdf"`
-    );
-
-    return new NextResponse(pdfBuffer, { headers });
-  } catch (error) {
-    console.error("Error generating PDF on server:", error);
-    return NextResponse.json(
-      { error: "Failed to generate PDF" },
-      { status: 500 }
-    );
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filenamePrefix}.pdf"`,
+      },
+    });
+  } catch (err: any) {
+    console.error("🔥 PDF generation error:", err);
+    return NextResponse.json({ error: err.message || "Failed to generate PDF" }, { status: 500 });
   }
 }
