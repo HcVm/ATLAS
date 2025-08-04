@@ -48,7 +48,6 @@ interface QuotationItem {
   supplier_total: number | null
   offer_unit_price_with_tax: number | null
   offer_total_with_tax: number | null
-  final_unit_price_with_tax: number | null
   budget_ceiling_unit_price_with_tax: number | null
   budget_ceiling_total: number | null
   reference_image_url: string | null
@@ -209,7 +208,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
       supplier_total: calculatedTotals.supplier_total,
       offer_unit_price_with_tax: currentItem.offer_unit_price_with_tax,
       offer_total_with_tax: calculatedTotals.offer_total_with_tax,
-      final_unit_price_with_tax: currentItem.final_unit_price_with_tax,
       budget_ceiling_unit_price_with_tax: currentItem.budget_ceiling_unit_price_with_tax,
       budget_ceiling_total: calculatedTotals.budget_ceiling_total,
       reference_image_url: currentItem.reference_image_url,
@@ -228,7 +226,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
       platform_unit_price_with_tax: 0,
       supplier_unit_price_with_tax: null,
       offer_unit_price_with_tax: null,
-      final_unit_price_with_tax: null,
       budget_ceiling_unit_price_with_tax: null,
       budget_ceiling_total: null,
       reference_image_url: null,
@@ -325,7 +322,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
         supplier_total: item.supplier_total,
         offer_unit_price_with_tax: item.offer_unit_price_with_tax,
         offer_total_with_tax: item.offer_total_with_tax,
-        final_unit_price_with_tax: item.final_unit_price_with_tax,
         budget_ceiling_unit_price_with_tax: item.budget_ceiling_unit_price_with_tax,
         budget_ceiling_total: item.budget_ceiling_total,
         reference_image_url: item.reference_image_url,
@@ -532,7 +528,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label>Precio Plataforma</Label>
                 <Input
@@ -572,21 +568,6 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                     setCurrentItem((prev) => ({
                       ...prev,
                       offer_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                    }))
-                  }
-                  placeholder="Opcional"
-                />
-              </div>
-              <div>
-                <Label>Precio Final</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={currentItem.final_unit_price_with_tax || ""}
-                  onChange={(e) =>
-                    setCurrentItem((prev) => ({
-                      ...prev,
-                      final_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
                     }))
                   }
                   placeholder="Opcional"

@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { EntitySelector } from "@/components/ui/entity-selector"
 import { ProductSelector } from "@/components/ui/product-selector"
+import { createNotification } from "@/lib/notifications"
 
 // Re-using interfaces from quotations/page.tsx for consistency
 interface QuotationItem {
@@ -36,7 +37,6 @@ interface QuotationItem {
   supplier_total: number | null
   offer_unit_price_with_tax: number | null
   offer_total_with_tax: number | null
-  final_unit_price_with_tax: number | null
   budget_ceiling_unit_price_with_tax: number | null
   budget_ceiling_total: number | null
   reference_image_url: string | null
@@ -77,6 +77,12 @@ interface MultiProductQuotationEditFormProps {
 
 export default function MultiProductQuotationEditForm({ quotation, onSuccess }: MultiProductQuotationEditFormProps) {
   const { user } = useAuth()
+
+  // Determinar si es una revisión de jefe de ventas
+  const isSalesHeadReview =
+    quotation.status === "sent" &&
+    (user?.departments?.name === "Jefatura de Ventas" || user?.role === "admin" || user?.role === "supervisor")
+
   const { selectedCompany } = useCompany()
   const [loading, setLoading] = useState(false)
 
@@ -106,7 +112,6 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
     platform_unit_price_with_tax: 0,
     supplier_unit_price_with_tax: null,
     offer_unit_price_with_tax: null,
-    final_unit_price_with_tax: null,
     budget_ceiling_unit_price_with_tax: null,
     budget_ceiling_total: null,
     reference_image_url: null,
@@ -130,8 +135,9 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
     const offerTotal = items.reduce((sum, item) => sum + (item.offer_total_with_tax || 0), 0)
     const budgetCeilingTotal = items.reduce((sum, item) => sum + (item.budget_ceiling_total || 0), 0)
 
-    const finalTotal = offerTotal > 0 ? offerTotal : platformTotal
-    const commissionBaseAmount = finalTotal / 1.18 // Remove IGV
+    // Use offer total for commission calculation if available, otherwise use platform
+    const totalForCommission = offerTotal > 0 ? offerTotal : platformTotal
+    const commissionBaseAmount = totalForCommission / 1.18 // Remove IGV
     const commissionPercentage = Number.parseFloat(formData.commission_percentage) || 0
     const commissionAmount = commissionBaseAmount * (commissionPercentage / 100)
 
@@ -182,7 +188,6 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
       supplier_total: calculatedTotals.supplier_total,
       offer_unit_price_with_tax: currentItem.offer_unit_price_with_tax,
       offer_total_with_tax: calculatedTotals.offer_total_with_tax,
-      final_unit_price_with_tax: currentItem.final_unit_price_with_tax,
       budget_ceiling_unit_price_with_tax: currentItem.budget_ceiling_unit_price_with_tax,
       budget_ceiling_total: calculatedTotals.budget_ceiling_total,
       reference_image_url: currentItem.reference_image_url,
@@ -201,19 +206,40 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
       platform_unit_price_with_tax: 0,
       supplier_unit_price_with_tax: null,
       offer_unit_price_with_tax: null,
-      final_unit_price_with_tax: null,
       budget_ceiling_unit_price_with_tax: null,
       budget_ceiling_total: null,
       reference_image_url: null,
     })
 
     toast.success("Producto agregado a la cotización")
+
+    if (isSalesHeadReview) {
+      toast.info("Recuerda revisar los precios ofertados antes de aprobar la cotización")
+    }
   }
 
   const removeItem = (index: number) => {
     const newItems = items.filter((_, i) => i !== index)
     setItems(newItems)
     toast.success("Producto eliminado de la cotización")
+  }
+
+  // Function to update an existing item's offer price
+  const updateItemOfferPrice = (index: number, offerPrice: number | null) => {
+    const updatedItems = [...items]
+    const item = updatedItems[index]
+
+    updatedItems[index] = {
+      ...item,
+      offer_unit_price_with_tax: offerPrice,
+      offer_total_with_tax: offerPrice && offerPrice > 0 ? offerPrice * item.quantity : null,
+    }
+
+    setItems(updatedItems)
+
+    if (isSalesHeadReview && offerPrice) {
+      toast.success(`Precio ofertado actualizado para ${item.product_name}`)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -243,7 +269,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
         entity_name: formData.entity_name,
         entity_ruc: formData.entity_ruc,
         delivery_location: formData.delivery_location,
-        status: formData.status, // Status can be changed here too, but main status change is via separate dialog
+        status: formData.status,
         valid_until: formData.valid_until?.toISOString().split("T")[0] || null,
         observations: formData.observations,
         contact_person: formData.contact_person || null,
@@ -256,7 +282,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
         is_multi_product: items.length > 1,
         items_count: items.length,
         budget_ceiling_total: totals.budget_ceiling_total > 0 ? totals.budget_ceiling_total : null,
-        updated_at: new Date().toISOString(), // Update timestamp
+        updated_at: new Date().toISOString(),
       }
 
       console.log("Updating quotation with data:", updatedQuotationData)
@@ -282,7 +308,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
       }
 
       const itemsData = items.map((item) => ({
-        quotation_id: quotation.id, // Ensure quotation_id is set for new items
+        quotation_id: quotation.id,
         product_id: item.product_id,
         product_code: item.product_code,
         product_name: item.product_name,
@@ -295,13 +321,16 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
         supplier_total: item.supplier_total,
         offer_unit_price_with_tax: item.offer_unit_price_with_tax,
         offer_total_with_tax: item.offer_total_with_tax,
-        final_unit_price_with_tax: item.final_unit_price_with_tax,
         budget_ceiling_unit_price_with_tax: item.budget_ceiling_unit_price_with_tax,
         budget_ceiling_total: item.budget_ceiling_total,
         reference_image_url: item.reference_image_url,
       }))
 
       console.log("Inserting new quotation items:", itemsData.length)
+      console.log(
+        "Items with offer prices:",
+        itemsData.filter((item) => item.offer_unit_price_with_tax),
+      )
 
       const { error: itemsError } = await supabase.from("quotation_items").insert(itemsData)
 
@@ -313,6 +342,43 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
       console.log("Quotation items updated successfully")
 
       toast.success(`Cotización ${quotation.quotation_number || quotation.id.slice(0, 8)} actualizada exitosamente.`)
+
+      // Si es una revisión de jefe de ventas, preguntar si quiere cambiar el estado
+      if (isSalesHeadReview) {
+        const shouldChangeStatus = window.confirm(
+          "Cotización actualizada exitosamente. ¿Deseas marcarla como APROBADA ahora?",
+        )
+
+        if (shouldChangeStatus) {
+          try {
+            const { error: statusError } = await supabase
+              .from("quotations")
+              .update({ status: "approved" })
+              .eq("id", quotation.id)
+
+            if (statusError) {
+              console.error("Error updating status:", statusError)
+              toast.error("Error al actualizar el estado: " + statusError.message)
+            } else {
+              // Notificar al creador de la cotización
+              if (selectedCompany?.id && quotation.created_by) {
+                await createNotification({
+                  userId: quotation.created_by,
+                  title: "Cotización Aprobada",
+                  message: `Tu cotización #${quotation.quotation_number || quotation.id.slice(0, 8)} para ${quotation.entity_name} ha sido APROBADA por ${user?.full_name}.`,
+                  type: "quotation_status_update",
+                  relatedId: quotation.id,
+                  companyId: selectedCompany.id,
+                })
+              }
+              toast.success("Cotización marcada como APROBADA")
+            }
+          } catch (error: any) {
+            console.error("Error updating status:", error)
+            toast.error("Error al actualizar el estado")
+          }
+        }
+      }
       onSuccess()
     } catch (error: any) {
       console.error("Error updating quotation:", error)
@@ -325,26 +391,32 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Información de la Empresa */}
-      <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Información de la Empresa</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Empresa</Label>
-            <Input value={selectedCompany?.name || ""} disabled />
-          </div>
-          <div>
-            <Label>RUC Empresa</Label>
-            <Input value={selectedCompany?.ruc || ""} disabled />
-          </div>
-        </div>
-        {selectedCompany?.code && (
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700">
-              <strong>Número de Cotización:</strong> {quotation.quotation_number || `#${quotation.id.slice(0, 8)}`}
-            </p>
+        {isSalesHeadReview && (
+          <div className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+            Revisión de Jefatura de Ventas
           </div>
         )}
       </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Empresa</Label>
+          <Input value={selectedCompany?.name || ""} disabled />
+        </div>
+        <div>
+          <Label>RUC Empresa</Label>
+          <Input value={selectedCompany?.ruc || ""} disabled />
+        </div>
+      </div>
+      {selectedCompany?.code && (
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-700">
+            <strong>Número de Cotización:</strong> {quotation.quotation_number || `#${quotation.id.slice(0, 8)}`}
+          </p>
+        </div>
+      )}
 
       <Separator />
 
@@ -379,7 +451,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Cálculo de Comisión para Contacto</CardTitle>
-            <CardDescription>La comisión se calcula sobre el total ofertado sin IGV</CardDescription>
+            <CardDescription>La comisión se calcula sobre el total ofertado (o plataforma) sin IGV</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -502,7 +574,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label>Precio Plataforma</Label>
                 <Input
@@ -533,7 +605,10 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 />
               </div>
               <div>
-                <Label>Precio Oferta</Label>
+                <Label>
+                  Precio Oferta{" "}
+                  {isSalesHeadReview && <span className="text-orange-600 font-medium">(Editable por Jefatura)</span>}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -542,21 +617,6 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                     setCurrentItem((prev) => ({
                       ...prev,
                       offer_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                    }))
-                  }
-                  placeholder="Opcional"
-                />
-              </div>
-              <div>
-                <Label>Precio Final</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={currentItem.final_unit_price_with_tax || ""}
-                  onChange={(e) =>
-                    setCurrentItem((prev) => ({
-                      ...prev,
-                      final_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
                     }))
                   }
                   placeholder="Opcional"
@@ -605,7 +665,9 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                     <TableHead>Producto</TableHead>
                     <TableHead>Cantidad</TableHead>
                     <TableHead>P. Plataforma</TableHead>
-                    <TableHead>P. Oferta</TableHead>
+                    <TableHead className={isSalesHeadReview ? "bg-orange-50 text-orange-700 font-semibold" : ""}>
+                      P. Oferta {isSalesHeadReview && "(Revisar)"}
+                    </TableHead>
                     <TableHead>Techo Presup.</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Acciones</TableHead>
@@ -632,10 +694,20 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                       <TableCell>
                         S/ {item.platform_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
-                        {item.offer_unit_price_with_tax
-                          ? `S/ ${item.offer_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                          : "-"}
+                      <TableCell className={isSalesHeadReview ? "bg-orange-50" : ""}>
+                        {/* Editable offer price input */}
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.offer_unit_price_with_tax || ""}
+                          onChange={(e) => {
+                            const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                            updateItemOfferPrice(index, value)
+                          }}
+                          placeholder="Precio oferta"
+                          className={`w-24 ${isSalesHeadReview ? "border-orange-300 focus:border-orange-500" : ""}`}
+                        />
                       </TableCell>
                       <TableCell>
                         {item.budget_ceiling_unit_price_with_tax
@@ -779,7 +851,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
           Cancelar
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar Cambios"}
+          {loading ? "Guardando..." : isSalesHeadReview ? "Guardar Revisión" : "Guardar Cambios"}
         </Button>
       </div>
     </form>

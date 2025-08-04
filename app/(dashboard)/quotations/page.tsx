@@ -69,7 +69,6 @@ interface QuotationItem {
   supplier_total: number | null
   offer_unit_price_with_tax: number | null
   offer_total_with_tax: number | null
-  final_unit_price_with_tax: number | null
   reference_image_url: string | null
   budget_ceiling_unit_price_with_tax: number | null
   budget_ceiling_total: number | null
@@ -221,7 +220,6 @@ export default function QuotationsPage() {
             supplier_total,
             offer_unit_price_with_tax,
             offer_total_with_tax,
-            final_unit_price_with_tax,
             reference_image_url,
             budget_ceiling_unit_price_with_tax,
             budget_ceiling_total,
@@ -265,7 +263,6 @@ export default function QuotationsPage() {
             platform_total,
             supplier_total,
             offer_total_with_tax,
-            final_unit_price_with_tax,
             quantity
           )
         `)
@@ -285,12 +282,13 @@ export default function QuotationsPage() {
       const sentQuotations = quotationsData?.filter((q) => q.status === "sent").length || 0
       const approvedQuotations = quotationsData?.filter((q) => q.status === "approved").length || 0
 
-      // Calcular total desde items
+      // Calcular total desde items - USAR PRECIO OFERTADO SI EXISTE
       let totalQuotedAmount = 0
 
       for (const quotation of quotationsData || []) {
         if (quotation.quotation_items && quotation.quotation_items.length > 0) {
           const quotationTotal = quotation.quotation_items.reduce((sum: number, item: any) => {
+            // Priorizar precio ofertado, luego plataforma
             return sum + (item.offer_total_with_tax || item.platform_total || 0)
           }, 0)
           totalQuotedAmount += quotationTotal
@@ -366,6 +364,7 @@ export default function QuotationsPage() {
 
     // Lógica de permisos para cambiar el estado:
     // El usuario creador (Ventas) siempre puede cambiar el estado.
+    // Los jefes de ventas pueden cambiar el estado de cotizaciones "enviadas" después de editarlas.
     // Otros roles con canViewAllQuotations también pueden.
     const isCreator = editingQuotation.created_by === user?.id
     const canChangeStatus = canViewAllQuotations || isCreator
@@ -486,7 +485,6 @@ export default function QuotationsPage() {
           supplier_total,
           offer_unit_price_with_tax,
           offer_total_with_tax,
-          final_unit_price_with_tax,
           reference_image_url,
           budget_ceiling_unit_price_with_tax,
           budget_ceiling_total,
@@ -528,15 +526,16 @@ export default function QuotationsPage() {
     }
   }
 
-  // Helper function to get display values for quotation
+  // Helper function to get display values for quotation - ACTUALIZADO PARA USAR PRECIOS OFERTADOS
   const getQuotationDisplayData = (quotation: Quotation) => {
     if (quotation.quotation_items && quotation.quotation_items.length > 0) {
       const totalItems = quotation.quotation_items.length
       const totalQuantity = quotation.quotation_items.reduce((sum, item) => sum + (item.quantity || 0), 0)
-      const totalAmount = quotation.quotation_items.reduce(
-        (sum, item) => sum + (item.offer_total_with_tax || item.platform_total || 0),
-        0,
-      )
+
+      // Calcular total usando precios ofertados si existen, sino plataforma
+      const totalAmount = quotation.quotation_items.reduce((sum, item) => {
+        return sum + (item.offer_total_with_tax || item.platform_total || 0)
+      }, 0)
 
       if (quotation.is_multi_product) {
         // Multi-product quotation
@@ -882,15 +881,20 @@ export default function QuotationsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  {/* Edit Content - Only for creator and draft status */}
-                                  {quotation.status === "draft" && quotation.created_by === user?.id && (
+                                  {/* Edit Content - For creator in draft status OR for sales heads */}
+                                  {((quotation.status === "draft" && quotation.created_by === user?.id) ||
+                                    (quotation.status === "sent" &&
+                                      (user?.departments?.name === "Jefatura de Ventas" ||
+                                        user?.role === "admin" ||
+                                        user?.role === "supervisor"))) && (
                                     <DropdownMenuItem
                                       onClick={() => {
                                         setEditingQuotationContent(quotation)
                                         setShowEditContentDialog(true)
                                       }}
                                     >
-                                      <Edit className="mr-2 h-4 w-4" /> Editar Contenido
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      {quotation.status === "sent" ? "Revisar y Editar" : "Editar Contenido"}
                                     </DropdownMenuItem>
                                   )}
 
@@ -1214,9 +1218,19 @@ export default function QuotationsPage() {
                                               S/{" "}
                                               {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
                                                 "es-PE",
-                                                { minimumFractionDigits: 2 },
+                                                {
+                                                  minimumFractionDigits: 2,
+                                                },
                                               )}
                                             </p>
+                                            {item.offer_unit_price_with_tax && (
+                                              <p className="text-xs text-green-600 font-medium">
+                                                Precio Oferta: S/{" "}
+                                                {item.offer_unit_price_with_tax.toLocaleString("es-PE", {
+                                                  minimumFractionDigits: 2,
+                                                })}
+                                              </p>
+                                            )}
                                             {item.budget_ceiling_total && (
                                               <p className="text-xs text-orange-600">
                                                 Techo: S/{" "}
@@ -1282,11 +1296,28 @@ export default function QuotationsPage() {
                                           S/{" "}
                                           {(item.offer_total_with_tax || item.platform_total || 0).toLocaleString(
                                             "es-PE",
-                                            { minimumFractionDigits: 2 },
+                                            {
+                                              minimumFractionDigits: 2,
+                                            },
                                           )}
                                         </p>
                                       </div>
                                     </div>
+
+                                    {item.offer_unit_price_with_tax && (
+                                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                        <Label className="text-sm font-medium text-green-700">
+                                          Precio Oferta Aprobado
+                                        </Label>
+                                        <p className="text-lg font-bold text-green-800">
+                                          S/{" "}
+                                          {item.offer_unit_price_with_tax.toLocaleString("es-PE", {
+                                            minimumFractionDigits: 2,
+                                          })}{" "}
+                                          por unidad
+                                        </p>
+                                      </div>
+                                    )}
 
                                     {item.budget_ceiling_total && (
                                       <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
@@ -1306,17 +1337,16 @@ export default function QuotationsPage() {
                               })()
                             )}
 
-                            {/* Total Summary */}
+                            {/* Total Summary - ACTUALIZADO PARA USAR PRECIOS OFERTADOS */}
                             <div className="border-t border-slate-200 pt-4">
                               <div className="flex justify-between items-center">
                                 <span className="text-lg font-medium text-slate-700">Total de la Cotización:</span>
                                 <span className="text-2xl font-bold text-primary">
                                   S/{" "}
                                   {selectedQuotation.quotation_items
-                                    ?.reduce(
-                                      (sum, item) => sum + (item.offer_total_with_tax || item.platform_total || 0),
-                                      0,
-                                    )
+                                    ?.reduce((sum, item) => {
+                                      return sum + (item.offer_total_with_tax || item.platform_total || 0)
+                                    }, 0)
                                     .toLocaleString("es-PE", { minimumFractionDigits: 2 }) || "0.00"}
                                 </span>
                               </div>
@@ -1466,7 +1496,6 @@ export default function QuotationsPage() {
               >
                 Cerrar
               </Button>
-              {/* The PDF generation buttons are now inside the dropdown menu, so they are removed from here */}
             </div>
           </DialogContent>
         </Dialog>
