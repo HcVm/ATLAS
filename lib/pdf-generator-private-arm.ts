@@ -49,6 +49,9 @@ export interface ARMPrivateQuotationPDFData {
   igv: number
   total: number
 
+  // Observaciones
+  observations?: string
+
   // Creado por
   createdBy: string
   qrCodeBase64?: string // Añadido para pasar el QR al HTML
@@ -1139,6 +1142,20 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
             </div>
           </div>
         </div>
+
+        ${
+          data.observations
+            ? `
+          <!-- Observations -->
+          <div class="observations-section">
+            <div class="section-header">Observaciones Comerciales</div>
+            <div class="observations-content">
+              <p class="observations-text">${data.observations}</p>
+            </div>
+          </div>
+        `
+            : ""
+        }
 
         <!-- Footer -->
         <div class="document-footer">
