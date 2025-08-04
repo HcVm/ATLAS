@@ -22,6 +22,9 @@ import {
   Shield,
   CreditCard,
   MoreHorizontal,
+  Receipt,
+  Check,
+  Clock,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -34,6 +37,7 @@ import SaleEditForm from "@/components/sales/sale-edit-form"
 import SalesExportDialog from "@/components/sales/sales-export-dialog"
 import { Label } from "@/components/ui/label"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
+import PaymentVoucherDialog from "@/components/sales/payment-voucher-dialog"
 import { generateWarrantyLetter } from "@/lib/warranty-letter-generator"
 import { generateCCILetter } from "@/lib/cci-letter-generator"
 import {
@@ -75,6 +79,12 @@ interface Sale {
   observations?: string | null
   created_at?: string | null
   is_multi_product: boolean
+  payment_vouchers?: {
+    id: string
+    status: string
+    admin_confirmed: boolean
+    accounting_confirmed: boolean
+  }[]
 }
 
 interface SaleItem {
@@ -130,6 +140,8 @@ export default function SalesPage() {
   const [statusSale, setStatusSale] = useState<Sale | null>(null)
   const [showMultiEditDialog, setShowMultiEditDialog] = useState(false)
   const [editingMultiSale, setEditingMultiSale] = useState<Sale | null>(null)
+  const [showVoucherDialog, setShowVoucherDialog] = useState(false)
+  const [voucherSale, setVoucherSale] = useState<Sale | null>(null)
 
   const hasSalesAccess =
     user?.role === "admin" ||
@@ -137,7 +149,8 @@ export default function SalesPage() {
     user?.departments?.name === "Ventas" ||
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "Jefatura de Ventas"
+    user?.departments?.name === "Jefatura de Ventas" ||
+    user?.departments?.name === "Contabilidad"
 
   // Determinar si el usuario puede ver todas las ventas de la empresa o solo las suyas
   const canViewAllSales =
@@ -145,7 +158,8 @@ export default function SalesPage() {
     user?.role === "supervisor" ||
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "Jefatura de Ventas"
+    user?.departments?.name === "Jefatura de Ventas" ||
+    user?.departments?.name === "Contabilidad"
 
   const companyToUse =
     user?.role === "admin"
@@ -176,7 +190,8 @@ export default function SalesPage() {
           quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
           ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
           total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
-          created_by, profiles!sales_created_by_fkey (full_name)
+          created_by, profiles!sales_created_by_fkey (full_name),
+          payment_vouchers (id, status, admin_confirmed, accounting_confirmed)
         `)
         .eq("company_id", companyId)
 
@@ -382,6 +397,17 @@ export default function SalesPage() {
     }
   }
 
+  const handleVoucherDialog = (sale: Sale) => {
+    setVoucherSale(sale)
+    setShowVoucherDialog(true)
+  }
+
+  const handleVoucherUploaded = () => {
+    if (companyToUse?.id) {
+      fetchSales(companyToUse.id)
+    }
+  }
+
   const handleGenerateWarrantyLetter = async (sale: Sale) => {
     try {
       toast.info("Generando carta de garantía...")
@@ -522,6 +548,47 @@ export default function SalesPage() {
       {status?.toUpperCase() || "PENDIENTE"}
     </Badge>
   )
+
+  const renderVoucherStatus = (vouchers: any[]) => {
+    if (!vouchers || vouchers.length === 0) {
+      return (
+        <Badge variant="outline" className="text-gray-500">
+          Sin comprobante
+        </Badge>
+      )
+    }
+
+    const voucher = vouchers[0]
+    if (voucher.status === "confirmed") {
+      return (
+        <Badge variant="default" className="text-green-600 bg-green-50 border-green-200">
+          <Check className="h-3 w-3 mr-1" />
+          Confirmado
+        </Badge>
+      )
+    } else if (voucher.admin_confirmed && voucher.accounting_confirmed) {
+      return (
+        <Badge variant="default" className="text-green-600 bg-green-50 border-green-200">
+          <Check className="h-3 w-3 mr-1" />
+          Confirmado
+        </Badge>
+      )
+    } else if (voucher.admin_confirmed || voucher.accounting_confirmed) {
+      return (
+        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+          <Clock className="h-3 w-3 mr-1" />
+          Parcial
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+          <Clock className="h-3 w-3 mr-1" />
+          Pendiente
+        </Badge>
+      )
+    }
+  }
 
   if (!hasSalesAccess || !companyToUse) {
     return (
@@ -704,6 +771,7 @@ export default function SalesPage() {
                       <TableHead className="text-slate-700 dark:text-slate-200">Cantidad</TableHead>
                       <TableHead className="text-slate-700 dark:text-slate-200">Total</TableHead>
                       <TableHead className="text-slate-700 dark:text-slate-200">Estado</TableHead>
+                      <TableHead className="text-slate-700 dark:text-slate-200">Comprobante</TableHead>
                       {canViewAllSales && (
                         <TableHead className="text-slate-700 dark:text-slate-200">Vendedor</TableHead>
                       )}
@@ -757,6 +825,7 @@ export default function SalesPage() {
                           S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>{renderStatusBadge(sale.sale_status)}</TableCell>
+                        <TableCell>{renderVoucherStatus(sale.payment_vouchers || [])}</TableCell>
                         {canViewAllSales && (
                           <TableCell className="text-slate-600 dark:text-slate-300">
                             {sale.profiles?.full_name || "N/A"}
@@ -788,6 +857,11 @@ export default function SalesPage() {
                               >
                                 <Badge className="mr-2 h-4 w-4" />
                                 Cambiar estado
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleVoucherDialog(sale)}>
+                                <Receipt className="mr-2 h-4 w-4 text-blue-600" />
+                                Comprobante de pago
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleGenerateWarrantyLetter(sale)}>
@@ -824,7 +898,10 @@ export default function SalesPage() {
                             <p className="text-xs text-muted-foreground">Por: {sale.profiles?.full_name || "N/A"}</p>
                           )}
                         </div>
-                        <div className="flex-shrink-0">{renderStatusBadge(sale.sale_status)}</div>
+                        <div className="flex flex-col items-end gap-1">
+                          {renderStatusBadge(sale.sale_status)}
+                          {renderVoucherStatus(sale.payment_vouchers || [])}
+                        </div>
                       </div>
                       <div className="text-sm text-muted-foreground my-3">
                         <p className="font-medium text-foreground truncate" title={sale.display_product_name}>
@@ -863,7 +940,7 @@ export default function SalesPage() {
                           Editar
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 w-full">
+                      <div className="grid grid-cols-4 gap-2 w-full">
                         <Button
                           variant="outline"
                           size="sm"
@@ -873,6 +950,15 @@ export default function SalesPage() {
                         >
                           <Badge className="h-4 w-4 mr-1" />
                           Estado
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleVoucherDialog(sale)}
+                        >
+                          <Receipt className="h-4 w-4 mr-1" />
+                          Comp.
                         </Button>
                         <Button
                           variant="outline"
@@ -951,6 +1037,7 @@ export default function SalesPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   {renderStatusBadge(selectedSale.sale_status)}
+                  {renderVoucherStatus(selectedSale.payment_vouchers || [])}
                   <span className="text-sm text-slate-600 dark:text-slate-300">
                     Vendedor: {selectedSale.profiles?.full_name || "N/A"}
                   </span>
@@ -1256,6 +1343,7 @@ export default function SalesPage() {
           )}
         </DialogContent>
       </Dialog>
+
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
         <DialogContent className="max-w-md bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
           <DialogHeader>
@@ -1317,6 +1405,7 @@ export default function SalesPage() {
           )}
         </DialogContent>
       </Dialog>
+
       <Dialog open={showMultiEditDialog} onOpenChange={setShowMultiEditDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
           <DialogHeader>
@@ -1334,6 +1423,15 @@ export default function SalesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {voucherSale && (
+        <PaymentVoucherDialog
+          sale={voucherSale}
+          open={showVoucherDialog}
+          onOpenChange={setShowVoucherDialog}
+          onVoucherUploaded={handleVoucherUploaded}
+        />
+      )}
     </div>
   )
 }

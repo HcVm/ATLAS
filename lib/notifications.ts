@@ -188,6 +188,19 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
           .eq("id", relatedId)
           .single()
         return { type: "quotation", data: quotation }
+      case "payment_voucher_uploaded":
+      case "payment_voucher_confirmed":
+        const { data: paymentVoucher } = await supabase
+          .from("payment_vouchers")
+          .select(`
+            id, 
+            sale_id, 
+            status,
+            sales!inner(id, sale_number, entity_name, total_sale)
+          `)
+          .eq("id", relatedId)
+          .single()
+        return { type: "payment_voucher", data: paymentVoucher }
       default:
         return null
     }

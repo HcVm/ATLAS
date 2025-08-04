@@ -185,6 +185,9 @@ export function NotificationDropdown() {
         case "quotation":
           router.push(`/quotations`)
           break
+        case "payment_voucher":
+          router.push(`/sales?voucher=${notification.related_id}`)
+          break
         default:
           console.warn("Unhandled notification type for navigation:", relatedInfo.type)
           toast({
@@ -227,6 +230,10 @@ export function NotificationDropdown() {
         return "Cotización en revisión"
       case "quotation_status_update":
         return "Estado de cotización"
+      case "payment_voucher_uploaded":
+        return "Comprobante subido"
+      case "payment_voucher_confirmed":
+        return "Comprobante confirmado"
       default:
         return "Sistema"
     }
@@ -252,6 +259,10 @@ export function NotificationDropdown() {
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300"
       case "quotation_status_update":
         return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300"
+      case "payment_voucher_uploaded":
+        return "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-300"
+      case "payment_voucher_confirmed":
+        return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300"
       default:
         return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
     }

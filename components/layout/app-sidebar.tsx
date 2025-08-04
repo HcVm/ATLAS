@@ -103,7 +103,7 @@ const menuSections = {
         url: "/sales",
         icon: ShoppingCart,
         roles: ["admin", "supervisor", "user"],
-        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas"],
+        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas", "contabilidad"],
       },
       {
         title: "Cotizaciones",
