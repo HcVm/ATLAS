@@ -6,6 +6,18 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  webpack: (config, { isServer }) => {
+    // Ignorar archivos .map que rompen el build
+    config.module.rules.push({
+      test: /\.map$/,
+      use: 'ignore-loader'
+    });
+
+    // No incluir Puppeteer en el bundle del cliente
+    if (isServer) {
+      config.externals.push('@sparticuz/chrome-aws-lambda', 'puppeteer-core');
+    }
+  },
   images: {
     unoptimized: true,
   },
