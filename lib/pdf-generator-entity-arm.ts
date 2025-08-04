@@ -52,9 +52,6 @@ export interface ARMEntityQuotationPDFData {
   // Condiciones
   conditions?: string[]
 
-  // Observaciones adicionales
-  observations?: string
-
   // Creado por
   createdBy: string
 }
@@ -491,18 +488,6 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
           </div>
         </div>
       </div>
-
-      <!-- Observaciones -->
-      ${
-        data.observations
-          ? `
-      <div style="border-top: 1px solid #333; padding-top: 12px; margin-top: 12px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 10px; font-weight: 600; color: white; text-transform: uppercase; letter-spacing: 0.5px;">Observaciones:</h3>
-        <p style="margin: 0; font-size: 10px; color: #ccc; line-height: 1.4;">${data.observations}</p>
-      </div>
-      `
-          : ""
-      }
 
       <!-- Footer info -->
       <div style="border-top: 1px solid #333; padding-top: 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
