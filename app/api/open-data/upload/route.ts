@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
-import { createServiceClient } from "@/lib/supabase-server"
+import { createServiceClient } from "@/lib/supabase-server" // Vuelve a tu import original
+import type { Database } from "@/lib/database.types" // Asegúrate de que este import esté presente
 
 // Mapeo flexible de columnas del Excel a campos de la base de datos
 const COLUMN_MAPPING = {
@@ -70,7 +71,7 @@ const COLUMN_MAPPING = {
   ],
 
   // RUC Proveedor
-  ruc_proveedor: ["Ruc Proveedor", "RUC PROVEEDOR", "RUC Proveedor", "ruc_proveedor"],
+  ruc_proveedor: ["Ruc Proveedor", "RUC PROVEVEDOR", "RUC Proveedor", "ruc_proveedor"],
 
   // Dirección Proveedor
   direccion_proveedor: ["Dirección Proveedor", "DIRECCIÓN PROVEEDOR", "Direccion Proveedor", "DIRECCION PROVEEDOR"],
@@ -149,6 +150,21 @@ const COLUMN_MAPPING = {
   dist_entrega: ["Dist. Entrega", "DIST. ENTREGA", "Dist Entrega", "DIST ENTREGA"],
   link_ficha_producto: ["Link Ficha Producto", "LINK FICHA PRODUCTO"],
   orden_digitalizada: ["Orden Digitalizada", "ORDEN DIGITALIZADA"],
+  acuerdo_marco: ["Acuerdo Marco", "ACUERDO MARCO", "acuerdo_marco"],
+  fecha_inicio_vigencia: [
+    "Fecha Inicio Vigencia",
+    "FECHA INICIO VIGENCIA",
+    "Fecha Inicio Vigencia",
+    "FECHA INICIO VIGENCIA",
+  ],
+  fecha_fin_vigencia: ["Fecha Fin Vigencia", "FECHA FIN VIGENCIA", "Fecha Fin Vigencia", "FECHA FIN VIGENCIA"],
+  estado: ["Estado", "ESTADO"],
+  tipo_contratacion: ["Tipo Contratación", "TIPO CONTRATACIÓN", "Tipo Contratacion", "TIPO CONTRATACION"],
+  modalidad_seleccion: ["Modalidad Selección", "MODALIDAD SELECCIÓN", "Modalidad Seleccion", "MODALIDAD SELECCION"],
+  objeto_contratacion: ["Objeto Contratación", "OBJETO CONTRATACIÓN", "Objeto Contratacion", "OBJETO CONTRATACION"],
+  entidad_contratante: ["Entidad Contratante", "ENTIDAD CONTRATANTE"],
+  proveedor: ["Proveedor", "PROVEEDOR"],
+  monto_adjudicado: ["Monto Adjudicado", "MONTO ADJUDICADO", "Monto Adjudicado", "MONTO ADJUDICADO"],
 }
 
 // Columnas requeridas - Solo las más críticas
@@ -159,6 +175,9 @@ const REQUIRED_COLUMNS = [
   "razon_social_proveedor",
   "ruc_proveedor",
 ]
+
+// Marcas a monitorear para alertas (en mayúsculas para comparación)
+const TARGET_BRANDS = ["WORLDLIFE", "HOPE LIFE", "ZEUS", "VALHALLA"]
 
 // Fecha por defecto para campos de fecha vacíos
 const DEFAULT_DATE = "2000-01-01"
@@ -263,39 +282,38 @@ function validateRow(row: any, rowIndex: number): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  // Usando tu createServiceClient original
+  const supabase = createServiceClient()
+
+  // No se intenta obtener el user.id aquí, ya que no se usaba en tu implementación original
+  // Si necesitas el user_id, tendríamos que ajustar cómo se obtiene la sesión en este contexto.
+
   try {
     const formData = await request.formData()
-    const file = formData.get("file") as File
-    const acuerdoMarco = formData.get("acuerdoMarco") as string
+    const file = formData.get("file") as File | null
+    const acuerdoMarco = formData.get("acuerdoMarco") as string | null
 
-    if (!file) {
-      return NextResponse.json({ success: false, message: "No se proporcionó ningún archivo" }, { status: 400 })
+    if (!file || !acuerdoMarco) {
+      return NextResponse.json({ error: "File and acuerdoMarco are required" }, { status: 400 })
     }
 
-    if (!acuerdoMarco) {
-      return NextResponse.json({ success: false, message: "No se especificó el acuerdo marco" }, { status: 400 })
-    }
-
-    // Leer el archivo Excel
-    const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer, { type: "array" })
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const workbook = XLSX.read(buffer, { type: "buffer" })
     const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
+    const sheet = workbook.Sheets[sheetName]
+    const jsonData = XLSX.utils.sheet_to_json(sheet)
 
-    // Convertir a JSON - Las cabeceras están en la fila 6 (índice 5)
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
-
-    if (rawData.length < 7) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "El archivo no contiene suficientes datos. Las cabeceras deben estar en la fila 6.",
-        },
-        { status: 400 },
-      )
+    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+      return NextResponse.json({ error: "No data found in the Excel file" }, { status: 400 })
     }
+
+    // Mapeo de datos del Excel a la estructura de la base de datos
+    const processedData: Database["public"]["Tables"]["open_data_entries"]["Insert"][] = []
+    const errors: string[] = []
+    let filteredCount = 0
 
     // Las cabeceras están en la fila 6 (índice 5)
+    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][]
     const headers = rawData[5] as string[]
     const dataRows = rawData.slice(6) // Los datos empiezan desde la fila 7 (índice 6)
 
@@ -350,11 +368,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Procesar datos
-    const processedData: any[] = []
-    const errors: string[] = []
-    let filteredCount = 0
-
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i]
 
@@ -363,19 +376,15 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Crear objeto con los datos mapeados
       const mappedRow: any = {
         acuerdo_marco: acuerdoMarco,
         codigo_acuerdo_marco: acuerdoMarco.split(" ")[0], // Extraer código
       }
 
-      // Mapear cada campo
       Object.entries(columnIndexes).forEach(([dbField, excelIndex]) => {
         const value = row[excelIndex]
 
-        // Procesar según el tipo de campo
         if (dbField.includes("fecha")) {
-          // Procesar fechas como strings en formato ISO
           mappedRow[dbField] = processDateAsString(value)
         } else if (
           [
@@ -387,33 +396,20 @@ export async function POST(request: NextRequest) {
             "plazo_entrega",
             "nro_entrega",
             "total_entregas",
+            "monto_adjudicado",
           ].includes(dbField)
         ) {
-          // Procesar números
           mappedRow[dbField] = parseNumericValue(value)
         } else {
-          // Procesar texto
           mappedRow[dbField] = isEmptyValue(value) ? "" : value.toString().trim()
         }
       })
 
-      // Debug: Para las primeras 3 filas, mostrar los datos mapeados
-      if (i < 3) {
-        console.log(`Fila ${i + 7} mapeada:`, {
-          orden_electronica: mappedRow.orden_electronica,
-          fecha_publicacion: mappedRow.fecha_publicacion,
-          fecha_fin_entrega: mappedRow.fecha_fin_entrega,
-          razon_social_entidad: mappedRow.razon_social_entidad,
-        })
-      }
-
-      // Filtrar registros con "Orden Electrónica" terminada en "-0"
       if (mappedRow.orden_electronica && mappedRow.orden_electronica.toString().endsWith("-0")) {
         filteredCount++
         continue
       }
 
-      // Validar fila
       const rowErrors = validateRow(mappedRow, i)
       if (rowErrors.length > 0) {
         errors.push(...rowErrors)
@@ -423,7 +419,6 @@ export async function POST(request: NextRequest) {
       processedData.push(mappedRow)
     }
 
-    // Solo fallar si hay muchos errores críticos
     if (errors.length > 100) {
       return NextResponse.json(
         {
@@ -441,62 +436,102 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insertar en la base de datos
-    const supabase = createServiceClient()
-
-    // Eliminar datos existentes del mismo acuerdo marco
+    // 1. Eliminar datos existentes para este acuerdo_marco
     console.log(`Eliminando datos existentes para acuerdo marco: ${acuerdoMarco}`)
     const { error: deleteError } = await supabase.from("open_data_entries").delete().eq("acuerdo_marco", acuerdoMarco)
 
     if (deleteError) {
-      console.log("No se pudieron eliminar datos existentes:", deleteError.message)
+      console.error("Error deleting existing data:", deleteError.message)
+      return NextResponse.json(
+        { error: "Failed to delete existing data", details: deleteError.message },
+        { status: 500 },
+      )
     }
 
-    // Insertar en lotes
-    const batchSize = 100 // Reducido para mejor manejo de errores
+    // 2. Insertar los nuevos datos
+    const batchSize = 100
     let insertedCount = 0
     const insertErrors: string[] = []
 
     for (let i = 0; i < processedData.length; i += batchSize) {
       const batch = processedData.slice(i, i + batchSize)
-
       console.log(
-        `Insertando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(processedData.length / batchSize)} (${batch.length} registros)`,
+        `Insertando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(processedData.length / batchSize)} (${batch.length} registros) en open_data_entries`,
       )
-
-      const { data, error } = await supabase.from("open_data_entries").insert(batch)
+      const { error } = await supabase.from("open_data_entries").insert(batch)
 
       if (error) {
-        console.error("Error inserting batch:", error)
+        console.error("Error inserting batch into open_data_entries:", error)
         insertErrors.push(`Error insertando lote ${Math.floor(i / batchSize) + 1}: ${error.message}`)
-
-        // Si hay error, intentar insertar uno por uno para identificar registros problemáticos
-        console.log("Intentando inserción individual...")
-        for (let j = 0; j < batch.length; j++) {
-          const record = batch[j]
+        for (const record of batch) {
           const { error: singleError } = await supabase.from("open_data_entries").insert(record)
           if (!singleError) {
             insertedCount++
           } else {
-            console.error(`Error en registro ${i + j + 1}:`, singleError.message)
-            // Mostrar el registro problemático (solo campos relevantes)
-            console.error("Registro problemático:", {
-              orden_electronica: record.orden_electronica,
-              fecha_publicacion: record.fecha_publicacion,
-              fecha_fin_entrega: record.fecha_fin_entrega,
-            })
+            console.error(`Error en registro (open_data_entries) ${record.orden_electronica}:`, singleError.message)
           }
         }
       } else {
         insertedCount += batch.length
-        console.log(`Lote insertado exitosamente: ${batch.length} registros`)
+      }
+    }
+
+    // 3. Procesar y upsertar alertas de marca
+    const brandAlertsToUpsert: Database["public"]["Tables"]["brand_alerts"]["Insert"][] = []
+    const brandAlertsErrors: string[] = []
+
+    for (const row of processedData) {
+      const brandName = row.marca_ficha_producto?.toUpperCase()
+      if (brandName && TARGET_BRANDS.includes(brandName) && row.orden_electronica && row.acuerdo_marco) {
+        brandAlertsToUpsert.push({
+          orden_electronica: row.orden_electronica,
+          acuerdo_marco: row.acuerdo_marco,
+          brand_name: brandName,
+          // user_id se deja como NULL aquí, ya que no se obtiene la sesión del usuario en este contexto.
+          // Si necesitas registrar el usuario, se requiere una forma de obtener el user.id aquí.
+        })
+      }
+    }
+
+    if (brandAlertsToUpsert.length > 0) {
+      console.log(`Procesando ${brandAlertsToUpsert.length} alertas de marca para upsert...`)
+      for (let i = 0; i < brandAlertsToUpsert.length; i += batchSize) {
+        const batch = brandAlertsToUpsert.slice(i, i + batchSize)
+        const { error: upsertAlertsError } = await supabase
+          .from("brand_alerts")
+          .upsert(batch, { onConflict: "orden_electronica,acuerdo_marco" })
+          .select("id")
+
+        if (upsertAlertsError) {
+          console.error("Error upserting brand alerts batch:", upsertAlertsError)
+          brandAlertsErrors.push(
+            `Error en lote de alertas de marca ${Math.floor(i / batchSize) + 1}: ${upsertAlertsError.message}`,
+          )
+          for (const alert of batch) {
+            const { error: singleAlertError } = await supabase
+              .from("brand_alerts")
+              .upsert(alert, { onConflict: "orden_electronica,acuerdo_marco" })
+              .select("id")
+            if (singleAlertError) {
+              console.error(
+                `Error en alerta de marca (Orden Electrónica: ${alert.orden_electronica}, Marca: ${alert.brand_name}):`,
+                singleAlertError.message,
+              )
+              brandAlertsErrors.push(
+                `Alerta (Orden Electrónica: ${alert.orden_electronica}, Marca: ${alert.brand_name}): ${singleAlertError.message}`,
+              )
+            }
+          }
+        } else {
+          console.log(`Lote de alertas de marca procesado exitosamente: ${batch.length} registros afectados.`)
+        }
       }
     }
 
     const finalMessage =
-      insertErrors.length > 0
-        ? `Archivo procesado con algunos errores. Se insertaron ${insertedCount} de ${processedData.length} registros.`
-        : `Archivo procesado exitosamente. Se insertaron ${insertedCount} registros.`
+      errors.length > 0 || insertErrors.length > 0 || brandAlertsErrors.length > 0
+        ? `Archivo procesado con algunos errores. Se insertaron ${insertedCount} registros en datos abiertos y se procesaron ${brandAlertsToUpsert.length} alertas de marca.`
+        : `Archivo procesado exitosamente. Se insertaron ${insertedCount} registros en datos abiertos y se procesaron ${brandAlertsToUpsert.length} alertas de marca.`
 
     return NextResponse.json({
       success: insertedCount > 0,
@@ -505,20 +540,13 @@ export async function POST(request: NextRequest) {
         totalRows: dataRows.length,
         processedRows: processedData.length,
         filteredRows: filteredCount,
-        insertedRows: insertedCount,
-        errors: errors,
-        insertErrors: insertErrors,
+        insertedOpenDataRows: insertedCount,
+        processedBrandAlerts: brandAlertsToUpsert.length,
+        errors: errors.concat(insertErrors).concat(brandAlertsErrors),
       },
     })
-  } catch (error) {
-    console.error("Error processing upload:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Error interno del servidor al procesar el archivo",
-        error: error instanceof Error ? error.message : "Error desconocido",
-      },
-      { status: 500 },
-    )
+  } catch (error: any) {
+    console.error("Upload error:", error)
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 })
   }
 }
