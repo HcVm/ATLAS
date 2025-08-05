@@ -2,9 +2,10 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, FileText, Download, Eye, Calendar } from "lucide-react"
+import { Database, FileText, Download, Eye, Calendar, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
+import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
 
 // Definir los 3 acuerdos marco específicos
 const ACUERDOS_MARCO = [
@@ -38,25 +39,57 @@ async function getOpenDataStats() {
   const supabase = createServerClient()
 
   try {
-    // Obtener estadísticas generales de la vista
-    const { data: stats, error } = await supabase.from("open_data_view").select("acuerdo_marco")
+    // Primero obtener el conteo total
+    const { count: totalCount, error: countError } = await supabase
+      .from("open_data_entries")
+      .select("*", { count: "exact", head: true })
 
-    if (error) {
-      console.error("Error fetching open data stats:", error)
-      return { totalRecords: 0, acuerdosDisponibles: [], acuerdosCount: {} }
+    if (countError) {
+      console.error("Error fetching total count:", countError)
     }
 
-    // Contar registros por acuerdo marco
-    const acuerdosCount =
-      stats?.reduce((acc: Record<string, number>, item) => {
-        const acuerdo = item.acuerdo_marco || "sin-clasificar"
-        acc[acuerdo] = (acc[acuerdo] || 0) + 1
-        return acc
-      }, {}) || {}
+    console.log("Total records in database:", totalCount)
+
+    // Obtener conteos por cada acuerdo marco específicamente
+    const acuerdosCount: Record<string, number> = {}
+
+    for (const acuerdo of ACUERDOS_MARCO) {
+      const { count, error } = await supabase
+        .from("open_data_entries")
+        .select("*", { count: "exact", head: true })
+        .eq("codigo_acuerdo_marco", acuerdo.id)
+
+      if (error) {
+        console.error(`Error fetching count for ${acuerdo.id}:`, error)
+        acuerdosCount[acuerdo.id] = 0
+      } else {
+        acuerdosCount[acuerdo.id] = count || 0
+        console.log(`${acuerdo.id}: ${count} records`)
+      }
+    }
+
+    // También verificar si hay otros códigos de acuerdo marco
+    const { data: allCodes, error: codesError } = await supabase
+      .from("open_data_entries")
+      .select("codigo_acuerdo_marco")
+      .not("codigo_acuerdo_marco", "is", null)
+
+    if (!codesError && allCodes) {
+      const uniqueCodes = [...new Set(allCodes.map((item) => item.codigo_acuerdo_marco))]
+      console.log("All unique codigo_acuerdo_marco values:", uniqueCodes)
+
+      // Contar cada código único
+      const allCodesCount: Record<string, number> = {}
+      for (const code of uniqueCodes) {
+        const count = allCodes.filter((item) => item.codigo_acuerdo_marco === code).length
+        allCodesCount[code] = count
+      }
+      console.log("Count by all codes:", allCodesCount)
+    }
 
     return {
-      totalRecords: stats?.length || 0,
-      acuerdosDisponibles: Object.keys(acuerdosCount),
+      totalRecords: totalCount || 0,
+      acuerdosDisponibles: Object.keys(acuerdosCount).filter((key) => acuerdosCount[key] > 0),
       acuerdosCount,
     }
   } catch (error) {
@@ -101,8 +134,10 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
 }
 
 function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
-  const count = stats.acuerdosCount?.[acuerdo.fullName] || 0
-  const isAvailable = stats.acuerdosDisponibles?.includes(acuerdo.fullName)
+  const count = stats.acuerdosCount?.[acuerdo.id] || 0
+  const isAvailable = count > 0
+
+  console.log(`Rendering card for ${acuerdo.id}: count=${count}, available=${isAvailable}`)
 
   return (
     <Card className={`transition-all duration-200 hover:shadow-lg ${isAvailable ? "hover:scale-105" : "opacity-60"}`}>
@@ -167,11 +202,21 @@ export default async function OpenDataPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Datos Abiertos</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-lg">
-          Accede a los datos públicos de contrataciones por acuerdo marco. Información transparente sobre las compras
-          gubernamentales del año 2024.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Datos Abiertos</h1>
+            <p className="text-slate-600 dark:text-slate-400 text-lg">
+              Accede a los datos públicos de contrataciones por acuerdo marco. Información transparente sobre las
+              compras gubernamentales del año 2024.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/open-data/upload">
+              <Database className="h-4 w-4 mr-2" />
+              Subir Archivo
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Suspense
@@ -197,6 +242,27 @@ export default async function OpenDataPage() {
         {ACUERDOS_MARCO.map((acuerdo) => (
           <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} stats={stats} />
         ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Alertas de Marca</h2>
+            <p className="text-slate-600 dark:text-slate-400">
+              Monitoreo automático de ventas de las marcas WORLDLIFE, HOPE LIFE, ZEUS y VALHALLA
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/open-data/brand-alerts">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Ver todas las alertas
+            </Link>
+          </Button>
+        </div>
+
+        <Suspense fallback={<div>Cargando alertas...</div>}>
+          <BrandAlertsPreview />
+        </Suspense>
       </div>
 
       <Card className="mt-8">
