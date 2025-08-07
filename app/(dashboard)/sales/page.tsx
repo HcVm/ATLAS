@@ -538,6 +538,8 @@ export default function SalesPage() {
         clientRuc: sale.entity_ruc,
         clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
         clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
+        products: finalProducts, // <-- ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
+        warrantyMonths: 12, // Asumiendo 12 meses por defecto, puedes ajustarlo según tu lógica
         createdBy: user?.full_name || "Usuario",
       })
 

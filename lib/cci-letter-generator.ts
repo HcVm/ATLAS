@@ -563,12 +563,12 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
         </div>
 
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 35mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; bottom: 40mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
           
         </div>
 
-        <div style="position: absolute; bottom: 6mm; left: 7mm;">
+        <div style="position: absolute; bottom: 8.2mm; left: 7mm;">
           ${
               data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
                 ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
