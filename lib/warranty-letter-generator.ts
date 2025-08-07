@@ -18,7 +18,8 @@ export interface WarrantyLetterData {
   // Información del cliente
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega (fallback)
+  clientFiscalAddress?: string // Nueva dirección fiscal
 
   // Productos con garantía
   products: Array<{
@@ -54,9 +55,11 @@ const LETTERHEAD_URLS: Record<string, string> = {
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
   console.log("🚀 Iniciando generación de Cartas de Garantía...")
+  console.log("DEBUG: Data recibida en generateWarrantyLetters:", data);
+  console.log("DEBUG: data.products en generateWarrantyLetters:", data.products);
 
   // Agrupar productos por marca
-  const productsByBrand = data.products.reduce(
+  const productsByBrand = (data.products || []).reduce( // Modificado para manejar 'undefined'
     (acc, product) => {
       const brand = product.brand.toUpperCase()
       if (!acc[brand]) {
@@ -197,6 +200,7 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
     month: "long",
     day: "numeric",
   })
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
 
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
@@ -232,7 +236,7 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
           <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #000;">SEÑORES:</p>
           <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
           <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">Ruc: ${data.clientRuc}</p>
-          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; line-height: 1.4;">${data.clientAddress}.</p>
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; line-height: 1.4;">${addressToDisplay}.</p>
         </div>
 
         <!-- Contenido principal -->
@@ -302,8 +306,6 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
 
         <!-- Alcance de la garantía -->
         <div style="margin-bottom: 6mm;">
-          <h3 style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000;">Alcance de la Garantía</h3>
-          
           <p style="margin: 0 0 5mm 0; font-size: 10px; color: #000; text-align: justify;">
             Esta garantía ampara únicamente el producto identificado en este documento y no es transferible. Cualquier servicio prestado fuera del periodo de garantía, o que no esté cubierto por las condiciones aquí descritas, estará sujeto a cargos adicionales por parte del proveedor. <strong>¡Gracias por confiar en nosotros!</strong>
           </p>
@@ -324,6 +326,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
     month: "long",
     day: "numeric",
   })
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
 
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
@@ -359,7 +362,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
           <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #000;">Señor(a)(es):</p>
           <h3 style="margin: 0 0 4mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
           <p style="margin: 0 0 4mm 0; font-size: 10px; color: #000;">RUC: ${data.clientRuc}</p>
-          <p style="margin: 0 0 8mm 0; font-size: 10px; color: #000; line-height: 1.4;">DIRECCIÓN: ${data.clientAddress}</p>
+          <p style="margin: 0 0 8mm 0; font-size: 10px; color: #000; line-height: 1.4;">DIRECCIÓN: ${addressToDisplay}</p>
         </div>
 
         <!-- Contenido principal -->
