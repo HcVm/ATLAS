@@ -66,9 +66,17 @@ interface Sale {
   is_multi_product: boolean
   payment_vouchers?: {
     id: string
-    status: string
+    status: "pending" | "confirmed" | "rejected"
     admin_confirmed: boolean
     accounting_confirmed: boolean
+    file_name: string
+    file_url?: string
+    uploaded_at: string
+    uploaded_by: string
+    notes?: string // Changed to 'notes'
+    profiles?: {
+      full_name: string
+    }
   }[]
 }
 
@@ -182,7 +190,8 @@ export default function SalesPage() {
 
   // Handle voucher parameter from notification
   useEffect(() => {
-    if (voucherParam && sales.length > 0) {
+    const companyId = companyToUse?.id;
+    if (voucherParam && sales.length > 0 && companyId) {
       console.log("🔍 Buscando venta con voucher:", voucherParam)
 
       // Find the sale that has this voucher
@@ -203,7 +212,7 @@ export default function SalesPage() {
         router.replace("/sales", { scroll: false })
       }
     }
-  }, [voucherParam, sales, router])
+  }, [voucherParam, sales, router, companyToUse])
 
   const fetchSales = async (companyId: string) => {
     try {
@@ -217,7 +226,7 @@ export default function SalesPage() {
           ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
           total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
           created_by, profiles!sales_created_by_fkey (full_name),
-          payment_vouchers (id, status, admin_confirmed, accounting_confirmed)
+          payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
         `)
         .eq("company_id", companyId)
 
@@ -448,11 +457,36 @@ export default function SalesPage() {
     setShowVoucherDialog(true)
   }
 
-  const handleVoucherUploaded = () => {
-    if (companyToUse?.id) {
-      fetchSales(companyToUse.id)
+  const handleVoucherUploaded = async () => {
+    if (!voucherSale?.id || !companyToUse?.id) return;
+
+    try {
+      // Re-fetch only the specific sale that was updated
+      const { data, error } = await supabase
+        .from("sales_with_items")
+        .select(`
+          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
+          ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
+          total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
+          created_by, profiles!sales_created_by_fkey (full_name),
+          payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
+        `)
+        .eq("id", voucherSale.id)
+        .eq("company_id", companyToUse.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setVoucherSale(data); // Update the specific sale in the dialog's state
+        // Also update the main sales list to reflect the change
+        setSales(prevSales => prevSales.map(s => s.id === data.id ? data : s));
+      }
+    } catch (error: any) {
+      toast.error("Error al actualizar la venta después de subir el comprobante: " + error.message);
     }
-  }
+  };
 
   const handleGenerateWarrantyLetter = async (sale: Sale) => {
     try {
@@ -770,9 +804,6 @@ export default function SalesPage() {
             <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Entregas Pendientes
             </CardTitle>
-            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-              <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.pendingDeliveries}</div>
@@ -884,7 +915,7 @@ export default function SalesPage() {
                           <TableCell className="text-slate-600 dark:text-slate-300">
                             {sale.profiles?.full_name || "N/A"}
                           </TableCell>
-                       )}
+                        )}
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1493,7 +1524,7 @@ export default function SalesPage() {
           open={showSalesEntityManagementDialog}
           onOpenChange={setShowSalesEntityManagementDialog}
           companyId={companyToUse.id}
-          canEdit={hasSalesAccess} // Pass canViewAllSales to control edit button visibility inside the dialog
+          canEdit={hasSalesAccess} // Cambiado de canViewAllSales a hasSalesAccess
         />
       )}
     </div>

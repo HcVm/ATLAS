@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react" // Added useEffect
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
@@ -10,19 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Upload,
-  FileText,
-  Check,
-  X,
-  Clock,
-  AlertTriangle,
-  Download,
-  Eye,
-  User,
-  Calendar,
-  DollarSign,
-} from "lucide-react"
+import { Upload, FileText, Check, X, Clock, AlertTriangle, Download, Eye, User, Calendar, DollarSign } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -45,10 +33,9 @@ interface PaymentVoucherDialogProps {
       accounting_confirmed: boolean
       file_name: string
       file_url?: string
-      upload_date: string
+      uploaded_at: string
       uploaded_by: string
-      admin_notes?: string
-      accounting_notes?: string
+      notes?: string // Changed to 'notes'
       profiles?: {
         full_name: string
       }
@@ -70,14 +57,33 @@ export default function PaymentVoucherDialog({
   const [uploading, setUploading] = useState(false)
   const [confirmingAdmin, setConfirmingAdmin] = useState(false)
   const [confirmingAccounting, setConfirmingAccounting] = useState(false)
-  const [adminNotes, setAdminNotes] = useState("")
-  const [accountingNotes, setAccountingNotes] = useState("")
+  const [adminNotesInput, setAdminNotesInput] = useState("") // Renamed for clarity
+  const [accountingNotesInput, setAccountingNotesInput] = useState("") // Renamed for clarity
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const currentVoucher = sale.payment_vouchers?.[0]
   const canUpload = user?.departments?.name === "Ventas" || user?.role === "admin"
   const canConfirmAdmin = user?.departments?.name === "Administración" || user?.role === "admin"
   const canConfirmAccounting = user?.departments?.name === "Contabilidad" || user?.role === "admin"
+
+  useEffect(() => {
+    if (currentVoucher?.notes) {
+      try {
+        const parsedNotes = JSON.parse(currentVoucher.notes);
+        setAdminNotesInput(parsedNotes.admin_note || "");
+        setAccountingNotesInput(parsedNotes.accounting_note || "");
+      } catch (e) {
+        console.error("Error parsing notes JSON from DB:", e);
+        // Fallback if notes is not valid JSON (e.g., old plain text notes)
+        // In this case, we'll put the raw note into adminNotesInput and clear accountingNotesInput.
+        setAdminNotesInput(currentVoucher.notes || "");
+        setAccountingNotesInput("");
+      }
+    } else {
+      setAdminNotesInput("");
+      setAccountingNotesInput("");
+    }
+  }, [currentVoucher]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -119,12 +125,14 @@ export default function PaymentVoucherDialog({
         .insert({
           sale_id: sale.id,
           file_name: file.name,
-          file_url: filePath,
-          file_size: file.size,
+          file_url: publicUrl,
           uploaded_by: user?.id,
           status: "pending",
           admin_confirmed: false,
           accounting_confirmed: false,
+          company_id: selectedCompany?.id,
+          uploaded_at: new Date().toISOString(),
+          file_size: file.size, // Added file_size based on schema
         })
         .select()
         .single()
@@ -137,7 +145,7 @@ export default function PaymentVoucherDialog({
       await sendVoucherNotifications(voucherData.id)
 
       toast.success("Comprobante de pago subido exitosamente")
-      onVoucherUploaded()
+      onVoucherUploaded() // Trigger parent to refresh data
     } catch (error: any) {
       console.error("Error uploading voucher:", error)
       toast.error("Error al subir el comprobante: " + error.message)
@@ -250,12 +258,30 @@ export default function PaymentVoucherDialog({
     setConfirmingAdmin(true)
 
     try {
+      let existingNotes = {};
+      if (currentVoucher.notes) {
+        try {
+          existingNotes = JSON.parse(currentVoucher.notes);
+        } catch (e) {
+          console.warn("Existing notes are not JSON, treating as old format:", currentVoucher.notes);
+          // If existing notes are not JSON, treat them as a general note for migration
+          existingNotes = { general_note: currentVoucher.notes };
+        }
+      }
+
+      const updatedNotes = {
+        ...existingNotes,
+        admin_note: adminNotesInput || null,
+      };
+
       const { error } = await supabase
         .from("payment_vouchers")
         .update({
           admin_confirmed: confirmed,
-          admin_notes: adminNotes || null,
+          notes: JSON.stringify(updatedNotes), // Store as JSON string
           status: confirmed && currentVoucher.accounting_confirmed ? "confirmed" : !confirmed ? "rejected" : "pending",
+          admin_confirmed_by: user?.id, // Added based on schema
+          admin_confirmed_at: new Date().toISOString(), // Added based on schema
         })
         .eq("id", currentVoucher.id)
 
@@ -279,12 +305,30 @@ export default function PaymentVoucherDialog({
     setConfirmingAccounting(true)
 
     try {
+      let existingNotes = {};
+      if (currentVoucher.notes) {
+        try {
+          existingNotes = JSON.parse(currentVoucher.notes);
+        } catch (e) {
+          console.warn("Existing notes are not JSON, treating as old format:", currentVoucher.notes);
+          // If existing notes are not JSON, treat them as a general note for migration
+          existingNotes = { general_note: currentVoucher.notes };
+        }
+      }
+
+      const updatedNotes = {
+        ...existingNotes,
+        accounting_note: accountingNotesInput || null,
+      };
+
       const { error } = await supabase
         .from("payment_vouchers")
         .update({
           accounting_confirmed: confirmed,
-          accounting_notes: accountingNotes || null,
+          notes: JSON.stringify(updatedNotes), // Store as JSON string
           status: confirmed && currentVoucher.admin_confirmed ? "confirmed" : !confirmed ? "rejected" : "pending",
+          accounting_confirmed_by: user?.id, // Added based on schema
+          accounting_confirmed_at: new Date().toISOString(), // Added based on schema
         })
         .eq("id", currentVoucher.id)
 
@@ -353,6 +397,36 @@ export default function PaymentVoucherDialog({
         )
     }
   }
+
+  const getFormattedUploadDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Fecha inválida";
+      }
+      return format(date, "dd/MM/yyyy HH:mm", { locale: es });
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "Fecha inválida";
+    }
+  };
+
+  // Helper to safely parse notes and get specific note
+  const getParsedNote = (noteType: "admin_note" | "accounting_note") => {
+    if (!currentVoucher?.notes) return null;
+    try {
+      const parsed = JSON.parse(currentVoucher.notes);
+      return parsed[noteType] || null;
+    } catch (e) {
+      // If notes is not JSON, and it's the only note, return it as a general note
+      // This handles cases where notes might have been stored as plain text previously.
+      if (noteType === "admin_note" && !currentVoucher.accounting_confirmed) {
+        return currentVoucher.notes;
+      }
+      return null;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -457,7 +531,7 @@ export default function PaymentVoucherDialog({
                     <Label className="text-xs font-medium text-muted-foreground uppercase">Fecha de subida</Label>
                     <p className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {format(new Date(currentVoucher.upload_date), "dd/MM/yyyy HH:mm", { locale: es })}
+                      {getFormattedUploadDate(currentVoucher.uploaded_at)}
                     </p>
                   </div>
                 </div>
@@ -492,8 +566,8 @@ export default function PaymentVoucherDialog({
                         </Badge>
                       )}
                     </div>
-                    {currentVoucher.admin_notes && (
-                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">{currentVoucher.admin_notes}</p>
+                    {getParsedNote("admin_note") && (
+                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">{getParsedNote("admin_note")}</p>
                     )}
                   </div>
 
@@ -512,10 +586,8 @@ export default function PaymentVoucherDialog({
                         </Badge>
                       )}
                     </div>
-                    {currentVoucher.accounting_notes && (
-                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                        {currentVoucher.accounting_notes}
-                      </p>
+                    {getParsedNote("accounting_note") && (
+                      <p className="text-sm text-muted-foreground bg-muted p-2 rounded">{getParsedNote("accounting_note")}</p>
                     )}
                   </div>
                 </div>
@@ -532,8 +604,8 @@ export default function PaymentVoucherDialog({
                         <Textarea
                           id="admin-notes"
                           placeholder="Agregar comentarios sobre el comprobante..."
-                          value={adminNotes}
-                          onChange={(e) => setAdminNotes(e.target.value)}
+                          value={adminNotesInput}
+                          onChange={(e) => setAdminNotesInput(e.target.value)}
                         />
                       </div>
                       <div className="flex gap-2">
@@ -572,8 +644,8 @@ export default function PaymentVoucherDialog({
                           <Textarea
                             id="accounting-notes"
                             placeholder="Agregar comentarios sobre el comprobante..."
-                            value={accountingNotes}
-                            onChange={(e) => setAccountingNotes(e.target.value)}
+                            value={accountingNotesInput}
+                            onChange={(e) => setAccountingNotesInput(e.target.value)}
                           />
                         </div>
                         <div className="flex gap-2">
