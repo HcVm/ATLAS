@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { FileText, Loader2 } from "lucide-react"
+import { FileText, Loader2 } from 'lucide-react'
 import { toast } from "sonner"
 import { generateQRForQuotation, type PrivateQuotationPDFData } from "@/lib/pdf-generator-private"
 import { supabase } from "@/lib/supabase"
@@ -17,6 +17,7 @@ interface PrivateQuotationPDFGeneratorProps {
     entity_name: string
     entity_ruc: string
     delivery_location: string
+    fiscal_address?: string | null; // ADDED THIS LINE
     is_multi_product?: boolean | null
     quotation_items?: Array<{
       id: string
@@ -60,6 +61,7 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
       console.log("Quotation data:", quotation)
       console.log("Company info:", companyInfo)
       console.log("Quotation items:", quotation.quotation_items)
+      console.log("Fiscal Address from quotation:", quotation.fiscal_address); // Debugging fiscal address
 
       // Obtener información de marcas con logos desde la base de datos
       const brandNames = quotation.quotation_items
@@ -182,7 +184,7 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
-        clientAddress: quotation.delivery_location || "No especificado",
+        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado", // Use fiscal_address if available
         clientDepartment: undefined,
         clientAttention: "Cliente Privado",
         currency: "Soles",
@@ -213,6 +215,7 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         igv: pdfData.igv,
         total: pdfData.total,
         qrCodePresent: !!pdfData.qrCodeBase64,
+        clientAddressUsed: pdfData.clientAddress, // Debugging which address is used
       })
 
       // Llamar a la nueva ruta de API para generar y descargar el PDF
