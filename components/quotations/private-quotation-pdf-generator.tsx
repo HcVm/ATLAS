@@ -168,9 +168,9 @@ export default function PrivateQuotationPDFGenerator({ quotation, companyInfo }:
         companyName: companyInfo.name || "Empresa",
         companyRuc: companyInfo.ruc || "N/A",
         companyCode: companyInfo.code,
-        companyAddress: companyInfo.address || undefined,
-        companyPhone: companyInfo.phone || undefined,
-        companyEmail: companyInfo.email || undefined,
+        companyAddress: companyInfo.address || "AV. CANTA CALLAO MZA. K2 LOTE. 8 LIMA - LIMA - LOS OLIVOS",
+        companyPhone: companyInfo.phone || "01-748 2242 ANEXO 112 - 940930710",
+        companyEmail: companyInfo.email || "cotizaciones.lg@agleperuvianc.com - cotizaciones.eg@agleperuvianc.com",
         companyLogoUrl: companyInfo.logo_url || undefined,
         companyAccountInfo: "191-38640570-37", // Fallback
 
