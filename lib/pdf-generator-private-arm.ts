@@ -1148,7 +1148,9 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
           <div class="footer-left">
             <div class="footer-text">ARM Corporations S.A.C.</div>
             <div class="footer-text">RUC: ${data.companyRuc}</div>
-            ${data.companyPhone ? `<div class="footer-text">Tel: ${data.companyPhone}</div>` : ""}
+            <div class="footer-text">Tel: ${data.companyPhone}</div>
+            <div class="footer-text">Email: ${data.companyEmail}</div>
+
           </div>
           
           <div class="footer-center">

@@ -32,6 +32,10 @@ BASE_MONITORED_BRANDS.forEach((brand) => {
   ALL_BRAND_SEARCH_PATTERNS.set(`MARCA:${brand}`, brand) // Ej: "MARCA:ZEUS" -> "ZEUS"
 })
 
+ALL_BRAND_SEARCH_PATTERNS.set("HOPE LIFE", "MARCA: HOPE LIFE")
+ALL_BRAND_SEARCH_PATTERNS.set("WORLDLIFE", "MARCA: WORLDLIFE")
+ALL_BRAND_SEARCH_PATTERNS.set("ZEUS", "MARCA: ZEUS")
+ALL_BRAND_SEARCH_PATTERNS.set("VALHALLA", "MARCA: VALHALLA")
 /**
  * Ensures the brand_alerts table is populated from open_data_entries if it's empty.
  * It also deduplicates entries based on orden_electronica and brand_name.

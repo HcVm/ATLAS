@@ -297,6 +297,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File and acuerdoMarco are required" }, { status: 400 })
     }
 
+    // Trim the acuerdoMarco to ensure no leading/trailing whitespace
+    const trimmedAcuerdoMarco = acuerdoMarco.trim();
+    const codigoAcuerdoMarco = trimmedAcuerdoMarco.split(" ")[0]; // Extract the code part
+    console.log(`Received upload request for acuerdo marco: "${trimmedAcuerdoMarco}" (Code: "${codigoAcuerdoMarco}")`);
+
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const workbook = XLSX.read(buffer, { type: "buffer" })
     const sheetName = workbook.SheetNames[0]
@@ -377,8 +383,8 @@ export async function POST(request: NextRequest) {
       }
 
       const mappedRow: any = {
-        acuerdo_marco: acuerdoMarco,
-        codigo_acuerdo_marco: acuerdoMarco.split(" ")[0], // Extraer código
+        acuerdo_marco: trimmedAcuerdoMarco, // Use the trimmed full name for insertion
+        codigo_acuerdo_marco: codigoAcuerdoMarco, // Use the extracted code for insertion
       }
 
       Object.entries(columnIndexes).forEach(([dbField, excelIndex]) => {
@@ -436,17 +442,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Eliminar datos existentes para este acuerdo_marco
-    console.log(`Eliminando datos existentes para acuerdo marco: ${acuerdoMarco}`)
-    const { error: deleteError } = await supabase.from("open_data_entries").delete().eq("acuerdo_marco", acuerdoMarco)
+    // 1. Eliminar datos existentes para este codigo_acuerdo_marco
+    console.log(`Attempting to delete existing data for codigo_acuerdo_marco: "${codigoAcuerdoMarco}"`);
+    const { error: deleteError } = await supabase.from("open_data_entries").delete().eq("codigo_acuerdo_marco", codigoAcuerdoMarco);
 
     if (deleteError) {
-      console.error("Error deleting existing data:", deleteError.message)
+      console.error("Error deleting existing data:", deleteError.message);
       return NextResponse.json(
-        { error: "Failed to delete existing data", details: deleteError.message },
+        { success: false, message: `Failed to delete existing data: ${deleteError.message}` },
         { status: 500 },
-      )
+      );
     }
+    console.log(`Successfully deleted existing data for codigo_acuerdo_marco: "${codigoAcuerdoMarco}"`);
+
 
     // 2. Insertar los nuevos datos
     const batchSize = 100

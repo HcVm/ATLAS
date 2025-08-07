@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download, Building, Package, DollarSign } from "lucide-react"
+import { ArrowLeft, Download, Building, Package, DollarSign } from 'lucide-react'
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { OpenDataTable } from "@/components/open-data/open-data-table"
@@ -48,18 +48,26 @@ interface PageProps {
   }
 }
 
-async function getAcuerdoData(acuerdoMarco: string, searchParams: any) {
+async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any) {
   const supabase = createServerClient()
 
   try {
-    console.log("Fetching data for acuerdo:", acuerdoMarco)
+    console.log("Fetching data for acuerdo:", acuerdoMarcoFullString)
     console.log("Search params:", searchParams)
+
+    // Obtener el ID del acuerdo marco a partir del nombre completo
+    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO];
+    if (!acuerdoInfo) {
+      console.error("Acuerdo marco no encontrado en la definición:", acuerdoMarcoFullString);
+      return { data: [], count: 0, error: "Acuerdo marco no válido", currentPage: 1, totalPages: 0 };
+    }
+    const codigoAcuerdoMarco = acuerdoInfo.id; // Usar el ID (código corto) para la consulta
 
     // Construir la consulta base - ORDENAR POR FECHA DE ACEPTACIÓN
     let query = supabase
       .from("open_data_entries")
       .select("*", { count: "exact" })
-      .eq("acuerdo_marco", acuerdoMarco)
+      .eq("codigo_acuerdo_marco", codigoAcuerdoMarco) // CAMBIO: Filtrar por codigo_acuerdo_marco
       .order("fecha_aceptacion", { ascending: false })
 
     // Aplicar filtros de búsqueda
@@ -117,14 +125,21 @@ async function getAcuerdoData(acuerdoMarco: string, searchParams: any) {
   }
 }
 
-async function getAcuerdoStats(acuerdoMarco: string) {
+async function getAcuerdoStats(acuerdoMarcoFullString: string) {
   const supabase = createServerClient()
 
   try {
+    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO];
+    if (!acuerdoInfo) {
+      console.error("Acuerdo marco no encontrado en la definición para stats:", acuerdoMarcoFullString);
+      return { totalMonto: 0, totalEntidades: 0, totalProveedores: 0 };
+    }
+    const codigoAcuerdoMarco = acuerdoInfo.id; // Usar el ID (código corto) para la consulta de stats
+
     const { data, error } = await supabase
       .from("open_data_entries")
       .select("monto_total_entrega, razon_social_entidad, razon_social_proveedor")
-      .eq("acuerdo_marco", acuerdoMarco)
+      .eq("codigo_acuerdo_marco", codigoAcuerdoMarco) // CAMBIO: Filtrar por codigo_acuerdo_marco
 
     if (error) {
       console.error("Error fetching stats:", error)
