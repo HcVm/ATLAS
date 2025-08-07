@@ -119,8 +119,7 @@ export default function PaymentVoucherDialog({
         .insert({
           sale_id: sale.id,
           file_name: file.name,
-          file_path: filePath,
-          file_url: publicUrl,
+          file_url: filePath,
           uploaded_by: user?.id,
           status: "pending",
           admin_confirmed: false,
