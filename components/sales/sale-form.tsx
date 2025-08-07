@@ -715,7 +715,7 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <Label>Total de Venta</Label>
             <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
               <span className="font-semibold">
-                S/ {totalSale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                S/ {totalSale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
               </span>
             </div>
           </div>

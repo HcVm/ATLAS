@@ -445,7 +445,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
                   <span className="font-semibold">
                     S/{" "}
                     {((currentItem.quantity || 0) * (currentItem.unit_price_with_tax || 0)).toLocaleString("es-PE", {
-                      minimumFractionDigits: 2,
+                      minimumFractionDigits: 2, maximumFractionDigits: 4
                     })}
                   </span>
                 </div>
@@ -513,10 +513,10 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
                       </TableCell>
                       <TableCell>{item.quantity.toLocaleString()}</TableCell>
                       <TableCell>
-                        S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                       </TableCell>
                       <TableCell className="font-medium">
-                        S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -564,7 +564,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
                 <div className="text-center p-3 bg-primary/10 rounded-lg">
                   <p className="text-sm text-primary">Total de Venta</p>
                   <p className="text-xl font-bold text-primary">
-                    S/ {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
               </div>

@@ -488,7 +488,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <div className="text-center">
                   <p className="text-sm text-slate-600">Total sin IGV</p>
                   <p className="text-lg font-bold text-slate-700">
-                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center">
@@ -498,7 +498,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <div className="text-center">
                   <p className="text-sm text-slate-600">Comisión a Pagar</p>
                   <p className="text-lg font-bold text-green-600">
-                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
               </div>
@@ -692,7 +692,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                       </TableCell>
                       <TableCell>{item.quantity.toLocaleString()}</TableCell>
                       <TableCell>
-                        S/ {item.platform_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        S/ {item.platform_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                       </TableCell>
                       <TableCell className={isSalesHeadReview ? "bg-orange-50" : ""}>
                         {/* Editable offer price input */}
@@ -711,7 +711,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                       </TableCell>
                       <TableCell>
                         {item.budget_ceiling_unit_price_with_tax
-                          ? `S/ ${item.budget_ceiling_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+                          ? `S/ ${item.budget_ceiling_unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
                           : "-"}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -755,25 +755,25 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <div className="text-center p-3 bg-slate-50 rounded-lg">
                   <p className="text-sm text-slate-600">Total Plataforma</p>
                   <p className="text-xl font-bold">
-                    S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center p-3 bg-slate-50 rounded-lg">
                   <p className="text-sm text-slate-600">Total Proveedor</p>
                   <p className="text-xl font-bold">
-                    S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center p-3 bg-primary/10 rounded-lg">
                   <p className="text-sm text-primary">Total Ofertado</p>
                   <p className="text-xl font-bold text-primary">
-                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <p className="text-sm text-green-600">Comisión</p>
                   <p className="text-xl font-bold text-green-600">
-                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
               </div>

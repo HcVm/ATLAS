@@ -907,7 +907,7 @@ export default function SalesPage() {
                           {(sale.total_quantity || 0).toLocaleString()}
                         </TableCell>
                         <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                         </TableCell>
                         <TableCell>{renderStatusBadge(sale.sale_status)}</TableCell>
                         <TableCell>{renderVoucherStatus(sale.payment_vouchers || [])}</TableCell>
@@ -1001,7 +1001,7 @@ export default function SalesPage() {
                           {format(new Date(sale.sale_date), "dd MMM yy", { locale: es })}
                         </span>
                         <span className="font-bold text-base text-foreground">
-                          S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 w-full mb-2">
@@ -1196,7 +1196,7 @@ export default function SalesPage() {
                     <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total</p>
                       <p className="text-xl font-bold text-slate-700 dark:text-slate-200">
-                        S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                       </p>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -1262,10 +1262,10 @@ export default function SalesPage() {
                                   {item.quantity.toLocaleString()}
                                 </TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300">
-                                  S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                 </TableCell>
                                 <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                                  S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                 </TableCell>
                               </TableRow>
                             ))}

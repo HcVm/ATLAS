@@ -356,7 +356,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                   product_name: product.name,
                   product_description: product.description || product.name,
                   product_brand: product.brands?.name || "",
-                  platform_unit_price_with_tax: priceWithTax.toFixed(2),
+                  platform_unit_price_with_tax: priceWithTax.toFixed(4),
                   reference_image_url: product.image_url || "",
                 }))
 
@@ -451,7 +451,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Label>Total (Plataforma)</Label>
                 <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                   <span className="font-semibold">
-                    S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+
                   </span>
                 </div>
               </div>
@@ -494,7 +495,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Label>Total a Ofertar con IGV</Label>
                 <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
                   <span className="font-semibold">
-                    S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </span>
                 </div>
               </div>
@@ -526,7 +527,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Label>Total Ofertado Incluido IGV</Label>
                 <div className="flex items-center h-10 px-3 py-2 border border-input bg-primary/10 rounded-md">
                   <span className="font-bold text-primary">
-                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+
                   </span>
                 </div>
               </div>
@@ -573,7 +575,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
               <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                 <Label className="text-sm font-medium text-orange-600">Total Techo Presupuestal</Label>
                 <p className="text-lg font-bold text-orange-700">
-                  S/ {totals.budget_ceiling_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  S/ {totals.budget_ceiling_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+
                 </p>
               </div>
             )}
@@ -618,7 +621,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <div className="text-center">
                   <p className="text-sm text-slate-600">Total sin IGV</p>
                   <p className="text-lg font-bold text-slate-700">
-                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.commission_base_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center">
@@ -628,7 +631,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <div className="text-center">
                   <p className="text-sm text-slate-600">Comisión a Pagar</p>
                   <p className="text-lg font-bold text-green-600">
-                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+
                   </p>
                 </div>
               </div>
