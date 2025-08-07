@@ -120,6 +120,7 @@ export default function PaymentVoucherDialog({
           sale_id: sale.id,
           file_name: file.name,
           file_url: filePath,
+          file_size: file.size,
           uploaded_by: user?.id,
           status: "pending",
           admin_confirmed: false,
