@@ -1,3 +1,5 @@
+"use client"
+
 import { DialogTrigger } from "@/components/ui/dialog"
 
 import { useState, useEffect } from "react"
