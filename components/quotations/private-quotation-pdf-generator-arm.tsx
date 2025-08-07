@@ -171,9 +171,9 @@ export default function ARMPrivateQuotationPDFGenerator({
         companyName: companyInfo.name || "ARM Corporations",
         companyRuc: companyInfo.ruc || "N/A",
         companyCode: companyInfo.code,
-        companyAddress: companyInfo.address || undefined,
-        companyPhone: companyInfo.phone || undefined,
-        companyEmail: companyInfo.email || undefined,
+        companyAddress: companyInfo.address || "JR. HUANTAR NRO. 3311 URB. CA HUANTAR 5030 N3311 URB PARQUE EL NARANJAL 2DA ETAPA LIMA - LIMA - LOS OLIVOS",
+        companyPhone: companyInfo.phone || "01-748 3677 ANEXO 102 - 940959514",
+        companyEmail: companyInfo.email || "arm-ventas@armcorporations.com - arm1-ventas@armcorporations.com",
         companyLogoUrl: companyInfo.logo_url || undefined,
         companyAccountInfo: "191-38640570-37", // Fallback
 
