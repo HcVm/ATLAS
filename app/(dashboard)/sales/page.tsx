@@ -9,24 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import {
-  Plus,
-  Search,
-  FileText,
-  DollarSign,
-  TrendingUp,
-  Package,
-  Edit,
-  Eye,
-  AlertTriangle,
-  ShoppingCart,
-  Shield,
-  CreditCard,
-  MoreHorizontal,
-  Receipt,
-  Check,
-  Clock,
-} from "lucide-react"
+import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle, ShoppingCart, Shield, CreditCard, MoreHorizontal, Receipt, Check, Clock } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -320,6 +303,26 @@ export default function SalesPage() {
     }
   }
 
+  // Función para obtener la dirección fiscal de una entidad
+  const fetchEntityFiscalAddress = async (entityId: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("sales_entities")
+        .select("fiscal_address")
+        .eq("id", entityId)
+        .single()
+
+      if (error) {
+        console.error("Error fetching entity fiscal address:", error)
+        return null
+      }
+      return data?.fiscal_address || null
+    } catch (error) {
+      console.error("Error in fetchEntityFiscalAddress:", error)
+      return null
+    }
+  }
+
   const handleEditSale = (sale: Sale) => {
     // Verificar si el usuario puede editar esta venta
     if (!canViewAllSales && sale.created_by !== user?.id) {
@@ -442,6 +445,9 @@ export default function SalesPage() {
     try {
       toast.info("Generando carta de garantía...")
 
+      // Obtener la dirección fiscal de la entidad
+      const clientFiscalAddress = await fetchEntityFiscalAddress(sale.entity_id)
+
       // Obtener los productos de la venta
       const { data: saleItems, error: saleItemsError } = await supabase
         .from("sale_items")
@@ -517,7 +523,8 @@ export default function SalesPage() {
         letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
-        clientAddress: sale.final_destination || "Dirección no especificada",
+        clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
+        clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
         products: finalProducts,
         warrantyMonths: 12,
         createdBy: user?.full_name || "Usuario",
@@ -534,6 +541,9 @@ export default function SalesPage() {
     try {
       toast.info("Generando carta de CCI...")
 
+      // Obtener la dirección fiscal de la entidad
+      const clientFiscalAddress = await fetchEntityFiscalAddress(sale.entity_id)
+
       await generateCCILetter({
         companyName: companyToUse?.name || "",
         companyRuc: companyToUse?.ruc || "",
@@ -541,7 +551,8 @@ export default function SalesPage() {
         letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
-        clientAddress: sale.final_destination || "Dirección no especificada",
+        clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
+        clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
         ocam: sale.ocam || "N/A",
         siaf: sale.exp_siaf || "N/A",
         createdBy: user?.full_name || "Usuario",
