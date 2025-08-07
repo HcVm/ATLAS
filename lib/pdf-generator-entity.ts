@@ -28,7 +28,8 @@ export interface EntityQuotationPDFData {
   clientCode: string
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega
+  clientFiscalAddress?: string // Nueva dirección fiscal
   clientDepartment?: string
   clientAttention?: string
   currency: string
@@ -246,6 +247,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
     })
   }
 
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+
   return `
   <div style="padding: 12px 8px; width: 100%; margin: 0 auto; background: white; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 11px; line-height: 1.4; position: relative; color: #1f2937;">
     
@@ -338,8 +341,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
           
           <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
             <div>
-              <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dirección</p>
-              <p style="margin: 0; font-size: 11px; color: #374151; line-height: 1.3;">${data.clientAddress}</p>
+              <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dirección Fiscal</p>
+              <p style="margin: 0; font-size: 11px; color: #374151; line-height: 1.3;">${addressToDisplay}</p>
             </div>
             ${
               data.clientDepartment

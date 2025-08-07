@@ -27,7 +27,8 @@ export interface PrivateQuotationPDFData {
   clientCode: string
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega
+  clientFiscalAddress?: string // Nueva dirección fiscal
   clientDepartment?: string
   clientAttention: string
   currency: string
@@ -158,6 +159,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
       },
       [] as Array<{ name: string; logoUrl: string }>,
     )
+
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
 
   return `
     <!DOCTYPE html>
@@ -758,8 +761,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
             margin-bottom: 3mm;
           }
           
-          .products-table thead {
-            display: table-header-group;
+          .brands-showcase {
+            margin-bottom: 3mm;
           }
         } */
       </style>
@@ -853,8 +856,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                   <div class="value">${data.clientAttention}</div>
                 </div>
                 <div class="client-field">
-                  <label>Dirección:</label>
-                  <div class="value">${data.clientAddress}</div>
+                  <label>Dirección Fiscal:</label>
+                  <div class="value">${addressToDisplay}</div>
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { FileText, Loader2 } from "lucide-react"
+import { FileText, Loader2 } from 'lucide-react'
 import { toast } from "sonner"
 import { generateARMEntityQuotationPDF, type ARMEntityQuotationPDFData } from "@/lib/pdf-generator-entity-arm"
 
@@ -16,6 +16,7 @@ interface ARMEntityQuotationPDFGeneratorProps {
     entity_name: string
     entity_ruc: string
     delivery_location: string
+    fiscal_address?: string | null; // ADDED THIS LINE
     unique_code: string
     product_description: string
     product_brand?: string | null
@@ -71,6 +72,7 @@ export default function ARMEntityQuotationPDFGenerator({
       console.log("Is multi product flag:", quotation.is_multi_product)
       console.log("Quotation items:", quotation.quotation_items)
       console.log("Quotation items count:", quotation.quotation_items?.length || 0)
+      console.log("Fiscal Address from quotation:", quotation.fiscal_address); // Debugging fiscal address
 
       // NUEVA LÓGICA: Siempre usar quotation_items si existen, sin importar is_multi_product
       let products: ARMEntityQuotationPDFData["products"] = []
@@ -179,7 +181,7 @@ export default function ARMEntityQuotationPDFGenerator({
         clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
-        clientAddress: quotation.delivery_location || "No especificado",
+        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado", // Use fiscal_address if available
         clientDepartment: undefined,
         clientAttention: "Logística - Abastecimiento",
         currency: "Soles",
@@ -216,6 +218,7 @@ export default function ARMEntityQuotationPDFGenerator({
         igv: pdfData.igv,
         total: pdfData.total,
         dataSource: quotation.quotation_items?.length ? "quotation_items" : "direct_fields",
+        clientAddressUsed: pdfData.clientAddress, // Debugging which address is used
       })
 
       // Generar el PDF ARM

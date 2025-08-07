@@ -27,7 +27,8 @@ export interface ARMPrivateQuotationPDFData {
   clientCode: string
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega
+  clientFiscalAddress?: string // Nueva dirección fiscal
   clientDepartment?: string
   clientAttention: string
   currency: string
@@ -158,6 +159,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
       },
       [] as Array<{ name: string; logoUrl: string }>,
     )
+
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
 
   return `
     <!DOCTYPE html>
@@ -964,8 +967,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                   <span class="client-value-compact">${data.clientRuc}</span>
                 </div>
                 <div class="client-field-compact">
-                  <span class="client-label-compact">Dirección:</span>
-                  <span class="client-value-compact">${data.clientAddress}</span>
+                  <span class="client-label-compact">Dirección Fiscal:</span>
+                  <span class="client-value-compact">${addressToDisplay}</span>
                 </div>
                 <div class="client-field-compact">
                   <span class="client-label-compact">Atención:</span>

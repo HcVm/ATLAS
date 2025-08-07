@@ -28,7 +28,8 @@ export interface ARMEntityQuotationPDFData {
   clientCode: string
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega
+  clientFiscalAddress?: string // Nueva dirección fiscal
   clientDepartment?: string
   clientAttention?: string
   currency: string
@@ -218,6 +219,8 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
     })
   }
 
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+
   return `
   <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 0; margin: 0;">
 
@@ -250,7 +253,7 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
             <h3 style="margin: 0 0 6px 0px; font-size: 11px; font-weight: 600; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Cliente:</h3>
             <div>
               <h4 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h4>
-              <p style="margin: 0 0 4px 0; font-size: 9px; color: #666; line-height: 1.3;">${data.clientAddress}</p>
+              <p style="margin: 0 0 4px 0; font-size: 9px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
               <p style="margin: 0 0 3px 0; font-size: 9px; color: #666;">RUC: ${data.clientRuc}</p>
               <p style="margin: 0 0 3px 0; font-size: 9px; color: #666;">Código: ${data.clientCode}</p>
               ${data.clientAttention ? `<p style="margin: 0; font-size: 9px; color: #666;">Atención: ${data.clientAttention}</p>` : ""}

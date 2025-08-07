@@ -19,7 +19,8 @@ export interface CCILetterData {
   // Información del cliente
   clientName: string
   clientRuc: string
-  clientAddress: string
+  clientAddress: string // Dirección de entrega (fallback)
+  clientFiscalAddress?: string // Nueva dirección fiscal
 
   // Información adicional
   ocam: string
@@ -344,6 +345,7 @@ const createCCILetterHTML = (
 }
 
 const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
@@ -366,7 +368,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
             <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
             <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
             <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
-            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${data.clientAddress}</p>
+            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
           </div>
           
           <p style="margin: 8mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
@@ -469,6 +471,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
 
 // Plantilla específica para ARM
 const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
@@ -491,7 +494,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
             <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
             <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
             <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
-            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${data.clientAddress}</p>
+            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
           </div>
           
           <p style="margin: 8mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
@@ -594,6 +597,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
 }
 
 const createStandardHTML = (data: CCILetterData, currentDate: string): string => {
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
   return `
     <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 15mm; margin: 0;">
 
@@ -665,7 +669,7 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
             <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #374151;">SEÑORES:</p>
             <h3 style="margin: 0 0 6mm 0; font-size: 14px; font-weight: 800; color: #1a1a1a;">${data.clientName}</h3>
             <p style="margin: 0 0 4mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
-            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.4;">${data.clientAddress}</p>
+            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.4;">${addressToDisplay}</p>
           </div>
         </div>
       </div>
