@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle, ShoppingCart, Shield, CreditCard, MoreHorizontal, Receipt, Check, Clock } from 'lucide-react'
+import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle, ShoppingCart, Shield, CreditCard, MoreHorizontal, Receipt, Check, Clock, Users } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog" // Import the new management dialog
 
 interface Sale {
   id: string
@@ -101,6 +102,15 @@ interface SalesStats {
   pendingDeliveries: number
 }
 
+// Define SalesEntity interface here or import from a shared types file
+interface SalesEntity {
+  id: string
+  name: string
+  ruc: string
+  executing_unit: string | null
+  fiscal_address: string | null
+}
+
 export default function SalesPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -130,6 +140,9 @@ export default function SalesPage() {
   const [editingMultiSale, setEditingMultiSale] = useState<Sale | null>(null)
   const [showVoucherDialog, setShowVoucherDialog] = useState(false)
   const [voucherSale, setVoucherSale] = useState<Sale | null>(null)
+
+  // New state for Sales Entity Management Dialog
+  const [showSalesEntityManagementDialog, setShowSalesEntityManagementDialog] = useState(false)
 
   const hasSalesAccess =
     user?.role === "admin" ||
@@ -525,8 +538,6 @@ export default function SalesPage() {
         clientRuc: sale.entity_ruc,
         clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
         clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
-        products: finalProducts,
-        warrantyMonths: 12,
         createdBy: user?.full_name || "Usuario",
       })
 
@@ -614,13 +625,6 @@ export default function SalesPage() {
           Confirmado
         </Badge>
       )
-    } else if (voucher.admin_confirmed || voucher.accounting_confirmed) {
-      return (
-        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-          <Clock className="h-3 w-3 mr-1" />
-          Parcial
-        </Badge>
-      )
     } else {
       return (
         <Badge variant="outline" className="text-yellow-600 border-yellow-600">
@@ -680,6 +684,13 @@ export default function SalesPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <SalesExportDialog onExport={() => toast.success("Exportación completada")} />
+          <Button
+            className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md"
+            onClick={() => setShowSalesEntityManagementDialog(true)}
+            disabled={!hasSalesAccess} // Changed from !canViewAllSales to !hasSalesAccess
+          >
+            <Users className="h-4 w-4 mr-2" /> Gestionar Clientes
+          </Button>
           <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md">
@@ -871,7 +882,7 @@ export default function SalesPage() {
                           <TableCell className="text-slate-600 dark:text-slate-300">
                             {sale.profiles?.full_name || "N/A"}
                           </TableCell>
-                        )}
+                       )}
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1471,6 +1482,16 @@ export default function SalesPage() {
           open={showVoucherDialog}
           onOpenChange={setShowVoucherDialog}
           onVoucherUploaded={handleVoucherUploaded}
+        />
+      )}
+
+      {/* Sales Entity Management Dialog */}
+      {companyToUse?.id && (
+        <SalesEntityManagementDialog
+          open={showSalesEntityManagementDialog}
+          onOpenChange={setShowSalesEntityManagementDialog}
+          companyId={companyToUse.id}
+          canEdit={hasSalesAccess} // Pass canViewAllSales to control edit button visibility inside the dialog
         />
       )}
     </div>
