@@ -768,7 +768,7 @@ return (
               <div className="text-center p-3 bg-primary/10 rounded-lg">
                 <p className="text-sm text-primary">Total Ofertado</p>
                 <p className="text-xl font-bold text-primary">
-                  S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { maximumFractionDigits: 4 })}
+                  S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="text-center p-3 bg-green-50 rounded-lg">
