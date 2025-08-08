@@ -285,7 +285,7 @@ export function AppSidebar() {
                 <FileText className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sistema Docs</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">ATLAS</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">Cargando...</span>
               </div>
             </div>
@@ -358,8 +358,8 @@ export function AppSidebar() {
               <FileText className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gradient-slate">Sistema Docs Corp</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">v3.0</span>
+              <span className="text-sm font-semibold text-gradient-slate">ATLAS</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">v1</span>
             </div>
           </div>
         </div>

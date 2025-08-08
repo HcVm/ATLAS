@@ -376,7 +376,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
         }
         
         .brand-logo-container-header img {
-          width: 120px;
+          width: 100px;
           height: auto;
           object-fit: contain;
         }
@@ -386,16 +386,6 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           height: auto;
         }
         
-        .brand-name-header {
-          font-size: 10px;
-          font-weight: 700;
-          color: white;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-          background: rgba(0,0,0,0.2);
-          padding: 1mm 2mm;
-          border-radius: 2mm;
-          backdrop-filter: blur(5px);
-        }
         
         .quotation-panel {
           background: white;
@@ -478,19 +468,19 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           background: linear-gradient(135deg, #f8fafc, #dbeafe);
           border: 0.5px solid #e2e8f0;
           border-radius: 3mm;
-          padding: 4mm;
+          padding: 2mm;
           page-break-inside: avoid; /* Keep client info together */
         }
         
         .client-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 4mm;
+          gap: 2mm;
           margin-top: 2mm;
         }
         
         .client-field {
-          margin-bottom: 2mm;
+          margin-bottom: 1mm;
         }
         
         .client-field label {
@@ -786,19 +776,12 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
               <div class="company-details">
                 <h1>${data.companyName}</h1>
                 <p>RUC: ${data.companyRuc}</p>
-                ${data.companyAddress ? `<p>${data.companyAddress}</p>` : ""}
-                ${
-                  data.companyPhone || data.companyEmail
-                    ? `<p>${[data.companyPhone, data.companyEmail].filter(Boolean).join(" • ")}</p>`
-                    : ""
-                }
 
                 <!-- Sección de Marcas dentro del Header - Sin Fondos -->
                 ${
                   uniqueBrands.length > 0
                     ? `
                   <div class="brands-in-header">
-                    <div class="brands-header-title">MARCAS REPRESENTADAS</div>
                     <div class="brands-grid-header">
                       ${uniqueBrands
                         .map(
@@ -806,9 +789,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                         <div class="brand-card-header">
                           <div class="brand-logo-container-header">
                             <img class="img-logo" src="${logoUrl}" alt="${name}" onerror="this.style.display='none'">
-
                           </div>
-                          <div class="brand-name-header">${name}</div>
                         </div>
                       `,
                         )
