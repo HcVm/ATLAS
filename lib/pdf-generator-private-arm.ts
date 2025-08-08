@@ -1056,9 +1056,9 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                             : "—"
                       }
                     </td>
-                    <td class="price-display">S/ ${product.unitPrice.toFixed(2)}</td>
+                    <td class="price-display">S/ ${product.unitPrice.toFixed(4)}</td>
                     <td style="text-align: center;">
-                      <div class="total-display">S/ ${product.totalPrice.toFixed(2)}</div>
+                      <div class="total-display">S/ ${product.totalPrice.toFixed(4)}</div>
                     </td>
                   </tr>
                 `,
@@ -1116,15 +1116,15 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
               <div class="column-title">Resumen Financiero</div>
               <div class="total-line-inline">
                 <span>Subtotal:</span>
-                <span>S/ ${data.subtotal.toFixed(2)}</span>
+                <span>S/ ${data.subtotal.toFixed(4)}</span>
               </div>
               <div class="total-line-inline">
                 <span>IGV (18%):</span>
-                <span>S/ ${data.igv.toFixed(2)}</span>
+                <span>S/ ${data.igv.toFixed(4)}</span>
               </div>
               <div class="total-line-inline final">
                 <span>TOTAL:</span>
-                <span>S/ ${data.total.toFixed(2)}</span>
+                <span>S/ ${data.total.toFixed(4)}</span>
               </div>
             </div>
 

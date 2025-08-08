@@ -236,7 +236,7 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
 const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: string): string => {
   const formatCurrency = (amount: number) => {
-    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
   }
 
   const formatDate = (dateString: string) => {

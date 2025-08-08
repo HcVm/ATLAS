@@ -150,7 +150,7 @@ export const generateQuotationPDF = async (data: QuotationPDFData): Promise<void
 
 const createQuotationHTML = (data: QuotationPDFData): string => {
   const formatCurrency = (amount: number) => {
-    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4 })}`
   }
 
   const formatDate = (dateString: string) => {

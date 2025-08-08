@@ -898,8 +898,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                   </td>
                   <td style="text-align: center; font-weight: 600;">${product.quantity.toLocaleString()}</td>
                   <td style="text-align: center;">${product.unit}</td>
-                  <td style="text-align: right; font-weight: 600;">S/ ${product.unitPrice.toFixed(2)}</td>
-                  <td style="text-align: right; font-weight: 700; color: #1d4ed8;">S/ ${product.totalPrice.toFixed(2)}</td>
+                  <td style="text-align: right; font-weight: 600;">S/ ${product.unitPrice.toFixed(4)}</td>
+                  <td style="text-align: right; font-weight: 700; color: #1d4ed8;">S/ ${product.totalPrice.toFixed(4)}</td>
                 </tr>
               `,
                 )
@@ -956,15 +956,15 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                 
                 <div class="totals-row subtotal">
                   <span>Subtotal:</span>
-                  <span>S/ ${data.subtotal.toFixed(2)}</span>
+                  <span>S/ ${data.subtotal.toFixed(4)}</span>
                 </div>
                 <div class="totals-row igv">
                   <span>IGV (18%):</span>
-                  <span>S/ ${data.igv.toFixed(2)}</span>
+                  <span>S/ ${data.igv.toFixed(4)}</span>
                 </div>
                 <div class="totals-row total">
                   <span>TOTAL:</span>
-                  <span>S/ ${data.total.toFixed(2)}</span>
+                  <span>S/ ${data.total.toFixed(4)}</span>
                 </div>
               </div>
             </div>
