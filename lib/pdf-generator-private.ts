@@ -390,7 +390,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
         .quotation-panel {
           background: white;
           color: #1e293b;
-          padding: 5mm;
+          padding: 3mm;
           border-radius: 3mm;
           box-shadow: 0 2mm 5mm rgba(0,0,0,0.2);
           min-width: 45mm;
@@ -399,23 +399,23 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
         }
         
         .quotation-panel h2 {
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 700;
           color: #1d4ed8;
           margin-bottom: 1mm;
         }
         
         .quotation-panel .subtitle {
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 600;
           color: #6366f1;
-          margin-bottom: 3mm;
+          margin-bottom: 2mm;
           padding-bottom: 2mm;
           border-bottom: 1px solid #e2e8f0;
         }
         
         .quotation-number {
-          font-size: 12px;
+          font-size: 10px;
           font-weight: 700;
           margin-bottom: 1mm;
         }
@@ -423,7 +423,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
         .quotation-date {
           color: #64748b;
           margin-bottom: 2mm;
-          font-size: 10px;
+          font-size: 9px;
         }
         
         .status-badge {
@@ -432,7 +432,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           background: #dbeafe;
           color: #1d4ed8;
           border-radius: 2mm;
-          font-size: 9px;
+          font-size: 8px;
           font-weight: 600;
         }
         
