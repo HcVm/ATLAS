@@ -368,7 +368,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         <!-- Contenido principal -->
         <div style="margin-bottom: 8mm; line-height: 1.5; text-align: justify;">
           <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">
-            Por medio de la presente, la empresa <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> les garantiza que las siguientes herramientas:
+            Por medio de la presente, la empresa <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> les garantiza que los siguientes bienes:
           </p>
 
           <!-- Lista de productos usando MODELO con fallback a descripción -->
