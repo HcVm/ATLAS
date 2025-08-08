@@ -203,10 +203,10 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
         .header {
           background: linear-gradient(135deg, #f8fafc, #dbeafe);
           color: black;
-          padding: 8mm;
+          padding: 6mm;
           border-radius: 4mm;
           border: 3px solid #1d4ed8;
-          margin-bottom: 5mm;
+          margin-bottom: 2mm;
           position: relative;
           overflow: hidden;
           page-break-inside: avoid; /* Keep header together */
