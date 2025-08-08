@@ -907,7 +907,7 @@ export default function SalesPage() {
                           {(sale.total_quantity || 0).toLocaleString()}
                         </TableCell>
                         <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>{renderStatusBadge(sale.sale_status)}</TableCell>
                         <TableCell>{renderVoucherStatus(sale.payment_vouchers || [])}</TableCell>
@@ -1001,7 +1001,7 @@ export default function SalesPage() {
                           {format(new Date(sale.sale_date), "dd MMM yy", { locale: es })}
                         </span>
                         <span className="font-bold text-base text-foreground">
-                          S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 w-full mb-2">
@@ -1265,7 +1265,7 @@ export default function SalesPage() {
                                   S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                 </TableCell>
                                 <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                                  S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                                 </TableCell>
                               </TableRow>
                             ))}
