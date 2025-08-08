@@ -1058,7 +1058,7 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                     </td>
                     <td class="price-display">S/ ${product.unitPrice.toFixed(4)}</td>
                     <td style="text-align: center;">
-                      <div class="total-display">S/ ${product.totalPrice.toFixed(4)}</div>
+                      <div class="total-display">S/ ${product.totalPrice.toFixed(2)}</div>
                     </td>
                   </tr>
                 `,

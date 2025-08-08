@@ -956,11 +956,11 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                 
                 <div class="totals-row subtotal">
                   <span>Subtotal:</span>
-                  <span>S/ ${data.subtotal.toFixed(4)}</span>
+                  <span>S/ ${data.subtotal.toFixed(2)}</span>
                 </div>
                 <div class="totals-row igv">
                   <span>IGV (18%):</span>
-                  <span>S/ ${data.igv.toFixed(4)}</span>
+                  <span>S/ ${data.igv.toFixed(2)}</span>
                 </div>
                 <div class="totals-row total">
                   <span>TOTAL:</span>

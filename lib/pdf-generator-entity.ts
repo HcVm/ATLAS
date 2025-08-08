@@ -236,7 +236,11 @@ export const generateEntityQuotationPDF = async (data: EntityQuotationPDFData): 
 
 const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: string): string => {
   const formatCurrency = (amount: number) => {
-    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+  }
+
+  const formatCurrencyUnit = (amount: number) => {
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4 })}`
   }
 
   const formatDate = (dateString: string) => {
@@ -403,7 +407,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                 <td style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 500;">${product.unit}</td>
                 <td style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 500;">${product.brand || "—"}</td>
                 <td style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 500; font-family: monospace; font-size: 10px;">${product.code || "—"}</td>
-                <td style="padding: 8px 6px; text-align: right; color: #059669; font-weight: 700;">${formatCurrency(product.unitPrice)}</td>
+                <td style="padding: 8px 6px; text-align: right; color: #059669; font-weight: 700;">${formatCurrencyUnit(product.unitPrice)}</td>
                 <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 800; font-size: 9px;">${formatCurrency(product.totalPrice)}</td>
               </tr>
             `,

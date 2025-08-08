@@ -208,7 +208,11 @@ export const generateARMEntityQuotationPDF = async (data: ARMEntityQuotationPDFD
 
 const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDataUrl: string): string => {
   const formatCurrency = (amount: number) => {
-    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
+  }
+
+  const formatCurrencyUnit = (amount: number) => {
+    return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 4 })}`
   }
 
   const formatDate = (dateString: string) => {
@@ -362,7 +366,7 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
                   ${product.brand ? `<span style="font-size: 10px; color: #666; background: #f8f9fa; padding: 2px 5px; border-radius: 3px;">${product.brand}</span>` : ""}
                 </div>
                 ${product.code ? `<div style="font-size: 9px; color: #999; font-family: monospace; margin-bottom: 3px;">${product.code}</div>` : ""}
-                <div style="font-size: 10px; color: #666; margin-top: 3px;">P. Unit: ${formatCurrency(product.unitPrice)}</div>
+                <div style="font-size: 10px; color: #666; margin-top: 3px;">P. Unit: ${formatCurrencyUnit(product.unitPrice)}</div>
               </td>
               <td style="padding: 15px 0; text-align: right; vertical-align: top;">
                 <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;">${formatCurrency(product.totalPrice)}</div>
