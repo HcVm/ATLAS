@@ -794,7 +794,7 @@ return (
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-slate-800">
-            S/ {stats.totalQuotedAmount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            S/ {stats.totalQuotedAmount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-slate-500">
             {canViewAllQuotations ? "Valor total cotizado" : "Valor de tus cotizaciones"}
@@ -811,7 +811,7 @@ return (
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-slate-800">
-            S/ {stats.averageQuotation.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            S/ {stats.averageQuotation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-slate-500">Promedio por cotización</p>
         </CardContent>
@@ -910,6 +910,7 @@ return (
                       <TableCell className="text-slate-600">{displayData.quantity}</TableCell>
                       <TableCell className="font-medium text-slate-700">
                         S/ {displayData.totalAmount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+
                       </TableCell>
                       <TableCell>{getStatusBadge(quotation.status)}</TableCell>
                       <TableCell>
@@ -1548,7 +1549,7 @@ return (
                             <p className="text-sm font-medium text-slate-800">
                               S/{" "}
                               {selectedQuotation.commission_base_amount.toLocaleString("es-PE", {
-                                minimumFractionDigits: 2, maximumFractionDigits: 4
+                                minimumFractionDigits: 2,
                               })}
                             </p>
                           </div>
@@ -1561,7 +1562,7 @@ return (
                               <p className="text-lg font-bold text-green-700">
                                 S/{" "}
                                 {selectedQuotation.commission_amount.toLocaleString("es-PE", {
-                                  minimumFractionDigits: 2, maximumFractionDigits: 4
+                                  minimumFractionDigits: 2,
                                 })}
                               </p>
                             </div>

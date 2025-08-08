@@ -579,7 +579,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <Label>Precio Plataforma</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   value={currentItem.platform_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -593,7 +593,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <Label>Precio Proveedor</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   value={currentItem.supplier_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -611,7 +611,8 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 </Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   value={currentItem.offer_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -626,7 +627,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <Label>Techo Presupuestal</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   value={currentItem.budget_ceiling_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -698,7 +699,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                         {/* Editable offer price input */}
                         <Input
                           type="number"
-                          step="0.01"
+                          step="0.0001"
                           min="0"
                           value={item.offer_unit_price_with_tax || ""}
                           onChange={(e) => {
@@ -717,7 +718,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                       <TableCell className="font-medium">
                         S/{" "}
                         {(item.offer_total_with_tax || item.platform_total).toLocaleString("es-PE", {
-                          minimumFractionDigits: 2,
+                          minimumFractionDigits: 2, maximumFractionDigits: 4
                         })}
                       </TableCell>
                       <TableCell>
@@ -767,7 +768,7 @@ export default function MultiProductQuotationEditForm({ quotation, onSuccess }: 
                 <div className="text-center p-3 bg-primary/10 rounded-lg">
                   <p className="text-sm text-primary">Total Ofertado</p>
                   <p className="text-xl font-bold text-primary">
-                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                    S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { maximumFractionDigits: 4 })}
                   </p>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg">

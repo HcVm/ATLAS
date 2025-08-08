@@ -533,7 +533,8 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                 <Label>Precio Plataforma</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   value={currentItem.platform_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -547,7 +548,8 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                 <Label>Precio Proveedor</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   value={currentItem.supplier_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -562,7 +564,7 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                 <Label>Precio Oferta</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   value={currentItem.offer_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({
@@ -577,7 +579,8 @@ export default function MultiProductQuotationForm({ onSuccess }: MultiProductQuo
                 <Label>Techo Presupuestal</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   value={currentItem.budget_ceiling_unit_price_with_tax || ""}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({

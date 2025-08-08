@@ -438,7 +438,7 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Input
                   id="platform_unit_price"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   min="0"
                   value={productData.platform_unit_price_with_tax}
                   onChange={(e) =>
@@ -482,7 +482,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Input
                   id="supplier_unit_price"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   min="0"
                   value={productData.supplier_unit_price_with_tax}
                   onChange={(e) =>
@@ -516,7 +517,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Input
                   id="offer_unit_price"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   min="0"
                   value={productData.offer_unit_price_with_tax}
                   onChange={(e) => setProductData((prev) => ({ ...prev, offer_unit_price_with_tax: e.target.value }))}
@@ -549,7 +551,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Input
                   id="final_unit_price"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   min="0"
                   value={productData.final_unit_price_with_tax}
                   onChange={(e) => setProductData((prev) => ({ ...prev, final_unit_price_with_tax: e.target.value }))}
@@ -561,7 +564,8 @@ export default function QuotationForm({ onSuccess }: QuotationFormProps) {
                 <Input
                   id="budget_ceiling_unit_price"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
+
                   min="0"
                   value={productData.budget_ceiling_unit_price_with_tax}
                   onChange={(e) =>
