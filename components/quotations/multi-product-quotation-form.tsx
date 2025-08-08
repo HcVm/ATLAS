@@ -656,7 +656,7 @@ return (
                     <TableCell className="font-medium">
                       S/{" "}
                       {(item.offer_total_with_tax || item.platform_total).toLocaleString("es-PE", {
-                        minimumFractionDigits: 2, maximumFractionDigits: 4
+                        minimumFractionDigits: 2
                       })}
                     </TableCell>
                     <TableCell>
@@ -694,13 +694,13 @@ return (
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm text-slate-600">Total Plataforma</p>
                 <p className="text-xl font-bold">
-                  S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                  S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2})}
                 </p>
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm text-slate-600">Total Proveedor</p>
                 <p className="text-xl font-bold">
-                  S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                  S/ {totals.supplier_total.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="text-center p-3 bg-primary/10 rounded-lg">
@@ -712,7 +712,7 @@ return (
               <div className="text-center p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-600">Comisión</p>
                 <p className="text-xl font-bold text-green-600">
-                  S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                  S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
