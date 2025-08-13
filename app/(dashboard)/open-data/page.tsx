@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, FileText, Download, Eye, Calendar, AlertTriangle } from "lucide-react"
+import { Database, FileText, Download, Eye, Calendar, AlertTriangle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
@@ -263,6 +263,56 @@ export default async function OpenDataPage() {
         <Suspense fallback={<div>Cargando alertas...</div>}>
           <BrandAlertsPreview />
         </Suspense>
+      </div>
+
+      <div className="mt-8">
+        <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200 dark:border-purple-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center text-white text-xl">
+                  📊
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Rankings de Mercado</CardTitle>
+                  <CardDescription>
+                    Analiza tendencias y productos más vendidos por acuerdo marco, categoría y proveedor
+                  </CardDescription>
+                </div>
+              </div>
+              <Button asChild>
+                <Link href="/open-data/rankings">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Ver Rankings
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏆</div>
+                <div className="text-sm font-medium">Productos Top</div>
+                <div className="text-xs text-slate-500">Por monto total</div>
+              </div>
+              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏢</div>
+                <div className="text-sm font-medium">Proveedores</div>
+                <div className="text-xs text-slate-500">Más exitosos</div>
+              </div>
+              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏛️</div>
+                <div className="text-sm font-medium">Entidades</div>
+                <div className="text-xs text-slate-500">Mayor volumen</div>
+              </div>
+              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">📈</div>
+                <div className="text-sm font-medium">Tendencias</div>
+                <div className="text-xs text-slate-500">Por categoría</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mt-8">
