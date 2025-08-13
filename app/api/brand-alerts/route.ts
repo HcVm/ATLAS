@@ -18,33 +18,71 @@ interface OpenDataEntry {
   id: number
   orden_electronica?: string
   codigo_acuerdo_marco?: string
+  acuerdo_marco?: string
   marca_ficha_producto?: string // Only this column will be used for brand detection
 }
 
 // Define las marcas base y sus patrones de búsqueda
 const BASE_MONITORED_BRANDS = ["WORLDLIFE", "HOPE LIFE", "ZEUS", "VALHALLA"]
 
-// Crea un mapa de patrones de búsqueda a sus nombres de marca base
+// Crea un mapa de patrones de búsqueda más completo
 const ALL_BRAND_SEARCH_PATTERNS = new Map<string, string>()
+
+// Para cada marca base, agregar múltiples patrones de búsqueda
 BASE_MONITORED_BRANDS.forEach((brand) => {
-  ALL_BRAND_SEARCH_PATTERNS.set(brand, brand) // Ej: "ZEUS" -> "ZEUS"
-  ALL_BRAND_SEARCH_PATTERNS.set(`MARCA: ${brand}`, brand) // Ej: "MARCA: ZEUS" -> "ZEUS"
-  ALL_BRAND_SEARCH_PATTERNS.set(`MARCA:${brand}`, brand) // Ej: "MARCA:ZEUS" -> "ZEUS"
+  // Patrón exacto
+  ALL_BRAND_SEARCH_PATTERNS.set(brand, brand)
+
+  // Patrón con "MARCA: "
+  ALL_BRAND_SEARCH_PATTERNS.set(`MARCA: ${brand}`, brand)
+
+  // Patrón con "MARCA:" (sin espacio)
+  ALL_BRAND_SEARCH_PATTERNS.set(`MARCA:${brand}`, brand)
+
+  // Patrón con "MARCA " (sin dos puntos)
+  ALL_BRAND_SEARCH_PATTERNS.set(`MARCA ${brand}`, brand)
+
+  // Patrón con minúsculas
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca: ${brand.toLowerCase()}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca:${brand.toLowerCase()}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca ${brand.toLowerCase()}`, brand)
+
+  // Patrón con primera letra mayúscula
+  const titleCase = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase()
+  ALL_BRAND_SEARCH_PATTERNS.set(`Marca: ${titleCase}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`Marca:${titleCase}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`Marca ${titleCase}`, brand)
+
+  // Patrones adicionales para casos específicos
+  if (brand === "HOPE LIFE") {
+    ALL_BRAND_SEARCH_PATTERNS.set("HOPELIFE", brand)
+    ALL_BRAND_SEARCH_PATTERNS.set("MARCA: HOPELIFE", brand)
+    ALL_BRAND_SEARCH_PATTERNS.set("MARCA:HOPELIFE", brand)
+    ALL_BRAND_SEARCH_PATTERNS.set("Hope Life", brand)
+    ALL_BRAND_SEARCH_PATTERNS.set("HopeLife", brand)
+  }
 })
 
-ALL_BRAND_SEARCH_PATTERNS.set("HOPE LIFE", "MARCA: HOPE LIFE")
-ALL_BRAND_SEARCH_PATTERNS.set("WORLDLIFE", "MARCA: WORLDLIFE")
-ALL_BRAND_SEARCH_PATTERNS.set("ZEUS", "MARCA: ZEUS")
-ALL_BRAND_SEARCH_PATTERNS.set("VALHALLA", "MARCA: VALHALLA")
+console.log("Brand search patterns configured:", Array.from(ALL_BRAND_SEARCH_PATTERNS.keys()))
+
 /**
- * Ensures the brand_alerts table is populated from open_data_entries if it's empty.
- * It also deduplicates entries based on orden_electronica and brand_name.
+ * Ensures the brand_alerts table exists with correct constraints and is populated from open_data_entries.
  */
 async function ensureBrandAlertsPopulated(supabase: any) {
   console.log("ensureBrandAlertsPopulated: Starting population process...")
 
   try {
-    // 1. Fetch existing alerts for deduplication
+    // 1. First, ensure the table has the correct constraint
+    console.log("ensureBrandAlertsPopulated: Checking and fixing table constraints...")
+
+    // Drop the incorrect constraint if it exists and create the correct one
+    try {
+      await supabase.rpc("fix_brand_alerts_constraint")
+    } catch (constraintError) {
+      console.log("ensureBrandAlertsPopulated: Constraint fix not available, continuing...")
+    }
+
+    // 2. Fetch existing alerts for deduplication
     console.log("ensureBrandAlertsPopulated: Fetching existing alerts for deduplication...")
     const { data: existingAlerts, error: existingError } = await supabase
       .from("brand_alerts")
@@ -65,12 +103,15 @@ async function ensureBrandAlertsPopulated(supabase: any) {
     let hasMore = true
     let totalOpenDataEntriesProcessed = 0
 
-    // 2. Fetch relevant open_data_entries in batches for brand detection
+    // 3. Fetch relevant open_data_entries in batches for brand detection
     while (hasMore) {
       console.log(`ensureBrandAlertsPopulated: Fetching open_data_entries batch from offset ${offset}...`)
+
+      // Buscar en TODOS los acuerdos marco, no solo uno específico
       const { data: openDataEntriesBatch, error: openDataError } = await supabase
         .from("open_data_entries")
-        .select("id, orden_electronica, codigo_acuerdo_marco, marca_ficha_producto")
+        .select("id, orden_electronica, codigo_acuerdo_marco, acuerdo_marco, marca_ficha_producto")
+        .not("marca_ficha_producto", "is", null) // Solo registros que tengan marca_ficha_producto
         .range(offset, offset + BATCH_SIZE - 1) // Fetch BATCH_SIZE records
 
       if (openDataError) {
@@ -93,13 +134,19 @@ async function ensureBrandAlertsPopulated(supabase: any) {
 
       // Process the current batch
       for (const entry of openDataEntriesTyped) {
-        const searchText = (entry.marca_ficha_producto || "").toUpperCase()
+        const searchText = (entry.marca_ficha_producto || "").toUpperCase().trim()
+
+        if (!searchText) continue // Skip empty marca_ficha_producto
 
         let detectedBrand = ""
+        let matchedPattern = ""
+
         // Itera sobre los patrones de búsqueda definidos
         for (const [pattern, baseBrand] of ALL_BRAND_SEARCH_PATTERNS.entries()) {
-          if (searchText.includes(pattern)) {
+          const upperPattern = pattern.toUpperCase()
+          if (searchText.includes(upperPattern)) {
             detectedBrand = baseBrand // Asigna el nombre de marca base
+            matchedPattern = pattern
             break // Found a brand, no need to check others for this entry
           }
         }
@@ -109,42 +156,75 @@ async function ensureBrandAlertsPopulated(supabase: any) {
           const uniqueKey = `${ordenElectronica}-${detectedBrand}`
 
           if (!existingAlertsSet.has(uniqueKey)) {
+            // Usar acuerdo_marco completo si está disponible, sino usar codigo_acuerdo_marco
+            const acuerdoMarco = entry.acuerdo_marco || entry.codigo_acuerdo_marco || "Unknown"
+
             alertsToInsert.push({
               orden_electronica: ordenElectronica,
-              acuerdo_marco: entry.codigo_acuerdo_marco || "Unknown",
+              acuerdo_marco: acuerdoMarco,
               brand_name: detectedBrand, // Usa el nombre de marca base
               status: "pending", // New alerts are always pending
-              notes: `Detectado automáticamente en marca_ficha_producto: "${entry.marca_ficha_producto || "N/A"}" usando patrón: "${searchText}"`,
+              notes: `Detectado automáticamente en marca_ficha_producto: "${entry.marca_ficha_producto || "N/A"}" usando patrón: "${matchedPattern}"`,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
             existingAlertsSet.add(uniqueKey) // Add to set to prevent duplicates within the same batch
             console.log(
-              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (processed as "${searchText}") for OE: ${ordenElectronica}. New alert added.`,
+              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}`,
             )
           }
         }
       }
     }
+
     console.log(
       `ensureBrandAlertsPopulated: Finished processing all open_data_entries. Total entries processed: ${totalOpenDataEntriesProcessed}`,
     )
     console.log(`ensureBrandAlertsPopulated: Prepared ${alertsToInsert.length} new alerts for insertion.`)
 
-    // 3. Insert/Upsert new alerts into brand_alerts table
+    // 4. Insert new alerts into brand_alerts table using individual inserts to handle conflicts
     if (alertsToInsert.length > 0) {
-      console.log("ensureBrandAlertsPopulated: Attempting to upsert alerts...")
-      const { error: insertError } = await supabase
-        .from("brand_alerts")
-        .upsert(alertsToInsert, { onConflict: "orden_electronica,brand_name" }) // Use onConflict for upsert
+      console.log("ensureBrandAlertsPopulated: Attempting to insert alerts individually...")
 
-      if (insertError) {
-        console.error("ensureBrandAlertsPopulated: Error upserting brand alerts:", insertError)
-      } else {
-        console.log("ensureBrandAlertsPopulated: Successfully upserted brand_alerts table.")
+      let insertedCount = 0
+      let skippedCount = 0
+
+      for (const alert of alertsToInsert) {
+        try {
+          const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
+
+          if (insertError) {
+            if (insertError.code === "23505") {
+              // Duplicate key error - skip this one
+              skippedCount++
+              console.log(
+                `ensureBrandAlertsPopulated: Skipped duplicate alert for OE: ${alert.orden_electronica}, Brand: ${alert.brand_name}`,
+              )
+            } else {
+              console.error(
+                `ensureBrandAlertsPopulated: Error inserting alert for OE: ${alert.orden_electronica}:`,
+                insertError,
+              )
+            }
+          } else {
+            insertedCount++
+            if (insertedCount % 10 === 0) {
+              console.log(`ensureBrandAlertsPopulated: Inserted ${insertedCount} alerts so far...`)
+            }
+          }
+        } catch (error) {
+          console.error(
+            `ensureBrandAlertsPopulated: Unexpected error inserting alert for OE: ${alert.orden_electronica}:`,
+            error,
+          )
+        }
       }
+
+      console.log(
+        `ensureBrandAlertsPopulated: Insertion complete. Inserted: ${insertedCount}, Skipped: ${skippedCount}`,
+      )
     } else {
-      console.log("ensureBrandAlertsPopulated: No new brand alerts to upsert.")
+      console.log("ensureBrandAlertsPopulated: No new brand alerts to insert.")
     }
   } catch (error) {
     console.error("ensureBrandAlertsPopulated: Unhandled error during population:", error)

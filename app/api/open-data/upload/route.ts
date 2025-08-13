@@ -298,6 +298,35 @@ function divideDataIntoChunks(dataRows: any[][], maxRowsPerChunk: number): any[]
   return chunks
 }
 
+// Función mejorada para detectar marcas objetivo
+function detectTargetBrands(marcaText: string): string[] {
+  if (!marcaText) return []
+
+  const detectedBrands: string[] = []
+  const upperText = marcaText.toUpperCase().trim()
+
+  // Patrones de búsqueda más específicos para cada marca
+  const brandPatterns = {
+    WORLDLIFE: ["WORLDLIFE", "MARCA: WORLDLIFE", "MARCA:WORLDLIFE", "MARCA WORLDLIFE"],
+    "HOPE LIFE": ["HOPE LIFE", "MARCA: HOPE LIFE", "MARCA:HOPE LIFE", "MARCA HOPE LIFE", "HOPELIFE", "MARCA: HOPELIFE"],
+    ZEUS: ["ZEUS", "MARCA: ZEUS", "MARCA:ZEUS", "MARCA ZEUS"],
+    VALHALLA: ["VALHALLA", "MARCA: VALHALLA", "MARCA:VALHALLA", "MARCA VALHALLA"],
+  }
+
+  for (const [brand, patterns] of Object.entries(brandPatterns)) {
+    for (const pattern of patterns) {
+      if (upperText.includes(pattern)) {
+        if (!detectedBrands.includes(brand)) {
+          detectedBrands.push(brand)
+        }
+        break // Found this brand, move to next brand
+      }
+    }
+  }
+
+  return detectedBrands
+}
+
 // Función para procesar un chunk de datos
 async function processDataChunk(
   dataRows: any[][],
@@ -374,14 +403,21 @@ async function processDataChunk(
 
     processedData.push(mappedRow)
 
-    // Procesar alertas de marca
-    const brandName = mappedRow.marca_ficha_producto?.toUpperCase()
-    if (brandName && TARGET_BRANDS.includes(brandName) && mappedRow.orden_electronica && mappedRow.acuerdo_marco) {
-      brandAlerts.push({
-        orden_electronica: mappedRow.orden_electronica,
-        acuerdo_marco: mappedRow.acuerdo_marco,
-        brand_name: brandName,
-      })
+    // Procesar alertas de marca con detección mejorada
+    if (mappedRow.marca_ficha_producto && mappedRow.orden_electronica && mappedRow.acuerdo_marco) {
+      const detectedBrands = detectTargetBrands(mappedRow.marca_ficha_producto)
+
+      for (const brandName of detectedBrands) {
+        brandAlerts.push({
+          orden_electronica: mappedRow.orden_electronica,
+          acuerdo_marco: mappedRow.acuerdo_marco,
+          brand_name: brandName,
+          status: "pending",
+          notes: `Detectado automáticamente en marca_ficha_producto: "${mappedRow.marca_ficha_producto}"`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+      }
     }
   }
 
@@ -421,20 +457,51 @@ async function insertDataChunk(
     }
   }
 
-  // Insertar alertas de marca
+  // Insertar solo alertas nuevas para evitar duplicados y preservar el historial
   if (brandAlerts.length > 0) {
-    for (let i = 0; i < brandAlerts.length; i += BATCH_SIZE) {
-      const batch = brandAlerts.slice(i, i + BATCH_SIZE)
+    console.log(`Verificando ${brandAlerts.length} alertas de marca potenciales...`)
 
-      const { error } = await supabase
-        .from("brand_alerts")
-        .upsert(batch, { onConflict: "orden_electronica,acuerdo_marco" })
+    for (const alert of brandAlerts) {
+      try {
+        // Verificar si ya existe esta combinación orden_electronica + brand_name
+        const { data: existingAlert, error: checkError } = await supabase
+          .from("brand_alerts")
+          .select("id")
+          .eq("orden_electronica", alert.orden_electronica)
+          .eq("brand_name", alert.brand_name)
+          .single()
 
-      if (error) {
-        console.error("Error insertando alertas:", error.message)
-        errors.push(`Error en alertas: ${error.message}`)
-      } else {
-        brandAlertsCount += batch.length
+        if (checkError && checkError.code !== "PGRST116") {
+          // Error diferente a "no encontrado"
+          console.error("Error verificando alerta existente:", checkError.message)
+          errors.push(`Error verificando alerta: ${checkError.message}`)
+          continue
+        }
+
+        if (existingAlert) {
+          // Ya existe esta alerta, no insertar para preservar el historial
+          console.log(`Alerta existente preservada: ${alert.orden_electronica} - ${alert.brand_name}`)
+          continue
+        }
+
+        // No existe, insertar nueva alerta
+        const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
+
+        if (insertError) {
+          if (insertError.code === "23505") {
+            // Duplicate key error (por si acaso)
+            console.log(`Alerta duplicada omitida: ${alert.orden_electronica} - ${alert.brand_name}`)
+          } else {
+            console.error("Error insertando nueva alerta:", insertError.message)
+            errors.push(`Error en nueva alerta: ${insertError.message}`)
+          }
+        } else {
+          brandAlertsCount++
+          console.log(`Nueva alerta creada: ${alert.orden_electronica} - ${alert.brand_name}`)
+        }
+      } catch (insertError) {
+        console.error("Error inesperado procesando alerta:", insertError)
+        errors.push(`Error inesperado en alerta: ${insertError}`)
       }
     }
   }
@@ -585,7 +652,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Procesar chunks secuencialmente
+    // 2. Las alertas existentes NO se eliminan para mantener el historial de seguimiento
+    console.log(`Manteniendo alertas existentes para preservar el historial de seguimiento`)
+
+    // 3. Procesar chunks secuencialmente
     let totalInserted = 0
     let totalBrandAlerts = 0
     let totalFiltered = 0
