@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,7 +19,7 @@ async function getBrandAlertsPreview() {
   try {
     console.log("Fetching brand alerts preview from API...")
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
-      cache: "no-store", // Ensure fresh data
+      next: { revalidate: 6400 }, // Ensure fresh data
     })
     const result = await response.json()
 
