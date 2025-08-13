@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download, Building, Package, DollarSign } from 'lucide-react'
+import { ArrowLeft, Download, Building, Package, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { OpenDataTable } from "@/components/open-data/open-data-table"
@@ -34,10 +34,10 @@ const ACUERDOS_MARCO = {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     acuerdo: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     page?: string
     search?: string
     entidad?: string
@@ -45,7 +45,7 @@ interface PageProps {
     fecha_desde?: string
     fecha_hasta?: string
     download?: string
-  }
+  }>
 }
 
 async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any) {
@@ -56,12 +56,12 @@ async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any)
     console.log("Search params:", searchParams)
 
     // Obtener el ID del acuerdo marco a partir del nombre completo
-    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO];
+    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO]
     if (!acuerdoInfo) {
-      console.error("Acuerdo marco no encontrado en la definición:", acuerdoMarcoFullString);
-      return { data: [], count: 0, error: "Acuerdo marco no válido", currentPage: 1, totalPages: 0 };
+      console.error("Acuerdo marco no encontrado en la definición:", acuerdoMarcoFullString)
+      return { data: [], count: 0, error: "Acuerdo marco no válido", currentPage: 1, totalPages: 0 }
     }
-    const codigoAcuerdoMarco = acuerdoInfo.id; // Usar el ID (código corto) para la consulta
+    const codigoAcuerdoMarco = acuerdoInfo.id // Usar el ID (código corto) para la consulta
 
     // Construir la consulta base - ORDENAR POR FECHA DE ACEPTACIÓN
     let query = supabase
@@ -129,12 +129,12 @@ async function getAcuerdoStats(acuerdoMarcoFullString: string) {
   const supabase = createServerClient()
 
   try {
-    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO];
+    const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarcoFullString as keyof typeof ACUERDOS_MARCO]
     if (!acuerdoInfo) {
-      console.error("Acuerdo marco no encontrado en la definición para stats:", acuerdoMarcoFullString);
-      return { totalMonto: 0, totalEntidades: 0, totalProveedores: 0 };
+      console.error("Acuerdo marco no encontrado en la definición para stats:", acuerdoMarcoFullString)
+      return { totalMonto: 0, totalEntidades: 0, totalProveedores: 0 }
     }
-    const codigoAcuerdoMarco = acuerdoInfo.id; // Usar el ID (código corto) para la consulta de stats
+    const codigoAcuerdoMarco = acuerdoInfo.id // Usar el ID (código corto) para la consulta de stats
 
     const { data, error } = await supabase
       .from("open_data_entries")
@@ -210,10 +210,14 @@ function StatsCards({ stats }: { stats: any }) {
 }
 
 export default async function AcuerdoMarcoPage({ params, searchParams }: PageProps) {
-  const acuerdoMarco = decodeURIComponent(params.acuerdo)
+  // Await both params and searchParams
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
 
-  console.log("Page params:", params)
-  console.log("Search params:", searchParams)
+  const acuerdoMarco = decodeURIComponent(resolvedParams.acuerdo)
+
+  console.log("Page params:", resolvedParams)
+  console.log("Search params:", resolvedSearchParams)
   console.log("Decoded acuerdo marco:", acuerdoMarco)
 
   // Verificar si el acuerdo marco es válido
@@ -226,12 +230,15 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
   const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarco as keyof typeof ACUERDOS_MARCO]
 
   // Si es una solicitud de descarga, manejar la descarga
-  if (searchParams.download === "true") {
+  if (resolvedSearchParams.download === "true") {
     // Aquí implementarías la lógica de descarga
     // Por ahora, redirigimos de vuelta sin el parámetro download
   }
 
-  const [result, stats] = await Promise.all([getAcuerdoData(acuerdoMarco, searchParams), getAcuerdoStats(acuerdoMarco)])
+  const [result, stats] = await Promise.all([
+    getAcuerdoData(acuerdoMarco, resolvedSearchParams),
+    getAcuerdoStats(acuerdoMarco),
+  ])
 
   const { data, count, error, currentPage, totalPages } = result
 
@@ -311,7 +318,7 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OpenDataFilters searchParams={searchParams} />
+          <OpenDataFilters searchParams={resolvedSearchParams} />
           <OpenDataTable data={data} currentPage={currentPage || 1} totalPages={totalPages || 1} totalRecords={count} />
         </CardContent>
       </Card>

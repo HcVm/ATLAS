@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
-import { createServiceClient } from "@/lib/supabase-server" // Vuelve a tu import original
-import type { Database } from "@/lib/database.types" // Asegúrate de que este import esté presente
+import { createServiceClient } from "@/lib/supabase-server"
+import type { Database } from "@/lib/database.types"
+
+// Límite de tamaño de archivo (50MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+// Límite de filas por chunk para procesamiento
+const MAX_ROWS_PER_CHUNK = 5000
 
 // Mapeo flexible de columnas del Excel a campos de la base de datos
 const COLUMN_MAPPING = {
@@ -281,12 +286,164 @@ function validateRow(row: any, rowIndex: number): string[] {
   return errors
 }
 
-export async function POST(request: NextRequest) {
-  // Usando tu createServiceClient original
-  const supabase = createServiceClient()
+// Función para dividir datos en chunks basado en filas
+function divideDataIntoChunks(dataRows: any[][], maxRowsPerChunk: number): any[][][] {
+  const chunks: any[][][] = []
 
-  // No se intenta obtener el user.id aquí, ya que no se usaba en tu implementación original
-  // Si necesitas el user_id, tendríamos que ajustar cómo se obtiene la sesión en este contexto.
+  for (let i = 0; i < dataRows.length; i += maxRowsPerChunk) {
+    const chunk = dataRows.slice(i, i + maxRowsPerChunk)
+    chunks.push(chunk)
+  }
+
+  return chunks
+}
+
+// Función para procesar un chunk de datos
+async function processDataChunk(
+  dataRows: any[][],
+  headers: string[],
+  columnIndexes: { [key: string]: number },
+  trimmedAcuerdoMarco: string,
+  codigoAcuerdoMarco: string,
+  chunkIndex: number,
+  totalChunks: number,
+): Promise<{
+  processedData: Database["public"]["Tables"]["open_data_entries"]["Insert"][]
+  brandAlerts: Database["public"]["Tables"]["brand_alerts"]["Insert"][]
+  errors: string[]
+  filteredCount: number
+}> {
+  console.log(`Procesando chunk ${chunkIndex + 1}/${totalChunks} (${dataRows.length} filas)`)
+
+  const processedData: Database["public"]["Tables"]["open_data_entries"]["Insert"][] = []
+  const brandAlerts: Database["public"]["Tables"]["brand_alerts"]["Insert"][] = []
+  const errors: string[] = []
+  let filteredCount = 0
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i]
+    const globalIndex = chunkIndex * MAX_ROWS_PER_CHUNK + i
+
+    // Saltar filas vacías
+    if (!row || row.every((cell) => isEmptyValue(cell))) {
+      continue
+    }
+
+    const mappedRow: any = {
+      acuerdo_marco: trimmedAcuerdoMarco,
+      codigo_acuerdo_marco: codigoAcuerdoMarco,
+    }
+
+    Object.entries(columnIndexes).forEach(([dbField, excelIndex]) => {
+      const value = row[excelIndex]
+
+      if (dbField.includes("fecha")) {
+        mappedRow[dbField] = processDateAsString(value)
+      } else if (
+        [
+          "cantidad_entrega",
+          "precio_unitario",
+          "sub_total",
+          "igv_entrega",
+          "monto_total_entrega",
+          "plazo_entrega",
+          "nro_entrega",
+          "total_entregas",
+          "monto_adjudicado",
+        ].includes(dbField)
+      ) {
+        mappedRow[dbField] = parseNumericValue(value)
+      } else {
+        mappedRow[dbField] = isEmptyValue(value) ? "" : value.toString().trim()
+      }
+    })
+
+    // Filtrar órdenes que terminan en "-0"
+    if (mappedRow.orden_electronica && mappedRow.orden_electronica.toString().endsWith("-0")) {
+      filteredCount++
+      continue
+    }
+
+    // Validar fila
+    const rowErrors = validateRow(mappedRow, globalIndex)
+    if (rowErrors.length > 0) {
+      errors.push(...rowErrors)
+      if (errors.length > 20) break // Limitar errores por chunk
+      continue
+    }
+
+    processedData.push(mappedRow)
+
+    // Procesar alertas de marca
+    const brandName = mappedRow.marca_ficha_producto?.toUpperCase()
+    if (brandName && TARGET_BRANDS.includes(brandName) && mappedRow.orden_electronica && mappedRow.acuerdo_marco) {
+      brandAlerts.push({
+        orden_electronica: mappedRow.orden_electronica,
+        acuerdo_marco: mappedRow.acuerdo_marco,
+        brand_name: brandName,
+      })
+    }
+  }
+
+  return { processedData, brandAlerts, errors, filteredCount }
+}
+
+// Función para insertar datos en la base de datos
+async function insertDataChunk(
+  supabase: any,
+  processedData: Database["public"]["Tables"]["open_data_entries"]["Insert"][],
+  brandAlerts: Database["public"]["Tables"]["brand_alerts"]["Insert"][],
+): Promise<{ insertedCount: number; brandAlertsCount: number; errors: string[] }> {
+  const errors: string[] = []
+  let insertedCount = 0
+  let brandAlertsCount = 0
+
+  // Insertar datos principales en batches más pequeños
+  const BATCH_SIZE = 50
+  for (let i = 0; i < processedData.length; i += BATCH_SIZE) {
+    const batch = processedData.slice(i, i + BATCH_SIZE)
+
+    const { error } = await supabase.from("open_data_entries").insert(batch)
+
+    if (error) {
+      console.error("Error insertando batch:", error.message)
+      errors.push(`Error en batch: ${error.message}`)
+
+      // Intentar insertar uno por uno si falla el batch
+      for (const record of batch) {
+        const { error: singleError } = await supabase.from("open_data_entries").insert(record)
+        if (!singleError) {
+          insertedCount++
+        }
+      }
+    } else {
+      insertedCount += batch.length
+    }
+  }
+
+  // Insertar alertas de marca
+  if (brandAlerts.length > 0) {
+    for (let i = 0; i < brandAlerts.length; i += BATCH_SIZE) {
+      const batch = brandAlerts.slice(i, i + BATCH_SIZE)
+
+      const { error } = await supabase
+        .from("brand_alerts")
+        .upsert(batch, { onConflict: "orden_electronica,acuerdo_marco" })
+
+      if (error) {
+        console.error("Error insertando alertas:", error.message)
+        errors.push(`Error en alertas: ${error.message}`)
+      } else {
+        brandAlertsCount += batch.length
+      }
+    }
+  }
+
+  return { insertedCount, brandAlertsCount, errors }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = createServiceClient()
 
   try {
     const formData = await request.formData()
@@ -294,38 +451,69 @@ export async function POST(request: NextRequest) {
     const acuerdoMarco = formData.get("acuerdoMarco") as string | null
 
     if (!file || !acuerdoMarco) {
-      return NextResponse.json({ error: "File and acuerdoMarco are required" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Archivo y acuerdo marco son requeridos",
+        },
+        { status: 400 },
+      )
     }
 
-    // Trim the acuerdoMarco to ensure no leading/trailing whitespace
-    const trimmedAcuerdoMarco = acuerdoMarco.trim();
-    const codigoAcuerdoMarco = trimmedAcuerdoMarco.split(" ")[0]; // Extract the code part
-    console.log(`Received upload request for acuerdo marco: "${trimmedAcuerdoMarco}" (Code: "${codigoAcuerdoMarco}")`);
+    // Validar tamaño del archivo
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `El archivo es demasiado grande. Tamaño máximo permitido: ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
+        },
+        { status: 413 },
+      )
+    }
 
+    const trimmedAcuerdoMarco = acuerdoMarco.trim()
+    const codigoAcuerdoMarco = trimmedAcuerdoMarco.split(" ")[0]
 
+    console.log(`Procesando archivo: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`)
+    console.log(`Acuerdo marco: "${trimmedAcuerdoMarco}" (Código: "${codigoAcuerdoMarco}")`)
+
+    // Leer archivo con configuración optimizada
     const buffer = Buffer.from(await file.arrayBuffer())
-    const workbook = XLSX.read(buffer, { type: "buffer" })
+    const workbook = XLSX.read(buffer, {
+      type: "buffer",
+      cellDates: false,
+      cellNF: false,
+      cellText: false,
+      dense: true,
+    })
+
     const sheetName = workbook.SheetNames[0]
     const sheet = workbook.Sheets[sheetName]
-    const jsonData = XLSX.utils.sheet_to_json(sheet)
 
-    if (!Array.isArray(jsonData) || jsonData.length === 0) {
-      return NextResponse.json({ error: "No data found in the Excel file" }, { status: 400 })
+    // Obtener datos
+    const rawData = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: null,
+      raw: false,
+    }) as any[][]
+
+    if (!Array.isArray(rawData) || rawData.length < 7) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "El archivo no contiene suficientes datos o el formato es incorrecto",
+        },
+        { status: 400 },
+      )
     }
 
-    // Mapeo de datos del Excel a la estructura de la base de datos
-    const processedData: Database["public"]["Tables"]["open_data_entries"]["Insert"][] = []
-    const errors: string[] = []
-    let filteredCount = 0
-
     // Las cabeceras están en la fila 6 (índice 5)
-    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][]
     const headers = rawData[5] as string[]
     const dataRows = rawData.slice(6) // Los datos empiezan desde la fila 7 (índice 6)
 
-    console.log("Cabeceras encontradas en fila 6:", headers)
+    console.log(`Archivo procesado: ${headers.length} columnas, ${dataRows.length} filas de datos`)
 
-    // Mapear columnas con búsqueda flexible
+    // Mapear columnas
     const columnIndexes: { [key: string]: number } = {}
     const foundColumns: string[] = []
     const missingColumns: string[] = []
@@ -342,27 +530,26 @@ export async function POST(request: NextRequest) {
           // Búsqueda exacta primero
           if (headerName === searchName) return true
 
-          // Búsqueda normalizada (sin acentos, case insensitive)
+          // Búsqueda normalizada
           return normalizeString(headerName) === normalizeString(searchName)
         })
 
         if (index !== -1) {
           columnIndexes[dbField] = index
-          foundColumns.push(`${dbField} -> "${headers[index]}" (columna ${index + 1})`)
+          foundColumns.push(`${dbField} -> "${headers[index]}"`)
           found = true
           break
         }
       }
 
       if (!found) {
-        missingColumns.push(`${dbField} (buscando: ${possibleNames.join(", ")})`)
+        missingColumns.push(`${dbField}`)
       }
     })
 
-    console.log("Columnas encontradas:", foundColumns.length)
-    console.log("Columnas faltantes:", missingColumns.length)
+    console.log(`Columnas encontradas: ${foundColumns.length}, faltantes: ${missingColumns.length}`)
 
-    // Verificar que tenemos las columnas esenciales
+    // Verificar columnas esenciales
     const missingRequiredColumns = REQUIRED_COLUMNS.filter((col) => !(col in columnIndexes))
     if (missingRequiredColumns.length > 0) {
       return NextResponse.json(
@@ -374,187 +561,119 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i]
+    // Determinar si necesitamos dividir el archivo
+    const needsChunking = dataRows.length > MAX_ROWS_PER_CHUNK || file.size > 10 * 1024 * 1024
+    const chunks = needsChunking ? divideDataIntoChunks(dataRows, MAX_ROWS_PER_CHUNK) : [dataRows]
 
-      // Saltar filas vacías
-      if (!row || row.every((cell) => isEmptyValue(cell))) {
-        continue
-      }
+    console.log(`Procesamiento en ${chunks.length} chunk(s)${needsChunking ? " (archivo grande detectado)" : ""}`)
 
-      const mappedRow: any = {
-        acuerdo_marco: trimmedAcuerdoMarco, // Use the trimmed full name for insertion
-        codigo_acuerdo_marco: codigoAcuerdoMarco, // Use the extracted code for insertion
-      }
+    // 1. Eliminar datos existentes para este codigo_acuerdo_marco
+    console.log(`Eliminando datos existentes para código: "${codigoAcuerdoMarco}"`)
+    const { error: deleteError } = await supabase
+      .from("open_data_entries")
+      .delete()
+      .eq("codigo_acuerdo_marco", codigoAcuerdoMarco)
 
-      Object.entries(columnIndexes).forEach(([dbField, excelIndex]) => {
-        const value = row[excelIndex]
-
-        if (dbField.includes("fecha")) {
-          mappedRow[dbField] = processDateAsString(value)
-        } else if (
-          [
-            "cantidad_entrega",
-            "precio_unitario",
-            "sub_total",
-            "igv_entrega",
-            "monto_total_entrega",
-            "plazo_entrega",
-            "nro_entrega",
-            "total_entregas",
-            "monto_adjudicado",
-          ].includes(dbField)
-        ) {
-          mappedRow[dbField] = parseNumericValue(value)
-        } else {
-          mappedRow[dbField] = isEmptyValue(value) ? "" : value.toString().trim()
-        }
-      })
-
-      if (mappedRow.orden_electronica && mappedRow.orden_electronica.toString().endsWith("-0")) {
-        filteredCount++
-        continue
-      }
-
-      const rowErrors = validateRow(mappedRow, i)
-      if (rowErrors.length > 0) {
-        errors.push(...rowErrors)
-        continue
-      }
-
-      processedData.push(mappedRow)
-    }
-
-    if (errors.length > 100) {
+    if (deleteError) {
+      console.error("Error eliminando datos existentes:", deleteError.message)
       return NextResponse.json(
         {
           success: false,
-          message: `Demasiados errores críticos en el archivo (${errors.length}).`,
-          stats: {
-            totalRows: dataRows.length,
-            processedRows: 0,
-            filteredRows: filteredCount,
-            insertedRows: 0,
-            errors: errors.slice(0, 20),
-          },
+          message: `Error eliminando datos existentes: ${deleteError.message}`,
         },
-        { status: 400 },
-      )
-    }
-
-    // 1. Eliminar datos existentes para este codigo_acuerdo_marco
-    console.log(`Attempting to delete existing data for codigo_acuerdo_marco: "${codigoAcuerdoMarco}"`);
-    const { error: deleteError } = await supabase.from("open_data_entries").delete().eq("codigo_acuerdo_marco", codigoAcuerdoMarco);
-
-    if (deleteError) {
-      console.error("Error deleting existing data:", deleteError.message);
-      return NextResponse.json(
-        { success: false, message: `Failed to delete existing data: ${deleteError.message}` },
         { status: 500 },
-      );
-    }
-    console.log(`Successfully deleted existing data for codigo_acuerdo_marco: "${codigoAcuerdoMarco}"`);
-
-
-    // 2. Insertar los nuevos datos
-    const batchSize = 100
-    let insertedCount = 0
-    const insertErrors: string[] = []
-
-    for (let i = 0; i < processedData.length; i += batchSize) {
-      const batch = processedData.slice(i, i + batchSize)
-      console.log(
-        `Insertando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(processedData.length / batchSize)} (${batch.length} registros) en open_data_entries`,
       )
-      const { error } = await supabase.from("open_data_entries").insert(batch)
-
-      if (error) {
-        console.error("Error inserting batch into open_data_entries:", error)
-        insertErrors.push(`Error insertando lote ${Math.floor(i / batchSize) + 1}: ${error.message}`)
-        for (const record of batch) {
-          const { error: singleError } = await supabase.from("open_data_entries").insert(record)
-          if (!singleError) {
-            insertedCount++
-          } else {
-            console.error(`Error en registro (open_data_entries) ${record.orden_electronica}:`, singleError.message)
-          }
-        }
-      } else {
-        insertedCount += batch.length
-      }
     }
 
-    // 3. Procesar y upsertar alertas de marca
-    const brandAlertsToUpsert: Database["public"]["Tables"]["brand_alerts"]["Insert"][] = []
-    const brandAlertsErrors: string[] = []
+    // 2. Procesar chunks secuencialmente
+    let totalInserted = 0
+    let totalBrandAlerts = 0
+    let totalFiltered = 0
+    let totalProcessed = 0
+    const allErrors: string[] = []
 
-    for (const row of processedData) {
-      const brandName = row.marca_ficha_producto?.toUpperCase()
-      if (brandName && TARGET_BRANDS.includes(brandName) && row.orden_electronica && row.acuerdo_marco) {
-        brandAlertsToUpsert.push({
-          orden_electronica: row.orden_electronica,
-          acuerdo_marco: row.acuerdo_marco,
-          brand_name: brandName,
-          // user_id se deja como NULL aquí, ya que no se obtiene la sesión del usuario en este contexto.
-          // Si necesitas registrar el usuario, se requiere una forma de obtener el user.id aquí.
-        })
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex]
+
+      console.log(`Procesando chunk ${chunkIndex + 1}/${chunks.length}`)
+
+      // Procesar datos del chunk
+      const chunkResult = await processDataChunk(
+        chunk,
+        headers,
+        columnIndexes,
+        trimmedAcuerdoMarco,
+        codigoAcuerdoMarco,
+        chunkIndex,
+        chunks.length,
+      )
+
+      totalProcessed += chunkResult.processedData.length
+      totalFiltered += chunkResult.filteredCount
+      allErrors.push(...chunkResult.errors)
+
+      // Insertar datos del chunk si hay datos válidos
+      if (chunkResult.processedData.length > 0) {
+        const insertResult = await insertDataChunk(supabase, chunkResult.processedData, chunkResult.brandAlerts)
+
+        totalInserted += insertResult.insertedCount
+        totalBrandAlerts += insertResult.brandAlertsCount
+        allErrors.push(...insertResult.errors)
+
+        console.log(
+          `Chunk ${chunkIndex + 1} completado: ${insertResult.insertedCount} registros insertados, ${insertResult.brandAlertsCount} alertas procesadas`,
+        )
       }
-    }
 
-    if (brandAlertsToUpsert.length > 0) {
-      console.log(`Procesando ${brandAlertsToUpsert.length} alertas de marca para upsert...`)
-      for (let i = 0; i < brandAlertsToUpsert.length; i += batchSize) {
-        const batch = brandAlertsToUpsert.slice(i, i + batchSize)
-        const { error: upsertAlertsError } = await supabase
-          .from("brand_alerts")
-          .upsert(batch, { onConflict: "orden_electronica,acuerdo_marco" })
-          .select("id")
-
-        if (upsertAlertsError) {
-          console.error("Error upserting brand alerts batch:", upsertAlertsError)
-          brandAlertsErrors.push(
-            `Error en lote de alertas de marca ${Math.floor(i / batchSize) + 1}: ${upsertAlertsError.message}`,
-          )
-          for (const alert of batch) {
-            const { error: singleAlertError } = await supabase
-              .from("brand_alerts")
-              .upsert(alert, { onConflict: "orden_electronica,acuerdo_marco" })
-              .select("id")
-            if (singleAlertError) {
-              console.error(
-                `Error en alerta de marca (Orden Electrónica: ${alert.orden_electronica}, Marca: ${alert.brand_name}):`,
-                singleAlertError.message,
-              )
-              brandAlertsErrors.push(
-                `Alerta (Orden Electrónica: ${alert.orden_electronica}, Marca: ${alert.brand_name}): ${singleAlertError.message}`,
-              )
-            }
-          }
-        } else {
-          console.log(`Lote de alertas de marca procesado exitosamente: ${batch.length} registros afectados.`)
-        }
+      // Pequeña pausa entre chunks para no sobrecargar el sistema
+      if (chunkIndex < chunks.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
     }
 
     const finalMessage =
-      errors.length > 0 || insertErrors.length > 0 || brandAlertsErrors.length > 0
-        ? `Archivo procesado con algunos errores. Se insertaron ${insertedCount} registros en datos abiertos y se procesaron ${brandAlertsToUpsert.length} alertas de marca.`
-        : `Archivo procesado exitosamente. Se insertaron ${insertedCount} registros en datos abiertos y se procesaron ${brandAlertsToUpsert.length} alertas de marca.`
+      allErrors.length > 0
+        ? `Archivo procesado con algunos errores. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
+        : `Archivo procesado exitosamente. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
 
     return NextResponse.json({
-      success: insertedCount > 0,
+      success: totalInserted > 0,
       message: finalMessage,
       stats: {
         totalRows: dataRows.length,
-        processedRows: processedData.length,
-        filteredRows: filteredCount,
-        insertedOpenDataRows: insertedCount,
-        processedBrandAlerts: brandAlertsToUpsert.length,
-        errors: errors.concat(insertErrors).concat(brandAlertsErrors),
+        processedRows: totalProcessed,
+        filteredRows: totalFiltered,
+        insertedRows: totalInserted,
+        processedBrandAlerts: totalBrandAlerts,
+        chunksProcessed: chunks.length,
+        processingMethod: needsChunking ? "chunked" : "single",
+        fileSize: file.size,
+        fileName: file.name,
+        acuerdoMarco: codigoAcuerdoMarco,
+        errors: allErrors.slice(0, 20),
       },
     })
   } catch (error: any) {
-    console.error("Upload error:", error)
-    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 })
+    console.error("Error en upload:", error)
+
+    // Manejar errores específicos
+    if (error.message?.includes("PayloadTooLargeError") || error.code === "LIMIT_FILE_SIZE") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "El archivo es demasiado grande. El sistema intentará procesarlo automáticamente en chunks.",
+        },
+        { status: 413 },
+      )
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error interno del servidor. Por favor, intenta nuevamente.",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      },
+      { status: 500 },
+    )
   }
 }
