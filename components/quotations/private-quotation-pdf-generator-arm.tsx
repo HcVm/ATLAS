@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { FileText, Loader2 } from 'lucide-react'
+import { FileText, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { generateQRForQuotation, type ARMPrivateQuotationPDFData } from "@/lib/pdf-generator-private-arm"
 import { supabase } from "@/lib/supabase"
@@ -17,7 +17,7 @@ interface ARMPrivateQuotationPDFGeneratorProps {
     entity_name: string
     entity_ruc: string
     delivery_location: string
-    fiscal_address?: string | null; // ADDED THIS LINE
+    fiscal_address?: string | null // ADDED THIS LINE
     is_multi_product?: boolean | null
     quotation_items?: Array<{
       id: string
@@ -64,7 +64,19 @@ export default function ARMPrivateQuotationPDFGenerator({
       console.log("Quotation data:", quotation)
       console.log("Company info:", companyInfo)
       console.log("Quotation items:", quotation.quotation_items)
-      console.log("Fiscal Address from quotation:", quotation.fiscal_address); // Debugging fiscal address
+      console.log("Fiscal Address from quotation:", quotation.fiscal_address)
+
+      const { data: clientData, error: clientError } = await supabase
+        .from("sales_entities")
+        .select("email, contact_person")
+        .eq("ruc", quotation.entity_ruc)
+        .single()
+
+      if (clientError) {
+        console.error("Error fetching client data:", clientError)
+      }
+
+      console.log("Client data from sales_entities:", clientData)
 
       // Obtener información de marcas con logos desde la base de datos
       const brandNames = quotation.quotation_items
@@ -171,7 +183,9 @@ export default function ARMPrivateQuotationPDFGenerator({
         companyName: companyInfo.name || "ARM Corporations",
         companyRuc: companyInfo.ruc || "N/A",
         companyCode: companyInfo.code,
-        companyAddress: companyInfo.address || "JR. HUANTAR NRO. 3311 URB. CA HUANTAR 5030 N3311 URB PARQUE EL NARANJAL 2DA ETAPA LIMA - LIMA - LOS OLIVOS",
+        companyAddress:
+          companyInfo.address ||
+          "JR. HUANTAR NRO. 3311 URB. CA HUANTAR 5030 N3311 URB PARQUE EL NARANJAL 2DA ETAPA LIMA - LIMA - LOS OLIVOS",
         companyPhone: companyInfo.phone || "01-748 3677 ANEXO 102 - 940959514",
         companyEmail: companyInfo.email || "arm-ventas@armcorporations.com - arm1-ventas@armcorporations.com",
         companyLogoUrl: companyInfo.logo_url || undefined,
@@ -187,10 +201,10 @@ export default function ARMPrivateQuotationPDFGenerator({
         clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
-        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado", // Use fiscal_address if available
+        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado",
         clientDepartment: undefined,
-        clientAttention: "Cliente Privado",
-        currency: "Soles",
+        clientEmail: clientData?.email || "No especificado",
+        contactPerson: clientData?.contact_person || "No especificado",
 
         // Productos - CON PRECIOS SIN IGV Y LOGOS DE MARCA
         products: products,
