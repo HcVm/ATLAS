@@ -6,14 +6,15 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/lib/auth-context"
-import { Analytics } from "@vercel/analytics/next" 
+import { Analytics } from "@vercel/analytics/next"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Sistema de Seguimiento de Documentos - SISDOC V3.0",
   description: "Aplicación para el seguimiento de documentos entre departamentos y empresas",
-    generator: 'Héctor Vega - GmKO'
+  generator: "Héctor Vega - GmKO",
 }
 
 export default function RootLayout({
@@ -26,10 +27,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            {children}
-            <Toaster />
-            <SpeedInsights/>
-            <Analytics/>            
+            <Suspense fallback={null}>
+              {children}
+              <Toaster />
+            </Suspense>
+            <SpeedInsights />
+            <Analytics />
           </ThemeProvider>
         </AuthProvider>
       </body>
