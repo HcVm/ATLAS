@@ -744,3 +744,5 @@ export const generateSimpleMapImageUrl = (origin: string, destination: string, a
   console.log("Generated simple Maps URL:", finalUrl)
   return finalUrl
 }
+
+export const generateMapImageUrl = generateMapWithRouteImageUrl

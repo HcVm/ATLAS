@@ -3,17 +3,11 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Edit } from 'lucide-react'
+import { Search, Edit } from "lucide-react"
 import { EditSalesEntityDialog } from "./edit-sales-entity-dialog"
 
 interface SalesEntity {
@@ -22,6 +16,8 @@ interface SalesEntity {
   ruc: string
   executing_unit: string | null
   fiscal_address: string | null
+  email: string | null
+  contact_person: string | null
 }
 
 interface SalesEntityManagementDialogProps {
@@ -31,7 +27,12 @@ interface SalesEntityManagementDialogProps {
   canEdit: boolean
 }
 
-export function SalesEntityManagementDialog({ open, onOpenChange, companyId, canEdit }: SalesEntityManagementDialogProps) {
+export function SalesEntityManagementDialog({
+  open,
+  onOpenChange,
+  companyId,
+  canEdit,
+}: SalesEntityManagementDialogProps) {
   const [salesEntities, setSalesEntities] = useState<SalesEntity[]>([])
   const [loading, setLoading] = useState(true)
   const [entitySearchTerm, setEntitySearchTerm] = useState("")
@@ -49,7 +50,7 @@ export function SalesEntityManagementDialog({ open, onOpenChange, companyId, can
     try {
       const { data, error } = await supabase
         .from("sales_entities")
-        .select("id, name, ruc, executing_unit, fiscal_address")
+        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person")
         .eq("company_id", companyId)
         .order("name")
 
@@ -81,7 +82,9 @@ export function SalesEntityManagementDialog({ open, onOpenChange, companyId, can
       entity.name.toLowerCase().includes(entitySearchTerm.toLowerCase()) ||
       entity.ruc.includes(entitySearchTerm) ||
       (entity.executing_unit && entity.executing_unit.toLowerCase().includes(entitySearchTerm.toLowerCase())) ||
-      (entity.fiscal_address && entity.fiscal_address.toLowerCase().includes(entitySearchTerm.toLowerCase())),
+      (entity.fiscal_address && entity.fiscal_address.toLowerCase().includes(entitySearchTerm.toLowerCase())) ||
+      (entity.email && entity.email.toLowerCase().includes(entitySearchTerm.toLowerCase())) ||
+      (entity.contact_person && entity.contact_person.toLowerCase().includes(entitySearchTerm.toLowerCase())),
   )
 
   return (
@@ -98,7 +101,7 @@ export function SalesEntityManagementDialog({ open, onOpenChange, companyId, can
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Buscar entidad por nombre, RUC, unidad ejecutora o dirección fiscal..."
+              placeholder="Buscar entidad por nombre, RUC, unidad ejecutora, dirección, email o contacto..."
               value={entitySearchTerm}
               onChange={(e) => setEntitySearchTerm(e.target.value)}
               className="pl-8 border-slate-200 dark:border-slate-700 focus:border-slate-400"
@@ -126,16 +129,29 @@ export function SalesEntityManagementDialog({ open, onOpenChange, companyId, can
                   <TableHead className="text-slate-700 dark:text-slate-200">RUC</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">Unidad Ejecutora</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">Dirección Fiscal</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Email</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Contacto</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSalesEntities.map((entity) => (
-                  <TableRow key={entity.id} className="hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50">
+                  <TableRow
+                    key={entity.id}
+                    className="hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50"
+                  >
                     <TableCell className="font-medium text-slate-700 dark:text-slate-200">{entity.name}</TableCell>
                     <TableCell className="text-slate-600 dark:text-slate-300">{entity.ruc}</TableCell>
-                    <TableCell className="text-slate-600 dark:text-slate-300">{entity.executing_unit || "N/A"}</TableCell>
-                    <TableCell className="text-slate-600 dark:text-slate-300">{entity.fiscal_address || "N/A"}</TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300">
+                      {entity.executing_unit || "N/A"}
+                    </TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300">
+                      {entity.fiscal_address || "N/A"}
+                    </TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300">{entity.email || "N/A"}</TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300">
+                      {entity.contact_person || "N/A"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"

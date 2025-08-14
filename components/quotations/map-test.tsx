@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { generateMapImageUrl, generateSimpleMapImageUrl } from "@/lib/pdf-generator"
+import { generateMapWithRouteImageUrl, generateSimpleMapImageUrl } from "@/lib/pdf-generator"
 
 export default function MapTest() {
   const [origin, setOrigin] = useState("Lima, Peru")
@@ -14,7 +14,7 @@ export default function MapTest() {
   const [simpleMapUrl, setSimpleMapUrl] = useState("")
   const [error, setError] = useState("")
 
-  const testMaps = () => {
+  const testMaps = async () => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
     if (!apiKey) {
@@ -23,7 +23,7 @@ export default function MapTest() {
     }
 
     try {
-      const fullMapUrl = generateMapImageUrl(origin, destination, apiKey)
+      const fullMapUrl = await generateMapWithRouteImageUrl(origin, destination, apiKey)
       const simpleUrl = generateSimpleMapImageUrl(origin, destination, apiKey)
 
       setMapUrl(fullMapUrl)

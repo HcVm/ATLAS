@@ -30,8 +30,8 @@ export interface ARMPrivateQuotationPDFData {
   clientAddress: string // Dirección de entrega
   clientFiscalAddress?: string // Nueva dirección fiscal
   clientDepartment?: string
-  clientAttention: string
-  currency: string
+  clientEmail: string
+  contactPerson: string
 
   // Productos con información de marca
   products: Array<{
@@ -160,7 +160,7 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
       [] as Array<{ name: string; logoUrl: string }>,
     )
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
 
   return `
     <!DOCTYPE html>
@@ -971,12 +971,12 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                   <span class="client-value-compact">${addressToDisplay}</span>
                 </div>
                 <div class="client-field-compact">
-                  <span class="client-label-compact">Atención:</span>
-                  <span class="client-value-compact">${data.clientAttention}</span>
+                  <span class="client-label-compact">Correo:</span>
+                  <span class="client-value-compact">${data.clientEmail}</span>
                 </div>
                 <div class="client-field-compact">
-                  <span class="client-label-compact">Moneda:</span>
-                  <span class="client-value-compact">${data.currency}</span>
+                  <span class="client-label-compact">Persona de Contacto:</span>
+                  <span class="client-value-compact">${data.contactPerson}</span>
                 </div>
               </div>
             </div>
@@ -1116,15 +1116,15 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
               <div class="column-title">Resumen Financiero</div>
               <div class="total-line-inline">
                 <span>Subtotal:</span>
-                <span>S/ ${data.subtotal.toFixed(4)}</span>
+                <span>S/ ${data.subtotal.toFixed(2)}</span>
               </div>
               <div class="total-line-inline">
                 <span>IGV (18%):</span>
-                <span>S/ ${data.igv.toFixed(4)}</span>
+                <span>S/ ${data.igv.toFixed(2)}</span>
               </div>
               <div class="total-line-inline final">
                 <span>TOTAL:</span>
-                <span>S/ ${data.total.toFixed(4)}</span>
+                <span>S/ ${data.total.toFixed(2)}</span>
               </div>
             </div>
 

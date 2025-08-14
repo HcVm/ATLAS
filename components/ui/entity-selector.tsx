@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -20,7 +20,9 @@ interface SalesEntity {
   name: string
   ruc: string
   executing_unit: string | null
-  fiscal_address: string | null // Added fiscal_address
+  fiscal_address: string | null
+  email: string | null
+  contact_person: string | null
 }
 
 interface EntitySelectorProps {
@@ -54,7 +56,9 @@ export function EntitySelector({
     name: "",
     ruc: "",
     executing_unit: "",
-    fiscal_address: "", // Added fiscal_address to new entity state
+    fiscal_address: "",
+    email: "",
+    contact_person: "",
   })
 
   useEffect(() => {
@@ -73,7 +77,9 @@ export function EntitySelector({
           entity.name.toLowerCase().includes(searchValue.toLowerCase()) ||
           entity.ruc.includes(searchValue) ||
           (entity.executing_unit && entity.executing_unit.includes(searchValue)) ||
-          (entity.fiscal_address && entity.fiscal_address.toLowerCase().includes(searchValue.toLowerCase())), // Filter by fiscal_address
+          (entity.fiscal_address && entity.fiscal_address.toLowerCase().includes(searchValue.toLowerCase())) ||
+          (entity.email && entity.email.toLowerCase().includes(searchValue.toLowerCase())) ||
+          (entity.contact_person && entity.contact_person.toLowerCase().includes(searchValue.toLowerCase())),
       )
       setFilteredEntities(filtered)
     }
@@ -96,7 +102,7 @@ export function EntitySelector({
     try {
       const { data, error } = await supabase
         .from("sales_entities")
-        .select("id, name, ruc, executing_unit, fiscal_address") // Select fiscal_address
+        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person")
         .eq("company_id", selectedCompany.id)
         .order("name")
 
@@ -127,7 +133,9 @@ export function EntitySelector({
             name: newEntity.name.trim(),
             ruc: newEntity.ruc.trim(),
             executing_unit: newEntity.executing_unit.trim() || null,
-            fiscal_address: newEntity.fiscal_address.trim() || null, // Insert fiscal_address
+            fiscal_address: newEntity.fiscal_address.trim() || null,
+            email: newEntity.email.trim() || null,
+            contact_person: newEntity.contact_person.trim() || null,
             company_id: selectedCompany.id,
           },
         ])
@@ -146,7 +154,7 @@ export function EntitySelector({
       setSelectedEntity(data)
 
       // Limpiar formulario y cerrar diálogo
-      setNewEntity({ name: "", ruc: "", executing_unit: "", fiscal_address: "" }) // Reset fiscal_address
+      setNewEntity({ name: "", ruc: "", executing_unit: "", fiscal_address: "", email: "", contact_person: "" })
       setShowCreateDialog(false)
       setOpen(false)
     } catch (error: any) {
@@ -181,7 +189,12 @@ export function EntitySelector({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between bg-transparent"
+          >
             {selectedEntity ? (
               <div className="flex items-center gap-2 flex-1 text-left">
                 <span className="truncate">{selectedEntity.name}</span>
@@ -198,6 +211,16 @@ export function EntitySelector({
                     Dir: {selectedEntity.fiscal_address}
                   </Badge>
                 )}
+                {selectedEntity.email && (
+                  <Badge variant="secondary" className="text-xs">
+                    Email: {selectedEntity.email}
+                  </Badge>
+                )}
+                {selectedEntity.contact_person && (
+                  <Badge variant="secondary" className="text-xs">
+                    Contacto: {selectedEntity.contact_person}
+                  </Badge>
+                )}
               </div>
             ) : (
               <span className="text-muted-foreground">{placeholder}</span>
@@ -209,7 +232,7 @@ export function EntitySelector({
         <PopoverContent className="w-full p-0" align="start">
           <Command>
             <CommandInput
-              placeholder="Buscar por nombre, RUC, unidad ejecutora o dirección fiscal..." // Updated placeholder
+              placeholder="Buscar por nombre, RUC, unidad ejecutora, dirección fiscal, correo electrónico o persona de contacto..."
               value={searchValue}
               onValueChange={setSearchValue}
             />
@@ -255,6 +278,16 @@ export function EntitySelector({
                                 {entity.fiscal_address && (
                                   <Badge variant="secondary" className="text-xs">
                                     Dir: {entity.fiscal_address}
+                                  </Badge>
+                                )}
+                                {entity.email && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Email: {entity.email}
+                                  </Badge>
+                                )}
+                                {entity.contact_person && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Contacto: {entity.contact_person}
                                   </Badge>
                                 )}
                               </div>
@@ -325,6 +358,27 @@ export function EntitySelector({
                 value={newEntity.fiscal_address}
                 onChange={(e) => setNewEntity((prev) => ({ ...prev, fiscal_address: e.target.value }))}
                 placeholder="Dirección fiscal de la entidad"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="new_entity_email">Correo Electrónico (Opcional)</Label>
+              <Input
+                id="new_entity_email"
+                type="email"
+                value={newEntity.email}
+                onChange={(e) => setNewEntity((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="correo@ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="new_entity_contact_person">Persona de Contacto (Opcional)</Label>
+              <Input
+                id="new_entity_contact_person"
+                value={newEntity.contact_person}
+                onChange={(e) => setNewEntity((prev) => ({ ...prev, contact_person: e.target.value }))}
+                placeholder="Nombre de la persona de contacto"
               />
             </div>
 

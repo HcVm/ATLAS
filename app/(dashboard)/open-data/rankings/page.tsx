@@ -1,154 +1,177 @@
 import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, BarChart3, Package, Building2, Users, Award } from "lucide-react"
+import { TrendingUp, BarChart3, Package, Building2, Award, Target } from "lucide-react"
 import Link from "next/link"
-import { RankingsFilters } from "@/components/open-data/rankings-filters"
-import { RankingsTable } from "@/components/open-data/rankings-table"
-import { RankingsStats } from "@/components/open-data/rankings-stats"
+import { MarketStatsDashboard } from "@/components/open-data/market-stats-dashboard"
+import { TopProductsByAgreement } from "@/components/open-data/top-products-by-agreement"
+import { TopProductsByCatalog } from "@/components/open-data/top-products-by-catalog"
+import { CategoryDistribution } from "@/components/open-data/category-distribution"
+import { PriceHistoryAnalysis } from "@/components/open-data/price-history-analysis"
+import { SupplierPerformance } from "@/components/open-data/supplier-performance"
 
 interface PageProps {
   searchParams: Promise<{
-    type?: string
-    acuerdo?: string
-    categoria?: string
-    catalogo?: string
-    fecha_desde?: string
-    fecha_hasta?: string
-    limit?: string
+    period?: string
   }>
 }
 
-const RANKING_TYPES = [
-  {
-    id: "productos",
-    name: "Productos",
-    description: "Productos más vendidos por monto total",
-    icon: Package,
-    color: "bg-blue-500",
-  },
-  {
-    id: "categorias",
-    name: "Categorías",
-    description: "Categorías con mayor volumen de ventas",
-    icon: BarChart3,
-    color: "bg-green-500",
-  },
-  {
-    id: "catalogos",
-    name: "Catálogos",
-    description: "Catálogos más utilizados en compras",
-    icon: Award,
-    color: "bg-purple-500",
-  },
-  {
-    id: "marcas",
-    name: "Marcas",
-    description: "Marcas con mayor participación",
-    icon: TrendingUp,
-    color: "bg-orange-500",
-  },
-  {
-    id: "proveedores",
-    name: "Proveedores",
-    description: "Proveedores con mayores ventas",
-    icon: Building2,
-    color: "bg-red-500",
-  },
-  {
-    id: "entidades",
-    name: "Entidades",
-    description: "Entidades con mayor volumen de compras",
-    icon: Users,
-    color: "bg-indigo-500",
-  },
-]
-
-export default async function RankingsPage({ searchParams }: PageProps) {
+export default async function MarketAnalyticsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
-  const currentType = resolvedSearchParams.type || "productos"
-  const currentRankingType = RANKING_TYPES.find((type) => type.id === currentType) || RANKING_TYPES[0]
+  const period = resolvedSearchParams.period || "6months"
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Rankings de Mercado</h1>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Análisis de Mercado</h1>
           <p className="text-slate-600 dark:text-slate-400 text-lg">
-            Análisis de tendencias y productos más vendidos en compras públicas del Perú
+            Métricas y estadísticas clave del mercado de compras públicas
           </p>
         </div>
-        <Link href="/open-data">
-          <Button variant="outline">Volver a Datos Abiertos</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/open-data/rankings?period=3months`}>
+            <Button variant={period === "3months" ? "default" : "outline"} size="sm">
+              3 Meses
+            </Button>
+          </Link>
+          <Link href={`/open-data/rankings?period=6months`}>
+            <Button variant={period === "6months" ? "default" : "outline"} size="sm">
+              6 Meses
+            </Button>
+          </Link>
+          <Link href={`/open-data/rankings?period=1year`}>
+            <Button variant={period === "1year" ? "default" : "outline"} size="sm">
+              1 Año
+            </Button>
+          </Link>
+          <Link href="/open-data">
+            <Button variant="outline">Volver a Datos Abiertos</Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Tipos de Ranking */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {RANKING_TYPES.map((type) => {
-          const Icon = type.icon
-          const isActive = currentType === type.id
-
-          return (
-            <Link
-              key={type.id}
-              href={`/open-data/rankings?type=${type.id}`}
-              className={`block transition-all duration-200 hover:scale-105 ${isActive ? "ring-2 ring-blue-500" : ""}`}
-            >
-              <Card className={`h-full ${isActive ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : ""}`}>
-                <CardContent className="p-4 text-center">
-                  <div
-                    className={`w-12 h-12 rounded-lg ${type.color} flex items-center justify-center text-white mx-auto mb-3`}
-                  >
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1">{type.name}</h3>
-                  <p className="text-xs text-muted-foreground">{type.description}</p>
-                  {isActive && (
-                    <Badge variant="secondary" className="mt-2 text-xs">
-                      Activo
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* Estadísticas */}
-      <Suspense fallback={<div>Cargando estadísticas...</div>}>
-        <RankingsStats searchParams={resolvedSearchParams} />
+      {/* Métricas Generales */}
+      <Suspense fallback={<div>Cargando métricas generales...</div>}>
+        <MarketStatsDashboard period={period} />
       </Suspense>
 
-      {/* Filtros */}
+      {/* Grid de Análisis Principales */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Productos más vendidos por Acuerdo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-blue-500" />
+              Top Productos por Acuerdo Marco
+            </CardTitle>
+            <CardDescription>Los productos más vendidos organizados por acuerdo marco</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div>Cargando productos por acuerdo...</div>}>
+              <TopProductsByAgreement period={period} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Productos más vendidos por Catálogo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-green-500" />
+              Top Productos por Catálogo
+            </CardTitle>
+            <CardDescription>Los productos más vendidos organizados por catálogo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div>Cargando productos por catálogo...</div>}>
+              <TopProductsByCatalog period={period} />
+            </Suspense>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Distribución por Categorías */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <currentRankingType.icon className="h-5 w-5" />
-            Filtros para {currentRankingType.name}
+            <BarChart3 className="h-5 w-5 text-purple-500" />
+            Distribución por Categorías
           </CardTitle>
-          <CardDescription>{currentRankingType.description}</CardDescription>
+          <CardDescription>Número de productos y volumen de ventas por categoría</CardDescription>
         </CardHeader>
         <CardContent>
-          <RankingsFilters />
+          <Suspense fallback={<div>Cargando distribución por categorías...</div>}>
+            <CategoryDistribution period={period} />
+          </Suspense>
         </CardContent>
       </Card>
 
-      {/* Tabla de Rankings */}
-      <Card>
+      {/* Grid de Análisis Secundarios */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Análisis de Precios */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-500" />
+              Análisis de Precios
+            </CardTitle>
+            <CardDescription>Histórico y tendencias de precios de productos principales</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div>Cargando análisis de precios...</div>}>
+              <PriceHistoryAnalysis period={period} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Performance de Proveedores */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-red-500" />
+              Performance de Proveedores
+            </CardTitle>
+            <CardDescription>Métricas de rendimiento de los principales proveedores</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div>Cargando performance de proveedores...</div>}>
+              <SupplierPerformance period={period} />
+            </Suspense>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Insights y Recomendaciones */}
+      <Card className="border-l-4 border-l-blue-500">
         <CardHeader>
-          <CardTitle>Ranking de {currentRankingType.name}</CardTitle>
-          <CardDescription>
-            Los {currentRankingType.name.toLowerCase()} ordenados por monto total de ventas
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-blue-500" />
+            Insights del Mercado
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div>Cargando rankings...</div>}>
-            <RankingsTable searchParams={resolvedSearchParams} />
-          </Suspense>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Oportunidades de Mercado</h4>
+              <p className="text-sm text-blue-600 dark:text-blue-300">
+                Identifica productos con alta demanda pero pocos proveedores
+              </p>
+            </div>
+            <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+              <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Tendencias de Precios</h4>
+              <p className="text-sm text-green-600 dark:text-green-300">
+                Monitorea variaciones de precios para optimizar compras
+              </p>
+            </div>
+            <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
+              <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">Eficiencia de Proveedores</h4>
+              <p className="text-sm text-purple-600 dark:text-purple-300">
+                Evalúa el rendimiento y confiabilidad de proveedores
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

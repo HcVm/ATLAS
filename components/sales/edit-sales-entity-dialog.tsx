@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -14,14 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,6 +25,8 @@ interface SalesEntity {
   ruc: string
   executing_unit: string | null
   fiscal_address: string | null
+  email: string | null
+  contact_person: string | null
 }
 
 interface EditSalesEntityDialogProps {
@@ -46,6 +41,8 @@ const formSchema = z.object({
   ruc: z.string().min(1, "El RUC es requerido").max(11, "El RUC no puede tener más de 11 caracteres"),
   executing_unit: z.string().nullable(),
   fiscal_address: z.string().nullable(),
+  email: z.string().email("Formato de email inválido").nullable().or(z.literal("")),
+  contact_person: z.string().nullable(),
 })
 
 export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }: EditSalesEntityDialogProps) {
@@ -56,6 +53,8 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
       ruc: entity.ruc,
       executing_unit: entity.executing_unit,
       fiscal_address: entity.fiscal_address,
+      email: entity.email,
+      contact_person: entity.contact_person,
     },
   })
 
@@ -66,6 +65,8 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
         ruc: entity.ruc,
         executing_unit: entity.executing_unit,
         fiscal_address: entity.fiscal_address,
+        email: entity.email,
+        contact_person: entity.contact_person,
       })
     }
   }, [entity, form])
@@ -79,6 +80,8 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
           ruc: values.ruc,
           executing_unit: values.executing_unit,
           fiscal_address: values.fiscal_address,
+          email: values.email || null,
+          contact_person: values.contact_person,
           updated_at: new Date().toISOString(),
         })
         .eq("id", entity.id)
@@ -152,6 +155,32 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
                   <FormLabel>Dirección Fiscal (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Dirección fiscal de la entidad" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Correo Electrónico (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="correo@ejemplo.com" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="contact_person"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Persona de Contacto (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nombre de la persona de contacto" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
