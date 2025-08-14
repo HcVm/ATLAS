@@ -132,11 +132,11 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
 
   const handleClose = () => {
     setIsClosing(true)
-    // Esperar a que termine la animación antes de ocultar
     setTimeout(() => {
       setIsVisible(false)
+      setIsClosing(false) // Reset del estado
       onClose?.()
-    }, 1200) // Tiempo aumentado para la animación de partículas
+    }, 800) // Reducido para coincidir mejor con la animación CSS
   }
 
   const handleMinimize = () => {
@@ -157,7 +157,7 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
   return (
     <div
       className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ease-in-out ${
-        isClosing ? "atlix-disintegrate" : "atlix-entrance"
+        isClosing ? "atlix-disintegrate opacity-0 pointer-events-none" : "atlix-entrance opacity-100"
       } ${isMinimized ? "scale-75" : "scale-100"}`}
     >
       <div className="relative">
