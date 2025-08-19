@@ -26,6 +26,7 @@ import {
   CalendarDays,
   BookText,
   Database,
+  CheckSquare,
 } from "lucide-react"
 
 import {
@@ -56,6 +57,12 @@ const menuSections = {
         title: "Dashboard",
         url: "/dashboard",
         icon: LayoutDashboard,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Tareas Diarias",
+        url: "/tasks",
+        icon: CheckSquare,
         roles: ["admin", "supervisor", "user"],
       },
       {
@@ -103,7 +110,14 @@ const menuSections = {
         url: "/sales",
         icon: ShoppingCart,
         roles: ["admin", "supervisor", "user"],
-        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas", "contabilidad"],
+        departments: [
+          "ventas",
+          "administración",
+          "administracion",
+          "operaciones",
+          "jefatura de ventas",
+          "contabilidad",
+        ],
       },
       {
         title: "Cotizaciones",
@@ -354,10 +368,8 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50">
         <div className="sidebar-header-glass rounded-xl p-4">
           <div className="flex items-center gap-2 justify-center">
-
             <div className="flex h-20 w-20 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
-              <img src="/logos/atlas-logo-blue.png" alt="logo" className="h-19 w-19"  />
-
+              <img src="/logos/atlas-logo-blue.png" alt="logo" className="h-19 w-19" />
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-slate-500 dark:text-slate-400">v1</span>
