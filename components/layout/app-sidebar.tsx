@@ -27,6 +27,7 @@ import {
   BookText,
   Database,
   CheckSquare,
+  Eye,
 } from "lucide-react"
 
 import {
@@ -232,6 +233,12 @@ const menuSections = {
         title: "Estadísticas",
         url: "/statistics",
         icon: BarChart3,
+        roles: ["admin", "supervisor"],
+      },
+      {
+        title: "Supervisión",
+        url: "/supervision",
+        icon: Eye,
         roles: ["admin", "supervisor"],
       },
     ],

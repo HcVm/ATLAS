@@ -305,16 +305,25 @@ export default function TasksPage() {
 
   const updateTaskStatus = async (taskId: string, newStatus: Task["status"]) => {
     try {
-      const { error } = await supabase
+      console.log("[v0] Updating task status:", { taskId, newStatus, userId: user?.id })
+
+      const { data, error } = await supabase
         .from("tasks")
         .update({
           status: newStatus,
           completed_at: newStatus === "completed" ? new Date().toISOString() : null,
           updated_by: user?.id,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", taskId)
+        .select()
 
-      if (error) throw error
+      console.log("[v0] Update result:", { data, error })
+
+      if (error) {
+        console.error("[v0] Database error:", error)
+        throw error
+      }
 
       setTasks(
         tasks.map((task) =>
@@ -328,15 +337,22 @@ export default function TasksPage() {
         ),
       )
 
+      const statusText = {
+        pending: "pendiente",
+        in_progress: "en progreso",
+        completed: "completada",
+        cancelled: "cancelada",
+      }
+
       toast({
         title: "Estado actualizado",
-        description: `La tarea se marcó como ${newStatus === "completed" ? "completada" : newStatus}`,
+        description: `La tarea se marcó como ${statusText[newStatus]}`,
       })
     } catch (error) {
-      console.error("Error updating task:", error)
+      console.error("[v0] Error updating task:", error)
       toast({
         title: "Error",
-        description: "No se pudo actualizar el estado de la tarea",
+        description: `No se pudo actualizar el estado de la tarea: ${error.message || "Error desconocido"}`,
         variant: "destructive",
       })
     }
