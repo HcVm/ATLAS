@@ -164,10 +164,9 @@ export default function TasksPage() {
       let query = supabase
         .from("task_boards")
         .select(`
-            *,
-            user_profile:profiles(full_name, email)
+          *,
+          user_profile:profiles!task_boards_user_id_fkey(full_name, email)
         `)
-
         .eq("board_date", selectedDate)
         .order("created_at", { ascending: false })
 
