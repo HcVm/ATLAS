@@ -35,6 +35,8 @@ export interface WarrantyLetterData {
 
   // Creado por
   createdBy: string
+
+  customDate?: Date
 }
 
 // Mapeo de marcas a códigos de empresa (CORREGIDO)
@@ -47,19 +49,23 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
-  "HOPE LIFE": "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/MEMBRETEPRUEBAHOPELIFE.png",
-  WORLDLIFE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-HOJAMEMBRETADA.png",
+  "HOPE LIFE":
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/MEMBRETEPRUEBAHOPELIFE.png",
+  WORLDLIFE:
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-HOJAMEMBRETADA.png",
   ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
-  VALHALLA: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
+  VALHALLA:
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
   console.log("🚀 Iniciando generación de Cartas de Garantía...")
-  console.log("DEBUG: Data recibida en generateWarrantyLetters:", data);
-  console.log("DEBUG: data.products en generateWarrantyLetters:", data.products);
+  console.log("DEBUG: Data recibida en generateWarrantyLetters:", data)
+  console.log("DEBUG: data.products en generateWarrantyLetters:", data.products)
 
   // Agrupar productos por marca
-  const productsByBrand = (data.products || []).reduce( // Modificado para manejar 'undefined'
+  const productsByBrand = (data.products || []).reduce(
+    // Modificado para manejar 'undefined'
     (acc, product) => {
       const brand = product.brand.toUpperCase()
       if (!acc[brand]) {
@@ -130,7 +136,7 @@ const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: str
     const contentHeight = tempDiv.scrollHeight
     const contentWidth = tempDiv.scrollWidth
 
-    console.log("📏 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
+    console.log("📐 Dimensiones del contenido:", { width: contentWidth, height: contentHeight })
 
     // Convertir HTML a canvas con configuración para A4
     console.log("🖼️ Convirtiendo HTML a canvas...")
@@ -195,12 +201,18 @@ const getProductDisplayText = (product: WarrantyLetterData["products"][0]): stri
 }
 
 const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
-  const currentDate = new Date().toLocaleDateString("es-PE", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const currentDate = data.customDate
+    ? data.customDate.toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : new Date().toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
 
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
@@ -321,12 +333,18 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
 }
 
 const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
-  const currentDate = new Date().toLocaleDateString("es-PE", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const currentDate = data.customDate
+    ? data.customDate.toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : new Date().toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
 
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">

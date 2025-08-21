@@ -28,6 +28,8 @@ export interface CCILetterData {
 
   // Creado por
   createdBy: string
+
+  customDate?: Date
 }
 
 // URLs de las hojas membretadas
@@ -322,11 +324,17 @@ const createCCILetterHTML = (
   letterheadBase64: string | null,
   letterheadType: "AGLE" | "ARM" | null,
 ): string => {
-  const currentDate = new Date().toLocaleDateString("es-PE", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const currentDate = data.customDate
+    ? data.customDate.toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : new Date().toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
 
   // Si tenemos hoja membretada, usar la plantilla específica
   if (letterheadBase64 && letterheadType) {
@@ -345,7 +353,7 @@ const createCCILetterHTML = (
 }
 
 const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
@@ -443,14 +451,14 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
 
         <div style="position: absolute; bottom: 3mm; left: 7mm;">
           ${
-              data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-                ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
+            data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
+              ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
                     ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                     ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                     ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
                   </p>`
-                : ""
-            }
+              : ""
+          }
             
             ${
               data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
@@ -471,7 +479,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
 
 // Plantilla específica para ARM
 const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
@@ -570,14 +578,14 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
 
         <div style="position: absolute; bottom: 8.2mm; left: 7mm;">
           ${
-              data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-                ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
+            data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
+              ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
                     ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                     ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                     ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
                   </p>`
-                : ""
-            }
+              : ""
+          }
             
             ${
               data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
@@ -597,7 +605,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
 }
 
 const createStandardHTML = (data: CCILetterData, currentDate: string): string => {
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
   return `
     <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 15mm; margin: 0;">
 

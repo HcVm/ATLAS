@@ -9,7 +9,25 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Plus, Search, FileText, DollarSign, TrendingUp, Package, Edit, Eye, AlertTriangle, ShoppingCart, Shield, CreditCard, MoreHorizontal, Receipt, Check, Clock, Users } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Package,
+  Edit,
+  Eye,
+  AlertTriangle,
+  ShoppingCart,
+  Shield,
+  CreditCard,
+  MoreHorizontal,
+  Receipt,
+  Check,
+  Clock,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -32,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog" // Import the new management dialog
+import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
 
 interface Sale {
   id: string
@@ -152,6 +171,26 @@ export default function SalesPage() {
   // New state for Sales Entity Management Dialog
   const [showSalesEntityManagementDialog, setShowSalesEntityManagementDialog] = useState(false)
 
+  const [warrantyDateDialog, setWarrantyDateDialog] = useState<{
+    open: boolean
+    sale: Sale | null
+    isGenerating: boolean
+  }>({
+    open: false,
+    sale: null,
+    isGenerating: false,
+  })
+
+  const [cciDateDialog, setCciDateDialog] = useState<{
+    open: boolean
+    sale: Sale | null
+    isGenerating: boolean
+  }>({
+    open: false,
+    sale: null,
+    isGenerating: false,
+  })
+
   const hasSalesAccess =
     user?.role === "admin" ||
     user?.role === "supervisor" ||
@@ -190,7 +229,7 @@ export default function SalesPage() {
 
   // Handle voucher parameter from notification
   useEffect(() => {
-    const companyId = companyToUse?.id;
+    const companyId = companyToUse?.id
     if (voucherParam && sales.length > 0 && companyId) {
       console.log("🔍 Buscando venta con voucher:", voucherParam)
 
@@ -328,11 +367,7 @@ export default function SalesPage() {
   // Función para obtener la dirección fiscal de una entidad
   const fetchEntityFiscalAddress = async (entityId: string): Promise<string | null> => {
     try {
-      const { data, error } = await supabase
-        .from("sales_entities")
-        .select("fiscal_address")
-        .eq("id", entityId)
-        .single()
+      const { data, error } = await supabase.from("sales_entities").select("fiscal_address").eq("id", entityId).single()
 
       if (error) {
         console.error("Error fetching entity fiscal address:", error)
@@ -458,7 +493,7 @@ export default function SalesPage() {
   }
 
   const handleVoucherUploaded = async () => {
-    if (!voucherSale?.id || !companyToUse?.id) return;
+    if (!voucherSale?.id || !companyToUse?.id) return
 
     try {
       // Re-fetch only the specific sale that was updated
@@ -474,22 +509,33 @@ export default function SalesPage() {
         `)
         .eq("id", voucherSale.id)
         .eq("company_id", companyToUse.id)
-        .single();
+        .single()
 
-      if (error) throw error;
+      if (error) throw error
 
       if (data) {
-        setVoucherSale(data); // Update the specific sale in the dialog's state
+        setVoucherSale(data) // Update the specific sale in the dialog's state
         // Also update the main sales list to reflect the change
-        setSales(prevSales => prevSales.map(s => s.id === data.id ? data : s));
+        setSales((prevSales) => prevSales.map((s) => (s.id === data.id ? data : s)))
       }
     } catch (error: any) {
-      toast.error("Error al actualizar la venta después de subir el comprobante: " + error.message);
+      toast.error("Error al actualizar la venta después de subir el comprobante: " + error.message)
     }
-  };
+  }
 
-  const handleGenerateWarrantyLetter = async (sale: Sale) => {
+  const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date) => {
+    if (!selectedDate) {
+      // Abrir diálogo de selección de fecha
+      setWarrantyDateDialog({
+        open: true,
+        sale: sale,
+        isGenerating: false,
+      })
+      return
+    }
+
     try {
+      setWarrantyDateDialog((prev) => ({ ...prev, isGenerating: true }))
       toast.info("Generando carta de garantía...")
 
       // Obtener la dirección fiscal de la entidad
@@ -530,7 +576,7 @@ export default function SalesPage() {
             return {
               quantity: saleItem.quantity,
               description: saleItem.product_description || saleItem.product_name,
-              modelo: productDetail?.modelo || null, // ✅ Obtener modelo desde la tabla products
+              modelo: productDetail?.modelo || null,
               brand: saleItem.product_brand || productDetail?.brands?.name || "N/A",
               code: saleItem.product_code,
             }
@@ -542,7 +588,7 @@ export default function SalesPage() {
             {
               quantity: sale.total_quantity,
               description: sale.display_product_name,
-              modelo: productDetail?.modelo || null, // ✅ Obtener modelo desde la tabla products
+              modelo: productDetail?.modelo || null,
               brand: productDetail?.brands?.name || "N/A",
               code: sale.display_product_code,
             },
@@ -570,22 +616,36 @@ export default function SalesPage() {
         letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
-        clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
-        clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
-        products: finalProducts, // <-- ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
-        warrantyMonths: 12, // Asumiendo 12 meses por defecto, puedes ajustarlo según tu lógica
+        clientAddress: sale.final_destination || "Dirección no especificada",
+        clientFiscalAddress: clientFiscalAddress || undefined,
+        products: finalProducts,
+        warrantyMonths: 12,
         createdBy: user?.full_name || "Usuario",
+        customDate: selectedDate, // Pasando la fecha seleccionada
       })
 
       toast.success("Carta de garantía generada exitosamente")
+      setWarrantyDateDialog({ open: false, sale: null, isGenerating: false })
     } catch (error: any) {
       console.error("Error generating warranty letter:", error)
       toast.error("Error al generar la carta de garantía: " + error.message)
+      setWarrantyDateDialog((prev) => ({ ...prev, isGenerating: false }))
     }
   }
 
-  const handleGenerateCCILetter = async (sale: Sale) => {
+  const handleGenerateCCILetter = async (sale: Sale, selectedDate?: Date) => {
+    if (!selectedDate) {
+      // Abrir diálogo de selección de fecha
+      setCciDateDialog({
+        open: true,
+        sale: sale,
+        isGenerating: false,
+      })
+      return
+    }
+
     try {
+      setCciDateDialog((prev) => ({ ...prev, isGenerating: true }))
       toast.info("Generando carta de CCI...")
 
       // Obtener la dirección fiscal de la entidad
@@ -598,17 +658,20 @@ export default function SalesPage() {
         letterNumber: `${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`,
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
-        clientAddress: sale.final_destination || "Dirección no especificada", // Dirección de entrega como fallback
-        clientFiscalAddress: clientFiscalAddress || undefined, // Nueva dirección fiscal
+        clientAddress: sale.final_destination || "Dirección no especificada",
+        clientFiscalAddress: clientFiscalAddress || undefined,
         ocam: sale.ocam || "N/A",
         siaf: sale.exp_siaf || "N/A",
         createdBy: user?.full_name || "Usuario",
+        customDate: selectedDate, // Pasando la fecha seleccionada
       })
 
       toast.success("Carta de CCI generada exitosamente")
+      setCciDateDialog({ open: false, sale: null, isGenerating: false })
     } catch (error: any) {
       console.error("Error generating CCI letter:", error)
       toast.error("Error al generar la carta de CCI: " + error.message)
+      setCciDateDialog((prev) => ({ ...prev, isGenerating: false }))
     }
   }
 
@@ -1196,7 +1259,11 @@ export default function SalesPage() {
                     <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total</p>
                       <p className="text-xl font-bold text-slate-700 dark:text-slate-200">
-                        S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                        S/{" "}
+                        {selectedSale.total_sale.toLocaleString("es-PE", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}
                       </p>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -1262,7 +1329,11 @@ export default function SalesPage() {
                                   {item.quantity.toLocaleString()}
                                 </TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300">
-                                  S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  S/{" "}
+                                  {item.unit_price_with_tax.toLocaleString("es-PE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 4,
+                                  })}
                                 </TableCell>
                                 <TableCell className="font-medium text-slate-700 dark:text-slate-200">
                                   S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
@@ -1527,6 +1598,32 @@ export default function SalesPage() {
           canEdit={hasSalesAccess} // Cambiado de canViewAllSales a hasSalesAccess
         />
       )}
+
+      <DateSelectorDialog
+        open={warrantyDateDialog.open}
+        onOpenChange={(open) => setWarrantyDateDialog({ open, sale: null, isGenerating: false })}
+        onConfirm={(selectedDate) => {
+          if (warrantyDateDialog.sale) {
+            handleGenerateWarrantyLetter(warrantyDateDialog.sale, selectedDate)
+          }
+        }}
+        title="Generar Carta de Garantía"
+        description="Selecciona la fecha que aparecerá en la carta de garantía."
+        isGenerating={warrantyDateDialog.isGenerating}
+      />
+
+      <DateSelectorDialog
+        open={cciDateDialog.open}
+        onOpenChange={(open) => setCciDateDialog({ open, sale: null, isGenerating: false })}
+        onConfirm={(selectedDate) => {
+          if (cciDateDialog.sale) {
+            handleGenerateCCILetter(cciDateDialog.sale, selectedDate)
+          }
+        }}
+        title="Generar Carta de CCI"
+        description="Selecciona la fecha que aparecerá en la carta de CCI."
+        isGenerating={cciDateDialog.isGenerating}
+      />
     </div>
   )
 }
