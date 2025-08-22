@@ -34,8 +34,8 @@ export interface CCILetterData {
 
 // URLs de las hojas membretadas
 const LETTERHEAD_URLS = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/AGLEPERUVIAN-MEMBRETE%20NEW.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ARMCORP-MEMBRETE%20NEW.png",
+  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/AGLE-MEMBRETEFIXEDFINAL.png",
+  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ARM-MEMBRETEFIXEXFINCMARCA.png",
 }
 
 // Función para determinar qué hoja membretada usar
@@ -370,8 +370,13 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
           <p style="margin: 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
         </div>
 
+        <!-- Título de la carta -->
+        <div style="position: absolute; top: 50mm; left: 0; right: 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px;">CARTA DE AUTORIZACIÓN</h1>
+        </div>
+
         <!-- Área del destinatario - Posicionada exactamente donde está en la plantilla -->
-        <div style="position: absolute; top: 50mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; top: 60mm; left: 20mm; right: 20mm;">
           <div style="margin-bottom: 8mm;">
             <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
             <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
@@ -379,12 +384,16 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
             <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
           </div>
           
-          <p style="margin: 8mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
+          
+        </div >
+        <div style="position: absolute; top: 88mm; left: 20mm; right: 20mm;">
+        <p style="margin: 0mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
         </div>
 
+
         <!-- Contenido principal - Posicionado después del área del destinatario -->
-        <div style="position: absolute; top: 90mm; left: 20mm; right: 20mm; line-height: 1.4;">
-          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+        <div style="position: absolute; top: 95mm; left: 20mm; right: 20mm; line-height: 1.4;">
+          <p style="margin: 0 0 6mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
             Por medio de la presente, comunico a usted, que la entidad bancaria, número de cuenta y el 
             respectivo Código de Cuenta Interbancario (CCI) de la empresa que represento es la siguiente:
           </p>
@@ -429,13 +438,13 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
             </table>
           </div>
 
-          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+          <p style="margin: 6mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
             Se certifica que el número de cuenta bancaria informado se encuentra vinculado al RUC 
             indicado, conforme a los datos registrados en el sistema financiero nacional al momento de su 
             apertura.
           </p>
 
-          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+          <p style="margin: 6mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
             Asimismo, dejo constancia que la factura a ser emitida por mi representada, una vez cumplida o 
             atendida la correspondiente Orden de Compra y/o de Servicio o las prestaciones en bienes y/o 
             servicios materia del contrato quedará cancelada para todos sus efectos mediante la sola 
@@ -445,14 +454,14 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
         </div>
 
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 20mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; bottom: 35mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
         </div>
 
-        <div style="position: absolute; bottom: 3mm; left: 7mm;">
+        <div style="position: absolute; bottom: 6mm; left: 6mm;">
           ${
             data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
+              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">
                     ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                     ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                     ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
@@ -462,13 +471,13 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
             
             ${
               data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
+                ? `<p style="margin: 0 0 1mm 0; font-size: 11px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
                 : ""
             }
             
             ${
               data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0; font-size: 8px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
+                ? `<p style="margin: 0; font-size: 10px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
                 : ""
             }
           </div>
@@ -496,8 +505,13 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
           <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
         </div>
 
+        <!-- Título de la carta -->
+        <div style="position: absolute; top: 50mm; left: 0; right: 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px;">CARTA DE AUTORIZACIÓN</h1>
+        </div>
+
         <!-- Área del destinatario - Posicionada exactamente donde está en la plantilla -->
-        <div style="position: absolute; top: 50mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; top: 60mm; left: 20mm; right: 20mm;">
           <div style="margin-bottom: 8mm;">
             <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
             <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
@@ -509,7 +523,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
         </div>
 
         <!-- Contenido principal - Posicionado después del área del destinatario -->
-        <div style="position: absolute; top: 90mm; left: 20mm; right: 20mm; line-height: 1.4;">
+        <div style="position: absolute; top: 100mm; left: 20mm; right: 20mm; line-height: 1.4;">
           <p style="margin: 0 0 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
             Por medio de la presente, comunico a usted, que la entidad bancaria, número de cuenta y el 
             respectivo Código de Cuenta Interbancario (CCI) de la empresa que represento es la siguiente:
@@ -579,7 +593,8 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
         <div style="position: absolute; bottom: 13mm; left: 7mm;">
           ${
             data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">
+              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left; font-weight: 700;">
+
                     ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                     ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                     ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
@@ -589,13 +604,13 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
             
             ${
               data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
+                ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left; font-weight: 700;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
                 : ""
             }
             
             ${
               data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0; font-size: 9px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
+                ? `<p style="margin: 0; font-size: 9px; color: #1a1a1a; text-align: left; line-height: 1.2; font-weight: 700;">${data.bankingInfo.fiscalAddress}</p>`
                 : ""
             }
           </div>
@@ -775,8 +790,8 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
       </div>
 
       <!-- Firma -->
-      <div style="margin-top: 20mm;">
-        <p style="margin: 0 0 15mm 0; font-size: 11px; color: #374151;">Atentamente,</p>
+      <div style="margin-top: 10mm;">
+        <p style="margin: 0 0 5mm 0; font-size: 11px; color: #374151;">Atentamente,</p>
         
         <div style="text-align: center; margin-top: 25mm;">
           <div style="border-bottom: 1px solid #374151; width: 200px; margin: 0 auto 4mm auto;"></div>

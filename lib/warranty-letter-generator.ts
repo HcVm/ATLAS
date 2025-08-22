@@ -50,12 +50,12 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
   "HOPE LIFE":
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/MEMBRETEPRUEBAHOPELIFE.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOPELIFE-MEMBRETECMARCA.png",
   WORLDLIFE:
     "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-MEMBRENEW.png",
   ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
   VALHALLA:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-MEMBRETECMARCA.png",
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
@@ -229,7 +229,7 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
       }
 
       <!-- Contenido principal - Posicionado para no interferir con el membrete -->
-      <div style="position: relative; z-index: 2; padding: 30mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 30mm 30mm 20mm 30mm; height: calc(297mm - 80mm); box-sizing: border-box;">
 
         <!-- Título principal -->
         <div style="text-align: center; margin-bottom: 6mm;">
@@ -287,19 +287,19 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
           <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">Esta garantía no será válida en los siguientes casos:</p>
           
           <div style="margin-bottom: 3mm;">
-            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
               • Cuando el producto haya sido utilizado en condiciones distintas a las especificadas por el fabricante o fuera de sus parámetros normales de operación.
             </p>
             
-            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
               • Si el producto ha sido intervenido, modificado, reparado o alterado por personas o servicios técnicos no autorizados por AGLE PERUVIAN COMPANY E.I.R.L.
             </p>
             
-            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
               • En caso de uso indebido, negligencia, daño intencional o manipulación incorrecta por parte del usuario final.
             </p>
 
-            <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+            <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
               • Daños ocasionados por causas externas, tales como: accidentes, desastres naturales, sobrecargas eléctricas, exposición a líquidos, o uso de accesorios no originales.
             </p>
           </div>
@@ -311,9 +311,9 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
           
           <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">AGLE PERUVIAN COMPANY E.I.R.L. no será responsable en ningún caso por:</p>
           
-          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Pérdida de beneficios o lucro cesante.</p>
-          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Daños indirectos, incidentales o consecuenciales.</p>
-          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">• Cualquier otro perjuicio económico, personal o material derivado del uso, mal funcionamiento o imposibilidad de uso del producto.</p>
+          <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">• Pérdida de beneficios o lucro cesante.</p>
+          <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">• Daños indirectos, incidentales o consecuenciales.</p>
+          <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">• Cualquier otro perjuicio económico, personal o material derivado del uso, mal funcionamiento o imposibilidad de uso del producto.</p>
         </div>
 
         <!-- Alcance de la garantía -->
@@ -349,6 +349,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
+
       <!-- Membrete de fondo -->
       ${
         letterheedUrl
@@ -361,18 +362,18 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
       }
 
       <!-- Contenido principal - Posicionado para no interferir con el membrete -->
-      <div style="position: relative; z-index: 2; padding: 45mm 20mm 20mm 20mm; height: calc(297mm - 80mm); box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 45mm 25mm 20mm 25mm; height: calc(297mm - 80mm); box-sizing: border-box;">
 
         <!-- Título principal -->
         <div style="text-align: center; margin-bottom: 7mm;">
-          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
+          <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #000; letter-spacing: 1px;">
             CARTA DE GARANTÍA
           </h1>
         </div>
 
         <!-- Fecha -->
         <div style="text-align: right; margin-bottom: 15mm;">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #000;">Lima, ${currentDate}.</p>
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: #000;">Lima, ${currentDate}.</p>
         </div>
 
         <!-- Información del destinatario -->
@@ -385,7 +386,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
 
         <!-- Contenido principal -->
         <div style="margin-bottom: 8mm; line-height: 1.5; text-align: justify;">
-          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">
+          <p style="margin: 0 0 6mm 0; font-size: 11px; color: #000;">
             Por medio de la presente, la empresa <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> les garantiza que los siguientes bienes:
           </p>
 
@@ -402,11 +403,11 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
               .join("")}
           </div>
 
-          <p style="margin: 5mm 0; font-size: 10px; color: #000;">
+          <p style="margin: 5mm 0; font-size: 11px; color: #000;">
             Cuentan con una garantía de <strong>${data.warrantyMonths} MESES</strong>, en todas sus partes y mano de obra, contra cualquier defecto de fabricación y funcionamiento a partir de la fecha entregada al consumidor final. El producto adquirido ha sido sometido a los más estrictos procesos de control de calidad antes de llegar a usted; por lo que, si se presenta algún desperfecto en su funcionamiento, atribuible a su fabricación, durante la vigencia del plazo de esta garantía, le rogaríamos contactarnos a través de algunos de los medios especificados en el presente certificado.
           </p>
 
-          <p style="margin: 5mm 0; font-size: 10px; color: #000;">
+          <p style="margin: 5mm 0; font-size: 11px; color: #000;">
             Asimismo, <strong>ARM CORPORATIONS DEL PERÚ E.I.R.L.</strong> no se responsabiliza de modo alguno por lucro de pérdida de utilidades, daños indirectos, ni por ningún otro perjuicio que surja como consecuencia de un indebido funcionamiento del producto adquirido.
           </p>
         </div>
@@ -415,15 +416,15 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         <div style="margin-bottom: 8mm;">
           <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">ESTA GARANTÍA NO ES VÁLIDA EN CUALQUIERA DE LOS SIGUIENTES CASOS:</p>
           
-          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+          <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
             • Cuando el producto se hubiese utilizado en condiciones distintas a lo normal.
           </p>
           
-          <p style="margin: 0 0 2mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+          <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
             • Cuando el producto hubiese sido alterado o manipulado por terceros.
           </p>
           
-          <p style="margin: 0 0 6mm 0; font-size: 9px; line-height: 1.3; color: #000;">
+          <p style="margin: 0 0 6mm 0; font-size: 10px; line-height: 1.3; color: #000;">
             • Cuando el producto haya tenido un mal uso por parte del usuario final.
           </p>
 

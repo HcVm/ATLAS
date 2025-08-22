@@ -88,10 +88,17 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         const employee = employees?.find((emp) => emp.id === board.user_id)
         if (!employee) continue
 
-        const overdueTasks = board.tasks.filter(
-          (task) =>
-            task.due_time && task.status !== "completed" && new Date(`${board.board_date}T${task.due_time}`) < now,
-        )
+        const overdueTasks = board.tasks.filter((task) => {
+          if (!task.due_time || task.status === "completed") return false
+
+          // Create date objects in local timezone
+          const now = new Date()
+          const taskDate = new Date(board.board_date)
+          const [hours, minutes] = task.due_time.split(":").map(Number)
+          taskDate.setHours(hours, minutes, 0, 0)
+
+          return taskDate < now
+        })
 
         if (overdueTasks.length > 0) {
           const highPriorityOverdue = overdueTasks.filter(
