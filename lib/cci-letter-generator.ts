@@ -34,8 +34,8 @@ export interface CCILetterData {
 
 // URLs de las hojas membretadas
 const LETTERHEAD_URLS = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/AGLE-HOJA%20MEMBRETADA.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ARM-HOJA%20MEMBRETADA.png",
+  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/AGLEPERUVIAN-MEMBRETE%20NEW.png",
+  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ARMCORP-MEMBRETE%20NEW.png",
 }
 
 // Función para determinar qué hoja membretada usar
@@ -390,7 +390,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
           </p>
 
           <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
-          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm; background: rgba(255,255,255,0.9);">
+          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
               <tr>
                 <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
@@ -492,8 +492,8 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
       <div style="position: relative; z-index: 2; padding: 0; margin: 0; width: 100%; height: 100%;">
 
         <!-- Área de fecha - Posicionada en la esquina superior derecha -->
-        <div style="position: absolute; top: 30mm; right: 20mm; text-align: right;">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
+        <div style="position: absolute; top: 40mm; right: 20mm; text-align: right;">
+          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
         </div>
 
         <!-- Área del destinatario - Posicionada exactamente donde está en la plantilla -->
@@ -516,7 +516,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
           </p>
 
           <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
-          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm; background: rgba(255,255,255,0.9);">
+          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
               <tr>
                 <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
@@ -576,10 +576,10 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
           
         </div>
 
-        <div style="position: absolute; bottom: 8.2mm; left: 7mm;">
+        <div style="position: absolute; bottom: 13mm; left: 7mm;">
           ${
             data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">
+              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">
                     ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                     ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                     ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
@@ -589,13 +589,13 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
             
             ${
               data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 1mm 0; font-size: 8px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
+                ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
                 : ""
             }
             
             ${
               data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0; font-size: 8px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
+                ? `<p style="margin: 0; font-size: 9px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
                 : ""
             }
           </div>
@@ -668,7 +668,7 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
 
       <!-- Información del destinatario -->
       <div style="margin-bottom: 15mm;">
-        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 4mm; overflow: hidden; box-shadow: 0 2mm 6mm rgba(0,0,0,0.08);">
+        <div style="border: 1px solid #e5e7eb; border-radius: 4mm; overflow: hidden; box-shadow: 0 2mm 6mm rgba(0,0,0,0.08);">
           <div style="background: linear-gradient(90deg, #374151 0%, #4b5563 100%); color: white; padding: 6mm 10mm;">
             <h3 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">DESTINATARIO</h3>
           </div>
@@ -689,7 +689,7 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
 
       <!-- Asunto -->
       <div style="margin-bottom: 15mm;">
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4mm; padding: 8mm; border-left: 3mm solid #3b82f6;">
+        <div style="border: 1px solid #bfdbfe; border-radius: 4mm; padding: 8mm; border-left: 3mm solid #3b82f6;">
           <p style="margin: 0; font-size: 11px; font-weight: 700; color: #1e40af;">
             ASUNTO: AUTORIZACIÓN PARA EL PAGO CON ABONOS DIRECTO EN CUENTA.
           </p>

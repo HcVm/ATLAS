@@ -52,7 +52,7 @@ const LETTERHEAD_URLS: Record<string, string> = {
   "HOPE LIFE":
     "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/MEMBRETEPRUEBAHOPELIFE.png",
   WORLDLIFE:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-HOJAMEMBRETADA.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-MEMBRENEW.png",
   ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
   VALHALLA:
     "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-HOJAMEMBRETADA1.png",
