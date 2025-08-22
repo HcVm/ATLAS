@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -68,6 +69,7 @@ export default function SupervisionPage() {
   const [selectedEmployeeForAssignment, setSelectedEmployeeForAssignment] = useState<string>("")
   const [selectedBoardForAssignment, setSelectedBoardForAssignment] = useState<string>("")
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const router = useRouter()
 
   useEffect(() => {
     if (user && selectedCompany) {
@@ -200,13 +202,21 @@ export default function SupervisionPage() {
           case "completed":
             return taskStatuses.includes("completed")
           case "overdue":
-            return board.tasks.some(
-              (task) => task.due_time && new Date(task.due_time) < new Date() && task.status !== "completed",
-            )
+            return board.tasks.some((task) => {
+              if (!task.due_time || task.status === "completed") return false
+
+              const now = new Date()
+              const taskDate = new Date(task.created_at.split("T")[0])
+              const [hours, minutes] = task.due_time.split(":").map(Number)
+              taskDate.setHours(hours, minutes, 0, 0)
+
+              return taskDate < now
+            })
           default:
             return true
         }
       })
+
       console.log("[v0] After status filter:", filtered.length)
     }
 
@@ -219,9 +229,17 @@ export default function SupervisionPage() {
     const completed = tasks.filter((task) => task.status === "completed").length
     const pending = tasks.filter((task) => task.status === "pending").length
     const inProgress = tasks.filter((task) => task.status === "in_progress").length
-    const overdue = tasks.filter(
-      (task) => task.due_time && new Date(task.due_time) < new Date() && task.status !== "completed",
-    ).length
+    const overdue = tasks.filter((task) => {
+      if (!task.due_time || task.status === "completed") return false
+
+      // Create date objects in local timezone
+      const now = new Date()
+      const taskDate = new Date(task.created_at.split("T")[0])
+      const [hours, minutes] = task.due_time.split(":").map(Number)
+      taskDate.setHours(hours, minutes, 0, 0)
+
+      return taskDate < now
+    }).length
 
     return { total, completed, pending, inProgress, overdue }
   }
@@ -441,7 +459,7 @@ export default function SupervisionPage() {
                         variant="outline"
                         size="sm"
                         className="flex-1 bg-transparent"
-                        onClick={() => window.open(`/supervision/employee/${board.user_id}`, "_blank")}
+                        onClick={() => router.push(`/supervision/employee/${board.user_id}`)}
                       >
                         Ver Detalles
                       </Button>

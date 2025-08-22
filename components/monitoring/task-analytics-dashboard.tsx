@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, BarChart3, Calendar } from "lucide-react"
-import { format, subDays, startOfWeek } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 interface AnalyticsData {
@@ -51,8 +51,11 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
   const [selectedPeriod, setSelectedPeriod] = useState(dateRange)
 
   useEffect(() => {
-    if (selectedCompany) {
+    if (selectedCompany?.id) {
       loadAnalytics()
+    } else {
+      setLoading(false)
+      setAnalytics(null)
     }
   }, [selectedCompany, selectedPeriod, refreshTrigger])
 
@@ -60,75 +63,111 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
     try {
       setLoading(true)
 
-      // Calculate date range
-      const endDate = new Date()
-      let startDate = new Date()
-
-      switch (selectedPeriod) {
-        case "week":
-          startDate = startOfWeek(endDate, { weekStartsOn: 1 })
-          break
-        case "month":
-          startDate = subDays(endDate, 30)
-          break
-        case "quarter":
-          startDate = subDays(endDate, 90)
-          break
-        default:
-          startDate = subDays(endDate, 7)
-      }
+      console.log("[v0] Loading analytics for company:", selectedCompany?.id)
 
       const { data: employees, error: employeesError } = await supabase
         .from("profiles")
-        .select("id, full_name, department_id")
-        .eq("company_id", selectedCompany?.id)
-        .in("role", ["user", "supervisor"])
-
-      if (employeesError) throw employeesError
-
-      // Load task boards and tasks
-      const { data: taskBoards, error: boardsError } = await supabase
-        .from("task_boards")
         .select(`
-          id,
-          user_id,
-          board_date,
-          tasks(
+          id, 
+          full_name, 
+          department_id,
+          departments!profiles_department_id_fkey (
             id,
-            status,
-            priority,
-            due_time,
-            completed_at,
-            created_at
+            name,
+            color
           )
         `)
         .eq("company_id", selectedCompany?.id)
-        .gte("board_date", format(startDate, "yyyy-MM-dd"))
-        .lte("board_date", format(endDate, "yyyy-MM-dd"))
+        .in("role", ["user", "supervisor"])
 
-      if (boardsError) throw boardsError
+      if (employeesError) {
+        console.error("[v0] Error loading employees:", employeesError)
+        throw employeesError
+      }
 
-      // Process analytics data
+      console.log("[v0] Loaded employees:", employees?.length)
+
+      const { data: tasksData, error: tasksError } = await supabase
+        .from("tasks")
+        .select(`
+          id,
+          title,
+          status,
+          priority,
+          due_time,
+          completed_at,
+          created_at,
+          board_id,
+          task_boards!tasks_board_id_fkey (
+            id,
+            user_id,
+            board_date,
+            company_id,
+            created_at
+          )
+        `)
+        .not("task_boards", "is", null)
+        .order("created_at", { ascending: false })
+
+      if (tasksError) {
+        console.error("[v0] Error loading tasks:", tasksError)
+        throw tasksError
+      }
+
+      const companyTasks = tasksData?.filter((task) => task.task_boards?.company_id === selectedCompany?.id) || []
+
+      console.log("[v0] ALL Tasks from DB:", {
+        totalTasks: tasksData?.length,
+        companyTasks: companyTasks.length,
+        sampleTasks: companyTasks.slice(0, 5).map((task) => ({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          board_id: task.board_id,
+          board_date: task.task_boards?.board_date,
+          user_id: task.task_boards?.user_id,
+        })),
+      })
+
       const allTasks =
-        taskBoards?.flatMap((board) =>
-          board.tasks.map((task) => ({
-            ...task,
-            user_id: board.user_id,
-            board_date: board.board_date,
-          })),
-        ) || []
+        companyTasks?.map((task) => ({
+          id: task.id,
+          title: task.title || "Sin título",
+          status: task.status || "pending",
+          priority: task.priority || "media",
+          due_time: task.due_time,
+          completed_at: task.completed_at,
+          created_at: task.created_at,
+          user_id: task.task_boards?.user_id,
+          board_date: task.task_boards?.board_date,
+        })) || []
+
+      console.log("[v0] PROCESSED TASKS (filtered by company):", {
+        totalTasks: allTasks.length,
+        tasksByStatus: {
+          completed: allTasks.filter((t) => t.status === "completed").length,
+          pending: allTasks.filter((t) => t.status === "pending").length,
+          in_progress: allTasks.filter((t) => t.status === "in_progress").length,
+        },
+        sampleTasks: allTasks.slice(0, 3).map((t) => ({
+          title: t.title,
+          status: t.status,
+          board_date: t.board_date,
+        })),
+      })
 
       const completedTasks = allTasks.filter((task) => task.status === "completed")
-      const overdueTasks = allTasks.filter(
-        (task) =>
-          task.due_time &&
-          task.status !== "completed" &&
-          new Date(`${task.created_at.split("T")[0]}T${task.due_time}`) < new Date(),
-      )
+      const overdueTasks = allTasks.filter((task) => {
+        if (!task.due_time || task.status === "completed") return false
+
+        const now = new Date()
+        const taskDate = new Date(task.board_date + "T" + task.due_time)
+
+        return taskDate < now
+      })
 
       const avgCompletionRate = allTasks.length > 0 ? (completedTasks.length / allTasks.length) * 100 : 0
 
-      // Calculate top performers
       const userStats =
         employees?.map((employee) => {
           const userTasks = allTasks.filter((task) => task.user_id === employee.id)
@@ -149,6 +188,13 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         .sort((a, b) => b.completionRate - a.completionRate)
         .slice(0, 5)
 
+      const departmentMap = new Map()
+      employees?.forEach((emp) => {
+        if (emp.departments) {
+          departmentMap.set(emp.department_id, emp.departments.name)
+        }
+      })
+
       const departments = [...new Set(employees?.map((emp) => emp.department_id).filter(Boolean))]
       const departmentStats = departments.map((deptId) => {
         const deptEmployees = employees?.filter((emp) => emp.department_id === deptId) || []
@@ -157,17 +203,21 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         const completionRate = deptTasks.length > 0 ? (deptCompleted.length / deptTasks.length) * 100 : 0
 
         return {
-          department: deptId || "Sin departamento",
+          department: departmentMap.get(deptId) || "Sin departamento",
           employees: deptEmployees.length,
           completionRate,
           totalTasks: deptTasks.length,
         }
       })
 
-      // Calculate daily stats for trend
       const dailyStats = []
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = format(d, "yyyy-MM-dd")
+      const today = new Date()
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today)
+        date.setDate(date.getDate() - i)
+        const dateStr = format(date, "yyyy-MM-dd")
+
         const dayTasks = allTasks.filter((task) => task.board_date === dateStr)
         const dayCompleted = dayTasks.filter((task) => task.status === "completed")
 
@@ -179,14 +229,30 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         })
       }
 
-      // Calculate productivity trend
       const midPoint = Math.floor(dailyStats.length / 2)
       const recentStats = dailyStats.slice(midPoint)
       const olderStats = dailyStats.slice(0, midPoint)
 
-      const recentAvg = recentStats.reduce((sum, day) => sum + day.completionRate, 0) / recentStats.length
-      const olderAvg = olderStats.reduce((sum, day) => sum + day.completionRate, 0) / olderStats.length
+      const recentAvg =
+        recentStats.length > 0 ? recentStats.reduce((sum, day) => sum + day.completionRate, 0) / recentStats.length : 0
+      const olderAvg =
+        olderStats.length > 0 ? olderStats.reduce((sum, day) => sum + day.completionRate, 0) / olderStats.length : 0
       const productivityTrend = recentAvg - olderAvg
+
+      console.log("[v0] Analytics calculated successfully:", {
+        totalTasks: allTasks.length,
+        completedTasks: completedTasks.length,
+        overdueTasks: overdueTasks.length,
+        avgCompletionRate,
+        topPerformers: topPerformers.length,
+        departmentStats: departmentStats.length,
+        dailyStatsCount: dailyStats.length,
+        departmentDetails: departmentStats.map((d) => ({
+          name: d.department,
+          tasks: d.totalTasks,
+          rate: d.completionRate,
+        })),
+      })
 
       setAnalytics({
         totalEmployees: employees?.length || 0,
@@ -201,10 +267,22 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         dailyStats,
       })
     } catch (error) {
-      console.error("Error loading analytics:", error)
+      console.error("[v0] Error loading analytics:", error)
+      setAnalytics(null)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!selectedCompany?.id) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">Selecciona una empresa para ver los análisis</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
@@ -226,6 +304,7 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
     return (
       <Card>
         <CardContent className="p-6 text-center">
+          <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500">No se pudieron cargar los datos de análisis</p>
         </CardContent>
       </Card>
@@ -234,7 +313,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
   return (
     <div className="space-y-6">
-      {/* Header with Period Selector */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Análisis de Rendimiento</h3>
@@ -252,7 +330,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Select>
       </div>
 
-      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -315,7 +392,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Card>
       </div>
 
-      {/* Alerts */}
       {analytics.overdueTasks > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4">
@@ -333,7 +409,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Performers */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -373,7 +448,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
           </CardContent>
         </Card>
 
-        {/* Department Stats */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -406,7 +480,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Card>
       </div>
 
-      {/* Daily Trend */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -417,7 +490,7 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {analytics.dailyStats.slice(-7).map((day) => (
+            {analytics.dailyStats.map((day) => (
               <div key={day.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AlertTriangle, Clock, TrendingDown, UserX, Target, Bell, X } from "lucide-react"
+import { AlertTriangle, Clock, TrendingDown, UserX, Target, Bell, X, Users } from "lucide-react"
 import { format } from "date-fns"
 
 interface Alert {
@@ -37,8 +37,11 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (selectedCompany) {
+    if (selectedCompany?.id) {
       generateAlerts()
+    } else {
+      setLoading(false)
+      setAlerts([])
     }
   }, [selectedCompany, refreshTrigger])
 
@@ -47,9 +50,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
       setLoading(true)
       const generatedAlerts: Alert[] = []
 
-      // Get current date for calculations
-      const now = new Date()
-      const today = format(now, "yyyy-MM-dd")
+      console.log("[v0] Generating alerts for company:", selectedCompany?.id)
 
       const { data: employees, error: employeesError } = await supabase
         .from("profiles")
@@ -57,9 +58,13 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         .eq("company_id", selectedCompany?.id)
         .in("role", ["user", "supervisor"])
 
-      if (employeesError) throw employeesError
+      if (employeesError) {
+        console.error("[v0] Error loading employees for alerts:", employeesError)
+        throw employeesError
+      }
 
-      // Load recent task boards and tasks
+      console.log("[v0] Loaded employees for alerts:", employees?.length)
+
       const { data: taskBoards, error: boardsError } = await supabase
         .from("task_boards")
         .select(`
@@ -78,12 +83,44 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
           )
         `)
         .eq("company_id", selectedCompany?.id)
-        .gte("board_date", format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"))
-        .lte("board_date", today)
+        .order("board_date", { ascending: false })
 
-      if (boardsError) throw boardsError
+      if (boardsError) {
+        console.error("[v0] Error loading task boards for alerts:", boardsError)
+        throw boardsError
+      }
 
-      // Check for overdue tasks
+      console.log("[v0] ALL Task boards for alerts:", {
+        totalBoards: taskBoards?.length,
+        boardsByUser: taskBoards?.reduce(
+          (acc, board) => {
+            const employee = employees?.find((e) => e.id === board.user_id)
+            const employeeName = employee?.full_name || "Unknown"
+            acc[employeeName] = (acc[employeeName] || 0) + 1
+            return acc
+          },
+          {} as Record<string, number>,
+        ),
+        sampleBoards: taskBoards?.slice(0, 3).map((b) => ({
+          user_id: b.user_id,
+          board_date: b.board_date,
+          tasksCount: b.tasks?.length || 0,
+        })),
+      })
+
+      const marleneEmployee = employees?.find((emp) => emp.full_name.includes("Marlene"))
+      if (marleneEmployee) {
+        const marleneBoards = taskBoards?.filter((board) => board.user_id === marleneEmployee.id) || []
+        console.log("[v0] Marlene Gutierrez boards:", {
+          employeeId: marleneEmployee.id,
+          totalBoards: marleneBoards.length,
+          boards: marleneBoards.map((b) => ({
+            board_date: b.board_date,
+            tasksCount: b.tasks?.length || 0,
+          })),
+        })
+      }
+
       for (const board of taskBoards || []) {
         const employee = employees?.find((emp) => emp.id === board.user_id)
         if (!employee) continue
@@ -91,7 +128,6 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         const overdueTasks = board.tasks.filter((task) => {
           if (!task.due_time || task.status === "completed") return false
 
-          // Create date objects in local timezone
           const now = new Date()
           const taskDate = new Date(board.board_date)
           const [hours, minutes] = task.due_time.split(":").map(Number)
@@ -124,14 +160,12 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         }
       }
 
-      // Check for low productivity (employees with low completion rates)
       for (const employee of employees || []) {
         const employeeBoards = taskBoards?.filter((board) => board.user_id === employee.id) || []
         const allTasks = employeeBoards.flatMap((board) => board.tasks)
         const completedTasks = allTasks.filter((task) => task.status === "completed")
 
         if (allTasks.length >= 5) {
-          // Only check if employee has enough tasks
           const completionRate = (completedTasks.length / allTasks.length) * 100
 
           if (completionRate < 50) {
@@ -153,11 +187,16 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         }
       }
 
-      // Check for inactive users (no task boards in last 3 days)
-      const threeDaysAgo = format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
+      const fourteenDaysAgo = format(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
       for (const employee of employees || []) {
         const recentBoards =
-          taskBoards?.filter((board) => board.user_id === employee.id && board.board_date >= threeDaysAgo) || []
+          taskBoards?.filter((board) => board.user_id === employee.id && board.board_date >= fourteenDaysAgo) || []
+
+        console.log(`[v0] Employee ${employee.full_name} recent boards (last 14 days):`, {
+          recentBoardsCount: recentBoards.length,
+          allBoardsCount: taskBoards?.filter((b) => b.user_id === employee.id).length || 0,
+          cutoffDate: fourteenDaysAgo,
+        })
 
         if (recentBoards.length === 0) {
           generatedAlerts.push({
@@ -165,22 +204,23 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
             type: "inactive_user",
             severity: "medium",
             title: "Usuario inactivo",
-            description: `${employee.full_name} no ha creado pizarrones de tareas en los últimos 3 días`,
+            description: `${employee.full_name} no ha creado pizarrones de tareas en los últimos 14 días`,
             employee: {
               id: employee.id,
               name: employee.full_name,
               avatar_url: employee.avatar_url,
             },
-            data: { daysSinceLastActivity: 3 },
+            data: { daysSinceLastActivity: 14 },
             created_at: new Date().toISOString(),
           })
         }
       }
 
-      // Check for high workload (employees with too many pending tasks)
       for (const employee of employees || []) {
         const todayBoards =
-          taskBoards?.filter((board) => board.user_id === employee.id && board.board_date === today) || []
+          taskBoards?.filter(
+            (board) => board.user_id === employee.id && board.board_date === format(new Date(), "yyyy-MM-dd"),
+          ) || []
 
         const pendingTasks = todayBoards.flatMap((board) => board.tasks.filter((task) => task.status === "pending"))
 
@@ -202,7 +242,6 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         }
       }
 
-      // Sort alerts by severity and creation time
       const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
       generatedAlerts.sort((a, b) => {
         const severityDiff = severityOrder[b.severity] - severityOrder[a.severity]
@@ -210,9 +249,11 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
 
+      console.log("[v0] Generated alerts:", generatedAlerts.length)
       setAlerts(generatedAlerts)
     } catch (error) {
-      console.error("Error generating alerts:", error)
+      console.error("[v0] Error generating alerts:", error)
+      setAlerts([])
     } finally {
       setLoading(false)
     }
@@ -253,6 +294,25 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
   }
 
   const visibleAlerts = alerts.filter((alert) => !dismissedAlerts.has(alert.id))
+
+  if (!selectedCompany?.id) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Alertas en Tiempo Real
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Selecciona una empresa para ver las alertas</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (loading) {
     return (

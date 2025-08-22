@@ -65,7 +65,7 @@ export default function EmployeeDetailPage() {
   const { selectedCompany } = useCompany()
   const params = useParams()
   const router = useRouter()
-  const employeeId = params.employeeId as string
+  const employeeId = params.employee as string
 
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [taskBoards, setTaskBoards] = useState<TaskBoard[]>([])
@@ -78,7 +78,7 @@ export default function EmployeeDetailPage() {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false)
 
   useEffect(() => {
-    console.log("[v0] useEffect triggered with:", { employeeId, selectedCompany: selectedCompany?.id, dateRange })
+    console.log("[v0] useEffect triggered with:", { employeeId, selectedCompany, dateRange })
 
     if (!employeeId) {
       console.log("[v0] No employeeId provided")
@@ -87,15 +87,17 @@ export default function EmployeeDetailPage() {
       return
     }
 
-    if (!selectedCompany?.id) {
+    if (selectedCompany === null) {
       console.log("[v0] No company selected")
       setError("No hay empresa seleccionada")
       setLoading(false)
       return
     }
 
-    loadEmployeeData()
-  }, [employeeId, selectedCompany?.id, dateRange])
+    if (selectedCompany?.id) {
+      loadEmployeeData()
+    }
+  }, [employeeId, selectedCompany, dateRange])
 
   useEffect(() => {
     console.log("[v0] Filtering boards with statusFilter:", statusFilter)
@@ -135,7 +137,7 @@ export default function EmployeeDetailPage() {
         throw new Error("Empleado no encontrado")
       }
 
-      if (employeeData.company_id !== selectedCompany?.id) {
+      if (selectedCompany?.id && employeeData.company_id !== selectedCompany.id) {
         throw new Error("El empleado no pertenece a tu empresa")
       }
 
@@ -159,8 +161,8 @@ export default function EmployeeDetailPage() {
           startDate.setDate(endDate.getDate() - 7)
       }
 
-      const startDateStr = startDate.toISOString().split("T")[0]
-      const endDateStr = endDate.toISOString().split("T")[0]
+      const startDateStr = format(startDate, "yyyy-MM-dd")
+      const endDateStr = format(endDate, "yyyy-MM-dd")
 
       console.log("[v0] Loading task boards for date range:", { startDateStr, endDateStr })
 
@@ -221,12 +223,16 @@ export default function EmployeeDetailPage() {
     const allTasks = boards.flatMap((board) => board.tasks)
     const completedTasks = allTasks.filter((task) => task.status === "completed")
     const pendingTasks = allTasks.filter((task) => task.status === "pending")
-    const overdueTasks = allTasks.filter(
-      (task) =>
-        task.due_time &&
-        task.status !== "completed" &&
-        new Date(`${task.created_at.split("T")[0]}T${task.due_time}`) < new Date(),
-    )
+    const overdueTasks = allTasks.filter((task) => {
+      if (!task.due_time || task.status === "completed") return false
+
+      const now = new Date()
+      const taskDate = new Date(task.created_at.split("T")[0])
+      const [hours, minutes] = task.due_time.split(":").map(Number)
+      taskDate.setHours(hours, minutes, 0, 0)
+
+      return taskDate < now
+    })
 
     const completionRate = allTasks.length > 0 ? (completedTasks.length / allTasks.length) * 100 : 0
 
@@ -279,12 +285,16 @@ export default function EmployeeDetailPage() {
           case "pending":
             return taskStatuses.includes("pending")
           case "overdue":
-            return board.tasks.some(
-              (task) =>
-                task.due_time &&
-                task.status !== "completed" &&
-                new Date(`${task.created_at.split("T")[0]}T${task.due_time}`) < new Date(),
-            )
+            return board.tasks.some((task) => {
+              if (!task.due_time || task.status === "completed") return false
+
+              const now = new Date()
+              const taskDate = new Date(task.created_at.split("T")[0])
+              const [hours, minutes] = task.due_time.split(":").map(Number)
+              taskDate.setHours(hours, minutes, 0, 0)
+
+              return taskDate < now
+            })
           default:
             return true
         }
@@ -342,7 +352,7 @@ export default function EmployeeDetailPage() {
     )
   }
 
-  if (loading) {
+  if (loading || !selectedCompany) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
