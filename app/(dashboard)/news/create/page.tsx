@@ -20,15 +20,23 @@ import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
 
-const formSchema = z.object({
-  title: z.string().min(3, {
-    message: "El título debe tener al menos 3 caracteres.",
-  }),
-  content: z.string().min(10, {
-    message: "El contenido debe tener al menos 10 caracteres.",
-  }),
-  image: z.instanceof(File).optional(),
-})
+const formSchema = z
+  .object({
+    title: z.string().min(3, {
+      message: "El título debe tener al menos 3 caracteres.",
+    }),
+    content: z.string().optional(),
+    image: z.instanceof(File).optional(),
+  })
+  .refine(
+    (data) => {
+      return data.content || data.image
+    },
+    {
+      message: "Debe proporcionar al menos contenido de texto o una imagen.",
+      path: ["content"],
+    },
+  )
 
 export default function CreateNewsPage() {
   const [loading, setLoading] = useState(false)
@@ -162,7 +170,7 @@ export default function CreateNewsPage() {
       <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
         {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <Button variant="outline" size="icon" asChild className="self-start">
+          <Button variant="outline" size="icon" asChild className="self-start bg-transparent">
             <Link href="/news">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -219,13 +227,14 @@ export default function CreateNewsPage() {
                       <FormLabel>Contenido</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Contenido de la noticia"
+                          placeholder="Contenido de la noticia (opcional si subes una imagen)"
                           className="min-h-[120px] sm:min-h-[150px] resize-none"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription className="text-xs sm:text-sm">
-                        El contenido debe tener al menos 10 caracteres.
+                        El contenido es opcional si subes una imagen. Si no subes imagen, el contenido debe tener al
+                        menos 10 caracteres.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -240,7 +249,7 @@ export default function CreateNewsPage() {
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
                         <ImageIcon className="h-4 w-4" />
-                        Imagen (Opcional)
+                        Imagen (Opcional - puede ser el contenido principal)
                       </FormLabel>
                       <FormControl>
                         <div className="space-y-3">
@@ -260,7 +269,8 @@ export default function CreateNewsPage() {
                         </div>
                       </FormControl>
                       <FormDescription className="text-xs sm:text-sm">
-                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 5MB).
+                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 5MB). Puedes crear una noticia solo con
+                        imagen, sin texto.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
