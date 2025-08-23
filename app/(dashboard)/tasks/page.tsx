@@ -19,7 +19,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, Plus, CheckCircle, Circle, AlertCircle, XCircle, Users, Eye } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Calendar, Clock, Plus, CheckCircle, Circle, AlertCircle, XCircle, Users, Eye, Target, Zap } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -69,7 +70,7 @@ const priorityColors = {
   low: "bg-gray-100 text-gray-800 border-gray-200",
   medium: "bg-orange-100 text-orange-800 border-orange-200",
   high: "bg-red-100 text-red-800 border-red-200",
-  urgent: "bg-purple-100 text-purple-800 border-purple-200",
+  urgent: "bg-red-200 text-red-900 border-red-300",
 }
 
 const statusIcons = {
@@ -117,24 +118,71 @@ export default function TasksPage() {
 
   // Función para cerrar automáticamente las pizarras a las 8 PM
   useEffect(() => {
-    const checkAndCloseBoards = () => {
+    const checkAndCloseBoards = async () => {
       const now = new Date()
       const currentHour = now.getHours()
 
       if (currentHour >= 20) {
         // 8 PM o después
-        closePastBoards()
+        await closePastBoards()
+        await migratePendingTasks()
       }
     }
 
     // Verificar cada minuto
     const interval = setInterval(checkAndCloseBoards, 60000)
 
-    // Verificar inmediatamente
+    // Verificar inmediatamente al cargar la página
     checkAndCloseBoards()
 
     return () => clearInterval(interval)
   }, [])
+
+  // Función para migrar tareas pendientes automáticamente
+  const migratePendingTasks = async () => {
+    try {
+      console.log("[v0] Executing automatic task migration...")
+
+      const response = await fetch("/api/migrate-pending-tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.data.migratedTasks > 0) {
+        toast({
+          title: "Tareas migradas automáticamente",
+          description: result.data.message,
+        })
+
+        // Recargar los boards para mostrar las nuevas tareas migradas
+        loadBoards()
+      } else if (result.data.migratedTasks === 0) {
+        console.log("[v0] No pending tasks to migrate")
+      }
+    } catch (error) {
+      console.error("[v0] Error in automatic task migration:", error)
+      // No mostrar error al usuario ya que es un proceso automático
+    }
+  }
+
+  useEffect(() => {
+    if (user && selectedDate === format(new Date(), "yyyy-MM-dd")) {
+      // Solo ejecutar migración si estamos viendo el día actual
+      const lastMigrationDate = localStorage.getItem("lastTaskMigration")
+      const today = format(new Date(), "yyyy-MM-dd")
+
+      if (lastMigrationDate !== today) {
+        // Ejecutar migración si no se ha hecho hoy
+        migratePendingTasks().then(() => {
+          localStorage.setItem("lastTaskMigration", today)
+        })
+      }
+    }
+  }, [user, selectedDate])
 
   const closePastBoards = async () => {
     try {
@@ -358,6 +406,22 @@ export default function TasksPage() {
     }
   }
 
+  const calculateBoardProgress = (boardTasks: Task[]) => {
+    if (boardTasks.length === 0) return 0
+    const completedTasks = boardTasks.filter((task) => task.status === "completed").length
+    return Math.round((completedTasks / boardTasks.length) * 100)
+  }
+
+  const getBoardStats = (boardTasks: Task[]) => {
+    const total = boardTasks.length
+    const completed = boardTasks.filter((t) => t.status === "completed").length
+    const inProgress = boardTasks.filter((t) => t.status === "in_progress").length
+    const pending = boardTasks.filter((t) => t.status === "pending").length
+    const urgent = boardTasks.filter((t) => t.priority === "urgent").length
+
+    return { total, completed, inProgress, pending, urgent }
+  }
+
   const todayBoard = boards.find(
     (board) => board.board_date === format(new Date(), "yyyy-MM-dd") && board.user_id === user?.id,
   )
@@ -374,12 +438,16 @@ export default function TasksPage() {
     )
   }
 
+  const currentBoardTasks = currentBoard ? tasks : []
+  const boardStats = getBoardStats(currentBoardTasks)
+  const boardProgress = calculateBoardProgress(currentBoardTasks)
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Pizarrones de Tareas</h1>
+          <h1 className="text-3xl font-bold text-slate-800">Pizarrones de Tareas</h1>
           <p className="text-muted-foreground">Gestiona tus tareas diarias de forma organizada</p>
         </div>
 
@@ -407,12 +475,14 @@ export default function TasksPage() {
 
       {/* Create Today Board Button */}
       {needsTodayBoard && (
-        <Card className="border-dashed border-2">
+        <Card className="border-dashed border-2 hover:border-primary/50 transition-colors">
           <CardContent className="flex flex-col items-center justify-center py-8">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Calendar className="h-8 w-8 text-primary" />
+            </div>
             <h3 className="text-lg font-semibold mb-2">No tienes un pizarrón para hoy</h3>
             <p className="text-muted-foreground text-center mb-4">Crea tu pizarrón de tareas para organizar tu día</p>
-            <Button onClick={createTodayBoard}>
+            <Button onClick={createTodayBoard} className="bg-slate-700 hover:bg-slate-800 text-white">
               <Plus className="h-4 w-4 mr-2" />
               Crear Pizarrón de Hoy
             </Button>
@@ -423,47 +493,70 @@ export default function TasksPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Boards List */}
         <div className="lg:col-span-1">
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-5 w-5 text-primary" />
                 Pizarrones
-                {viewMode === "all" && <Users className="h-4 w-4" />}
+                {viewMode === "all" && <Users className="h-4 w-4 text-secondary" />}
               </CardTitle>
               <CardDescription>
                 {format(new Date(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {boards.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No hay pizarrones para esta fecha</p>
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <Calendar className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground">No hay pizarrones para esta fecha</p>
+                </div>
               ) : (
-                boards.map((board) => (
-                  <div
-                    key={board.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      currentBoard?.id === board.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
-                    }`}
-                    onClick={() => setCurrentBoard(board)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{board.title}</h4>
-                        {viewMode === "all" && (
-                          <p className="text-sm text-muted-foreground">{board.user_profile?.full_name}</p>
-                        )}
+                boards.map((board) => {
+                  const boardTasks = board.id === currentBoard?.id ? tasks : []
+                  const progress = calculateBoardProgress(boardTasks)
+                  const isActive = currentBoard?.id === board.id
+
+                  return (
+                    <div
+                      key={board.id}
+                      className={`board-card p-4 cursor-pointer ${isActive ? "active" : ""}`}
+                      onClick={() => setCurrentBoard(board)}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">{board.title}</h4>
+                          {viewMode === "all" && (
+                            <p className="text-xs text-muted-foreground mt-1">{board.user_profile?.full_name}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {board.status === "closed" && (
+                            <Badge variant="secondary" className="text-xs">
+                              Cerrado
+                            </Badge>
+                          )}
+                          {board.user_id !== user?.id && <Eye className="h-3 w-3 text-muted-foreground" />}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {board.status === "closed" && (
-                          <Badge variant="secondary" className="text-xs">
-                            Cerrado
-                          </Badge>
-                        )}
-                        {board.user_id !== user?.id && <Eye className="h-4 w-4 text-muted-foreground" />}
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">Progreso</span>
+                          <span className="font-medium text-primary">{progress}%</span>
+                        </div>
+                        <div className="task-progress-bar">
+                          <div className="task-progress-fill" style={{ width: `${progress}%` }} />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{boardTasks.filter((t) => t.status === "completed").length} completadas</span>
+                          <span>{boardTasks.length} total</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </CardContent>
           </Card>
@@ -472,24 +565,67 @@ export default function TasksPage() {
         {/* Tasks */}
         <div className="lg:col-span-2">
           {currentBoard ? (
-            <Card>
+            <Card className="glass-card">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>{currentBoard.title}</CardTitle>
-                    <CardDescription>
-                      {tasks.length} tareas • {tasks.filter((t) => t.status === "completed").length} completadas
-                    </CardDescription>
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      {currentBoard.title}
+                      <div className="flex items-center gap-1">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            currentBoard.status === "active" ? "bg-green-500" : "bg-gray-400"
+                          }`}
+                        />
+                        <span className="text-sm font-normal text-muted-foreground">
+                          {currentBoard.status === "active" ? "Activo" : "Cerrado"}
+                        </span>
+                      </div>
+                    </CardTitle>
+
+                    <div className="board-stats mt-4">
+                      <div className="stat-item">
+                        <div className="stat-number">{boardStats.total}</div>
+                        <div className="stat-label">Total</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-number text-green-600">{boardStats.completed}</div>
+                        <div className="stat-label">Completadas</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-number text-blue-600">{boardStats.inProgress}</div>
+                        <div className="stat-label">En Progreso</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-number text-yellow-600">{boardStats.pending}</div>
+                        <div className="stat-label">Pendientes</div>
+                      </div>
+                      {boardStats.urgent > 0 && (
+                        <div className="stat-item">
+                          <div className="stat-number text-red-600">{boardStats.urgent}</div>
+                          <div className="stat-label">Urgentes</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Progreso General</span>
+                        <span className="text-sm font-bold text-primary">{boardProgress}%</span>
+                      </div>
+                      <Progress value={boardProgress} className="h-2" />
+                    </div>
                   </div>
 
                   {canEditBoard && (
                     <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
                       <DialogTrigger asChild>
-                        <Button>
+                        <Button className="bg-slate-700 hover:bg-slate-800 text-white">
                           <Plus className="h-4 w-4 mr-2" />
                           Nueva Tarea
                         </Button>
                       </DialogTrigger>
+                      {/* ... existing dialog content ... */}
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Crear Nueva Tarea</DialogTitle>
@@ -573,47 +709,80 @@ export default function TasksPage() {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {tasks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                    </div>
                     <p className="text-muted-foreground">No hay tareas en este pizarrón</p>
                   </div>
                 ) : (
                   tasks.map((task) => {
                     const StatusIcon = statusIcons[task.status]
                     return (
-                      <div key={task.id} className="p-4 border rounded-lg space-y-2 hover:shadow-sm transition-shadow">
-                        <div className="flex items-start justify-between">
+                      <div key={task.id} className="task-card p-4 relative">
+                        <div className={`priority-indicator priority-${task.priority}`} />
+
+                        <div className="flex items-start justify-between ml-2">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <StatusIcon className="h-4 w-4" />
-                              <h4 className="font-medium">{task.title}</h4>
-                              <Badge className={priorityColors[task.priority]}>{task.priority}</Badge>
+                            <div className="flex items-center gap-3 mb-3">
+                              <div
+                                className={`p-1.5 rounded-full ${
+                                  task.status === "completed"
+                                    ? "bg-green-100 text-green-600"
+                                    : task.status === "in_progress"
+                                      ? "bg-blue-100 text-blue-600"
+                                      : task.status === "pending"
+                                        ? "bg-yellow-100 text-yellow-600"
+                                        : "bg-red-100 text-red-600"
+                                }`}
+                              >
+                                <StatusIcon className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold text-base">{task.title}</h4>
+                              <Badge className={`status-badge status-${task.priority}`}>
+                                {task.priority === "urgent" && <Zap className="h-3 w-3" />}
+                                {task.priority}
+                              </Badge>
                             </div>
 
                             {task.description && (
-                              <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+                              <p className="text-sm text-muted-foreground mb-3 ml-10">{task.description}</p>
                             )}
 
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              {task.estimated_time && <span>Est: {task.estimated_time}min</span>}
-                              {task.due_time && <span>Límite: {task.due_time}</span>}
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground ml-10">
+                              {task.estimated_time && (
+                                <div className="flex items-center gap-1">
+                                  <Target className="h-3 w-3" />
+                                  <span>Est: {task.estimated_time}min</span>
+                                </div>
+                              )}
+                              {task.due_time && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>Límite: {task.due_time}</span>
+                                </div>
+                              )}
                               {task.completed_at && (
-                                <span>Completada: {format(new Date(task.completed_at), "HH:mm")}</span>
+                                <div className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  <span>Completada: {format(new Date(task.completed_at), "HH:mm")}</span>
+                                </div>
                               )}
                             </div>
                           </div>
 
                           {canEditBoard && (
-                            <div className="flex gap-1">
+                            <div className="flex gap-2">
                               {task.status !== "completed" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => updateTaskStatus(task.id, "completed")}
+                                  className="hover:bg-green-50 hover:border-green-200 hover:text-green-700"
                                 >
-                                  <CheckCircle className="h-3 w-3" />
+                                  <CheckCircle className="h-4 w-4" />
                                 </Button>
                               )}
 
@@ -622,20 +791,24 @@ export default function TasksPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => updateTaskStatus(task.id, "in_progress")}
+                                  className="hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700"
                                 >
-                                  <Clock className="h-3 w-3" />
+                                  <Clock className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
                           )}
                         </div>
 
-                        <Badge className={statusColors[task.status]}>
-                          {task.status === "pending" && "Pendiente"}
-                          {task.status === "in_progress" && "En Progreso"}
-                          {task.status === "completed" && "Completada"}
-                          {task.status === "cancelled" && "Cancelada"}
-                        </Badge>
+                        <div className="mt-3 ml-2">
+                          <Badge className={`status-badge status-${task.status}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {task.status === "pending" && "Pendiente"}
+                            {task.status === "in_progress" && "En Progreso"}
+                            {task.status === "completed" && "Completada"}
+                            {task.status === "cancelled" && "Cancelada"}
+                          </Badge>
+                        </div>
                       </div>
                     )
                   })
@@ -643,10 +816,15 @@ export default function TasksPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Selecciona un pizarrón para ver las tareas</p>
+            <Card className="glass-card">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                  <Calendar className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Selecciona un pizarrón</h3>
+                <p className="text-muted-foreground text-center">
+                  Elige un pizarrón de la lista para ver y gestionar las tareas
+                </p>
               </CardContent>
             </Card>
           )}

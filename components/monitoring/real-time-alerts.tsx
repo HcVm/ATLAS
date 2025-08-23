@@ -7,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AlertTriangle, Clock, TrendingDown, UserX, Target, Bell, X, Users } from "lucide-react"
+import { AlertTriangle, Clock, TrendingDown, UserX, Target, Bell, X, Users, ArrowRight } from "lucide-react"
 import { format } from "date-fns"
 
 interface Alert {
   id: string
-  type: "overdue" | "low_productivity" | "inactive_user" | "high_workload"
+  type: "overdue" | "low_productivity" | "inactive_user" | "high_workload" | "pending_migration"
   severity: "low" | "medium" | "high" | "critical"
   title: string
   description: string
@@ -72,6 +72,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
           user_id,
           board_date,
           created_at,
+          status,
           tasks(
             id,
             title,
@@ -107,6 +108,40 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
           tasksCount: b.tasks?.length || 0,
         })),
       })
+
+      const today = format(new Date(), "yyyy-MM-dd")
+      const pendingMigrationTasks =
+        taskBoards?.filter((board) => {
+          return (
+            board.status === "closed" &&
+            board.board_date < today &&
+            board.tasks.some((task) => task.status === "pending" || task.status === "in_progress")
+          )
+        }) || []
+
+      if (pendingMigrationTasks.length > 0) {
+        const totalPendingTasks = pendingMigrationTasks.reduce(
+          (sum, board) =>
+            sum + board.tasks.filter((task) => task.status === "pending" || task.status === "in_progress").length,
+          0,
+        )
+
+        const affectedEmployees = [...new Set(pendingMigrationTasks.map((board) => board.user_id))]
+
+        generatedAlerts.push({
+          id: `pending-migration-${Date.now()}`,
+          type: "pending_migration",
+          severity: totalPendingTasks > 10 ? "high" : totalPendingTasks > 5 ? "medium" : "low",
+          title: `${totalPendingTasks} tareas pendientes de migración`,
+          description: `Hay ${totalPendingTasks} tareas no completadas en pizarrones cerrados que necesitan ser migradas automáticamente. Afecta a ${affectedEmployees.length} empleado(s).`,
+          data: {
+            pendingTasks: totalPendingTasks,
+            affectedEmployees: affectedEmployees.length,
+            boards: pendingMigrationTasks.length,
+          },
+          created_at: new Date().toISOString(),
+        })
+      }
 
       const marleneEmployee = employees?.find((emp) => emp.full_name.includes("Marlene"))
       if (marleneEmployee) {
@@ -273,6 +308,8 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
         return <UserX className="h-5 w-5" />
       case "high_workload":
         return <Target className="h-5 w-5" />
+      case "pending_migration":
+        return <ArrowRight className="h-5 w-5" />
       default:
         return <AlertTriangle className="h-5 w-5" />
     }

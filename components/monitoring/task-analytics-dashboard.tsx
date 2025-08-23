@@ -7,9 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, BarChart3, Calendar } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Target,
+  AlertTriangle,
+  CheckCircle,
+  BarChart3,
+  Calendar,
+  Clock,
+  Award,
+  Building,
+} from "lucide-react"
+import { subDays } from "date-fns"
 
 interface AnalyticsData {
   totalEmployees: number
@@ -19,14 +30,26 @@ interface AnalyticsData {
   avgCompletionRate: number
   avgTasksPerEmployee: number
   productivityTrend: number
+  avgCompletionTime: number
   topPerformers: Array<{
     id: string
     name: string
+    role: string
+    department: string
     completionRate: number
     tasksCompleted: number
+    totalTasks: number
+    avgCompletionTime: number
   }>
   departmentStats: Array<{
     department: string
+    employees: number
+    completionRate: number
+    totalTasks: number
+    avgCompletionTime: number
+  }>
+  roleStats: Array<{
+    role: string
     employees: number
     completionRate: number
     totalTasks: number
@@ -36,7 +59,13 @@ interface AnalyticsData {
     tasksCreated: number
     tasksCompleted: number
     completionRate: number
+    employeesActive: number
   }>
+  weeklyComparison: {
+    thisWeek: number
+    lastWeek: number
+    improvement: number
+  }
 }
 
 interface TaskAnalyticsDashboardProps {
@@ -63,86 +92,114 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
     try {
       setLoading(true)
 
-      console.log("[v0] Loading analytics for company:", selectedCompany?.id)
+      console.log("[v0] Loading enhanced analytics for company:", selectedCompany?.id)
 
-      const { data: employees, error: employeesError } = await supabase
-        .from("profiles")
-        .select(`
-          id, 
-          full_name, 
-          department_id,
-          departments!profiles_department_id_fkey (
+      const [employeesResult, boardsResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(`
+            id, 
+            full_name, 
+            role,
+            department_id,
+            created_at,
+            departments!profiles_department_id_fkey (
+              id,
+              name,
+              color
+            )
+          `)
+          .eq("company_id", selectedCompany?.id)
+          .in("role", ["user", "supervisor"])
+          .order("full_name"),
+
+        supabase
+          .from("task_boards")
+          .select(`
             id,
-            name,
-            color
-          )
-        `)
-        .eq("company_id", selectedCompany?.id)
-        .in("role", ["user", "supervisor"])
+            title,
+            description,
+            created_at,
+            user_id,
+            company_id,
+            board_date,
+            user_profile:profiles!task_boards_user_id_fkey(
+              full_name, 
+              email, 
+              role, 
+              company_id
+            ),
+            tasks(
+              id,
+              title,
+              description,
+              status,
+              priority,
+              due_time,
+              estimated_time,
+              created_at,
+              completed_at
+            )
+          `)
+          .order("created_at", { ascending: false }),
+      ])
+
+      const { data: employeesData, error: employeesError } = employeesResult
+      const { data: boardsData, error: boardsError } = boardsResult
 
       if (employeesError) {
         console.error("[v0] Error loading employees:", employeesError)
         throw employeesError
       }
 
-      console.log("[v0] Loaded employees:", employees?.length)
-
-      const { data: tasksData, error: tasksError } = await supabase
-        .from("tasks")
-        .select(`
-          id,
-          title,
-          status,
-          priority,
-          due_time,
-          completed_at,
-          created_at,
-          board_id,
-          task_boards!tasks_board_id_fkey (
-            id,
-            user_id,
-            board_date,
-            company_id,
-            created_at
-          )
-        `)
-        .not("task_boards", "is", null)
-        .order("created_at", { ascending: false })
-
-      if (tasksError) {
-        console.error("[v0] Error loading tasks:", tasksError)
-        throw tasksError
+      if (boardsError) {
+        console.error("[v0] Error loading boards:", boardsError)
+        throw boardsError
       }
 
-      const companyTasks = tasksData?.filter((task) => task.task_boards?.company_id === selectedCompany?.id) || []
+      console.log("[v0] Raw boards loaded:", boardsData?.length)
+      console.log("[v0] Sample board data:", boardsData?.[0])
 
-      console.log("[v0] ALL Tasks from DB:", {
-        totalTasks: tasksData?.length,
-        companyTasks: companyTasks.length,
-        sampleTasks: companyTasks.slice(0, 5).map((task) => ({
-          id: task.id,
-          title: task.title,
-          status: task.status,
-          board_id: task.board_id,
-          board_date: task.task_boards?.board_date,
-          user_id: task.task_boards?.user_id,
-        })),
-      })
+      const filteredBoardsData =
+        boardsData?.filter((board) => {
+          const boardCompanyId = board.company_id || board.user_profile?.company_id
+          const matches = boardCompanyId === selectedCompany?.id
+
+          console.log("[v0] Board filter check:", {
+            boardId: board.id,
+            boardTitle: board.title,
+            boardCompanyId: board.company_id,
+            userCompanyId: board.user_profile?.company_id,
+            selectedCompanyId: selectedCompany?.id,
+            matches,
+          })
+
+          return matches
+        }) || []
+
+      console.log("[v0] Loaded employees:", employeesData?.length)
+      console.log("[v0] Filtered boards:", filteredBoardsData.length)
+      console.log("[v0] Company ID used for filtering:", selectedCompany?.id)
 
       const allTasks =
-        companyTasks?.map((task) => ({
-          id: task.id,
-          title: task.title || "Sin título",
-          status: task.status || "pending",
-          priority: task.priority || "media",
-          due_time: task.due_time,
-          completed_at: task.completed_at,
-          created_at: task.created_at,
-          user_id: task.task_boards?.user_id,
-          board_date: task.task_boards?.board_date,
-        })) || []
+        filteredBoardsData?.flatMap((board) =>
+          board.tasks.map((task) => ({
+            id: task.id,
+            title: task.title || "Sin título",
+            status: task.status || "pending",
+            priority: task.priority || "media",
+            due_time: task.due_time,
+            completed_at: task.completed_at,
+            created_at: task.created_at,
+            estimated_time: task.estimated_time,
+            user_id: board.user_id,
+            board_date: board.board_date,
+            board_created_at: board.created_at,
+            user_profile: board.user_profile,
+          })),
+        ) || []
 
-      console.log("[v0] PROCESSED TASKS (filtered by company):", {
+      console.log("[v0] PROCESSED TASKS:", {
         totalTasks: allTasks.length,
         tasksByStatus: {
           completed: allTasks.filter((t) => t.status === "completed").length,
@@ -153,6 +210,8 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
           title: t.title,
           status: t.status,
           board_date: t.board_date,
+          user_id: t.user_id,
+          user_name: t.user_profile?.full_name,
         })),
       })
 
@@ -161,110 +220,235 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         if (!task.due_time || task.status === "completed") return false
 
         const now = new Date()
-        const taskDate = new Date(task.board_date + "T" + task.due_time)
+        const taskDate = new Date(task.created_at.split("T")[0])
+        const [hours, minutes] = task.due_time.split(":").map(Number)
+        taskDate.setHours(hours, minutes, 0, 0)
 
         return taskDate < now
       })
 
       const avgCompletionRate = allTasks.length > 0 ? (completedTasks.length / allTasks.length) * 100 : 0
 
+      const completedTasksWithTime = completedTasks.filter((task) => task.completed_at && task.created_at)
+      const avgCompletionTime =
+        completedTasksWithTime.length > 0
+          ? completedTasksWithTime.reduce((sum, task) => {
+              const created = new Date(task.created_at)
+              const completed = new Date(task.completed_at!)
+              return sum + (completed.getTime() - created.getTime()) / (1000 * 60 * 60)
+            }, 0) / completedTasksWithTime.length
+          : 0
+
       const userStats =
-        employees?.map((employee) => {
+        employeesData?.map((employee) => {
           const userTasks = allTasks.filter((task) => task.user_id === employee.id)
           const userCompleted = userTasks.filter((task) => task.status === "completed")
           const completionRate = userTasks.length > 0 ? (userCompleted.length / userTasks.length) * 100 : 0
 
+          const userCompletedWithTime = userCompleted.filter((task) => task.completed_at && task.created_at)
+          const userAvgTime =
+            userCompletedWithTime.length > 0
+              ? userCompletedWithTime.reduce((sum, task) => {
+                  const created = new Date(task.created_at)
+                  const completed = new Date(task.completed_at!)
+                  return sum + (completed.getTime() - created.getTime()) / (1000 * 60 * 60)
+                }, 0) / userCompletedWithTime.length
+              : 0
+
           return {
             id: employee.id,
             name: employee.full_name,
+            role: employee.role,
+            department: employee.departments?.name || "Sin departamento",
             completionRate,
             tasksCompleted: userCompleted.length,
             totalTasks: userTasks.length,
+            avgCompletionTime: userAvgTime,
           }
         }) || []
 
       const topPerformers = userStats
         .filter((user) => user.totalTasks > 0)
-        .sort((a, b) => b.completionRate - a.completionRate)
+        .sort((a, b) => {
+          if (Math.abs(a.completionRate - b.completionRate) < 5) {
+            return b.tasksCompleted - a.tasksCompleted
+          }
+          return b.completionRate - a.completionRate
+        })
         .slice(0, 5)
 
       const departmentMap = new Map()
-      employees?.forEach((emp) => {
+      employeesData?.forEach((emp) => {
         if (emp.departments) {
           departmentMap.set(emp.department_id, emp.departments.name)
         }
       })
 
-      const departments = [...new Set(employees?.map((emp) => emp.department_id).filter(Boolean))]
+      const departments = [...new Set(employeesData?.map((emp) => emp.department_id).filter(Boolean))]
       const departmentStats = departments.map((deptId) => {
-        const deptEmployees = employees?.filter((emp) => emp.department_id === deptId) || []
+        const deptEmployees = employeesData?.filter((emp) => emp.department_id === deptId) || []
         const deptTasks = allTasks.filter((task) => deptEmployees.some((emp) => emp.id === task.user_id))
         const deptCompleted = deptTasks.filter((task) => task.status === "completed")
         const completionRate = deptTasks.length > 0 ? (deptCompleted.length / deptTasks.length) * 100 : 0
+
+        const deptCompletedWithTime = deptCompleted.filter((task) => task.completed_at && task.created_at)
+        const deptAvgTime =
+          deptCompletedWithTime.length > 0
+            ? deptCompletedWithTime.reduce((sum, task) => {
+                const created = new Date(task.created_at)
+                const completed = new Date(task.completed_at!)
+                return sum + (completed.getTime() - created.getTime()) / (1000 * 60 * 60)
+              }, 0) / deptCompletedWithTime.length
+            : 0
 
         return {
           department: departmentMap.get(deptId) || "Sin departamento",
           employees: deptEmployees.length,
           completionRate,
           totalTasks: deptTasks.length,
+          avgCompletionTime: deptAvgTime,
+        }
+      })
+
+      const roles = [...new Set(employeesData?.map((emp) => emp.role).filter(Boolean))]
+      const roleStats = roles.map((role) => {
+        const roleEmployees = employeesData?.filter((emp) => emp.role === role) || []
+        const roleTasks = allTasks.filter((task) => roleEmployees.some((emp) => emp.id === task.user_id))
+        const roleCompleted = roleTasks.filter((task) => task.status === "completed")
+        const completionRate = roleTasks.length > 0 ? (roleCompleted.length / roleTasks.length) * 100 : 0
+
+        return {
+          role: role === "user" ? "Usuario" : role === "supervisor" ? "Supervisor" : role,
+          employees: roleEmployees.length,
+          completionRate,
+          totalTasks: roleTasks.length,
         }
       })
 
       const dailyStats = []
       const today = new Date()
 
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        const dateStr = format(date, "yyyy-MM-dd")
+      const formatDatePeru = (date: Date | string): string => {
+        const dateObj = typeof date === "string" ? new Date(date) : date
+        return dateObj
+          .toLocaleDateString("es-PE", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          })
+          .split("/")
+          .reverse()
+          .join("-")
+      }
 
-        const dayTasks = allTasks.filter((task) => task.board_date === dateStr)
-        const dayCompleted = dayTasks.filter((task) => task.status === "completed")
+      const formatDateDisplay = (dateString: string): string => {
+        return new Date(dateString).toLocaleDateString("es-PE", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      }
+
+      const uniqueBoardDates = [...new Set(filteredBoardsData?.map((board) => board.board_date).filter(Boolean))]
+        .sort()
+        .slice(-7)
+
+      console.log("[v0] Unique board dates found:", uniqueBoardDates)
+
+      for (const dateStr of uniqueBoardDates) {
+        const dayBoards = filteredBoardsData?.filter((board) => board.board_date === dateStr) || []
+        const dayTasks = dayBoards.flatMap((board) => board.tasks)
+
+        const dayTasksCompleted = dayTasks.filter((task) => {
+          if (task.status !== "completed" || !task.completed_at) return false
+          const completedDate = new Date(task.completed_at)
+            .toLocaleDateString("es-PE", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            })
+            .split("/")
+            .reverse()
+            .join("-")
+          return completedDate === dateStr
+        })
+
+        const activeEmployeeIds = new Set(dayBoards.map((board) => board.user_id))
+
+        const completionRate = dayTasks.length > 0 ? (dayTasksCompleted.length / dayTasks.length) * 100 : 0
+
+        console.log(`[v0] Daily stats for ${dateStr}:`, {
+          dayBoards: dayBoards.length,
+          dayTasks: dayTasks.length,
+          dayTasksCompleted: dayTasksCompleted.length,
+          activeEmployees: activeEmployeeIds.size,
+          completionRate: completionRate.toFixed(1),
+        })
 
         dailyStats.push({
           date: dateStr,
           tasksCreated: dayTasks.length,
-          tasksCompleted: dayCompleted.length,
-          completionRate: dayTasks.length > 0 ? (dayCompleted.length / dayTasks.length) * 100 : 0,
+          tasksCompleted: dayTasksCompleted.length,
+          completionRate,
+          employeesActive: activeEmployeeIds.size,
         })
       }
 
-      const midPoint = Math.floor(dailyStats.length / 2)
-      const recentStats = dailyStats.slice(midPoint)
-      const olderStats = dailyStats.slice(0, midPoint)
+      const thisWeekTasks = allTasks.filter((task) => {
+        const taskDate = new Date(task.created_at)
+        const weekAgo = subDays(new Date(), 7)
+        return taskDate >= weekAgo
+      })
 
-      const recentAvg =
-        recentStats.length > 0 ? recentStats.reduce((sum, day) => sum + day.completionRate, 0) / recentStats.length : 0
-      const olderAvg =
-        olderStats.length > 0 ? olderStats.reduce((sum, day) => sum + day.completionRate, 0) / olderStats.length : 0
-      const productivityTrend = recentAvg - olderAvg
+      const lastWeekTasks = allTasks.filter((task) => {
+        const taskDate = new Date(task.created_at)
+        const twoWeeksAgo = subDays(new Date(), 14)
+        const weekAgo = subDays(new Date(), 7)
+        return taskDate >= twoWeeksAgo && taskDate < weekAgo
+      })
 
-      console.log("[v0] Analytics calculated successfully:", {
+      const thisWeekCompleted = thisWeekTasks.filter((t) => t.status === "completed").length
+      const lastWeekCompleted = lastWeekTasks.filter((t) => t.status === "completed").length
+
+      const thisWeekRate = thisWeekTasks.length > 0 ? (thisWeekCompleted / thisWeekTasks.length) * 100 : 0
+      const lastWeekRate = lastWeekTasks.length > 0 ? (lastWeekCompleted / lastWeekTasks.length) * 100 : 0
+
+      const productivityTrend = thisWeekRate - lastWeekRate
+      const improvement = lastWeekRate > 0 ? ((thisWeekRate - lastWeekRate) / lastWeekRate) * 100 : 0
+
+      console.log("[v0] Enhanced analytics calculated successfully:", {
         totalTasks: allTasks.length,
         completedTasks: completedTasks.length,
         overdueTasks: overdueTasks.length,
         avgCompletionRate,
+        avgCompletionTime,
         topPerformers: topPerformers.length,
         departmentStats: departmentStats.length,
+        roleStats: roleStats.length,
         dailyStatsCount: dailyStats.length,
-        departmentDetails: departmentStats.map((d) => ({
-          name: d.department,
-          tasks: d.totalTasks,
-          rate: d.completionRate,
-        })),
+        thisWeekRate,
+        lastWeekRate,
+        productivityTrend,
       })
 
       setAnalytics({
-        totalEmployees: employees?.length || 0,
+        totalEmployees: employeesData?.length || 0,
         totalTasks: allTasks.length,
         completedTasks: completedTasks.length,
         overdueTasks: overdueTasks.length,
         avgCompletionRate,
-        avgTasksPerEmployee: employees?.length ? allTasks.length / employees.length : 0,
+        avgTasksPerEmployee: employeesData?.length ? allTasks.length / employeesData.length : 0,
         productivityTrend,
+        avgCompletionTime,
         topPerformers,
         departmentStats,
+        roleStats,
         dailyStats,
+        weeklyComparison: {
+          thisWeek: thisWeekRate,
+          lastWeek: lastWeekRate,
+          improvement,
+        },
       })
     } catch (error) {
       console.error("[v0] Error loading analytics:", error)
@@ -330,7 +514,7 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -373,6 +557,19 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm font-medium text-gray-600">Tiempo Promedio</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.avgCompletionTime.toFixed(1)}h</p>
+                <p className="text-xs text-gray-500">para completar</p>
+              </div>
+              <Clock className="h-8 w-8 text-indigo-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-600">Tendencia</p>
                 <div className="flex items-center space-x-1">
                   <p className="text-2xl font-bold text-gray-900">
@@ -392,6 +589,34 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Card>
       </div>
 
+      {analytics.weeklyComparison.lastWeek > 0 && (
+        <Card
+          className={`border-2 ${analytics.weeklyComparison.improvement >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {analytics.weeklyComparison.improvement >= 0 ? (
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-6 w-6 text-orange-600" />
+                )}
+                <div>
+                  <p className="font-medium text-gray-900">
+                    Comparación Semanal: {analytics.weeklyComparison.improvement >= 0 ? "Mejora" : "Declive"} del{" "}
+                    {Math.abs(analytics.weeklyComparison.improvement).toFixed(1)}%
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Esta semana: {analytics.weeklyComparison.thisWeek.toFixed(1)}% vs Semana pasada:{" "}
+                    {analytics.weeklyComparison.lastWeek.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {analytics.overdueTasks > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4">
@@ -408,11 +633,11 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+              <Award className="h-5 w-5" />
               Mejores Desempeños
             </CardTitle>
             <CardDescription>Empleados con mayor tasa de completado</CardDescription>
@@ -426,7 +651,13 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{performer.name}</p>
-                    <p className="text-sm text-gray-600">{performer.tasksCompleted} tareas completadas</p>
+                    <p className="text-sm text-gray-600">
+                      {performer.role} • {performer.department}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {performer.tasksCompleted}/{performer.totalTasks} tareas •{" "}
+                      {performer.avgCompletionTime.toFixed(1)}h promedio
+                    </p>
                   </div>
                 </div>
                 <Badge
@@ -451,8 +682,8 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Rendimiento por Departamento
+              <Building className="h-5 w-5" />
+              Por Departamento
             </CardTitle>
             <CardDescription>Comparación de productividad entre departamentos</CardDescription>
           </CardHeader>
@@ -463,7 +694,8 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
                   <div>
                     <p className="font-medium text-gray-900">{dept.department}</p>
                     <p className="text-sm text-gray-600">
-                      {dept.employees} empleados • {dept.totalTasks} tareas
+                      {dept.employees} empleados • {dept.totalTasks} tareas • {dept.avgCompletionTime.toFixed(1)}h
+                      promedio
                     </p>
                   </div>
                   <Badge variant={dept.completionRate >= 80 ? "default" : "secondary"}>
@@ -475,6 +707,37 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
             ))}
             {analytics.departmentStats.length === 0 && (
               <p className="text-center text-gray-500 py-4">No hay departamentos configurados</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Por Rol
+            </CardTitle>
+            <CardDescription>Rendimiento según el rol del empleado</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {analytics.roleStats.map((role) => (
+              <div key={role.role} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{role.role}</p>
+                    <p className="text-sm text-gray-600">
+                      {role.employees} empleados • {role.totalTasks} tareas
+                    </p>
+                  </div>
+                  <Badge variant={role.completionRate >= 80 ? "default" : "secondary"}>
+                    {role.completionRate.toFixed(1)}%
+                  </Badge>
+                </div>
+                <Progress value={role.completionRate} className="h-2" />
+              </div>
+            ))}
+            {analytics.roleStats.length === 0 && (
+              <p className="text-center text-gray-500 py-4">No hay roles configurados</p>
             )}
           </CardContent>
         </Card>
@@ -494,10 +757,14 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
               <div key={day.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">
-                    {format(new Date(day.date), "EEEE, dd MMM", { locale: es })}
+                    {new Date(day.date).toLocaleDateString("es-PE", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {day.tasksCompleted}/{day.tasksCreated} tareas completadas
+                    {day.tasksCompleted}/{day.tasksCreated} tareas completadas • {day.employeesActive} empleados activos
                   </p>
                 </div>
                 <div className="text-right">
