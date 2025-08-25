@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
+import { processImage, validateImageFile, calculateCompressionRatio, formatFileSize } from "@/lib/image-utils"
 
 const formSchema = z
   .object({
@@ -40,7 +41,13 @@ const formSchema = z
 
 export default function CreateNewsPage() {
   const [loading, setLoading] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [compressionInfo, setCompressionInfo] = useState<{
+    originalSize: number
+    compressedSize: number
+    ratio: number
+  } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
   const { user } = useAuth()
@@ -54,15 +61,72 @@ export default function CreateNewsPage() {
     },
   })
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      form.setValue("image", file)
+    if (!file) return
+
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      toast({
+        title: "Error",
+        description: validation.error,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setProcessing(true)
+    setCompressionInfo(null)
+
+    try {
+      // Process image (convert to WebP and resize)
+      const { blob, fileName } = await processImage(file, {
+        maxWidth: 1200,
+        maxHeight: 800,
+        quality: 0.85,
+        format: "webp",
+      })
+
+      // Calculate compression info
+      const originalSize = file.size
+      const compressedSize = blob.size
+      const ratio = calculateCompressionRatio(originalSize, compressedSize)
+
+      setCompressionInfo({
+        originalSize,
+        compressedSize,
+        ratio,
+      })
+
+      // Create File object from blob for form
+      const processedFile = new File([blob], fileName, { type: "image/webp" })
+      form.setValue("image", processedFile)
+
+      // Create preview URL
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result as string)
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(blob)
+
+      // Show compression info
+      if (ratio > 0) {
+        toast({
+          title: "Imagen optimizada",
+          description: `${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${ratio}% menos)`,
+        })
+      }
+    } catch (error: any) {
+      console.error("Error processing image:", error)
+      toast({
+        title: "Error",
+        description: "Error al procesar la imagen: " + error.message,
+        variant: "destructive",
+      })
+      setCompressionInfo(null)
+    } finally {
+      setProcessing(false)
     }
   }
 
@@ -82,13 +146,15 @@ export default function CreateNewsPage() {
 
       // Subir imagen si existe
       if (values.image) {
-        const fileExt = values.image.name.split(".").pop()
-        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+        const fileName = `${Math.random().toString(36).substring(2, 15)}.webp`
         const filePath = `news/${fileName}`
 
         const { error: uploadError, data: uploadData } = await supabase.storage
           .from("images")
-          .upload(filePath, values.image)
+          .upload(filePath, values.image, {
+            cacheControl: "3600",
+            contentType: "image/webp",
+          })
 
         if (uploadError) throw uploadError
 
@@ -253,8 +319,35 @@ export default function CreateNewsPage() {
                       </FormLabel>
                       <FormControl>
                         <div className="space-y-3">
-                          <Input type="file" accept="image/*" onChange={handleImageChange} className="text-sm" />
-                          {imagePreview && (
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="text-sm"
+                            disabled={processing || loading}
+                          />
+
+                          {compressionInfo && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2 text-green-800">
+                                <span className="text-sm font-medium">Imagen Optimizada</span>
+                              </div>
+                              <div className="text-xs text-green-700 mt-1 space-y-1">
+                                <p>Tamaño original: {formatFileSize(compressionInfo.originalSize)}</p>
+                                <p>Tamaño optimizado: {formatFileSize(compressionInfo.compressedSize)}</p>
+                                <p>Ahorro: {compressionInfo.ratio}% menos espacio</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {processing && (
+                            <div className="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                              <span className="text-sm text-gray-600">Optimizando imagen...</span>
+                            </div>
+                          )}
+
+                          {imagePreview && !processing && (
                             <div className="relative">
                               <img
                                 src={imagePreview || "/placeholder.svg"}
@@ -269,8 +362,8 @@ export default function CreateNewsPage() {
                         </div>
                       </FormControl>
                       <FormDescription className="text-xs sm:text-sm">
-                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 5MB). Puedes crear una noticia solo con
-                        imagen, sin texto.
+                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 10MB). Se convertirá automáticamente a
+                        WebP para optimizar el tamaño.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -287,10 +380,14 @@ export default function CreateNewsPage() {
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={loading} className="w-full sm:w-auto order-1 sm:order-2">
+                  <Button
+                    type="submit"
+                    disabled={loading || processing}
+                    className="w-full sm:w-auto order-1 sm:order-2"
+                  >
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    <span className="hidden sm:inline">Publicar Noticia</span>
-                    <span className="sm:hidden">Publicar</span>
+                    <span className="hidden sm:inline">{processing ? "Procesando..." : "Publicar Noticia"}</span>
+                    <span className="sm:hidden">{processing ? "Procesando..." : "Publicar"}</span>
                   </Button>
                 </CardFooter>
               </form>

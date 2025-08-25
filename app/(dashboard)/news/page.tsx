@@ -109,9 +109,15 @@ export default function NewsPage() {
     try {
       setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
 
-      const { error } = await supabase.from("news").delete().eq("id", deleteDialog.newsItem.id)
+      const response = await fetch(`/api/news/${deleteDialog.newsItem.id}`, {
+        method: "DELETE",
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al eliminar la noticia")
+      }
 
       setNews(news.filter((item) => item.id !== deleteDialog.newsItem.id))
 
@@ -129,7 +135,7 @@ export default function NewsPage() {
       console.error("Error deleting news:", error)
       toast({
         title: "Error al eliminar",
-        description: "No se pudo eliminar la noticia: " + error.message,
+        description: error.message || "No se pudo eliminar la noticia",
         variant: "destructive",
       })
       setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
@@ -320,7 +326,7 @@ export default function NewsPage() {
                               >
                                 <span className="text-yellow-600">{item.published ? "Despublicar" : "Publicar"}</span>
                               </DropdownMenuItem>
-                              {user?.role === "admin" && (
+                              {(user?.role === "admin" || user?.role === "supervisor") && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
