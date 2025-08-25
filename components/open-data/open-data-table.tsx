@@ -1,6 +1,7 @@
 "use client"
 
 import { DialogTrigger } from "@/components/ui/dialog"
+import { formatDateForDisplay } from "@/lib/date-utils"
 
 import { useState } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
@@ -40,21 +41,21 @@ export function OpenDataTable({ data, currentPage, totalPages, totalRecords }: O
     router.push(newUrl)
   }
 
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === "2000-01-01") return "Sin fecha"
+    try {
+      return formatDateForDisplay(dateString)
+    } catch {
+      return dateString
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     if (!amount || isNaN(amount)) return "S/ 0.00"
     return new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: "PEN",
     }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    if (!dateString || dateString === "2000-01-01") return "Sin fecha"
-    try {
-      return new Date(dateString).toLocaleDateString("es-PE")
-    } catch {
-      return dateString
-    }
   }
 
   const formatNumber = (num: any) => {

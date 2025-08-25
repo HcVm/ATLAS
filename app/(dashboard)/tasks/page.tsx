@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress"
 import { Calendar, Clock, Plus, CheckCircle, Circle, AlertCircle, XCircle, Users, Eye, Target, Zap } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDateDisplay, formatDateLong, getCurrentDatePeru } from "@/lib/date-utils"
 
 interface TaskBoard {
   id: string
@@ -87,7 +87,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [selectedDate, setSelectedDate] = useState(getCurrentDatePeru())
   const [viewMode, setViewMode] = useState<"my" | "all">("my")
 
   // Form states
@@ -100,7 +100,7 @@ export default function TasksPage() {
   })
 
   const canViewAllBoards = profile?.role === "admin" || profile?.role === "supervisor"
-  const isCurrentDateBoard = currentBoard?.board_date === format(new Date(), "yyyy-MM-dd")
+  const isCurrentDateBoard = currentBoard?.board_date === getCurrentDatePeru()
   const isBoardClosed = currentBoard?.status === "closed"
   const canEditBoard = isCurrentDateBoard && !isBoardClosed && (currentBoard?.user_id === user?.id || canViewAllBoards)
 
@@ -116,15 +116,19 @@ export default function TasksPage() {
     }
   }, [currentBoard])
 
-  // Función para cerrar automáticamente las pizarras a las 8 PM
   useEffect(() => {
     const checkAndCloseBoards = async () => {
       const now = new Date()
       const currentHour = now.getHours()
+      const currentMinute = now.getMinutes()
 
-      if (currentHour >= 20) {
-        // 8 PM o después
+      // Cerrar pizarrones a las 11:59 PM
+      if (currentHour === 23 && currentMinute >= 59) {
         await closePastBoards()
+      }
+
+      // Migrar tareas pendientes a las 12:01 AM (inicio del nuevo día)
+      if (currentHour === 0 && currentMinute >= 1 && currentMinute <= 2) {
         await migratePendingTasks()
       }
     }
@@ -170,10 +174,10 @@ export default function TasksPage() {
   }
 
   useEffect(() => {
-    if (user && selectedDate === format(new Date(), "yyyy-MM-dd")) {
+    if (user && selectedDate === getCurrentDatePeru()) {
       // Solo ejecutar migración si estamos viendo el día actual
       const lastMigrationDate = localStorage.getItem("lastTaskMigration")
-      const today = format(new Date(), "yyyy-MM-dd")
+      const today = getCurrentDatePeru()
 
       if (lastMigrationDate !== today) {
         // Ejecutar migración si no se ha hecho hoy
@@ -186,7 +190,7 @@ export default function TasksPage() {
 
   const closePastBoards = async () => {
     try {
-      const today = format(new Date(), "yyyy-MM-dd")
+      const today = getCurrentDatePeru()
 
       await supabase
         .from("task_boards")
@@ -270,7 +274,7 @@ export default function TasksPage() {
 
   const createTodayBoard = async () => {
     try {
-      const today = format(new Date(), "yyyy-MM-dd")
+      const today = getCurrentDatePeru()
 
       const { data, error } = await supabase
         .from("task_boards")
@@ -278,7 +282,7 @@ export default function TasksPage() {
           user_id: user?.id,
           company_id: profile?.company_id,
           board_date: today,
-          title: `Tareas del ${format(new Date(), "dd/MM/yyyy", { locale: es })}`,
+          title: `Tareas del ${formatDateDisplay(new Date())}`,
         })
         .select(`
           *,
@@ -422,10 +426,8 @@ export default function TasksPage() {
     return { total, completed, inProgress, pending, urgent }
   }
 
-  const todayBoard = boards.find(
-    (board) => board.board_date === format(new Date(), "yyyy-MM-dd") && board.user_id === user?.id,
-  )
-  const needsTodayBoard = viewMode === "my" && selectedDate === format(new Date(), "yyyy-MM-dd") && !todayBoard
+  const todayBoard = boards.find((board) => board.board_date === getCurrentDatePeru() && board.user_id === user?.id)
+  const needsTodayBoard = viewMode === "my" && selectedDate === getCurrentDatePeru() && !todayBoard
 
   if (loading) {
     return (
@@ -500,9 +502,7 @@ export default function TasksPage() {
                 Pizarrones
                 {viewMode === "all" && <Users className="h-4 w-4 text-secondary" />}
               </CardTitle>
-              <CardDescription>
-                {format(new Date(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-              </CardDescription>
+              <CardDescription>{formatDateLong(new Date(selectedDate))}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {boards.length === 0 ? (

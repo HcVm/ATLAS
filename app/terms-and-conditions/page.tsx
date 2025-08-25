@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Shield, FileText, Users, AlertTriangle, CheckCircle, Scale } from "lucide-react"
+import { getCurrentDateLong } from "@/lib/date-utils"
 
 export default function TermsAndConditionsPage() {
   return (
@@ -12,7 +13,7 @@ export default function TermsAndConditionsPage() {
           <h1 className="text-4xl font-bold tracking-tight">Términos y Condiciones</h1>
           <p className="text-xl text-muted-foreground">Sistema de Gestión Documental - Acceso Público</p>
           <Badge variant="outline" className="text-sm">
-            Última actualización: {new Date().toLocaleDateString("es-ES")}
+            Última actualización: {getCurrentDateLong()}
           </Badge>
         </div>
 
@@ -222,14 +223,7 @@ export default function TermsAndConditionsPage() {
             Al hacer clic en "Acepto los términos y condiciones" en el formulario de descarga, usted confirma que ha
             leído, entendido y acepta estos términos en su totalidad.
           </p>
-          <p className="mt-2">
-            Fecha de última actualización:{" "}
-            {new Date().toLocaleDateString("es-ES", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
+          <p className="mt-2">Fecha de última actualización: {getCurrentDateLong()}</p>
         </div>
       </div>
     </div>

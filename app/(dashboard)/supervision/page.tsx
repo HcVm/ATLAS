@@ -13,8 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarDays, Clock, CheckCircle, AlertCircle, Users, Search } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDateShort } from "@/lib/date-utils"
 import { TaskAssignmentModal } from "@/components/task-assignment-modal"
 import { TaskAnalyticsDashboard } from "@/components/monitoring/task-analytics-dashboard"
 import { RealTimeAlerts } from "@/components/monitoring/real-time-alerts"
@@ -81,7 +80,7 @@ export default function SupervisionPage() {
     try {
       setLoading(true)
 
-      console.log("[v0] Loading supervision data for company:", selectedCompany?.id)
+      console.log("Loading supervision data for company:", selectedCompany?.id)
 
       const [employeesResult, boardsResult] = await Promise.all([
         // Load employees from the same company
@@ -126,17 +125,17 @@ export default function SupervisionPage() {
       const { data: boardsData, error: boardsError } = boardsResult
 
       if (employeesError) {
-        console.error("[v0] Error loading employees:", employeesError)
+        console.error("Error loading employees:", employeesError)
         throw employeesError
       }
 
       if (boardsError) {
-        console.error("[v0] Error loading boards:", boardsError)
+        console.error("Error loading boards:", boardsError)
         throw boardsError
       }
 
-      console.log("[v0] Raw boards loaded:", boardsData?.length)
-      console.log("[v0] Sample board data:", boardsData?.[0])
+      console.log("Raw boards loaded:", boardsData?.length)
+      console.log("Sample board data:", boardsData?.[0])
 
       const filteredBoardsData =
         boardsData?.filter((board) => {
@@ -155,9 +154,9 @@ export default function SupervisionPage() {
           return matches
         }) || []
 
-      console.log("[v0] Loaded employees:", employeesData?.length)
-      console.log("[v0] Filtered boards:", filteredBoardsData.length)
-      console.log("[v0] Company ID used for filtering:", selectedCompany?.id)
+      console.log("Loaded employees:", employeesData?.length)
+      console.log("Filtered boards:", filteredBoardsData.length)
+      console.log("Company ID used for filtering:", selectedCompany?.id)
 
       setEmployees(employeesData || [])
       setTaskBoards(filteredBoardsData)
@@ -172,14 +171,14 @@ export default function SupervisionPage() {
   useEffect(() => {
     let filtered = taskBoards
 
-    console.log("[v0] Filtering boards. Total boards:", taskBoards.length)
-    console.log("[v0] Selected employee:", selectedEmployee)
-    console.log("[v0] Search term:", searchTerm)
-    console.log("[v0] Status filter:", statusFilter)
+    console.log("Filtering boards. Total boards:", taskBoards.length)
+    console.log("Selected employee:", selectedEmployee)
+    console.log("Search term:", searchTerm)
+    console.log("Status filter:", statusFilter)
 
     if (selectedEmployee !== "all") {
       filtered = filtered.filter((board) => board.user_id === selectedEmployee)
-      console.log("[v0] After employee filter:", filtered.length)
+      console.log("After employee filter:", filtered.length)
     }
 
     if (searchTerm) {
@@ -188,7 +187,7 @@ export default function SupervisionPage() {
           board.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           board.user_profile.full_name.toLowerCase().includes(searchTerm.toLowerCase()),
       )
-      console.log("[v0] After search filter:", filtered.length)
+      console.log("After search filter:", filtered.length)
     }
 
     if (statusFilter !== "all") {
@@ -217,10 +216,10 @@ export default function SupervisionPage() {
         }
       })
 
-      console.log("[v0] After status filter:", filtered.length)
+      console.log("After status filter:", filtered.length)
     }
 
-    console.log("[v0] Final filtered boards:", filtered.length)
+    console.log("Final filtered boards:", filtered.length)
     setFilteredBoards(filtered)
   }, [taskBoards, selectedEmployee, searchTerm, statusFilter])
 
@@ -399,7 +398,7 @@ export default function SupervisionPage() {
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {format(new Date(board.created_at), "dd MMM", { locale: es })}
+                        {formatDateShort(new Date(board.created_at))}
                       </Badge>
                     </div>
                     {board.description && <p className="text-sm text-gray-600 mt-2">{board.description}</p>}

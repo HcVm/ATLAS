@@ -17,6 +17,7 @@ import {
   Hash,
   AlertTriangle,
 } from "lucide-react"
+import { formatDateLong, formatDateTime, getCurrentDateTimeISO } from "@/lib/date-utils"
 
 interface ValidationData {
   quotationNumber: string
@@ -70,21 +71,11 @@ export default function ValidateQuotationPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-PE", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+    return formatDateLong(dateString)
   }
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("es-PE", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+  const formatDateTimeLocal = (dateString: string) => {
+    return formatDateTime(dateString)
   }
 
   if (loading) {
@@ -262,7 +253,7 @@ export default function ValidateQuotationPage() {
                   <span className="font-medium text-gray-700">Fecha de Creación:</span>
                 </div>
                 <div className="bg-green-100 p-3 rounded-lg">
-                  <p className="text-sm font-semibold text-green-800">{formatDateTime(validation.createdAt)}</p>
+                  <p className="text-sm font-semibold text-green-800">{formatDateTimeLocal(validation.createdAt)}</p>
                 </div>
               </div>
             </div>
@@ -318,7 +309,7 @@ export default function ValidateQuotationPage() {
         <Card className="bg-gray-50">
           <CardContent className="text-center p-6">
             <p className="text-sm text-gray-600 mb-2">Sistema de Validación de Cotizaciones - AGPC</p>
-            <p className="text-xs text-gray-500">Validación realizada el {formatDateTime(new Date().toISOString())}</p>
+            <p className="text-xs text-gray-500">Validación realizada el {formatDateTime(getCurrentDateTimeISO())}</p>
             <p className="text-xs text-gray-500 mt-1">Todos los derechos reservados © {new Date().getFullYear()}</p>
           </CardContent>
         </Card>
