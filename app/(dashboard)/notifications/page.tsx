@@ -308,16 +308,16 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-slate-50/50 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
+      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-800/50 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
         <CardHeader className="pb-3 p-4 sm:p-6">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg self-start">
               <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <span className="sm:hidden text-slate-700">Notificaciones</span>
-            <span className="hidden sm:inline text-slate-700">Centro de notificaciones</span>
+            <span className="sm:hidden text-slate-700 dark:text-slate-200">Notificaciones</span>
+            <span className="hidden sm:inline text-slate-700 dark:text-slate-200">Centro de notificaciones</span>
           </CardTitle>
-          <CardDescription className="text-sm sm:text-base text-slate-500">
+          <CardDescription className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
             Revisa tus notificaciones y actualizaciones del sistema
           </CardDescription>
         </CardHeader>

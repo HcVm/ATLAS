@@ -314,11 +314,11 @@ export default function CalendarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4 sm:p-6 bg-white text-slate-900">
+      <div className="min-h-screen p-4 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-            <p className="text-slate-600">Cargando calendario...</p>
+            <p className="text-slate-600 dark:text-slate-400">Cargando calendario...</p>
           </div>
         </div>
       </div>
@@ -326,16 +326,20 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 bg-white text-slate-900">
+    <div className="min-h-screen p-4 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Calendario de Actividades</h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-1">Organiza tus tareas y eventos importantes.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
+            Calendario de Actividades
+          </h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+            Organiza tus tareas y eventos importantes.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
-            className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-800"
+            className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
             onClick={() => handleOpenEventForm()}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -345,13 +349,13 @@ export default function CalendarPage() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-800"
+                className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 <span>Filtrar</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 bg-white border-slate-200 text-slate-900">
+            <PopoverContent className="w-48 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100">
               <div className="grid gap-2">
                 <p className="text-sm font-medium mb-2">Importancia</p>
                 {Object.keys(importanceLabels).map((key) => (
@@ -360,7 +364,7 @@ export default function CalendarPage() {
                       id={`filter-importance-${key}`}
                       checked={filterImportance.includes(key)}
                       onCheckedChange={(checked) => handleImportanceFilterChange(key, checked as boolean)}
-                      className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                      className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
                     />
                     <Label htmlFor={`filter-importance-${key}`} className="text-sm font-normal">
                       {importanceLabels[key]}
@@ -376,7 +380,7 @@ export default function CalendarPage() {
                       id={`filter-category-${key}`}
                       checked={filterCategory.includes(key)}
                       onCheckedChange={(checked) => handleCategoryFilterChange(key, checked as boolean)}
-                      className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                      className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
                     />
                     <Label htmlFor={`filter-category-${key}`} className="text-sm font-normal">
                       {eventCategoryLabels[key]}
@@ -391,16 +395,16 @@ export default function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Sidebar for filters (adapted from image) */}
-        <Card className="shadow-lg border-slate-200 bg-white text-slate-900">
-          <CardHeader className="border-b border-slate-200 p-4">
-            <CardTitle className="text-lg font-semibold text-slate-900">
-              <CalendarIcon className="inline-block h-5 w-5 mr-2 text-blue-600" />
+        <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
+            <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <CalendarIcon className="inline-block h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
               {"Calendario de Actividades"}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-6">
             <div>
-              <h3 className="text-md font-semibold text-slate-700 mb-3">Importancia</h3>
+              <h3 className="text-md font-semibold text-slate-700 dark:text-slate-300 mb-3">Importancia</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(importanceLabels).map(([key, label]) => (
                   <Badge
@@ -421,7 +425,7 @@ export default function CalendarPage() {
               </div>
             </div>
             <div className="mt-4">
-              <h3 className="text-md font-semibold text-slate-700 mb-3">Categoría</h3>
+              <h3 className="text-md font-semibold text-slate-700 dark:text-slate-300 mb-3">Categoría</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(eventCategoryLabels).map(([key, label]) => (
                   <Badge
@@ -443,30 +447,30 @@ export default function CalendarPage() {
         </Card>
 
         {/* Main Calendar Grid */}
-        <Card className="shadow-lg border-slate-200 bg-white text-slate-900">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 p-4">
+        <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-700 p-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              className="text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+              className="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <CardTitle className="text-xl font-bold text-slate-900">
+            <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
               {format(currentMonth, "MMMM yyyy", { locale: es })}
             </CardTitle>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              className="text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+              className="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid grid-cols-7 text-center text-sm font-medium text-slate-600 mb-4">
+            <div className="grid grid-cols-7 text-center text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">
               {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
                 <div key={day} className="py-2">
                   {day}
@@ -485,15 +489,15 @@ export default function CalendarPage() {
                   <div
                     key={index}
                     className={`relative h-28 rounded-lg p-2 flex flex-col items-center justify-start text-center cursor-pointer transition-all duration-200
-                      ${isCurrentMonth ? "bg-slate-50 hover:bg-slate-100" : "bg-white text-slate-400"}
-                      ${isTodayDate ? "border-2 border-blue-500 ring-2 ring-blue-500" : "border border-slate-200"}
+                      ${isCurrentMonth ? "bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600" : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500"}
+                      ${isTodayDate ? "border-2 border-blue-500 ring-2 ring-blue-500" : "border border-slate-200 dark:border-slate-600"}
                     `}
                     onClick={() => handleOpenEventForm(undefined, day)}
                   >
                     <span
                       className={`text-sm font-semibold ${
-                        isCurrentMonth ? "text-slate-900" : "text-slate-400"
-                      } ${isTodayDate ? "text-blue-600" : ""}`}
+                        isCurrentMonth ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"
+                      } ${isTodayDate ? "text-blue-600 dark:text-blue-400" : ""}`}
                     >
                       {format(day, "d")}
                     </span>

@@ -5,7 +5,7 @@ import { createServerClient } from "@supabase/ssr"
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Crear un cliente de Supabase en el servidor con las cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabaseServer = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -52,7 +52,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Sin permisos para eliminar noticias" }, { status: 403 })
     }
 
-    const newsId = params.id
+    const { id: newsId } = await params
 
     // Primero obtener la noticia para verificar permisos
     const { data: newsItem, error: fetchError } = await supabaseServer

@@ -6,7 +6,7 @@ import { createServerClient } from "@supabase/ssr"
 export async function POST(request: NextRequest) {
   try {
     // Crear un cliente de Supabase en el servidor con las cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabaseServer = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
