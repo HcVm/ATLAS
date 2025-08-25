@@ -118,17 +118,26 @@ export default function TasksPage() {
 
   useEffect(() => {
     const checkAndCloseBoards = async () => {
-      const now = new Date()
+      const peruDate = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
+      const now = new Date(peruDate)
       const currentHour = now.getHours()
       const currentMinute = now.getMinutes()
 
+      console.log("[v0] Checking time for automatic migration:", {
+        currentHour,
+        currentMinute,
+        peruTime: now.toISOString(),
+      })
+
       // Cerrar pizarrones a las 11:59 PM
       if (currentHour === 23 && currentMinute >= 59) {
+        console.log("[v0] Closing past boards at 11:59 PM")
         await closePastBoards()
       }
 
       // Migrar tareas pendientes a las 12:01 AM (inicio del nuevo día)
-      if (currentHour === 0 && currentMinute >= 1 && currentMinute <= 2) {
+      if (currentHour === 0 && currentMinute >= 1 && currentMinute <= 5) {
+        console.log("[v0] Attempting task migration at midnight")
         await migratePendingTasks()
       }
     }
@@ -142,7 +151,6 @@ export default function TasksPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Función para migrar tareas pendientes automáticamente
   const migratePendingTasks = async () => {
     try {
       console.log("[v0] Executing automatic task migration...")
@@ -155,6 +163,7 @@ export default function TasksPage() {
       })
 
       const result = await response.json()
+      console.log("[v0] Migration response:", result)
 
       if (result.success && result.data.migratedTasks > 0) {
         toast({
@@ -163,9 +172,11 @@ export default function TasksPage() {
         })
 
         // Recargar los boards para mostrar las nuevas tareas migradas
-        loadBoards()
-      } else if (result.data.migratedTasks === 0) {
+        await loadBoards()
+      } else if (result.success && result.data.migratedTasks === 0) {
         console.log("[v0] No pending tasks to migrate")
+      } else {
+        console.error("[v0] Migration failed:", result.error)
       }
     } catch (error) {
       console.error("[v0] Error in automatic task migration:", error)
@@ -175,14 +186,23 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (user && selectedDate === getCurrentDatePeru()) {
-      // Solo ejecutar migración si estamos viendo el día actual
       const lastMigrationDate = localStorage.getItem("lastTaskMigration")
+      const lastMigrationTime = localStorage.getItem("lastTaskMigrationTime")
       const today = getCurrentDatePeru()
+      const now = Date.now()
 
-      if (lastMigrationDate !== today) {
-        // Ejecutar migración si no se ha hecho hoy
+      // Solo ejecutar migración si:
+      // 1. No se ha hecho hoy, O
+      // 2. Han pasado más de 2 horas desde la última migración
+      if (
+        lastMigrationDate !== today ||
+        !lastMigrationTime ||
+        now - Number.parseInt(lastMigrationTime) > 2 * 60 * 60 * 1000
+      ) {
+        console.log("[v0] Executing daily migration check")
         migratePendingTasks().then(() => {
           localStorage.setItem("lastTaskMigration", today)
+          localStorage.setItem("lastTaskMigrationTime", now.toString())
         })
       }
     }
@@ -190,9 +210,10 @@ export default function TasksPage() {
 
   const closePastBoards = async () => {
     try {
+      console.log("[v0] Closing past boards...")
       const today = getCurrentDatePeru()
 
-      await supabase
+      const { data, error } = await supabase
         .from("task_boards")
         .update({
           status: "closed",
@@ -201,11 +222,20 @@ export default function TasksPage() {
         })
         .lt("board_date", today)
         .eq("status", "active")
+        .select()
 
-      // Recargar boards si hay cambios
-      loadBoards()
+      if (error) {
+        console.error("[v0] Error closing past boards:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        console.log("[v0] Closed boards:", data.length)
+        // Recargar boards si hay cambios
+        await loadBoards()
+      }
     } catch (error) {
-      console.error("Error closing past boards:", error)
+      console.error("[v0] Error closing past boards:", error)
     }
   }
 

@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Starting automatic task migration...")
 
-    // Ejecutar la función de migración
+    const peruTime = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
+    const now = new Date(peruTime)
+    console.log("[v0] Current Peru time:", now.toISOString())
+
     const { data, error } = await supabaseAdmin.rpc("migrate_pending_tasks")
 
     if (error) {
@@ -25,9 +28,9 @@ export async function POST(request: NextRequest) {
     }
 
     const migrationResult = data?.[0] || {
-      migrated_tasks: 0,
-      created_boards: 0,
-      affected_users: [],
+      migrated_count: 0,
+      created_boards_count: 0,
+      affected_users_array: [],
     }
 
     console.log("[v0] Task migration completed:", migrationResult)
@@ -35,10 +38,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        migratedTasks: migrationResult.migrated_tasks,
-        createdBoards: migrationResult.created_boards,
-        affectedUsers: migrationResult.affected_users,
-        message: `Se migraron ${migrationResult.migrated_tasks} tareas pendientes. Se crearon ${migrationResult.created_boards} nuevos pizarrones.`,
+        migratedTasks: migrationResult.migrated_count,
+        createdBoards: migrationResult.created_boards_count,
+        affectedUsers: migrationResult.affected_users_array,
+        message: `Se migraron ${migrationResult.migrated_count} tareas pendientes. Se crearon ${migrationResult.created_boards_count} nuevos pizarrones.`,
       },
     })
   } catch (error: any) {
@@ -53,9 +56,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Método GET para verificar el estado de la migración
 export async function GET() {
   try {
+    const peruTime = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
+    const currentDate = new Date(peruTime).toISOString().split("T")[0]
+
+    console.log("[v0] Checking pending tasks for migration. Current Peru date:", currentDate)
+
     // Consultar tareas pendientes que necesitan migración
     const { data: pendingTasks, error } = await supabaseAdmin
       .from("tasks")
@@ -77,14 +84,18 @@ export async function GET() {
       `)
       .in("status", ["pending", "in_progress"])
       .eq("task_boards.status", "closed")
-      .lt("task_boards.board_date", new Date().toISOString().split("T")[0])
+      .lt("task_boards.board_date", currentDate)
 
     if (error) {
       console.error("[v0] Error checking pending tasks:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    console.log("[v0] Found pending tasks for migration:", pendingTasks?.length || 0)
+
     return NextResponse.json({
+      currentPeruTime: peruTime,
+      currentDate: currentDate,
       pendingMigrations: pendingTasks?.length || 0,
       tasks:
         pendingTasks?.map((task) => ({
@@ -94,7 +105,7 @@ export async function GET() {
           boardDate: task.task_boards.board_date,
           userName: task.task_boards.profiles?.full_name,
           daysOverdue: Math.floor(
-            (new Date().getTime() - new Date(task.task_boards.board_date).getTime()) / (1000 * 60 * 60 * 24),
+            (new Date(currentDate).getTime() - new Date(task.task_boards.board_date).getTime()) / (1000 * 60 * 60 * 24),
           ),
         })) || [],
     })

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/migrate-pending-tasks",
+      "schedule": "1 5 * * *"
+    }
+  ]
+}
