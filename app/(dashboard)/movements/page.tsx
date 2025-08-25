@@ -446,16 +446,16 @@ export default function MovementsPage() {
       {/* Header with gradient text */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent mb-2 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent mb-2">
             {getPageTitle()}
           </h1>
-          <p className="text-sm sm:text-base text-slate-500">{getPageDescription()}</p>
+          <p className="text-sm sm:text-base text-muted-foreground">{getPageDescription()}</p>
         </div>
         <Button
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
+          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-transparent"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
@@ -464,10 +464,10 @@ export default function MovementsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+      <Card className="hover:shadow-lg transition-shadow duration-300 bg-card border-border">
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-slate-800">
-            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             Filtros de Búsqueda
           </CardTitle>
         </CardHeader>
@@ -477,13 +477,13 @@ export default function MovementsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar movimientos..."
-                className="pl-10 border-slate-200 focus:border-slate-400"
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Select value={departmentFilter} onValueChange={(value) => setDepartmentFilter(value)}>
-              <SelectTrigger className="border-slate-200 focus:border-slate-400">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por departamento" />
               </SelectTrigger>
               <SelectContent>
@@ -501,7 +501,7 @@ export default function MovementsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center justify-center bg-slate-100 rounded-lg px-4 py-2 text-sm font-medium text-slate-700">
+            <div className="flex items-center justify-center bg-muted rounded-lg px-4 py-2 text-sm font-medium text-foreground">
               Total: {filteredMovements.length} movimientos
             </div>
           </div>
@@ -509,10 +509,10 @@ export default function MovementsPage() {
       </Card>
 
       {/* Leyenda de colores - Hardcodeada */}
-      <Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+      <Card className="hover:shadow-lg transition-shadow duration-300 bg-card border-border">
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
-            <div className="w-3 h-3 bg-gradient-to-r from-slate-500 to-slate-600 rounded-full"></div>
+          <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+            <div className="w-3 h-3 bg-gradient-to-r from-muted-foreground to-foreground rounded-full"></div>
             Leyenda de Departamentos ({STANDARD_DEPARTMENTS.length} departamentos)
           </CardTitle>
         </CardHeader>
@@ -522,8 +522,8 @@ export default function MovementsPage() {
               <DepartmentBadge key={`legend-${department.id}`} department={department} />
             ))}
           </div>
-          <div className="mt-4 p-3 bg-slate-50 border-l-4 border-l-slate-500 rounded-lg">
-            <p className="text-xs text-slate-700 flex items-center gap-2">
+          <div className="mt-4 p-3 bg-muted border-l-4 border-l-muted-foreground rounded-lg">
+            <p className="text-xs text-foreground flex items-center gap-2">
               <span>💡</span>
               <span>Los badges con 📍 indican el departamento de destino en los movimientos</span>
             </p>
@@ -579,12 +579,12 @@ export default function MovementsPage() {
           {filteredMovements.map((movement) => (
             <Card
               key={movement.id}
-              className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-white to-slate-50/50 border-slate-200"
+              className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-card border-border"
             >
               <CardHeader className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg group-hover:text-primary transition-colors duration-300 text-slate-800">
+                    <CardTitle className="text-base sm:text-lg group-hover:text-primary transition-colors duration-300 text-foreground">
                       {movement.documents ? (
                         <Link
                           href={`/documents/${movement.document_id}`}
@@ -600,18 +600,13 @@ export default function MovementsPage() {
                         </span>
                       )}
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm text-slate-600">
+                    <CardDescription className="text-xs sm:text-sm text-muted-foreground">
                       {movement.documents?.document_number && `#${movement.documents.document_number} • `}
                       {format(new Date(movement.created_at), "PPP 'a las' p", { locale: es })}
                     </CardDescription>
                   </div>
                   {movement.documents && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="w-full sm:w-auto border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
-                    >
+                    <Button variant="outline" size="sm" asChild className="w-full sm:w-auto bg-transparent">
                       <Link href={`/documents/${movement.document_id}`}>
                         <span className="sm:hidden">Ver Doc</span>
                         <span className="hidden sm:inline">Ver Documento</span>
@@ -622,7 +617,7 @@ export default function MovementsPage() {
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 sm:p-4 bg-slate-50/50 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                       <DepartmentBadge department={movement.from_departments} />
                       <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
@@ -630,13 +625,13 @@ export default function MovementsPage() {
                     </div>
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
-                    <div className="w-2 h-2 bg-slate-600 rounded-full flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full flex-shrink-0"></div>
                     <span className="truncate">Movido por {movement.profiles?.full_name || "Usuario desconocido"}</span>
                   </div>
                   {movement.notes && (
-                    <div className="mt-4 p-3 sm:p-4 bg-slate-50 border-l-4 border-l-slate-500 rounded-lg">
-                      <p className="font-medium text-slate-700 mb-1 text-sm">Notas:</p>
-                      <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-line break-words">
+                    <div className="mt-4 p-3 sm:p-4 bg-muted border-l-4 border-l-muted-foreground rounded-lg">
+                      <p className="font-medium text-foreground mb-1 text-sm">Notas:</p>
+                      <p className="text-xs sm:text-sm text-foreground whitespace-pre-line break-words">
                         {movement.notes}
                       </p>
                     </div>

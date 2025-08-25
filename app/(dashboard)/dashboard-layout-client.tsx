@@ -125,7 +125,7 @@ export default function DashboardLayoutClient({
             <Button onClick={() => router.push("/user-debug")} className="w-full">
               Diagnóstico de Usuario
             </Button>
-            <Button onClick={handleSignOut} variant="outline" className="w-full">
+            <Button onClick={handleSignOut} variant="outline" className="w-full bg-transparent">
               Cerrar Sesión
             </Button>
           </div>
@@ -139,17 +139,17 @@ export default function DashboardLayoutClient({
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-background/80 backdrop-blur-md border-b border-border">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
               <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-slate-700">Sistema de Seguimiento de Documentos</span>
+                <span className="font-medium text-foreground">Sistema de Seguimiento de Documentos</span>
               </div>
             </div>
             <div className="ml-auto flex items-center gap-2 px-4">
               {user.role === "admin" && (
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-slate-500" />
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
                   <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
                     <CompanySelector />
                   </Suspense>
@@ -159,10 +159,10 @@ export default function DashboardLayoutClient({
               <NotificationBadge />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-slate-100">
-                    <Avatar className="h-8 w-8 ring-2 ring-slate-200">
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-accent">
+                    <Avatar className="h-8 w-8 ring-2 ring-border">
                       <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
-                      <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
+                      <AvatarFallback className="bg-muted text-foreground font-semibold">
                         {user.full_name
                           .split(" ")
                           .map((n) => n[0])
@@ -172,12 +172,12 @@ export default function DashboardLayoutClient({
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white border-slate-200" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-background border-border" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none text-slate-700">{user.full_name}</p>
-                      <p className="text-xs leading-none text-slate-500">{user.email}</p>
-                      <p className="text-xs leading-none text-slate-500">Rol: {user.role}</p>
+                      <p className="text-sm font-medium leading-none text-foreground">{user.full_name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground">Rol: {user.role}</p>
                       {user.company_id && (
                         <p className="text-xs leading-none text-muted-foreground">
                           Empresa: {user.companies?.name || "Sin asignar"}
@@ -186,30 +186,30 @@ export default function DashboardLayoutClient({
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push("/profile")} className="text-slate-700 hover:bg-slate-100">
-                    <User className="mr-2 h-4 w-4 text-slate-600" />
+                  <DropdownMenuItem onClick={() => router.push("/profile")} className="text-foreground hover:bg-accent">
+                    <User className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>Perfil</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => router.push("/settings")}
-                    className="text-slate-700 hover:bg-slate-100"
+                    className="text-foreground hover:bg-accent"
                   >
-                    <Sun className="mr-2 h-4 w-4 text-slate-600" />
+                    <Sun className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>Configuración</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="text-slate-700 hover:bg-slate-100"
+                    className="text-foreground hover:bg-accent"
                   >
                     {refreshing ? (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 text-slate-600 animate-spin" />
+                        <RefreshCw className="mr-2 h-4 w-4 text-muted-foreground animate-spin" />
                         <span>Actualizando...</span>
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 text-slate-600" />
+                        <RefreshCw className="mr-2 h-4 w-4 text-muted-foreground" />
                         <span>Actualizar Sesión</span>
                       </>
                     )}
@@ -217,13 +217,13 @@ export default function DashboardLayoutClient({
                   {user.role !== "admin" && (
                     <DropdownMenuItem
                       onClick={() => router.push("/user-debug")}
-                      className="text-slate-700 hover:bg-slate-100"
+                      className="text-foreground hover:bg-accent"
                     >
                       <span>Diagnóstico</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-slate-700 hover:bg-slate-100">
+                  <DropdownMenuItem onClick={handleSignOut} className="text-foreground hover:bg-accent">
                     <span>Cerrar sesión</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

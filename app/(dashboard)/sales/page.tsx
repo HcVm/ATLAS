@@ -772,7 +772,7 @@ export default function SalesPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
             Módulo de Ventas
           </h1>
           <p className="text-muted-foreground">
@@ -887,70 +887,56 @@ export default function SalesPage() {
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por cliente, RUC, cotización, producto o número de venta..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 border-slate-200 dark:border-slate-700 focus:border-slate-400"
+                className="pl-8"
               />
             </div>
           </div>
 
           {filteredSales.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-slate-500 dark:text-slate-400">
+              <div className="text-muted-foreground">
                 {searchTerm ? "No se encontraron ventas que coincidan" : "No hay ventas registradas"}
               </div>
             </div>
           ) : (
             <div>
-              <div className="hidden lg:block rounded-md border border-slate-200 dark:border-slate-700">
+              <div className="hidden lg:block rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50">
-                      <TableHead className="text-slate-700 dark:text-slate-200">N° Venta</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Fecha</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Cliente</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">RUC</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">N° Cotización</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Producto(s)</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Items</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Cantidad</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Total</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Estado</TableHead>
-                      <TableHead className="text-slate-700 dark:text-slate-200">Comprobante</TableHead>
-                      {canViewAllSales && (
-                        <TableHead className="text-slate-700 dark:text-slate-200">Vendedor</TableHead>
-                      )}
-                      <TableHead className="text-slate-700 dark:text-slate-200">Acciones</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-foreground">N° Venta</TableHead>
+                      <TableHead className="text-foreground">Fecha</TableHead>
+                      <TableHead className="text-foreground">Cliente</TableHead>
+                      <TableHead className="text-foreground">RUC</TableHead>
+                      <TableHead className="text-foreground">N° Cotización</TableHead>
+                      <TableHead className="text-foreground">Producto(s)</TableHead>
+                      <TableHead className="text-foreground">Items</TableHead>
+                      <TableHead className="text-foreground">Cantidad</TableHead>
+                      <TableHead className="text-foreground">Total</TableHead>
+                      <TableHead className="text-foreground">Estado</TableHead>
+                      <TableHead className="text-foreground">Comprobante</TableHead>
+                      {canViewAllSales && <TableHead className="text-foreground">Vendedor</TableHead>}
+                      <TableHead className="text-foreground">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map((sale) => (
-                      <TableRow
-                        key={sale.id}
-                        className="hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50"
-                      >
-                        <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          {sale.sale_number || "N/A"}
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-300">
+                      <TableRow key={sale.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium text-foreground">{sale.sale_number || "N/A"}</TableCell>
+                        <TableCell className="text-muted-foreground">
                           {format(new Date(sale.sale_date), "dd/MM/yyyy", { locale: es })}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          {sale.entity_name}
-                        </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-300">{sale.entity_ruc}</TableCell>
-                        <TableCell className="font-medium text-slate-700 dark:text-slate-200">
-                          {sale.quotation_code}
-                        </TableCell>
+                        <TableCell className="font-medium text-foreground">{sale.entity_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{sale.entity_ruc}</TableCell>
+                        <TableCell className="font-medium text-foreground">{sale.quotation_code}</TableCell>
                         <TableCell className="max-w-xs">
                           <div className="flex items-center gap-2">
-                            <span
-                              className="truncate text-slate-600 dark:text-slate-300"
-                              title={sale.display_product_name}
-                            >
+                            <span className="truncate text-muted-foreground" title={sale.display_product_name}>
                               {sale.display_product_name}
                             </span>
                             {sale.is_multi_product && (
@@ -966,18 +952,16 @@ export default function SalesPage() {
                             {sale.total_items || 1}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-slate-600 dark:text-slate-300">
+                        <TableCell className="text-muted-foreground">
                           {(sale.total_quantity || 0).toLocaleString()}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-700 dark:text-slate-200">
+                        <TableCell className="font-medium text-foreground">
                           S/ {(sale.total_sale || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>{renderStatusBadge(sale.sale_status)}</TableCell>
                         <TableCell>{renderVoucherStatus(sale.payment_vouchers || [])}</TableCell>
                         {canViewAllSales && (
-                          <TableCell className="text-slate-600 dark:text-slate-300">
-                            {sale.profiles?.full_name || "N/A"}
-                          </TableCell>
+                          <TableCell className="text-muted-foreground">{sale.profiles?.full_name || "N/A"}</TableCell>
                         )}
                         <TableCell>
                           <DropdownMenu>
