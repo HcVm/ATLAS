@@ -502,7 +502,7 @@ export default function TasksPage() {
                 Pizarrones
                 {viewMode === "all" && <Users className="h-4 w-4 text-secondary" />}
               </CardTitle>
-              <CardDescription>{formatDateLong(new Date(selectedDate))}</CardDescription>
+              <CardDescription>{formatDateLong(selectedDate)}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {boards.length === 0 ? (
