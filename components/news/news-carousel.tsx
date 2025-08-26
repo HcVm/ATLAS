@@ -103,9 +103,9 @@ export function NewsCarousel() {
       <Card className="min-h-80">
         <CardContent className="p-6 h-full flex items-center justify-center">
           <div className="animate-pulse text-center w-full">
-            <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/3 mx-auto"></div>
+            <div className="h-6 bg-muted rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-muted rounded w-1/2 mx-auto mb-2"></div>
+            <div className="h-3 bg-muted rounded w-1/3 mx-auto"></div>
           </div>
         </CardContent>
       </Card>
@@ -140,7 +140,7 @@ export function NewsCarousel() {
         <CardContent className="p-0 relative">
           <div className="flex flex-col">
             <div
-              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center ${
+              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center ${
                 isImageOnly ? "h-[28rem]" : "h-48"
               }`}
             >
@@ -157,7 +157,7 @@ export function NewsCarousel() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute top-2 left-2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 left-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => openImageZoom(currentNews.image_url!)}
                   >
                     <ZoomIn className="h-4 w-4" />
@@ -168,13 +168,13 @@ export function NewsCarousel() {
               )}
 
               {!isImageOnly && (
-                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
               )}
             </div>
 
             {!isImageOnly && (
               <div className="relative h-80">
-                <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/60 to-transparent pointer-events-none z-10" />
+                <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-background/60 to-transparent pointer-events-none z-10" />
 
                 <div className="p-6 pt-2 text-center h-full flex flex-col">
                   <h3 className="text-lg font-semibold mb-3 flex-shrink-0">{currentNews.title}</h3>
@@ -189,7 +189,7 @@ export function NewsCarousel() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 flex-shrink-0">
+                  <div className="flex items-center justify-between pt-4 border-t border-border flex-shrink-0">
                     <p className="text-xs text-muted-foreground">
                       {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
                         year: "numeric",
@@ -197,7 +197,7 @@ export function NewsCarousel() {
                         day: "numeric",
                       })}
                     </p>
-                    <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
+                    <div className="px-3 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium">
                       Publicado
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className={`absolute left-2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
+                className={`absolute left-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
                   isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
                 }`}
                 onClick={prevSlide}
@@ -237,7 +237,7 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className={`absolute right-2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
+                className={`absolute right-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
                   isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
                 }`}
                 onClick={nextSlide}
@@ -248,7 +248,7 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute top-2 right-2 bg-white/90 hover:bg-white shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={toggleAutoPlay}
               >
                 {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
@@ -262,7 +262,9 @@ export function NewsCarousel() {
                 <button
                   key={index}
                   className={`relative w-2 h-2 rounded-full transition-all duration-200 ${
-                    index === currentIndex ? "bg-primary w-6 shadow-md" : "bg-gray-400 hover:bg-gray-500"
+                    index === currentIndex
+                      ? "bg-primary w-6 shadow-md"
+                      : "bg-muted-foreground hover:bg-muted-foreground/80"
                   }`}
                   onClick={() => setCurrentIndex(index)}
                 >
@@ -288,32 +290,31 @@ export function NewsCarousel() {
       </Card>
 
       <Dialog open={isImageZoomed} onOpenChange={setIsImageZoomed}>
-        <DialogTitle className="text-white text-lg font-bold">Imagen ampliada</DialogTitle>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
-            <div className="relative w-full h-[95vh] flex items-center justify-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4 z-30 text-white hover:bg-white/20"
-                onClick={closeImageZoom}
-              >
-                <X className="h-6 w-6" />
-              </Button>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
+          <div className="relative w-full h-[95vh] flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-30 text-white hover:bg-white/20"
+              onClick={closeImageZoom}
+            >
+              <X className="h-6 w-6" />
+            </Button>
 
-              {zoomedImageUrl && (
-                <div className="relative w-full h-full p-8">
-                  <Image
-                    src={zoomedImageUrl || "/placeholder.svg"}
-                    alt="Imagen ampliada"
-                    fill
-                    className="object-contain"
-                    sizes="95vw"
-                    priority
-                  />
-                </div>
-              )}
-            </div>
-          </DialogContent>
+            {zoomedImageUrl && (
+              <div className="relative w-full h-full p-8">
+                <Image
+                  src={zoomedImageUrl || "/placeholder.svg"}
+                  alt="Imagen ampliada"
+                  fill
+                  className="object-contain"
+                  sizes="95vw"
+                  priority
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
       </Dialog>
     </>
   )

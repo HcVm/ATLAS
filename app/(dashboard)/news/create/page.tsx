@@ -328,11 +328,11 @@ export default function CreateNewsPage() {
                           />
 
                           {compressionInfo && (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                              <div className="flex items-center gap-2 text-green-800">
+                            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                              <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
                                 <span className="text-sm font-medium">Imagen Optimizada</span>
                               </div>
-                              <div className="text-xs text-green-700 mt-1 space-y-1">
+                              <div className="text-xs text-green-700 dark:text-green-300 mt-1 space-y-1">
                                 <p>Tamaño original: {formatFileSize(compressionInfo.originalSize)}</p>
                                 <p>Tamaño optimizado: {formatFileSize(compressionInfo.compressedSize)}</p>
                                 <p>Ahorro: {compressionInfo.ratio}% menos espacio</p>
@@ -341,9 +341,9 @@ export default function CreateNewsPage() {
                           )}
 
                           {processing && (
-                            <div className="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-center h-32 bg-muted rounded-lg">
                               <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                              <span className="text-sm text-gray-600">Optimizando imagen...</span>
+                              <span className="text-sm text-muted-foreground">Optimizando imagen...</span>
                             </div>
                           )}
 

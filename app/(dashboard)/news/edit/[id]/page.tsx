@@ -289,11 +289,11 @@ export default function EditNewsPage({ params }: { params: { id: string } }) {
                         )}
                       </div>
                       {compressionInfo && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
-                          <div className="flex items-center gap-2 text-green-800">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-2">
+                          <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
                             <span className="text-sm font-medium">Imagen Optimizada</span>
                           </div>
-                          <div className="text-xs text-green-700 mt-1 space-y-1">
+                          <div className="text-xs text-green-700 dark:text-green-300 mt-1 space-y-1">
                             <p>Tamaño original: {formatFileSize(compressionInfo.originalSize)}</p>
                             <p>Tamaño optimizado: {formatFileSize(compressionInfo.compressedSize)}</p>
                             <p>Ahorro: {compressionInfo.ratio}% menos espacio</p>
@@ -301,7 +301,7 @@ export default function EditNewsPage({ params }: { params: { id: string } }) {
                         </div>
                       )}
                       {processing && (
-                        <div className="flex items-center mt-2 text-sm text-gray-600">
+                        <div className="flex items-center mt-2 text-sm text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           Optimizando imagen...
                         </div>
@@ -347,7 +347,7 @@ export default function EditNewsPage({ params }: { params: { id: string } }) {
               <CardContent className="flex flex-col items-center">
                 <div className="w-full rounded-lg overflow-hidden">
                   {imagePreview ? (
-                    <div className="relative h-48 w-full bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="relative h-48 w-full bg-muted rounded-lg overflow-hidden">
                       <Image
                         src={imagePreview || "/placeholder.svg"}
                         alt="Vista previa"
@@ -370,7 +370,9 @@ export default function EditNewsPage({ params }: { params: { id: string } }) {
                       <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("es-ES")}</p>
                       <div
                         className={`px-2 py-1 text-xs rounded-full ${
-                          formData.published ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          formData.published
+                            ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {formData.published ? "Publicado" : "Borrador"}
