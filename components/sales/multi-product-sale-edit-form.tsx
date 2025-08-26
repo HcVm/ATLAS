@@ -320,17 +320,19 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header con número de venta */}
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <h3 className="text-lg font-semibold text-blue-900">
+      <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
           Editando Venta Multi-Producto: {sale.sale_number || "N/A"}
         </h3>
-        <p className="text-sm text-blue-700">Fecha de venta: {new Date(sale.sale_date).toLocaleDateString("es-PE")}</p>
+        <p className="text-sm text-blue-700 dark:text-blue-300">
+          Fecha de venta: {new Date(sale.sale_date).toLocaleDateString("es-PE")}
+        </p>
       </div>
 
       {/* Información de la Empresa */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información de la Empresa</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label>Empresa</Label>
             <Input value={selectedCompany?.name || ""} disabled />
@@ -362,6 +364,32 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
           placeholder="Buscar entidad..."
           required
         />
+        {formData.entity_name && (
+          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+            <div className="space-y-3">
+              <div className="break-words">
+                <span className="font-medium text-slate-600 dark:text-slate-400 block">Razón Social:</span>
+                <p className="text-slate-900 dark:text-slate-100 break-all overflow-wrap-anywhere">
+                  {formData.entity_name}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="font-medium text-slate-600 dark:text-slate-400 block">RUC:</span>
+                  <p className="text-slate-900 dark:text-slate-100">{formData.entity_ruc}</p>
+                </div>
+                {formData.entity_executing_unit && (
+                  <div className="break-words">
+                    <span className="font-medium text-slate-600 dark:text-slate-400 block">Unidad Ejecutora:</span>
+                    <p className="text-slate-900 dark:text-slate-100 break-all overflow-wrap-anywhere">
+                      {formData.entity_executing_unit}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Separator />
@@ -385,8 +413,8 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="md:col-span-2 lg:col-span-2">
                 <ProductSelector
                   value={currentItem.product_id || ""}
                   onSelect={(product) => {
@@ -424,7 +452,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <Label>Precio Unitario con IGV</Label>
                 <Input
@@ -445,7 +473,8 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
                   <span className="font-semibold">
                     S/{" "}
                     {((currentItem.quantity || 0) * (currentItem.unit_price_with_tax || 0)).toLocaleString("es-PE", {
-                      minimumFractionDigits: 2, maximumFractionDigits: 4
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4,
                     })}
                   </span>
                 </div>
@@ -487,63 +516,73 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
 
           <Card>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Precio Unitario</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item, index) => (
-                    <TableRow key={index} className={editingItemIndex === index ? "bg-blue-50" : ""}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{item.product_name}</p>
-                          <p className="text-sm text-muted-foreground">{item.product_code}</p>
-                          {item.product_brand && (
-                            <Badge variant="outline" className="text-xs">
-                              {item.product_brand}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.quantity.toLocaleString()}</TableCell>
-                      <TableCell>
-                        S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => editItem(index)}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeItem(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto max-w-full">
+                <Table className="min-w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[200px]">Producto</TableHead>
+                      <TableHead className="min-w-[80px]">Cantidad</TableHead>
+                      <TableHead className="min-w-[100px]">Precio Unitario</TableHead>
+                      <TableHead className="min-w-[100px]">Total</TableHead>
+                      <TableHead className="min-w-[80px]">Acciones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((item, index) => (
+                      <TableRow key={index} className={editingItemIndex === index ? "bg-blue-50 dark:bg-blue-950" : ""}>
+                        <TableCell className="min-w-[200px]">
+                          <div className="max-w-[200px]">
+                            <p className="font-medium break-words">{item.product_name}</p>
+                            <p className="text-sm text-muted-foreground break-all">{item.product_code}</p>
+                            {item.product_brand && (
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {item.product_brand}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">{item.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          S/{" "}
+                          {item.unit_price_with_tax.toLocaleString("es-PE", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 4,
+                          })}
+                        </TableCell>
+                        <TableCell className="font-medium text-right">
+                          S/{" "}
+                          {item.total_amount.toLocaleString("es-PE", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 4,
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => editItem(index)}
+                              className="text-blue-600 hover:text-blue-700 p-1"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(index)}
+                              className="text-red-600 hover:text-red-700 p-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 
@@ -556,15 +595,16 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-600">Total Items</p>
-                  <p className="text-xl font-bold">{totals.total_items}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Items</p>
+                  <p className="text-xl font-bold dark:text-white">{totals.total_items}</p>
                 </div>
-                <div className="text-center p-3 bg-primary/10 rounded-lg">
-                  <p className="text-sm text-primary">Total de Venta</p>
-                  <p className="text-xl font-bold text-primary">
-                    S/ {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                <div className="text-center p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
+                  <p className="text-sm text-primary dark:text-primary-foreground">Total de Venta</p>
+                  <p className="text-xl font-bold text-primary dark:text-primary-foreground">
+                    S/{" "}
+                    {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
               </div>
@@ -578,7 +618,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
       {/* Detalles de la Venta */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Detalles de la Venta</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="quotation_code">Código de Cotización *</Label>
             <Input
@@ -605,7 +645,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
       {/* Información Adicional */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información Adicional</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="ocam">OCAM (Orden Electrónica)</Label>
             <Input
@@ -624,7 +664,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="project_meta">Proyecto Meta</Label>
             <Input
@@ -642,15 +682,6 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
             />
           </div>
         </div>
-
-        <div>
-          <Label htmlFor="warehouse_manager">Encargado de Almacén</Label>
-          <Input
-            id="warehouse_manager"
-            value={formData.warehouse_manager}
-            onChange={(e) => setFormData((prev) => ({ ...prev, warehouse_manager: e.target.value }))}
-          />
-        </div>
       </div>
 
       <Separator />
@@ -658,7 +689,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
       {/* Información Financiera */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información Financiera</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="payment_method">Método de Pago *</Label>
             <Select
@@ -698,7 +729,7 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
       {/* Información de Entrega */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información de Entrega</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label>Fecha de Entrega</Label>
             <DatePickerImproved
@@ -730,11 +761,11 @@ export default function MultiProductSaleEditForm({ sale, onSuccess, onCancel }: 
       </div>
 
       {/* Botones */}
-      <div className="flex justify-end space-x-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto bg-transparent">
           Cancelar
         </Button>
-        <Button type="submit" disabled={loading || items.length === 0}>
+        <Button type="submit" disabled={loading || items.length === 0} className="w-full sm:w-auto">
           {loading ? "Actualizando..." : "Actualizar Venta Multi-Producto"}
         </Button>
       </div>

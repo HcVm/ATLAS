@@ -193,39 +193,44 @@ export function EntitySelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between bg-transparent"
+            className="w-full justify-between bg-transparent h-auto min-h-[2.5rem] py-2"
           >
             {selectedEntity ? (
-              <div className="flex items-center gap-2 flex-1 text-left">
-                <span className="truncate">{selectedEntity.name}</span>
-                <Badge variant="outline" className="text-xs">
-                  {selectedEntity.ruc}
-                </Badge>
-                {selectedEntity.executing_unit && (
-                  <Badge variant="secondary" className="text-xs">
-                    U.E: {selectedEntity.executing_unit}
+              <div className="flex flex-col gap-2 flex-1 text-left min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="truncate font-medium">{selectedEntity.name}</span>
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {selectedEntity.ruc}
                   </Badge>
-                )}
-                {selectedEntity.fiscal_address && (
-                  <Badge variant="secondary" className="text-xs">
-                    Dir: {selectedEntity.fiscal_address}
-                  </Badge>
-                )}
-                {selectedEntity.email && (
-                  <Badge variant="secondary" className="text-xs">
-                    Email: {selectedEntity.email}
-                  </Badge>
-                )}
-                {selectedEntity.contact_person && (
-                  <Badge variant="secondary" className="text-xs">
-                    Contacto: {selectedEntity.contact_person}
-                  </Badge>
-                )}
+                </div>
+                {/* Additional info badges in a wrapping container */}
+                <div className="flex flex-wrap items-center gap-1">
+                  {selectedEntity.executing_unit && (
+                    <Badge variant="secondary" className="text-xs">
+                      U.E: {selectedEntity.executing_unit}
+                    </Badge>
+                  )}
+                  {selectedEntity.fiscal_address && (
+                    <Badge variant="secondary" className="text-xs max-w-[200px] truncate">
+                      Dir: {selectedEntity.fiscal_address}
+                    </Badge>
+                  )}
+                  {selectedEntity.email && (
+                    <Badge variant="secondary" className="text-xs max-w-[150px] truncate">
+                      Email: {selectedEntity.email}
+                    </Badge>
+                  )}
+                  {selectedEntity.contact_person && (
+                    <Badge variant="secondary" className="text-xs max-w-[120px] truncate">
+                      Contacto: {selectedEntity.contact_person}
+                    </Badge>
+                  )}
+                </div>
               </div>
             ) : (
               <span className="text-muted-foreground">{placeholder}</span>
             )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 self-start mt-1" />
           </Button>
         </PopoverTrigger>
 
@@ -260,13 +265,16 @@ export function EntitySelector({
                           onSelect={() => handleSelectEntity(entity)}
                           className="flex items-center justify-between"
                         >
-                          <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Check
-                              className={cn("h-4 w-4", selectedEntity?.id === entity.id ? "opacity-100" : "opacity-0")}
+                              className={cn(
+                                "h-4 w-4 shrink-0",
+                                selectedEntity?.id === entity.id ? "opacity-100" : "opacity-0",
+                              )}
                             />
-                            <div className="flex flex-col">
-                              <span className="font-medium">{entity.name}</span>
-                              <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-1 min-w-0 flex-1">
+                              <span className="font-medium truncate">{entity.name}</span>
+                              <div className="flex flex-wrap items-center gap-1">
                                 <Badge variant="outline" className="text-xs">
                                   {entity.ruc}
                                 </Badge>
@@ -276,17 +284,17 @@ export function EntitySelector({
                                   </Badge>
                                 )}
                                 {entity.fiscal_address && (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs max-w-[200px] truncate">
                                     Dir: {entity.fiscal_address}
                                   </Badge>
                                 )}
                                 {entity.email && (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs max-w-[150px] truncate">
                                     Email: {entity.email}
                                   </Badge>
                                 )}
                                 {entity.contact_person && (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs max-w-[120px] truncate">
                                     Contacto: {entity.contact_person}
                                   </Badge>
                                 )}

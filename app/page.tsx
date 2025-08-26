@@ -5,25 +5,21 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, ArrowDown } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { useTheme } from "next-themes"
 
 // Componente de partículas animadas minimalista
 function ParticlesBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isDark, setIsDark] = useState(false)
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const checkTheme = () => {
-      setIsDark(document.documentElement.classList.contains("dark"))
-    }
+    setMounted(true)
+  }, [])
 
-    checkTheme()
-
-    // Listen for theme changes
-    const observer = new MutationObserver(checkTheme)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    })
+  useEffect(() => {
+    if (!mounted) return
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -109,18 +105,24 @@ function ParticlesBackground() {
 
     return () => {
       window.removeEventListener("resize", resizeCanvas)
-      observer.disconnect()
     }
-  }, [])
+  }, [mounted])
+
+  if (!mounted) {
+    return (
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900" />
+    )
+  }
 
   return (
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full"
       style={{
-        background: isDark
-          ? "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)"
-          : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
+        background:
+          theme === "dark"
+            ? "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)"
+            : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
       }}
     />
   )
@@ -193,25 +195,11 @@ function CompanyLogos() {
 }
 
 export default function HomePage() {
-  const [isDark, setIsDark] = useState(false)
+  const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    const checkTheme = () => {
-      setIsDark(document.documentElement.classList.contains("dark"))
-    }
-
-    checkTheme()
-
-    // Listen for theme changes
-    const observer = new MutationObserver(checkTheme)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    })
-
-    return () => observer.disconnect()
   }, [])
 
   if (!mounted) {
@@ -235,6 +223,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Fondo minimalista */}
       <ParticlesBackground />
 
@@ -247,7 +239,7 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-white/40 dark:bg-slate-700/40 rounded-3xl blur-xl" />
               <div className="relative flex h-32 w-38 items-center justify-center rounded-3xl bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border border-white/30 dark:border-slate-600/30 shadow-2xl">
                 <img
-                  src={isDark ? "/logos/atlas-logo-dark.png" : "/logos/atlas-logo-white.png"}
+                  src={theme === "dark" ? "/logos/atlas-logo-dark.png" : "/logos/atlas-logo-white.png"}
                   alt="logo"
                   className="h-32 w-38"
                 />

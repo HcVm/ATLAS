@@ -1144,7 +1144,7 @@ export default function SalesPage() {
           </DialogHeader>
           {selectedSale && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-700 dark:to-slate-600/50 p-6 rounded-lg border border-slate-200 dark:border-slate-600">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4 md:gap-0">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -1185,7 +1185,7 @@ export default function SalesPage() {
                 <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
-                      <div className="w-2 h-2 bg-slate-500 rounded-full"></div>Cliente
+                      <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full"></div>Cliente
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1210,7 +1210,7 @@ export default function SalesPage() {
                         </Label>
                         <Badge
                           variant="outline"
-                          className="text-xs border-slate-300 text-slate-600 dark:text-slate-300"
+                          className="text-xs border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                         >
                           {selectedSale.entity_executing_unit}
                         </Badge>
@@ -1227,20 +1227,20 @@ export default function SalesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-700 dark:to-slate-600/50 rounded-lg border border-slate-200 dark:border-slate-600">
                         <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Items</p>
                         <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
                           {selectedSale.total_items || 1}
                         </p>
                       </div>
-                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-700 dark:to-slate-600/50 rounded-lg border border-slate-200 dark:border-slate-600">
                         <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Cantidad</p>
                         <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
                           {selectedSale.total_quantity.toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-700 dark:to-slate-600/50 rounded-lg border border-slate-200 dark:border-slate-600">
                       <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total</p>
                       <p className="text-xl font-bold text-slate-700 dark:text-slate-200">
                         S/{" "}
@@ -1250,7 +1250,7 @@ export default function SalesPage() {
                         })}
                       </p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Método de Pago:</span>
                         <Badge variant={selectedSale.payment_method === "CONTADO" ? "default" : "secondary"}>
@@ -1279,7 +1279,7 @@ export default function SalesPage() {
                       <div className="rounded-md border border-slate-200 dark:border-slate-700 overflow-x-auto">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50">
+                            <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30">
                               <TableHead className="text-slate-700 dark:text-slate-200">Código</TableHead>
                               <TableHead className="text-slate-700 dark:text-slate-200">Producto</TableHead>
                               <TableHead className="text-slate-700 dark:text-slate-200">Marca</TableHead>

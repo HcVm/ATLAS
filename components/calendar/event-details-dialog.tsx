@@ -50,28 +50,30 @@ export function EventDetailsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white text-slate-900 border-slate-200">
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
         <DialogHeader>
-          <DialogTitle className="text-slate-900">Detalles del Evento</DialogTitle>
-          <p className="text-sm text-slate-600">Información detallada de tu evento.</p>
+          <DialogTitle className="text-slate-900 dark:text-slate-100">Detalles del Evento</DialogTitle>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Información detallada de tu evento.</p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-right font-medium text-slate-700">Título</span>
-            <span className="col-span-2 text-slate-900">{event.title}</span>
+            <span className="text-right font-medium text-slate-700 dark:text-slate-300">Título</span>
+            <span className="col-span-2 text-slate-900 dark:text-slate-100">{event.title}</span>
           </div>
           {event.description && (
             <div className="grid grid-cols-3 items-start gap-4">
-              <span className="text-right font-medium text-slate-700">Descripción</span>
-              <span className="col-span-2 text-slate-900">{event.description}</span>
+              <span className="text-right font-medium text-slate-700 dark:text-slate-300">Descripción</span>
+              <span className="col-span-2 text-slate-900 dark:text-slate-100">{event.description}</span>
             </div>
           )}
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-right font-medium text-slate-700">Fecha</span>
-            <span className="col-span-2 text-slate-900">{format(eventDate, "PPP", { locale: es })}</span>
+            <span className="text-right font-medium text-slate-700 dark:text-slate-300">Fecha</span>
+            <span className="col-span-2 text-slate-900 dark:text-slate-100">
+              {format(eventDate, "PPP", { locale: es })}
+            </span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-right font-medium text-slate-700">Importancia</span>
+            <span className="text-right font-medium text-slate-700 dark:text-slate-300">Importancia</span>
             <div className="col-span-2">
               <Badge variant="outline" className={`px-2 py-0.5 rounded-md ${importanceColorClass}`}>
                 {importanceLabel}
@@ -79,7 +81,7 @@ export function EventDetailsDialog({
             </div>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-right font-medium text-slate-700">Categoría</span>
+            <span className="text-right font-medium text-slate-700 dark:text-slate-300">Categoría</span>
             <div className="col-span-2">
               <Badge variant="outline" className={`px-2 py-0.5 rounded-md ${categoryColorClass}`}>
                 {categoryLabel}
@@ -87,14 +89,14 @@ export function EventDetailsDialog({
             </div>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-right font-medium text-slate-700">Estado</span>
+            <span className="text-right font-medium text-slate-700 dark:text-slate-300">Estado</span>
             <div className="col-span-2">
               <Badge
                 variant="outline"
                 className={`px-2 py-0.5 rounded-md ${
                   event.is_completed
-                    ? "bg-emerald-100 text-emerald-700 border-emerald-300"
-                    : "bg-slate-100 text-slate-700 border-slate-300"
+                    ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-600"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600"
                 }`}
               >
                 {event.is_completed ? "Completado" : "Pendiente"}
@@ -106,7 +108,7 @@ export function EventDetailsDialog({
           <Button
             variant="outline"
             onClick={onClose}
-            className="w-full sm:w-auto bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-800"
+            className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-4 w-4 mr-2" />
             Cerrar

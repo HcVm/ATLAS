@@ -140,7 +140,7 @@ export function NewsCarousel() {
         <CardContent className="p-0 relative">
           <div className="flex flex-col">
             <div
-              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center ${
+              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-50 dark:to-indigo-550 flex items-center justify-center ${
                 isImageOnly ? "h-[28rem]" : "h-48"
               }`}
             >

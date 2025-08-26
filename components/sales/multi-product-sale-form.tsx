@@ -268,7 +268,6 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
     setLoading(true)
 
     try {
-
       const saleNumber = await generateSaleNumber(selectedCompany.id, selectedCompany.code || "GEN")
       // Create sale
       const saleData = {
@@ -380,8 +379,8 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
           </div>
         </div>
         {selectedCompany?.code && (
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
               <strong>Código de empresa:</strong> {selectedCompany.code} - Las ventas se generarán con el formato: VEN-
               {new Date().getFullYear()}-{selectedCompany.code}-XXXX
             </p>
@@ -514,7 +513,8 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
                   <span className="font-semibold">
                     S/{" "}
                     {((currentItem.quantity || 0) * (currentItem.unit_price_with_tax || 0)).toLocaleString("es-PE", {
-                      minimumFractionDigits: 2, maximumFractionDigits: 4
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4,
                     })}
                   </span>
                 </div>
@@ -568,10 +568,18 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
                       </TableCell>
                       <TableCell>{item.quantity.toLocaleString()}</TableCell>
                       <TableCell>
-                        S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                        S/{" "}
+                        {item.unit_price_with_tax.toLocaleString("es-PE", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}
                       </TableCell>
                       <TableCell className="font-medium">
-                        S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                        S/{" "}
+                        {item.total_amount.toLocaleString("es-PE", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -601,14 +609,15 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-600">Total Items</p>
-                  <p className="text-xl font-bold">{totals.total_items}</p>
+                <div className="text-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Items</p>
+                  <p className="text-xl font-bold dark:text-white">{totals.total_items}</p>
                 </div>
-                <div className="text-center p-3 bg-primary/10 rounded-lg">
-                  <p className="text-sm text-primary">Total de Venta</p>
-                  <p className="text-xl font-bold text-primary">
-                    S/ {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                <div className="text-center p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
+                  <p className="text-sm text-primary dark:text-primary-foreground">Total de Venta</p>
+                  <p className="text-xl font-bold text-primary dark:text-primary-foreground">
+                    S/{" "}
+                    {totals.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                   </p>
                 </div>
               </div>

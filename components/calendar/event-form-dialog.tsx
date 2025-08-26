@@ -108,38 +108,40 @@ export function EventFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white text-slate-900 border-slate-200">
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
         <DialogHeader>
-          <DialogTitle className="text-slate-900">{event?.id ? "Editar Evento" : "Crear Nuevo Evento"}</DialogTitle>
-          <p className="text-sm text-slate-600">
+          <DialogTitle className="text-slate-900 dark:text-slate-100">
+            {event?.id ? "Editar Evento" : "Crear Nuevo Evento"}
+          </DialogTitle>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {event?.id ? "Modifica los detalles de tu evento." : "Añade un nuevo evento a tu calendario."}
           </p>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="title" className="text-right text-slate-700">
+            <Label htmlFor="title" className="text-right text-slate-700 dark:text-slate-300">
               Título
             </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="col-span-3 bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500"
+              className="col-span-3 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-blue-500"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right text-slate-700">
+            <Label htmlFor="description" className="text-right text-slate-700 dark:text-slate-300">
               Descripción
             </Label>
             <Textarea
               id="description"
               value={description || ""}
               onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3 bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500"
+              className="col-span-3 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-blue-500"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="eventDate" className="text-right text-slate-700">
+            <Label htmlFor="eventDate" className="text-right text-slate-700 dark:text-slate-300">
               Fecha
             </Label>
             <div className="col-span-3">
@@ -147,16 +149,16 @@ export function EventFormDialog({
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="importance" className="text-right text-slate-700">
+            <Label htmlFor="importance" className="text-right text-slate-700 dark:text-slate-300">
               Importancia
             </Label>
             <Select value={importance} onValueChange={setImportance}>
-              <SelectTrigger className="col-span-3 bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500">
+              <SelectTrigger className="col-span-3 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-blue-500">
                 <SelectValue placeholder="Selecciona importancia" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200 text-slate-900">
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100">
                 {Object.keys(importanceLabels).map((key) => (
-                  <SelectItem key={key} value={key} className="hover:bg-slate-100">
+                  <SelectItem key={key} value={key} className="hover:bg-slate-100 dark:hover:bg-slate-700">
                     <span
                       className={`inline-block h-3 w-3 rounded-full mr-2 ${importanceColors[key].split(" ")[0]}`}
                     ></span>
@@ -167,16 +169,16 @@ export function EventFormDialog({
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="category" className="text-right text-slate-700">
+            <Label htmlFor="category" className="text-right text-slate-700 dark:text-slate-300">
               Categoría
             </Label>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="col-span-3 bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500">
+              <SelectTrigger className="col-span-3 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-blue-500">
                 <SelectValue placeholder="Selecciona categoría" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200 text-slate-900">
+              <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100">
                 {Object.keys(eventCategoryLabels).map((key) => (
-                  <SelectItem key={key} value={key} className="hover:bg-slate-100">
+                  <SelectItem key={key} value={key} className="hover:bg-slate-100 dark:hover:bg-slate-700">
                     <span
                       className={`inline-block h-3 w-3 rounded-full mr-2 ${eventCategoryColors[key].split(" ")[0]}`}
                     ></span>
@@ -187,14 +189,14 @@ export function EventFormDialog({
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="isCompleted" className="text-right text-slate-700">
+            <Label htmlFor="isCompleted" className="text-right text-slate-700 dark:text-slate-300">
               Completado
             </Label>
             <Checkbox
               id="isCompleted"
               checked={isCompleted}
               onCheckedChange={(checked) => setIsCompleted(checked as boolean)}
-              className="col-span-3 border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+              className="col-span-3 border-slate-300 dark:border-slate-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
             />
           </div>
         </div>
@@ -213,7 +215,7 @@ export function EventFormDialog({
             <Button
               variant="outline"
               onClick={onClose}
-              className="w-full sm:w-auto bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-800"
+              className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <X className="h-4 w-4 mr-2" />
               Cancelar
