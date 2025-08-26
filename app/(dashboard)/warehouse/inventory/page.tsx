@@ -23,10 +23,8 @@ import {
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
-import { MovementAttachmentsDialog } from "@/components/warehouse/movement-attachments-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
-import { Label } from "@/components/ui/label"
 import * as XLSX from "xlsx"
 
 interface InventoryMovement {
@@ -70,12 +68,78 @@ interface MovementAttachment {
   } | null
 }
 
+const AttachmentsList = ({ movementId }: { movementId: string }) => {
+  const { attachments } = useAttachments(movementId)
+
+  if (attachments.length === 0) return null
+
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos ({attachments.length}):</p>
+      {attachments.slice(0, 2).map((attachment) => (
+        <div key={attachment.id} className="flex items-center gap-2 p-1">
+          <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <a
+            href={attachment.file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline truncate flex-1"
+            title={attachment.file_name}
+          >
+            {attachment.file_name}
+          </a>
+          <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-accent"
+            onClick={() => window.open(attachment.file_url, "_blank")}
+            title="Descargar archivo"
+          >
+            <Download className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+      {attachments.length > 2 && (
+        <p className="text-xs text-muted-foreground">y {attachments.length - 2} archivo(s) más...</p>
+      )}
+    </div>
+  )
+}
+
+const formatFileSize = (bytes: number) => {
+  return (bytes / 1024 / 1024).toFixed(1) + " MB"
+}
+
+const useAttachments = (movementId: string) => {
+  const [attachments, setAttachments] = useState<MovementAttachment[]>([])
+
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      const { data, error } = await supabase
+        .from("inventory_movement_attachments")
+        .select("*")
+        .eq("movement_id", movementId)
+
+      if (error) {
+        console.warn("Could not fetch attachments:", error.message)
+        return
+      }
+
+      setAttachments(data || [])
+    }
+
+    fetchAttachments()
+  }, [movementId])
+
+  return { attachments }
+}
+
 export default function InventoryPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
   const { toast } = useToast()
   const [movements, setMovements] = useState<InventoryMovement[]>([])
-  const [attachments, setAttachments] = useState<Record<string, MovementAttachment[]>>({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
@@ -84,11 +148,9 @@ export default function InventoryPage() {
   const [dateTo, setDateTo] = useState<string>("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [showMovementForm, setShowMovementForm] = useState(false)
-  const [showAttachmentsDialog, setShowAttachmentsDialog] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<InventoryMovement | null>(null)
 
   useEffect(() => {
-    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (companyId) {
@@ -140,11 +202,6 @@ export default function InventoryPage() {
 
       console.log("Movements fetched:", data?.length || 0)
       setMovements(data || [])
-
-      // Fetch attachments for these movements
-      if (data && data.length > 0) {
-        await fetchAttachments(data.map((m) => m.id))
-      }
     } catch (error) {
       console.error("Error fetching movements:", error)
       toast({
@@ -154,54 +211,6 @@ export default function InventoryPage() {
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchAttachments = async (movementIds: string[]) => {
-    try {
-      // First check if we have any movement IDs
-      if (!movementIds || movementIds.length === 0) {
-        return
-      }
-
-      const { data, error } = await supabase
-        .from("inventory_movement_attachments")
-        .select(`
-        id,
-        movement_id,
-        file_name,
-        file_url,
-        file_size,
-        file_type,
-        created_at,
-        profiles:uploaded_by (
-          full_name
-        )
-      `)
-        .in("movement_id", movementIds)
-
-      if (error) {
-        // If the table doesn't exist or columns are missing, just log and continue
-        console.warn("Could not fetch attachments:", error.message)
-        return
-      }
-
-      // Group attachments by movement_id
-      const groupedAttachments = (data || []).reduce(
-        (acc, attachment) => {
-          if (!acc[attachment.movement_id]) {
-            acc[attachment.movement_id] = []
-          }
-          acc[attachment.movement_id].push(attachment)
-          return acc
-        },
-        {} as Record<string, MovementAttachment[]>,
-      )
-
-      setAttachments(groupedAttachments)
-    } catch (error) {
-      console.warn("Error fetching attachments:", error)
-      // Don't show error to user, just continue without attachments
     }
   }
 
@@ -219,13 +228,11 @@ export default function InventoryPage() {
     const movementDate = new Date(movement.movement_date)
     let matchesDate = true
 
-    // Filtros de fecha específicos tienen prioridad
     if (dateFrom || dateTo) {
       const fromDate = dateFrom ? new Date(dateFrom) : new Date("1900-01-01")
       const toDate = dateTo ? new Date(dateTo + "T23:59:59") : new Date("2100-12-31")
       matchesDate = movementDate >= fromDate && movementDate <= toDate
     } else if (dateFilter !== "all") {
-      // Filtros rápidos solo si no hay fechas específicas
       if (dateFilter === "today") {
         matchesDate = movementDate.toDateString() === now.toDateString()
       } else if (dateFilter === "week") {
@@ -266,14 +273,12 @@ export default function InventoryPage() {
       Motivo: movement.reason || "-",
       Notas: movement.notes || "-",
       Usuario: movement.profiles?.full_name || "Usuario eliminado",
-      "Archivos Adjuntos": attachments[movement.id]?.length || 0,
     }))
 
     const ws = XLSX.utils.json_to_sheet(dataToExport)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Movimientos de Inventario")
 
-    // Ajustar ancho de columnas
     const colWidths = [
       { wch: 15 }, // Fecha
       { wch: 25 }, // Producto
@@ -291,7 +296,6 @@ export default function InventoryPage() {
       { wch: 20 }, // Motivo
       { wch: 30 }, // Notas
       { wch: 20 }, // Usuario
-      { wch: 10 }, // Adjuntos
     ]
     ws["!cols"] = colWidths
 
@@ -322,7 +326,6 @@ export default function InventoryPage() {
       Motivo: movement.reason || "",
       Notas: movement.notes || "",
       Usuario: movement.profiles?.full_name || "Usuario eliminado",
-      "Archivos Adjuntos": attachments[movement.id]?.length || 0,
     }))
 
     const ws = XLSX.utils.json_to_sheet(dataToExport)
@@ -358,10 +361,6 @@ export default function InventoryPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
-  }
-
-  const formatFileSize = (bytes: number) => {
-    return (bytes / 1024 / 1024).toFixed(1) + " MB"
   }
 
   const getMovementIcon = (type: string) => {
@@ -400,7 +399,6 @@ export default function InventoryPage() {
 
   const handleCreateMovement = async (movementData: any) => {
     try {
-      // For admin users, use selectedCompany; for others, use their assigned company
       const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
       if (!companyId) {
@@ -425,7 +423,6 @@ export default function InventoryPage() {
 
       if (error) throw error
 
-      // Update product stock
       const { data: productData } = await supabase
         .from("products")
         .select("current_stock")
@@ -456,7 +453,6 @@ export default function InventoryPage() {
         description: "Movimiento creado correctamente",
       })
 
-      // Return the created movement for attachment upload
       return createdMovement
     } catch (error: any) {
       console.error("Error creating movement:", error)
@@ -465,23 +461,12 @@ export default function InventoryPage() {
         description: error.message || "Error al crear el movimiento",
         variant: "destructive",
       })
-      throw error // Re-throw so the dialog can handle it
+      throw error
     }
   }
 
   const handleDialogClose = () => {
     setShowMovementForm(false)
-    // Refresh movements when dialog closes
-    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-    if (companyId) {
-      fetchMovements(companyId)
-    }
-  }
-
-  const handleAttachmentsDialogClose = () => {
-    setShowAttachmentsDialog(false)
-    setSelectedMovement(null)
-    // Refresh attachments when dialog closes
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
     if (companyId) {
       fetchMovements(companyId)
@@ -490,67 +475,28 @@ export default function InventoryPage() {
 
   const openAttachmentsDialog = (movement: InventoryMovement) => {
     setSelectedMovement(movement)
-    setShowAttachmentsDialog(true)
-  }
-
-  const AttachmentsList = ({ movementId }: { movementId: string }) => {
-    const movementAttachments = attachments[movementId] || []
-
-    if (movementAttachments.length === 0) return null
-
-    return (
-      <div className="mt-2 space-y-1">
-        <p className="text-xs text-slate-500 font-medium">Documentos adjuntos ({movementAttachments.length}):</p>
-        {movementAttachments.slice(0, 2).map((attachment) => (
-          <div key={attachment.id} className="flex items-center gap-2 p-1">
-            <Paperclip className="h-3 w-3 text-slate-400 flex-shrink-0" />
-            <a
-              href={attachment.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:underline truncate flex-1"
-              title={attachment.file_name}
-            >
-              {attachment.file_name}
-            </a>
-            <span className="text-xs text-slate-500">({formatFileSize(attachment.file_size)})</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 hover:bg-slate-100"
-              onClick={() => window.open(attachment.file_url, "_blank")}
-              title="Descargar archivo"
-            >
-              <Download className="h-3 w-3" />
-            </Button>
-          </div>
-        ))}
-        {movementAttachments.length > 2 && (
-          <p className="text-xs text-slate-500">y {movementAttachments.length - 2} archivo(s) más...</p>
-        )}
-      </div>
-    )
+    setShowMovementForm(true)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-background">
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
                 Movimientos de Inventario
               </h1>
-              <p className="text-slate-600">Historial de entradas, salidas y ajustes</p>
+              <p className="text-muted-foreground">Historial de entradas, salidas y ajustes</p>
             </div>
-            <Button disabled className="bg-slate-200 text-slate-500">
+            <Button disabled className="bg-muted text-muted-foreground">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Movimiento
             </Button>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-card border-border shadow-lg">
             <CardContent className="p-6">
-              <div className="text-center text-slate-600">Cargando movimientos...</div>
+              <div className="text-center text-muted-foreground">Cargando movimientos...</div>
             </CardContent>
           </Card>
         </div>
@@ -559,53 +505,52 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-background">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
               Movimientos de Inventario
             </h1>
-            <p className="text-slate-600">Historial de entradas, salidas y ajustes de inventario</p>
+            <p className="text-muted-foreground">Historial de entradas, salidas y ajustes de inventario</p>
           </div>
           <Button
             onClick={() => setShowMovementForm(true)}
-            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Movimiento
           </Button>
         </div>
 
-        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+        <Card className="bg-card border-border shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-800">
-              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                <FileText className="h-4 w-4 text-slate-600" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="w-6 h-6 bg-muted rounded-md flex items-center justify-center">
+                <FileText className="h-4 w-4 text-muted-foreground" />
               </div>
               Historial de Movimientos
             </CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardDescription className="text-muted-foreground">
               {filteredMovements.length} de {movements.length} movimientos
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Filtros mejorados */}
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Buscar por producto, orden, entidad..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 border-slate-300 focus:border-slate-500 focus:ring-slate-500"
+                      className="pl-10 border-border focus:border-ring focus:ring-ring"
                     />
                   </div>
                 </div>
                 <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-48 border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                  <SelectTrigger className="w-full sm:w-48 border-border focus:border-ring focus:ring-ring">
                     <SelectValue placeholder="Tipo de movimiento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -618,51 +563,44 @@ export default function InventoryPage() {
                 <Button
                   variant="outline"
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-slate-50"
+                  className="w-full sm:w-auto border-border text-foreground hover:bg-accent"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   {showAdvancedFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
                 </Button>
               </div>
 
-              {/* Filtros avanzados */}
               {showAdvancedFilters && (
-                <Card className="p-4 bg-gradient-to-r from-slate-50 to-white border-slate-200">
+                <Card className="p-4 bg-muted/50 border-border">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="h-4 w-4 text-slate-600" />
-                      <Label className="font-medium text-slate-700">Filtros de Fecha</Label>
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div className="font-medium text-foreground">Filtros de Fecha</div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
-                        <Label htmlFor="date-from" className="text-sm text-slate-700">
-                          Desde
-                        </Label>
+                        <div className="text-sm text-foreground">Desde</div>
                         <Input
-                          id="date-from"
                           type="date"
                           value={dateFrom}
                           onChange={(e) => setDateFrom(e.target.value)}
-                          className="border-slate-300 focus:border-slate-500"
+                          className="border-border focus:border-ring"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="date-to" className="text-sm text-slate-700">
-                          Hasta
-                        </Label>
+                        <div className="text-sm text-foreground">Hasta</div>
                         <Input
-                          id="date-to"
                           type="date"
                           value={dateTo}
                           onChange={(e) => setDateTo(e.target.value)}
-                          className="border-slate-300 focus:border-slate-500"
+                          className="border-border focus:border-ring"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm text-slate-700">Filtros Rápidos</Label>
+                        <div className="text-sm text-foreground">Filtros Rápidos</div>
                         <Select value={dateFilter} onValueChange={setDateFilter} disabled={!!(dateFrom || dateTo)}>
-                          <SelectTrigger className="border-slate-300 focus:border-slate-500">
+                          <SelectTrigger className="border-border focus:border-ring">
                             <SelectValue placeholder="Período" />
                           </SelectTrigger>
                           <SelectContent>
@@ -677,7 +615,7 @@ export default function InventoryPage() {
                         <Button
                           variant="outline"
                           onClick={clearDateFilters}
-                          className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"
+                          className="w-full border-border text-foreground hover:bg-accent bg-transparent"
                         >
                           <X className="h-4 w-4 mr-2" />
                           Limpiar Fechas
@@ -686,7 +624,7 @@ export default function InventoryPage() {
                     </div>
 
                     {(dateFrom || dateTo) && (
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm text-muted-foreground">
                         <strong>Rango seleccionado:</strong> {dateFrom || "Inicio"} → {dateTo || "Fin"}
                       </div>
                     )}
@@ -694,9 +632,8 @@ export default function InventoryPage() {
                 </Card>
               )}
 
-              {/* Botones de exportación */}
               <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-muted-foreground">
                   Mostrando {filteredMovements.length} de {movements.length} movimientos
                 </div>
                 <div className="flex gap-2">
@@ -705,7 +642,7 @@ export default function InventoryPage() {
                     size="sm"
                     onClick={exportToCSV}
                     disabled={filteredMovements.length === 0}
-                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="border-border text-foreground hover:bg-accent bg-transparent"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Exportar CSV
@@ -715,7 +652,7 @@ export default function InventoryPage() {
                     size="sm"
                     onClick={exportToExcel}
                     disabled={filteredMovements.length === 0}
-                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="border-border text-foreground hover:bg-accent bg-transparent"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Exportar Excel
@@ -724,35 +661,34 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            {/* Tabla de movimientos */}
-            <div className="rounded-md border border-slate-200 bg-white">
+            <div className="rounded-md border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200">
-                    <TableHead className="text-slate-700 font-semibold">Fecha</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Producto</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Tipo</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Cantidad</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Precio/Total</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Detalles</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Usuario</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Adjuntos</TableHead>
-                    <TableHead className="text-slate-700 font-semibold">Acciones</TableHead>
+                  <TableRow className="bg-muted/50 border-border">
+                    <TableHead className="text-foreground font-semibold">Fecha</TableHead>
+                    <TableHead className="text-foreground font-semibold">Producto</TableHead>
+                    <TableHead className="text-foreground font-semibold">Tipo</TableHead>
+                    <TableHead className="text-foreground font-semibold">Cantidad</TableHead>
+                    <TableHead className="text-foreground font-semibold">Precio/Total</TableHead>
+                    <TableHead className="text-foreground font-semibold">Detalles</TableHead>
+                    <TableHead className="text-foreground font-semibold">Usuario</TableHead>
+                    <TableHead className="text-foreground font-semibold">Adjuntos</TableHead>
+                    <TableHead className="text-foreground font-semibold">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMovements.length > 0 ? (
                     filteredMovements.map((movement) => (
-                      <TableRow key={movement.id} className="hover:bg-slate-50/50 border-slate-200">
+                      <TableRow key={movement.id} className="hover:bg-muted/50 border-border">
                         <TableCell>
-                          <div className="text-sm text-slate-800">{formatDate(movement.movement_date)}</div>
+                          <div className="text-sm text-foreground">{formatDate(movement.movement_date)}</div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium text-slate-800">
+                            <div className="font-medium text-foreground">
                               {movement.products?.name || "Producto eliminado"}
                             </div>
-                            <div className="text-sm text-slate-500">{movement.products?.code}</div>
+                            <div className="text-sm text-muted-foreground">{movement.products?.code}</div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -762,7 +698,7 @@ export default function InventoryPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-800">
+                          <div className="font-medium text-foreground">
                             {movement.movement_type === "entrada"
                               ? "+"
                               : movement.movement_type === "salida"
@@ -774,7 +710,7 @@ export default function InventoryPage() {
                         <TableCell>
                           {movement.movement_type === "salida" && movement.sale_price ? (
                             <div>
-                              <div className="text-sm text-slate-600">
+                              <div className="text-sm text-muted-foreground">
                                 Precio: {formatCurrency(movement.sale_price)}
                               </div>
                               <div className="font-medium text-green-600">
@@ -782,44 +718,46 @@ export default function InventoryPage() {
                               </div>
                             </div>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
                             {movement.purchase_order_number && (
-                              <div className="text-slate-700">
+                              <div className="text-foreground">
                                 <span className="font-medium">OC:</span> {movement.purchase_order_number}
                               </div>
                             )}
                             {movement.destination_entity_name && (
-                              <div className="text-slate-700">
+                              <div className="text-foreground">
                                 <span className="font-medium">Cliente:</span> {movement.destination_entity_name}
                                 {movement.destination_address && (
-                                  <div className="text-xs text-slate-500 ml-2">{movement.destination_address}</div>
+                                  <div className="text-xs text-muted-foreground ml-2">
+                                    {movement.destination_address}
+                                  </div>
                                 )}
                               </div>
                             )}
                             {movement.peru_departments?.name && (
-                              <div className="text-slate-700">
+                              <div className="text-foreground">
                                 <span className="font-medium">Destino:</span> {movement.peru_departments.name}
                               </div>
                             )}
                             {movement.supplier && (
-                              <div className="text-slate-700">
+                              <div className="text-foreground">
                                 <span className="font-medium">Proveedor:</span> {movement.supplier}
                               </div>
                             )}
                             {movement.reason && (
-                              <div className="text-slate-700">
+                              <div className="text-foreground">
                                 <span className="font-medium">Motivo:</span> {movement.reason}
                               </div>
                             )}
-                            {movement.notes && <div className="text-slate-500">{movement.notes}</div>}
+                            {movement.notes && <div className="text-muted-foreground">{movement.notes}</div>}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-slate-700">
+                          <div className="text-sm text-foreground">
                             {movement.profiles?.full_name || "Usuario eliminado"}
                           </div>
                         </TableCell>
@@ -832,7 +770,7 @@ export default function InventoryPage() {
                             size="sm"
                             onClick={() => openAttachmentsDialog(movement)}
                             title="Gestionar archivos adjuntos"
-                            className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                            className="border-border text-foreground hover:bg-accent"
                           >
                             <Settings className="h-4 w-4" />
                           </Button>
@@ -842,7 +780,7 @@ export default function InventoryPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8">
-                        <div className="text-slate-500">
+                        <div className="text-muted-foreground">
                           {movements.length === 0
                             ? "No hay movimientos registrados"
                             : "No se encontraron movimientos con los filtros aplicados"}
@@ -858,30 +796,6 @@ export default function InventoryPage() {
 
         {showMovementForm && (
           <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
-        )}
-
-        {showAttachmentsDialog && selectedMovement && (
-          <MovementAttachmentsDialog
-            open={showAttachmentsDialog}
-            onClose={handleAttachmentsDialogClose}
-            movementId={selectedMovement.id}
-            movementInfo={{
-              movement_type: selectedMovement.movement_type,
-              quantity: selectedMovement.quantity,
-              movement_date: selectedMovement.movement_date,
-              sale_price: selectedMovement.sale_price,
-              total_amount: selectedMovement.total_amount,
-              purchase_order_number: selectedMovement.purchase_order_number,
-              destination_entity_name: selectedMovement.destination_entity_name,
-              destination_address: selectedMovement.destination_address,
-              supplier: selectedMovement.supplier,
-              reason: selectedMovement.reason,
-              notes: selectedMovement.notes,
-              products: selectedMovement.products,
-              profiles: selectedMovement.profiles,
-              peru_departments: selectedMovement.peru_departments,
-            }}
-          />
         )}
       </div>
     </div>

@@ -398,7 +398,7 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
             <Label>Archivos Adjuntos (opcional)</Label>
             <div className="mt-2">
               <Label htmlFor="attachments" className="cursor-pointer">
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors bg-card">
                   <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
                     Haz clic para seleccionar archivos o arrastra y suelta aquí
@@ -421,32 +421,29 @@ export function MovementForm({ documentId, currentDepartmentId, onComplete }: Mo
 
           {/* Lista de archivos seleccionados */}
           {attachments.length > 0 && (
-            <div className="space-y-2">
-              <Label>Archivos seleccionados ({attachments.length}):</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate font-medium">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {file.type} • {(file.size / 1024 / 1024).toFixed(1)} MB
-                        </p>
-                      </div>
+            <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-md p-2 bg-card">
+              {attachments.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate font-medium text-foreground">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {file.type} • {(file.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAttachment(index)}
-                      className="flex-shrink-0 h-8 w-8 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
-                ))}
-              </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeAttachment(index)}
+                    className="flex-shrink-0 h-8 w-8 p-0 hover:bg-accent"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </div>

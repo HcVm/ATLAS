@@ -442,7 +442,7 @@ export default function MovementsPage() {
   }
 
   return (
-    <div className="min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 bg-background">
       {/* Header with gradient text */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -455,7 +455,7 @@ export default function MovementsPage() {
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-transparent"
+          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-transparent border-border"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           <span className="sm:hidden">{refreshing ? "Actualizando..." : "Actualizar"}</span>
@@ -477,13 +477,13 @@ export default function MovementsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar movimientos..."
-                className="pl-10"
+                className="pl-10 border-border"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Select value={departmentFilter} onValueChange={(value) => setDepartmentFilter(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="border-border">
                 <SelectValue placeholder="Filtrar por departamento" />
               </SelectTrigger>
               <SelectContent>
@@ -534,28 +534,28 @@ export default function MovementsPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse bg-card border-border">
               <CardHeader className="p-4 sm:p-6">
-                <div className="h-4 sm:h-5 bg-slate-200 rounded w-1/3"></div>
-                <div className="h-3 sm:h-4 bg-slate-200 rounded w-1/4"></div>
+                <div className="h-4 sm:h-5 bg-muted rounded w-1/3"></div>
+                <div className="h-3 sm:h-4 bg-muted rounded w-1/4"></div>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="h-3 sm:h-4 bg-slate-200 rounded w-full mb-2"></div>
-                <div className="h-3 sm:h-4 bg-slate-200 rounded w-2/3"></div>
+                <div className="h-3 sm:h-4 bg-muted rounded w-full mb-2"></div>
+                <div className="h-3 sm:h-4 bg-muted rounded w-2/3"></div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : filteredMovements.length === 0 ? (
-        <Card className="hover:shadow-lg transition-shadow duration-300">
+        <Card className="hover:shadow-lg transition-shadow duration-300 bg-card border-border">
           <CardContent className="p-8 sm:p-12 text-center">
-            <div className="p-4 sm:p-6 bg-slate-100 rounded-2xl w-fit mx-auto mb-6">
-              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-400 mx-auto" />
+            <div className="p-4 sm:p-6 bg-muted rounded-2xl w-fit mx-auto mb-6">
+              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto" />
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-slate-800">
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-foreground">
               {movements.length === 0 ? "No hay movimientos registrados" : "No se encontraron movimientos"}
             </h3>
-            <p className="text-sm sm:text-base text-slate-600 mb-6">
+            <p className="text-sm sm:text-base text-muted-foreground mb-6">
               {searchQuery || departmentFilter !== "all"
                 ? "Intente con otros criterios de búsqueda"
                 : user?.role === "admin" || user?.role === "supervisor"
@@ -566,7 +566,7 @@ export default function MovementsPage() {
               <Button
                 onClick={handleRefresh}
                 variant="outline"
-                className="border-slate-200 hover:bg-slate-100 text-slate-700 bg-transparent"
+                className="border-border hover:bg-accent text-foreground bg-transparent"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
@@ -606,7 +606,12 @@ export default function MovementsPage() {
                     </CardDescription>
                   </div>
                   {movement.documents && (
-                    <Button variant="outline" size="sm" asChild className="w-full sm:w-auto bg-transparent">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="w-full sm:w-auto bg-transparent border-border"
+                    >
                       <Link href={`/documents/${movement.document_id}`}>
                         <span className="sm:hidden">Ver Doc</span>
                         <span className="hidden sm:inline">Ver Documento</span>
