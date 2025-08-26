@@ -3,35 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import {
-  LayoutDashboard,
-  FileText,
-  Plus,
-  Bell,
-  BarChart3,
-  Users,
-  Building2,
-  Newspaper,
-  User,
-  Settings,
-  LogOut,
-  AlertTriangle,
-  MapPin,
-  Package,
-  PackageOpen,
-  Activity,
-  Box,
-  ClipboardList,
-  Headphones,
-  ShoppingCart,
-  CalendarDays,
-  BookText,
-  Database,
-  CheckSquare,
-  Eye,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react"
+import { useTheme } from "next-themes"
+import { LayoutDashboard, FileText, Plus, Bell, BarChart3, Users, Building2, Newspaper, User, Settings, LogOut, AlertTriangle, MapPin, Package, PackageOpen, Activity, Box, ClipboardList, Headphones, ShoppingCart, CalendarDays, BookText, Database, CheckSquare, Eye, ChevronDown, ChevronRight } from 'lucide-react'
 
 import {
   Sidebar,
@@ -293,6 +266,7 @@ const menuSections = {
 export function AppSidebar() {
   const pathname = usePathname()
   const { user, signOut } = useAuth()
+  const { theme } = useTheme()
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     main: true, // PRINCIPAL section expanded by default
@@ -367,8 +341,12 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50">
         <div className="sidebar-header-glass rounded-xl p-4">
           <div className="flex items-center gap-2 justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
-              <img src="/logos/atlas-logo-blue.png" alt="logo" className="h-19 w-19" />
+            <div className="flex h-24 w-28 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
+              <img 
+                src={theme === 'dark' ? '/logos/atlas-logo-dark.png' : '/logos/atlas-logo-white.png'} 
+                alt="logo" 
+                className="h-22 w-25" 
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-slate-500 dark:text-slate-400">v1</span>

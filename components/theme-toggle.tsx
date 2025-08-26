@@ -14,17 +14,17 @@ export function ThemeToggle() {
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full w-8 h-8 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-700"
+          className="rounded-full w-8 h-8 bg-background border border-border hover:bg-muted text-foreground hover:text-foreground"
         >
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Cambiar tema</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-white border-slate-200">
+      <DropdownMenuContent align="end" className="bg-background border-border">
         <DropdownMenuItem
           onClick={() => setTheme("light")}
-          className="flex items-center gap-2 text-slate-700 hover:bg-slate-100"
+          className="flex items-center gap-2 text-foreground hover:bg-muted"
         >
           <Sun className="h-4 w-4" />
           <span>Claro</span>
@@ -32,7 +32,7 @@ export function ThemeToggle() {
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setTheme("dark")}
-          className="flex items-center gap-2 text-slate-700 hover:bg-slate-100"
+          className="flex items-center gap-2 text-foreground hover:bg-muted"
         >
           <Moon className="h-4 w-4" />
           <span>Oscuro</span>
@@ -40,7 +40,7 @@ export function ThemeToggle() {
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setTheme("system")}
-          className="flex items-center gap-2 text-slate-700 hover:bg-slate-100"
+          className="flex items-center gap-2 text-foreground hover:bg-muted"
         >
           <span className="i-lucide-laptop h-4 w-4"></span>
           <span>Sistema</span>

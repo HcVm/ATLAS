@@ -17,37 +17,37 @@ const COMPANY_DOMAINS = {
   agle: {
     name: "AGLE",
     logo: "/logos/agle-logo.png",
-    bgColor: "bg-slate-50",
-    accent: "text-slate-600",
-    borderColor: "border-slate-200",
+    bgColor: "bg-slate-50 dark:bg-slate-900",
+    accent: "text-slate-600 dark:text-slate-400",
+    borderColor: "border-slate-200 dark:border-slate-700",
   },
   arm: {
     name: "ARM",
     logo: "/logos/arm-logo.png",
-    bgColor: "bg-gray-50",
-    accent: "text-gray-600",
-    borderColor: "border-gray-200",
+    bgColor: "bg-gray-50 dark:bg-gray-900",
+    accent: "text-gray-600 dark:text-gray-400",
+    borderColor: "border-gray-200 dark:border-gray-700",
   },
   galur: {
     name: "GALUR",
     logo: "/logos/galur-logo.png",
-    bgColor: "bg-zinc-50",
-    accent: "text-zinc-600",
-    borderColor: "border-zinc-200",
+    bgColor: "bg-zinc-50 dark:bg-zinc-900",
+    accent: "text-zinc-600 dark:text-zinc-400",
+    borderColor: "border-zinc-200 dark:border-zinc-700",
   },
   gmc: {
     name: "GMC",
     logo: "/logos/gmc-logo.png",
-    bgColor: "bg-stone-50",
-    accent: "text-stone-600",
-    borderColor: "border-stone-200",
+    bgColor: "bg-stone-50 dark:bg-stone-900",
+    accent: "text-stone-600 dark:text-stone-400",
+    borderColor: "border-stone-200 dark:border-stone-700",
   },
   amco: {
     name: "AMCO",
     logo: "/logos/amco-logo.png",
-    bgColor: "bg-neutral-50",
-    accent: "text-neutral-600",
-    borderColor: "border-neutral-200",
+    bgColor: "bg-neutral-50 dark:bg-neutral-900",
+    accent: "text-neutral-600 dark:text-neutral-400",
+    borderColor: "border-neutral-200 dark:border-neutral-700",
   },
 } as const
 
@@ -116,18 +116,20 @@ export default function LoginPageClient() {
   return (
     <div
       className={`min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${
-        companyConfig ? companyConfig.bgColor : "bg-gradient-to-br from-slate-50 to-gray-100"
+        companyConfig
+          ? companyConfig.bgColor
+          : "bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900"
       }`}
     >
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl border-0 overflow-hidden bg-white/80 backdrop-blur-xl">
+        <Card className="shadow-2xl border-0 overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl">
           {/* Header con logo de empresa */}
-          <CardHeader className="space-y-1 text-center bg-white/50 backdrop-blur-xl border-b border-gray-100">
+          <CardHeader className="space-y-1 text-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-b border-gray-100 dark:border-slate-700">
             <div className="flex justify-center mb-4">
               {companyConfig ? (
                 <div className="flex flex-col items-center">
                   <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white/80 backdrop-blur-xl border ${companyConfig.borderColor} mb-3 shadow-lg overflow-hidden`}
+                    className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-700/80 backdrop-blur-xl border ${companyConfig.borderColor} mb-3 shadow-lg overflow-hidden`}
                   >
                     {!logoError ? (
                       <Image
@@ -140,7 +142,6 @@ export default function LoginPageClient() {
                         priority
                       />
                     ) : (
-                      // Fallback si la imagen no carga
                       <div className={`flex items-center justify-center w-full h-full ${companyConfig.accent}`}>
                         <Building2 className="h-8 w-8" />
                       </div>
@@ -149,7 +150,7 @@ export default function LoginPageClient() {
                   <div className={`text-sm font-semibold ${companyConfig.accent}`}>{companyConfig.name}</div>
                 </div>
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/60 backdrop-blur-xl border border-gray-200 shadow-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/60 dark:bg-slate-700/60 backdrop-blur-xl border border-gray-200 dark:border-slate-600 shadow-lg">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -160,7 +161,7 @@ export default function LoginPageClient() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-slate-600"
+                    className="text-slate-600 dark:text-slate-400"
                   >
                     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
                     <path d="M14 2v4a2 2 0 0 0 2 2h4" />
@@ -171,26 +172,29 @@ export default function LoginPageClient() {
                 </div>
               )}
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-800">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-200">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
               {companyConfig ? `Acceso al sistema ${companyConfig.name}` : "Sistema de Gestión Empresarial"}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-8 bg-white/30 backdrop-blur-xl">
+          <CardContent className="p-8 bg-white/30 dark:bg-slate-800/30 backdrop-blur-xl">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <Alert variant="destructive" className="bg-red-50/80 border-red-200 backdrop-blur-xl">
-                  <AlertDescription className="text-red-700">{error}</AlertDescription>
+                <Alert
+                  variant="destructive"
+                  className="bg-red-50/80 dark:bg-red-950/80 border-red-200 dark:border-red-800 backdrop-blur-xl"
+                >
+                  <AlertDescription className="text-red-700 dark:text-red-300">{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Correo Electrónico
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     id="email"
                     type="email"
@@ -198,16 +202,16 @@ export default function LoginPageClient() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={loading}
-                    className="pl-10 h-12 transition-all duration-200 bg-white/50 backdrop-blur-xl border-gray-200 focus:border-slate-400 focus:ring-slate-400"
+                    className="pl-10 h-12 transition-all duration-200 bg-white/50 dark:bg-slate-700/50 backdrop-blur-xl border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400 dark:focus:ring-slate-500 text-slate-900 dark:text-slate-100"
                     placeholder="usuario@empresa.com"
                   />
                 </div>
                 {detectedCompany && (
                   <div
-                    className={`flex items-center gap-2 text-sm mt-2 bg-white/40 backdrop-blur-xl rounded-lg px-3 py-2 border ${companyConfig?.borderColor || "border-gray-200"}`}
+                    className={`flex items-center gap-2 text-sm mt-2 bg-white/40 dark:bg-slate-700/40 backdrop-blur-xl rounded-lg px-3 py-2 border ${companyConfig?.borderColor || "border-gray-200 dark:border-slate-600"}`}
                   >
                     <Building2 className="h-4 w-4" />
-                    <span className={companyConfig?.accent || "text-slate-600"}>
+                    <span className={companyConfig?.accent || "text-slate-600 dark:text-slate-400"}>
                       Empresa detectada: {COMPANY_DOMAINS[detectedCompany].name}
                     </span>
                   </div>
@@ -215,7 +219,7 @@ export default function LoginPageClient() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Contraseña
                 </Label>
                 <Input
@@ -225,14 +229,14 @@ export default function LoginPageClient() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-12 bg-white/50 backdrop-blur-xl border-gray-200 focus:border-slate-400 focus:ring-slate-400"
+                  className="h-12 bg-white/50 dark:bg-slate-700/50 backdrop-blur-xl border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400 dark:focus:ring-slate-500 text-slate-900 dark:text-slate-100"
                   placeholder="••••••••"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-12 font-semibold transition-all duration-300 bg-slate-700 hover:bg-slate-800 text-white shadow-lg hover:shadow-xl"
+                className="w-full h-12 font-semibold transition-all duration-300 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700 text-white shadow-lg hover:shadow-xl"
                 disabled={loading}
               >
                 {loading ? (
@@ -247,12 +251,12 @@ export default function LoginPageClient() {
             </form>
 
             {/* Aviso para nuevos usuarios */}
-            <div className="mt-8 p-4 bg-white/40 backdrop-blur-xl rounded-xl border border-gray-200">
+            <div className="mt-8 p-4 bg-white/40 dark:bg-slate-700/40 backdrop-blur-xl rounded-xl border border-gray-200 dark:border-slate-600">
               <div className="text-center">
-                <p className="text-sm text-slate-700 mb-2 font-medium">
+                <p className="text-sm text-slate-700 dark:text-slate-300 mb-2 font-medium">
                   <strong>¿No tienes una cuenta?</strong>
                 </p>
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   Las cuentas son creadas únicamente por el administrador del sistema. Si necesitas acceso, contacta a
                   tu administrador de TI o al departamento correspondiente.
                 </p>

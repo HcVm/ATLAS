@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, ArrowDown } from "lucide-react"
 import { useEffect, useRef } from "react"
 import Image from "next/image"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // Componente de partículas animadas minimalista
 function ParticlesBackground() {
@@ -53,6 +54,10 @@ function ParticlesBackground() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+      const isDark = document.documentElement.classList.contains("dark")
+      const particleColor = isDark ? "148, 163, 184" : "148, 163, 184"
+      const lineColor = isDark ? "148, 163, 184" : "148, 163, 184"
+
       particles.forEach((particle, index) => {
         // Actualizar posición
         particle.x += particle.vx
@@ -65,7 +70,7 @@ function ParticlesBackground() {
         // Dibujar partícula más sutil
         ctx.beginPath()
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(148, 163, 184, ${particle.opacity})`
+        ctx.fillStyle = `rgba(${particleColor}, ${particle.opacity})`
         ctx.fill()
 
         // Conectar partículas cercanas con líneas muy sutiles
@@ -78,7 +83,7 @@ function ParticlesBackground() {
             ctx.beginPath()
             ctx.moveTo(particle.x, particle.y)
             ctx.lineTo(otherParticle.x, otherParticle.y)
-            ctx.strokeStyle = `rgba(148, 163, 184, ${0.05 * (1 - distance / 120)})`
+            ctx.strokeStyle = `rgba(${lineColor}, ${0.05 * (1 - distance / 120)})`
             ctx.lineWidth = 0.5
             ctx.stroke()
           }
@@ -96,12 +101,19 @@ function ParticlesBackground() {
   }, [])
 
   return (
+    
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full"
-      style={{ background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)" }}
+      style={{
+        background: document.documentElement.classList.contains("dark")
+          ? "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)"
+          : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
+      }}
     />
+    
   )
+  
 }
 
 // Componente de logos estáticos
@@ -135,7 +147,9 @@ function CompanyLogos() {
   ]
 
   return (
+    
     <div className="flex flex-wrap justify-center items-center gap-6 py-8 max-w-2xl mx-auto">
+      
       {companies.map((company, index) => (
         <div
           key={company.name}
@@ -172,9 +186,10 @@ function CompanyLogos() {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
       {/* Fondo minimalista */}
       <ParticlesBackground />
+      
 
       {/* Contenido principal */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
@@ -182,43 +197,29 @@ export default function HomePage() {
           {/* Logo/Icono con efecto glass */}
           <div className="flex justify-center mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-white/40 rounded-3xl blur-xl" />
-              <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white/20 backdrop-blur-xl border border-white/30 shadow-2xl">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-slate-700"
-                >
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                  <path d="M10 9H8" />
-                  <path d="M16 13H8" />
-                  <path d="M16 17H8" />
-                </svg>
+              <div className="absolute inset-0 bg-white/40 dark:bg-slate-700/40 rounded-3xl blur-xl" />
+              <div className="relative flex h-32 w-38 items-center justify-center rounded-3xl bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border border-white/30 dark:border-slate-600/30 shadow-2xl">
+                <img 
+                src={document.documentElement.classList.contains('dark') ? '/logos/atlas-logo-dark.png' : '/logos/atlas-logo-white.png'}
+                alt="logo" 
+                className="h-32 w-38" 
+              />
               </div>
             </div>
           </div>
 
           {/* Título */}
-          <h1 className="text-5xl md:text-7xl font-bold text-slate-800 mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-slate-800 dark:text-slate-200 mb-6 tracking-tight">
             Sistema de
             <br />
-            <span className="bg-gradient-to-r from-slate-600 to-slate-800 bg-clip-text text-transparent">Gestión</span>
+            <span className="bg-gradient-to-r from-slate-600 to-slate-800 dark:from-slate-300 dark:to-slate-100 bg-clip-text text-transparent">
+              Gestión
+            </span>
           </h1>
-
-          {/* Subtítulo */}
-          <p className="text-xl md:text-2xl text-slate-600 mb-8 font-light">Plataforma integral para las empresas</p>
 
           {/* Flecha hacia abajo animada */}
           <div className="flex justify-center mb-4">
-            <ArrowDown className="h-6 w-6 text-slate-500 animate-bounce" />
+            <ArrowDown className="h-6 w-6 text-slate-500 dark:text-slate-400 animate-bounce" />
           </div>
 
           {/* Logos de empresas estáticos */}
@@ -230,7 +231,7 @@ export default function HomePage() {
           <Button
             asChild
             size="lg"
-            className="bg-white/30 hover:bg-white/40 text-slate-700 border border-white/40 backdrop-blur-xl px-10 py-6 text-lg font-semibold shadow-2xl hover:shadow-3xl transition-all duration-300 group hover:scale-105 rounded-2xl"
+            className="bg-white/30 dark:bg-slate-800/30 hover:bg-white/40 dark:hover:bg-slate-700/40 text-slate-700 dark:text-slate-300 border border-white/40 dark:border-slate-600/40 backdrop-blur-xl px-10 py-6 text-lg font-semibold shadow-2xl hover:shadow-3xl transition-all duration-300 group hover:scale-105 rounded-2xl"
           >
             <Link href="/login" className="flex items-center gap-3">
               Iniciar Sesión
@@ -239,13 +240,15 @@ export default function HomePage() {
           </Button>
 
           {/* Texto informativo */}
-          <p className="text-slate-500 text-sm mt-8 font-medium">Acceso seguro para usuarios autorizados</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-8 font-medium">
+            Acceso reservado para usuarios autorizados
+          </p>
         </div>
       </div>
 
       {/* Efectos de luz sutil */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-white/20 to-transparent rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-slate-200/30 to-transparent rounded-full blur-3xl" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-white/20 dark:from-slate-700/20 to-transparent rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-slate-200/30 dark:from-slate-600/30 to-transparent rounded-full blur-3xl" />
 
       <style jsx>{`
         @keyframes fade-in-up {

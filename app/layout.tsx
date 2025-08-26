@@ -12,7 +12,7 @@ import { Suspense } from "react"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sistema de Seguimiento de Documentos - SISDOC V3.0",
+  title: "ATLAS - Sistema de Seguimiento de Documentos",
   description: "Aplicación para el seguimiento de documentos entre departamentos y empresas",
   generator: "Héctor Vega - GmKO",
 }
