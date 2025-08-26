@@ -3,15 +3,28 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, ArrowDown } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { ThemeToggle } from "@/components/theme-toggle"
 
 // Componente de partículas animadas minimalista
 function ParticlesBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"))
+    }
+
+    checkTheme()
+
+    // Listen for theme changes
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    })
+
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -54,9 +67,8 @@ function ParticlesBackground() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      const isDark = document.documentElement.classList.contains("dark")
-      const particleColor = isDark ? "148, 163, 184" : "148, 163, 184"
-      const lineColor = isDark ? "148, 163, 184" : "148, 163, 184"
+      const particleColor = "148, 163, 184"
+      const lineColor = "148, 163, 184"
 
       particles.forEach((particle, index) => {
         // Actualizar posición
@@ -97,23 +109,21 @@ function ParticlesBackground() {
 
     return () => {
       window.removeEventListener("resize", resizeCanvas)
+      observer.disconnect()
     }
   }, [])
 
   return (
-    
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full"
       style={{
-        background: document.documentElement.classList.contains("dark")
+        background: isDark
           ? "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)"
           : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
       }}
     />
-    
   )
-  
 }
 
 // Componente de logos estáticos
@@ -147,9 +157,7 @@ function CompanyLogos() {
   ]
 
   return (
-    
     <div className="flex flex-wrap justify-center items-center gap-6 py-8 max-w-2xl mx-auto">
-      
       {companies.map((company, index) => (
         <div
           key={company.name}
@@ -185,11 +193,50 @@ function CompanyLogos() {
 }
 
 export default function HomePage() {
+  const [isDark, setIsDark] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"))
+    }
+
+    checkTheme()
+
+    // Listen for theme changes
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="flex justify-center mb-12">
+              <div className="relative">
+                <div className="absolute inset-0 bg-white/40 dark:bg-slate-700/40 rounded-3xl blur-xl" />
+                <div className="relative flex h-32 w-38 items-center justify-center rounded-3xl bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border border-white/30 dark:border-slate-600/30 shadow-2xl">
+                  <div className="h-32 w-38 bg-slate-200 dark:bg-slate-700 rounded-2xl animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
       {/* Fondo minimalista */}
       <ParticlesBackground />
-      
 
       {/* Contenido principal */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
@@ -199,11 +246,11 @@ export default function HomePage() {
             <div className="relative">
               <div className="absolute inset-0 bg-white/40 dark:bg-slate-700/40 rounded-3xl blur-xl" />
               <div className="relative flex h-32 w-38 items-center justify-center rounded-3xl bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border border-white/30 dark:border-slate-600/30 shadow-2xl">
-                <img 
-                src={document.documentElement.classList.contains('dark') ? '/logos/atlas-logo-dark.png' : '/logos/atlas-logo-white.png'}
-                alt="logo" 
-                className="h-32 w-38" 
-              />
+                <img
+                  src={isDark ? "/logos/atlas-logo-dark.png" : "/logos/atlas-logo-white.png"}
+                  alt="logo"
+                  className="h-32 w-38"
+                />
               </div>
             </div>
           </div>
