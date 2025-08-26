@@ -41,18 +41,18 @@ const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDa
   if (daysPassed >= 3) {
     return {
       color: "bg-red-500",
-      textColor: "text-red-700",
-      bgColor: "bg-red-50",
-      borderColor: "border-red-200",
+      textColor: "text-red-700 dark:text-red-300",
+      bgColor: "bg-red-50 dark:bg-red-900/20",
+      borderColor: "border-red-200 dark:border-red-800",
       message: "¡URGENTE! Sin respuesta por más de 3 días",
       icon: "🔴",
     }
   } else if (daysPassed >= 1) {
     return {
       color: "bg-yellow-500",
-      textColor: "text-yellow-700",
-      bgColor: "bg-yellow-50",
-      borderColor: "border-yellow-200",
+      textColor: "text-yellow-700 dark:text-yellow-300",
+      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
+      borderColor: "border-yellow-200 dark:border-yellow-800",
       message: "Pendiente de respuesta, no olvides responder a tiempo",
       icon: "🟡",
     }
@@ -60,9 +60,9 @@ const getTrafficLightStatus = (createdAt: string, status: string, lastMovementDa
     // Documentos nuevos o recién movidos (menos de 1 día)
     return {
       color: "bg-green-500",
-      textColor: "text-green-700",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200",
+      textColor: "text-green-700 dark:text-green-300",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
+      borderColor: "border-green-200 dark:border-green-800",
       message: lastMovementDate ? "Recién movido a este departamento" : "Documento recién creado",
       icon: "🟢",
     }
@@ -252,7 +252,7 @@ export default function DocumentsPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200 shadow-sm"
+            className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 shadow-sm"
           >
             Pendiente
           </Badge>
@@ -261,7 +261,7 @@ export default function DocumentsPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200 shadow-sm"
+            className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 shadow-sm"
           >
             En Progreso
           </Badge>
@@ -270,7 +270,7 @@ export default function DocumentsPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-200 shadow-sm"
+            className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 shadow-sm"
           >
             Completado
           </Badge>
@@ -279,14 +279,17 @@ export default function DocumentsPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 shadow-sm"
+            className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 shadow-sm"
           >
             Cancelado
           </Badge>
         )
       default:
         return (
-          <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+          <Badge
+            variant="outline"
+            className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+          >
             {status}
           </Badge>
         )
@@ -298,7 +301,7 @@ export default function DocumentsPage() {
       return (
         <Badge
           variant="outline"
-          className="bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border-slate-200 ml-2 shadow-sm"
+          className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 ml-2 shadow-sm"
         >
           Creado por mí
         </Badge>
@@ -308,7 +311,7 @@ export default function DocumentsPage() {
       return (
         <Badge
           variant="outline"
-          className="bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 border-slate-300 ml-2 shadow-sm"
+          className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700/50 dark:to-slate-600/50 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 ml-2 shadow-sm"
         >
           Mi departamento
         </Badge>
@@ -321,7 +324,7 @@ export default function DocumentsPage() {
     if (!department) return null
 
     return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border border-slate-200 shadow-sm">
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-sm">
         {department.name}
       </span>
     )
@@ -422,7 +425,7 @@ export default function DocumentsPage() {
     <div className="min-h-screen p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent">
             Documentos
           </h1>
           <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
@@ -456,8 +459,8 @@ export default function DocumentsPage() {
       </div>
 
       {error && (
-        <Alert variant="destructive" className="border-red-200 bg-red-50">
-          <AlertDescription className="text-red-700">{error}</AlertDescription>
+        <Alert variant="destructive" className="border-red-200 bg-red-50 dark:bg-red-900/20">
+          <AlertDescription className="text-red-700 dark:text-red-300">{error}</AlertDescription>
         </Alert>
       )}
 
@@ -470,8 +473,8 @@ export default function DocumentsPage() {
         })
 
         return urgentDocs.length > 0 ? (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertDescription className="text-red-700">
+          <Alert className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+            <AlertDescription className="text-red-700 dark:text-red-300">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🚨</span>
                 <span>
@@ -487,7 +490,7 @@ export default function DocumentsPage() {
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
         <CardHeader className="border-b border-slate-100 dark:border-slate-600 p-4 sm:p-6">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 dark:bg-slate-700 to-slate-200">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">
               <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div>
@@ -547,7 +550,7 @@ export default function DocumentsPage() {
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
         <CardHeader className="border-b border-slate-100 dark:border-slate-600 p-4 sm:p-6">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 dark:bg-slate-700 to-slate-200">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">
               <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div>
@@ -563,7 +566,7 @@ export default function DocumentsPage() {
         <CardContent className="p-0">
           {filteredDocuments.length === 0 ? (
             <div className="text-center py-8 sm:py-12 px-4 sm:px-6">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 dark:bg-slate-700 to-slate-200 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
                 <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-slate-400 dark:text-slate-500" />
               </div>
               <h3 className="text-base sm:text-lg font-medium text-slate-800 dark:text-slate-100 mb-2">

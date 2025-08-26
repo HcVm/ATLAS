@@ -246,26 +246,26 @@ export default function SupervisionPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
       case "medium":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
       case "low":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
       case "in_progress":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
     }
   }
 
@@ -304,12 +304,12 @@ export default function SupervisionPage() {
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Supervisión de Tareas</h1>
-            <p className="text-gray-600">Monitorea y gestiona las tareas de todos los empleados</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Supervisión de Tareas</h1>
+            <p className="text-gray-600 dark:text-gray-400">Monitorea y gestiona las tareas de todos los empleados</p>
           </div>
           <div className="flex items-center space-x-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            <span className="text-sm font-medium">{employees.length} Empleados</span>
+            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-medium dark:text-gray-300">{employees.length} Empleados</span>
           </div>
         </div>
       </div>
@@ -337,7 +337,7 @@ export default function SupervisionPage() {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   placeholder="Buscar por nombre de empleado o título de pizarrón..."
                   value={searchTerm}
@@ -401,38 +401,45 @@ export default function SupervisionPage() {
                         {formatDateShort(new Date(board.created_at))}
                       </Badge>
                     </div>
-                    {board.description && <p className="text-sm text-gray-600 mt-2">{board.description}</p>}
+                    {board.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{board.description}</p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="flex items-center space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span>
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <span className="dark:text-gray-300">
                           {stats.completed}/{stats.total} Completadas
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-blue-600" />
-                        <span>{stats.inProgress} En progreso</span>
+                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span className="dark:text-gray-300">{stats.inProgress} En progreso</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <CalendarDays className="h-4 w-4 text-yellow-600" />
-                        <span>{stats.pending} Pendientes</span>
+                        <CalendarDays className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                        <span className="dark:text-gray-300">{stats.pending} Pendientes</span>
                       </div>
                       {stats.overdue > 0 && (
                         <div className="flex items-center space-x-2">
-                          <AlertCircle className="h-4 w-4 text-red-600" />
-                          <span>{stats.overdue} Vencidas</span>
+                          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          <span className="dark:text-gray-300">{stats.overdue} Vencidas</span>
                         </div>
                       )}
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-700">Tareas recientes:</h4>
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Tareas recientes:</h4>
                       {board.tasks.slice(0, 3).map((task) => (
-                        <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                        >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {task.title}
+                            </p>
                             <div className="flex items-center space-x-2 mt-1">
                               <Badge className={`text-xs ${getStatusColor(task.status)}`}>
                                 {task.status === "pending"
@@ -449,7 +456,7 @@ export default function SupervisionPage() {
                         </div>
                       ))}
                       {board.tasks.length > 3 && (
-                        <p className="text-xs text-gray-500">+{board.tasks.length - 3} tareas más</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">+{board.tasks.length - 3} tareas más</p>
                       )}
                     </div>
 
@@ -474,9 +481,11 @@ export default function SupervisionPage() {
 
           {filteredBoards.length === 0 && (
             <div className="text-center py-12">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron pizarrones</h3>
-              <p className="text-gray-600">
+              <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                No se encontraron pizarrones
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
                 {searchTerm || selectedEmployee !== "all" || statusFilter !== "all"
                   ? "Intenta ajustar los filtros para ver más resultados."
                   : "Los empleados aún no han creado pizarrones de tareas."}

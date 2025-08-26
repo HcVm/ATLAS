@@ -318,15 +318,15 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
   const getSeverityColor = (severity: Alert["severity"]) => {
     switch (severity) {
       case "critical":
-        return "border-red-500 bg-red-50 text-red-800"
+        return "border-red-500 bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-200 dark:border-red-600"
       case "high":
-        return "border-orange-500 bg-orange-50 text-orange-800"
+        return "border-orange-500 bg-orange-50 text-orange-800 dark:bg-orange-900/20 dark:text-orange-200 dark:border-orange-600"
       case "medium":
-        return "border-yellow-500 bg-yellow-50 text-yellow-800"
+        return "border-yellow-500 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-600"
       case "low":
-        return "border-blue-500 bg-blue-50 text-blue-800"
+        return "border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-600"
       default:
-        return "border-gray-500 bg-gray-50 text-gray-800"
+        return "border-gray-500 bg-gray-50 text-gray-800 dark:bg-gray-800/50 dark:text-gray-200 dark:border-gray-600"
     }
   }
 
@@ -391,9 +391,9 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
       <CardContent>
         {visibleAlerts.length === 0 ? (
           <div className="text-center py-6">
-            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No hay alertas activas</p>
-            <p className="text-sm text-gray-400">Todo está funcionando correctamente</p>
+            <Bell className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">No hay alertas activas</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Todo está funcionando correctamente</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -408,7 +408,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
                     <div className="flex-shrink-0 mt-1">{getAlertIcon(alert.type)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-gray-900">{alert.title}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">{alert.title}</h4>
                         <Badge variant="outline" className="text-xs">
                           {alert.severity === "critical"
                             ? "Crítico"
@@ -419,7 +419,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
                                 : "Bajo"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{alert.description}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{alert.description}</p>
                       {alert.employee && (
                         <div className="flex items-center space-x-2">
                           <Avatar className="h-6 w-6">
@@ -431,7 +431,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
                                 .join("")}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs text-gray-500">{alert.employee.name}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{alert.employee.name}</span>
                         </div>
                       )}
                     </div>
@@ -451,7 +451,9 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
               </div>
             ))}
             {visibleAlerts.length > 10 && (
-              <p className="text-center text-sm text-gray-500 pt-2">+{visibleAlerts.length - 10} alertas más</p>
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 pt-2">
+                +{visibleAlerts.length - 10} alertas más
+              </p>
             )}
           </div>
         )}

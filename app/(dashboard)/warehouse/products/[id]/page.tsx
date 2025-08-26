@@ -172,19 +172,19 @@ export default function ProductDetailPage() {
   // Debug info
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
               <Link href="/warehouse/products">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver
               </Link>
             </Button>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
-              <div className="text-center text-slate-600">Usuario no autenticado</div>
+              <div className="text-center text-slate-600 dark:text-slate-400">Usuario no autenticado</div>
             </CardContent>
           </Card>
         </div>
@@ -194,21 +194,21 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
               <Link href="/warehouse/products">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver
               </Link>
             </Button>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
               <div className="text-center">
-                <div className="text-slate-700">Cargando producto...</div>
-                <div className="text-xs text-slate-500 mt-2">
+                <div className="text-slate-700 dark:text-slate-300">Cargando producto...</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   Debug: User ID: {user?.id}, Company:{" "}
                   {user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id}
                 </div>
@@ -222,19 +222,19 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="space-y-6 p-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
               <Link href="/warehouse/products">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver
               </Link>
             </Button>
           </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardContent className="p-6">
-              <div className="text-center text-slate-600">
+              <div className="text-center text-slate-600 dark:text-slate-400">
                 <div>{error || "Producto no encontrado"}</div>
                 <div className="text-xs mt-2">
                   Debug Info:
@@ -256,27 +256,27 @@ export default function ProductDetailPage() {
   const stockStatus = getStockStatus(product.current_stock, product.minimum_stock)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100">
+            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
               <Link href="/warehouse/products">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver
               </Link>
             </Button>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent">
                 {product.name}
               </h1>
-              <p className="text-slate-600">Detalles del producto</p>
+              <p className="text-slate-600 dark:text-slate-400">Detalles del producto</p>
             </div>
           </div>
           {/* Indicador visual de solo lectura para ventas */}
           {!canEditProducts && (
-            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
               <Eye className="h-4 w-4" />
               <span className="text-sm font-medium">Solo lectura</span>
             </div>
@@ -297,11 +297,11 @@ export default function ProductDetailPage() {
         <div className="grid gap-6 md:grid-cols-3">
           {/* Imagen del producto */}
           {product.image_url && (
-            <Card className="md:col-span-1 bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+            <Card className="md:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-slate-800">
-                  <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                    <ImageIcon className="h-4 w-4 text-slate-600" />
+                <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                  <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
+                    <ImageIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                   </div>
                   Imagen del Producto
                 </CardTitle>
@@ -310,7 +310,7 @@ export default function ProductDetailPage() {
                 <img
                   src={product.image_url || "/placeholder.svg"}
                   alt={product.name}
-                  className="w-full h-64 object-contain rounded-lg border border-slate-200 bg-slate-50"
+                  className="w-full h-64 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                 />
               </CardContent>
             </Card>
@@ -318,47 +318,50 @@ export default function ProductDetailPage() {
 
           {/* Información básica */}
           <Card
-            className={`${product.image_url ? "md:col-span-2" : "md:col-span-3"} bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg`}
+            className={`${product.image_url ? "md:col-span-2" : "md:col-span-3"} bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg`}
           >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center">
-                  <Package className="h-4 w-4 text-slate-600" />
+              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
+                  <Package className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 Información General
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-500">Nombre</label>
-                <p className="text-lg font-semibold text-slate-800">{product.name}</p>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Nombre</label>
+                <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">{product.name}</p>
               </div>
 
               {product.description && (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Descripción</label>
-                  <p className="text-sm text-slate-700">{product.description}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Descripción</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{product.description}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Hash className="h-3 w-3" />
                     Código
                   </label>
-                  <Badge variant="outline" className="font-mono border-slate-300 text-slate-700">
+                  <Badge
+                    variant="outline"
+                    className="font-mono border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+                  >
                     {product.code}
                   </Badge>
                 </div>
 
                 {product.barcode && (
                   <div>
-                    <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <Barcode className="h-3 w-3" />
                       Código de barras
                     </label>
-                    <p className="text-sm font-mono text-slate-700">{product.barcode}</p>
+                    <p className="text-sm font-mono text-slate-700 dark:text-slate-300">{product.barcode}</p>
                   </div>
                 )}
               </div>
@@ -367,17 +370,17 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 {product.modelo && (
                   <div>
-                    <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <FileText className="h-3 w-3" />
                       Modelo
                     </label>
-                    <p className="text-sm text-slate-700">{product.modelo}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{product.modelo}</p>
                   </div>
                 )}
 
                 {product.ficha_tecnica && (
                   <div>
-                    <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <ExternalLink className="h-3 w-3" />
                       Ficha Técnica
                     </label>
@@ -385,7 +388,7 @@ export default function ProductDetailPage() {
                       href={product.ficha_tecnica}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex items-center gap-1"
                     >
                       Ver ficha técnica
                       <ExternalLink className="h-3 w-3" />
@@ -396,25 +399,29 @@ export default function ProductDetailPage() {
 
               {product.location && (
                 <div>
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     Ubicación
                   </label>
-                  <p className="text-sm text-slate-700">{product.location}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{product.location}</p>
                 </div>
               )}
 
               <div>
-                <label className="text-sm font-medium text-slate-500">Unidad de medida</label>
-                <p className="text-sm text-slate-700">{product.unit_of_measure}</p>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Unidad de medida</label>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{product.unit_of_measure}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-500">Estado</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Estado</label>
                 <div className="flex items-center gap-2">
                   <Badge
                     variant={product.is_active ? "default" : "secondary"}
-                    className={product.is_active ? "bg-slate-100 text-slate-700 border-slate-300" : ""}
+                    className={
+                      product.is_active
+                        ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600"
+                        : ""
+                    }
                   >
                     {product.is_active ? "Activo" : "Inactivo"}
                   </Badge>
@@ -424,31 +431,31 @@ export default function ProductDetailPage() {
           </Card>
 
           {/* Stock y precios */}
-          <Card className="md:col-span-2 bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="md:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-slate-800">Stock y Precios</CardTitle>
+              <CardTitle className="text-slate-800 dark:text-slate-200">Stock y Precios</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Stock actual</label>
-                  <p className="text-2xl font-bold text-slate-800">{product.current_stock}</p>
-                  <p className="text-xs text-slate-500">{product.unit_of_measure}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Stock actual</label>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{product.current_stock}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{product.unit_of_measure}</p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Stock mínimo</label>
-                  <p className="text-2xl font-bold text-slate-800">{product.minimum_stock}</p>
-                  <p className="text-xs text-slate-500">{product.unit_of_measure}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Stock mínimo</label>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{product.minimum_stock}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{product.unit_of_measure}</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-500">Estado del stock</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Estado del stock</label>
                 <div className="flex items-center gap-2">
                   <Badge variant={stockStatus.variant}>{stockStatus.label}</Badge>
                   {product.current_stock <= product.minimum_stock && (
-                    <div className="flex items-center gap-1 text-orange-600 text-xs">
+                    <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 text-xs">
                       <AlertTriangle className="h-3 w-3" />
                       Requiere reposición
                     </div>
@@ -456,18 +463,24 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <Separator className="bg-slate-200" />
+              <Separator className="bg-slate-200 dark:bg-slate-700" />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Precio de costo</label>
-                  <p className="text-xl font-semibold text-slate-800">{formatCurrency(product.cost_price)}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Precio de costo</label>
+                  <p className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+                    {formatCurrency(product.cost_price)}
+                  </p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Precio de venta (sin IGV)</label>
-                  <p className="text-xl font-semibold text-green-600">{formatCurrency(product.sale_price)}</p>
-                  <p className="text-sm text-green-700 font-medium">
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Precio de venta (sin IGV)
+                  </label>
+                  <p className="text-xl font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(product.sale_price)}
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300 font-medium">
                     Con IGV (18%): {formatCurrency(product.sale_price * 1.18)}
                   </p>
                 </div>
@@ -475,29 +488,31 @@ export default function ProductDetailPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Margen de ganancia</label>
-                  <p className="text-lg font-semibold text-slate-800">
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Margen de ganancia</label>
+                  <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">
                     {(((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)}%
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-500">IGV (18%)</label>
-                  <p className="text-lg font-semibold text-blue-600">{formatCurrency(product.sale_price * 0.18)}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">IGV (18%)</label>
+                  <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(product.sale_price * 0.18)}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Categorización */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-slate-800">Categorización</CardTitle>
+              <CardTitle className="text-slate-800 dark:text-slate-200">Categorización</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {product.brands ? (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Marca</label>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Marca</label>
                   <div className="mt-1">
                     <Badge
                       variant="secondary"
@@ -512,14 +527,14 @@ export default function ProductDetailPage() {
                 </div>
               ) : (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Marca</label>
-                  <p className="text-sm text-slate-500">Sin marca asignada</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Marca</label>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Sin marca asignada</p>
                 </div>
               )}
 
               {product.product_categories ? (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Categoría</label>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Categoría</label>
                   <div className="mt-1">
                     <Badge
                       variant="outline"
@@ -534,33 +549,33 @@ export default function ProductDetailPage() {
                 </div>
               ) : (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Categoría</label>
-                  <p className="text-sm text-slate-500">Sin categoría asignada</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Categoría</label>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Sin categoría asignada</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Información del sistema */}
-          <Card className="md:col-span-3 bg-gradient-to-br from-white to-slate-50/50 border-slate-200/60 shadow-lg">
+          <Card className="md:col-span-3 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-slate-800">Información del Sistema</CardTitle>
+              <CardTitle className="text-slate-800 dark:text-slate-200">Información del Sistema</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Fecha de creación</label>
-                  <p className="text-sm text-slate-700">{formatDate(product.created_at)}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Fecha de creación</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{formatDate(product.created_at)}</p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Última actualización</label>
-                  <p className="text-sm text-slate-700">{formatDate(product.updated_at)}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Última actualización</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{formatDate(product.updated_at)}</p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-500">ID del producto</label>
-                  <p className="text-xs font-mono text-slate-500">{product.id}</p>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">ID del producto</label>
+                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{product.id}</p>
                 </div>
               </div>
             </CardContent>

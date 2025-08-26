@@ -401,7 +401,7 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 2px solid #1a1a1a;">
                   <span style="font-size: 15px; color: #1a1a1a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Total</span>
-                  <span style="font-size: 22px; font-weight: 800; color: #dc2626;">${formatCurrency(data.total)}</span>
+                  <span style="font-size: 22px; font-weight: 800; color: #dc2626;">${data.total.toLocaleString('es-PE', { style: 'currency', currency: 'PEN', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
