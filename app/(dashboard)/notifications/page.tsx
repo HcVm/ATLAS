@@ -235,17 +235,17 @@ export default function NotificationsPage() {
   const getNotificationTypeColor = (type: string) => {
     switch (type) {
       case "document_created":
-        return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-white-300"
+        return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
       case "document_moved":
-        return "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-white-200"
+        return "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
       case "document_status_changed":
-        return "bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-white-100"
+        return "bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-slate-100"
       case "news_published":
-        return "bg-slate-400 text-white dark:bg-slate-500 dark:text-white-100"
+        return "bg-slate-400 text-white dark:bg-slate-500 dark:text-slate-100"
       case "department_created":
-        return "bg-slate-500 text-white dark:bg-slate-400 dark:text-white-900"
+        return "bg-slate-500 text-white dark:bg-slate-400 dark:text-slate-900"
       case "user_created":
-        return "bg-slate-600 text-white dark:bg-slate-300 dark:text-white-900"
+        return "bg-slate-600 text-white dark:bg-slate-300 dark:text-slate-900"
       case "sale_created":
         return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300"
       case "quotation_review":
@@ -277,7 +277,7 @@ export default function NotificationsPage() {
             <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg">
               <Bell className="h-4 w-4 sm:h-6 sm:w-6" />
             </div>
-            <span className="bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-white">
+            <span className="bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
               Notificaciones
             </span>
           </h1>
@@ -348,7 +348,7 @@ export default function NotificationsPage() {
                 {counts.unread > 0 && (
                   <Badge
                     variant="destructive"
-                    className="ml-1 bg-gradient-to-r from-slate-700 to-slate-700 text-white shadow-md text-xs"
+                    className="ml-1 bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-md text-xs"
                   >
                     {counts.unread}
                   </Badge>
@@ -408,7 +408,7 @@ export default function NotificationsPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1 flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-medium text-sm sm:text-lg truncate text-slate-300">
+                              <h3 className="font-medium text-sm sm:text-lg truncate text-slate-700">
                                 {notification.title}
                               </h3>
                               {notification.type && (
@@ -424,7 +424,7 @@ export default function NotificationsPage() {
                                 </div>
                               )}
                             </div>
-                            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed break-words">
+                            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed break-words">
                               {notification.message}
                             </p>
                             <div className="text-xs text-slate-400 flex items-center gap-1">
