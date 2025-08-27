@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { upload } from "@vercel/blob/client"
 import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -105,73 +105,110 @@ export default function OpenDataUploadPage() {
   }
 
   const handleUpload = async () => {
-    if (!file || !selectedAcuerdo) {
-      toast.error("Datos incompletos", {
-        description: "Por favor selecciona un acuerdo marco y un archivo",
-      })
-      return
+  if (!file || !selectedAcuerdo) {
+    toast.error("Datos incompletos", {
+      description: "Por favor selecciona un acuerdo marco y un archivo",
+    })
+    return
+  }
+
+  setUploading(true)
+  setProgress(0)
+  setError(null)
+  setUploadStats(null)
+
+  try {
+    setProgress(10)
+    console.log(`Subiendo archivo: ${file.name}`)
+
+    // Crear FormData para enviar el archivo
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('acuerdoMarco', selectedAcuerdo)
+
+    // Subir archivo al servidor
+    const uploadResponse = await fetch("/api/open-data/upload-url", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json().catch(() => ({}))
+      throw new Error(errorData.error || `Error del servidor: ${uploadResponse.status}`)
     }
 
-    setUploading(true)
-    setProgress(0)
-    setError(null)
-    setUploadStats(null)
+    const uploadResult = await uploadResponse.json()
+    setProgress(30)
+    console.log(`Archivo subido a Blob: ${uploadResult.url}`)
 
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("acuerdoMarco", selectedAcuerdo)
+    // Procesar archivo
+    const response = await fetch("/api/open-data/process", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        blobUrl: uploadResult.url,
+        fileName: file.name,
+        fileSize: file.size,
+        acuerdoMarco: selectedAcuerdo,
+      }),
+    })
 
-      // Simular progreso durante la carga
-      const progressInterval = setInterval(
-        () => {
-          setProgress((prev) => {
-            if (prev >= 90) return prev
-            return prev + Math.random() * 5
-          })
-        },
-        getProcessingInfo(file.size).willChunk ? 2000 : 1000,
-      )
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `Error del servidor: ${response.status}`)
+    }
 
-      console.log(`Subiendo archivo: ${file.name} para acuerdo: ${selectedAcuerdo}`)
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+    let result: any = null
 
-      const response = await fetch("/api/open-data/upload", {
-        method: "POST",
-        body: formData,
-      })
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-      clearInterval(progressInterval)
+        const chunk = decoder.decode(value)
+        const lines = chunk.split("\n").filter((line) => line.trim())
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-
-        if (response.status === 413) {
-          throw new Error(errorData.message || "El archivo es demasiado grande para procesar")
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === "progress") {
+                setProgress(30 + data.progress * 0.7)
+              } else if (data.type === "complete") {
+                result = data
+                setProgress(100)
+              }
+            } catch (e) {
+              console.error("Error parsing SSE data:", e)
+            }
+          }
         }
-
-        throw new Error(errorData.message || `Error del servidor: ${response.status}`)
       }
+    }
 
-      const result = await response.json()
-      setProgress(100)
+    if (result) {
       setUploadStats(result.stats)
-
       toast.success("¡Archivo procesado exitosamente!", {
         description: `${result.stats.insertedRows} registros insertados para ${selectedAcuerdo.split(" ")[0]}`,
       })
-    } catch (error) {
-      console.error("Error uploading file:", error)
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
-      setError(errorMessage)
-
-      toast.error("Error al procesar el archivo", {
-        description: errorMessage,
-      })
-    } finally {
-      setUploading(false)
-      setTimeout(() => setProgress(0), 2000)
     }
+  } catch (error) {
+    console.error("Error uploading file:", error)
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+    setError(errorMessage)
+
+    toast.error("Error al procesar el archivo", {
+      description: errorMessage,
+    })
+  } finally {
+    setUploading(false)
+    setTimeout(() => setProgress(0), 2000)
   }
+}
 
   const resetUpload = () => {
     setFile(null)
