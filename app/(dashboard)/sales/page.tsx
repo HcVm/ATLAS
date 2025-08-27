@@ -662,6 +662,7 @@ export default function SalesPage() {
         clientFiscalAddress: clientFiscalAddress || undefined,
         ocam: sale.ocam || "N/A",
         siaf: sale.exp_siaf || "N/A",
+        physical_order: sale.physical_order || "N/A",
         createdBy: user?.full_name || "Usuario",
         customDate: selectedDate, // Pasando la fecha seleccionada
       })

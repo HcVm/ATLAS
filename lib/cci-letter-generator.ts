@@ -25,6 +25,7 @@ export interface CCILetterData {
   // Información adicional
   ocam: string
   siaf: string
+  physical_order: string
 
   // Creado por
   createdBy: string
@@ -432,6 +433,10 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
                 <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
               </tr>
               <tr>
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+              </tr>
+              <tr>
                 <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
                 <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
               </tr>
@@ -454,7 +459,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
         </div>
 
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 35mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; bottom: 30mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
         </div>
 
@@ -563,6 +568,10 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
                 <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
               </tr>
               <tr>
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+              </tr>
+              <tr>
                 <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
                 <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
               </tr>
@@ -585,7 +594,7 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
         </div>
 
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 40mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; bottom: 30mm; left: 20mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
           
         </div>
