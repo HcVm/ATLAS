@@ -20,7 +20,21 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Calendar, Clock, Plus, CheckCircle, Circle, AlertCircle, XCircle, Users, Eye, Target, Zap } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  Plus,
+  CheckCircle,
+  Circle,
+  AlertCircle,
+  XCircle,
+  Users,
+  Eye,
+  Target,
+  Zap,
+  ArrowRight,
+  ArrowUpRight,
+} from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { formatDateDisplay, formatDateLong, getCurrentDatePeru } from "@/lib/date-utils"
@@ -46,7 +60,7 @@ interface Task {
   board_id: string
   title: string
   description?: string
-  status: "pending" | "in_progress" | "completed" | "cancelled"
+  status: "pending" | "in_progress" | "completed" | "cancelled" | "migrated"
   priority: "low" | "medium" | "high" | "urgent"
   estimated_time?: number
   actual_time?: number
@@ -57,6 +71,11 @@ interface Task {
   position: number
   created_at: string
   updated_at: string
+  migrated_from_board?: string
+  migrated_from_date?: string
+  migrated_at?: string
+  migrated_to_date?: string
+  migrated_to_board?: string
 }
 
 const statusColors = {
@@ -64,13 +83,7 @@ const statusColors = {
   in_progress: "bg-blue-100 text-blue-800 border-blue-200",
   completed: "bg-green-100 text-green-800 border-green-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
-}
-
-const priorityColors = {
-  low: "bg-gray-100 text-gray-800 border-gray-200",
-  medium: "bg-orange-100 text-orange-800 border-orange-200",
-  high: "bg-red-100 text-red-800 border-red-200",
-  urgent: "bg-red-200 text-red-900 border-red-300",
+  migrated: "bg-purple-100 text-purple-800 border-purple-200",
 }
 
 const statusIcons = {
@@ -78,6 +91,7 @@ const statusIcons = {
   in_progress: Clock,
   completed: CheckCircle,
   cancelled: XCircle,
+  migrated: ArrowRight,
 }
 
 export default function TasksPage() {
@@ -116,249 +130,246 @@ export default function TasksPage() {
     }
   }, [currentBoard])
 
-  // Replace the migration-related useEffect and functions in your component with this improved version:
+  // Improved automatic migration with better error handling and reliability
+  useEffect(() => {
+    if (!user) return
 
-// Improved automatic migration with better error handling and reliability
-useEffect(() => {
-  if (!user) return
+    const executeMigrationProcess = async () => {
+      try {
+        console.log("[v0] Iniciando proceso de migración automática")
 
-  const executeMigrationProcess = async () => {
-    try {
-      console.log("[v0] Iniciando proceso de migración automática")
-      
-      const peruTime = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
-      const now = new Date(peruTime)
-      const currentHour = now.getHours()
-      const currentMinute = now.getMinutes()
-      const today = getCurrentDatePeru()
+        const peruTime = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
+        const now = new Date(peruTime)
+        const currentHour = now.getHours()
+        const currentMinute = now.getMinutes()
+        const today = getCurrentDatePeru()
 
-      console.log("[v0] Tiempo actual en Perú:", {
-        peruTime,
-        currentHour,
-        currentMinute,
-        today
-      })
+        console.log("[v0] Tiempo actual en Perú:", {
+          peruTime,
+          currentHour,
+          currentMinute,
+          today,
+        })
 
-      // Use a more reliable session-based check instead of localStorage
-      const migrationKey = `task_migration_${user.id}_${today}`
-      const sessionMigrationKey = `session_${migrationKey}`
-      
-      // Check both localStorage and sessionStorage for redundancy
-      const lastMigrationTime = localStorage.getItem(migrationKey) || sessionStorage.getItem(sessionMigrationKey)
-      const now_timestamp = now.getTime()
+        // Use a more reliable session-based check instead of localStorage
+        const migrationKey = `task_migration_${user.id}_${today}`
+        const sessionMigrationKey = `session_${migrationKey}`
 
-      // Execute migration if:
-      // 1. Never executed today
-      // 2. More than 6 hours have passed since last execution
-      // 3. It's during business hours (7 AM - 11 PM)
-      const sixHoursInMs = 6 * 60 * 60 * 1000
-      const shouldExecuteMigration = !lastMigrationTime || 
-        (now_timestamp - parseInt(lastMigrationTime)) > sixHoursInMs
+        // Check both localStorage and sessionStorage for redundancy
+        const lastMigrationTime = localStorage.getItem(migrationKey) || sessionStorage.getItem(sessionMigrationKey)
+        const now_timestamp = now.getTime()
 
-      const isBusinessHours = currentHour >= 7 && currentHour < 23
+        // Execute migration if:
+        // 1. Never executed today
+        // 2. More than 6 hours have passed since last execution
+        // 3. It's during business hours (7 AM - 11 PM)
+        const sixHoursInMs = 6 * 60 * 60 * 1000
+        const shouldExecuteMigration =
+          !lastMigrationTime || now_timestamp - Number.parseInt(lastMigrationTime) > sixHoursInMs
 
-      console.log("[v0] Estado de migración:", {
-        shouldExecuteMigration,
-        isBusinessHours,
-        lastMigrationTime,
-        timeSinceLastMigration: lastMigrationTime ? 
-          Math.round((now_timestamp - parseInt(lastMigrationTime)) / (1000 * 60 * 60)) : null
-      })
+        const isBusinessHours = currentHour >= 7 && currentHour < 23
 
-      if (shouldExecuteMigration && isBusinessHours) {
-        console.log("[v0] Ejecutando migración de tareas pendientes...")
-        
-        const migrationResult = await migratePendingTasks()
-        
-        if (migrationResult.success) {
-          // Store timestamp in both storages
-          const timestamp = now_timestamp.toString()
-          localStorage.setItem(migrationKey, timestamp)
-          sessionStorage.setItem(sessionMigrationKey, timestamp)
-          
-          // If tasks were migrated, reload boards
-          if (migrationResult.migratedTasks > 0) {
-            console.log("[v0] Recargando boards después de migración exitosa")
-            await loadBoards()
+        console.log("[v0] Estado de migración:", {
+          shouldExecuteMigration,
+          isBusinessHours,
+          lastMigrationTime,
+          timeSinceLastMigration: lastMigrationTime
+            ? Math.round((now_timestamp - Number.parseInt(lastMigrationTime)) / (1000 * 60 * 60))
+            : null,
+        })
+
+        if (shouldExecuteMigration && isBusinessHours) {
+          console.log("[v0] Ejecutando migración de tareas pendientes...")
+
+          const migrationResult = await migratePendingTasks()
+
+          if (migrationResult.success) {
+            // Store timestamp in both storages
+            const timestamp = now_timestamp.toString()
+            localStorage.setItem(migrationKey, timestamp)
+            sessionStorage.setItem(sessionMigrationKey, timestamp)
+
+            // If tasks were migrated, reload boards
+            if (migrationResult.migratedTasks > 0) {
+              console.log("[v0] Recargando boards después de migración exitosa")
+              await loadBoards()
+            }
           }
         }
+
+        // Close past boards during late evening hours (23:00 - 23:59)
+        if (currentHour === 23) {
+          console.log("[v0] Ejecutando cierre de boards pasados")
+          await closePastBoards()
+        }
+      } catch (error) {
+        console.error("[v0] Error en proceso de migración automática:", error)
+        // Don't throw - let the app continue working
       }
-
-      // Close past boards during late evening hours (23:00 - 23:59)
-      if (currentHour === 23) {
-        console.log("[v0] Ejecutando cierre de boards pasados")
-        await closePastBoards()
-      }
-
-    } catch (error) {
-      console.error("[v0] Error en proceso de migración automática:", error)
-      // Don't throw - let the app continue working
-    }
-  }
-
-  // Execute immediately on load
-  executeMigrationProcess()
-
-  // Set up intervals with better timing
-  const migrationInterval = setInterval(executeMigrationProcess, 10 * 60 * 1000) // every 10 minutes
-  
-  return () => {
-    clearInterval(migrationInterval)
-  }
-}, [user])
-
-// Improved migration function with better error handling and retry logic
-const migratePendingTasks = async (retryCount = 0) => {
-  const maxRetries = 2
-  
-  try {
-    console.log(`[v0] Llamando al endpoint de migración (intento ${retryCount + 1})...`)
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 seconds timeout
-
-    const response = await fetch("/api/migrate-pending-tasks", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal
-    })
-
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
-    const result = await response.json()
-    console.log("[v0] Resultado de migración:", result)
+    // Execute immediately on load
+    executeMigrationProcess()
 
-    if (result.success) {
-      if (result.data.migratedTasks > 0) {
-        toast({
-          title: "✅ Tareas migradas automáticamente",
-          description: `Se migraron ${result.data.migratedTasks} tareas pendientes al día de hoy`,
-          duration: 6000,
-        })
+    // Set up intervals with better timing
+    const migrationInterval = setInterval(executeMigrationProcess, 10 * 60 * 1000) // every 10 minutes
+
+    return () => {
+      clearInterval(migrationInterval)
+    }
+  }, [user])
+
+  // Improved migration function with better error handling and retry logic
+  const migratePendingTasks = async (retryCount = 0) => {
+    const maxRetries = 2
+
+    try {
+      console.log(`[v0] Llamando al endpoint de migración (intento ${retryCount + 1})...`)
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 seconds timeout
+
+      const response = await fetch("/api/migrate-pending-tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      console.log("[v0] Resultado de migración:", result)
+
+      if (result.success) {
+        if (result.data.migratedTasks > 0) {
+          toast({
+            title: "✅ Tareas migradas automáticamente",
+            description: `Se migraron ${result.data.migratedTasks} tareas pendientes al día de hoy`,
+            duration: 6000,
+          })
+        } else {
+          console.log("[v0] No había tareas para migrar")
+        }
+        return { success: true, migratedTasks: result.data.migratedTasks }
       } else {
-        console.log("[v0] No había tareas para migrar")
+        console.error("[v0] Error en migración:", result.error)
+
+        // Show error toast only for the final attempt
+        if (retryCount === maxRetries) {
+          toast({
+            title: "⚠️ Error en migración automática",
+            description: result.error || "Error desconocido en la migración",
+            variant: "destructive",
+            duration: 8000,
+          })
+        }
+
+        return { success: false, migratedTasks: 0 }
       }
-      return { success: true, migratedTasks: result.data.migratedTasks }
-    } else {
-      console.error("[v0] Error en migración:", result.error)
-      
-      // Show error toast only for the final attempt
-      if (retryCount === maxRetries) {
+    } catch (error) {
+      console.error(`[v0] Error ejecutando migración (intento ${retryCount + 1}):`, error)
+
+      // Retry logic for network errors
+      if (retryCount < maxRetries && (error.name === "TypeError" || error.message.includes("fetch"))) {
+        console.log(`[v0] Reintentando migración en 5 segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+        return migratePendingTasks(retryCount + 1)
+      }
+
+      // Only show error toast on final failure and for non-abort errors
+      if (retryCount === maxRetries && error.name !== "AbortError") {
         toast({
           title: "⚠️ Error en migración automática",
-          description: result.error || "Error desconocido en la migración",
+          description: "No se pudieron migrar las tareas pendientes. Verifique su conexión.",
           variant: "destructive",
           duration: 8000,
         })
       }
-      
+
       return { success: false, migratedTasks: 0 }
     }
-  } catch (error) {
-    console.error(`[v0] Error ejecutando migración (intento ${retryCount + 1}):`, error)
-    
-    // Retry logic for network errors
-    if (retryCount < maxRetries && 
-        (error.name === 'TypeError' || error.message.includes('fetch'))) {
-      console.log(`[v0] Reintentando migración en 5 segundos...`)
-      await new Promise(resolve => setTimeout(resolve, 5000))
-      return migratePendingTasks(retryCount + 1)
-    }
-    
-    // Only show error toast on final failure and for non-abort errors
-    if (retryCount === maxRetries && error.name !== 'AbortError') {
-      toast({
-        title: "⚠️ Error en migración automática",
-        description: "No se pudieron migrar las tareas pendientes. Verifique su conexión.",
-        variant: "destructive",
-        duration: 8000,
-      })
-    }
-    
-    return { success: false, migratedTasks: 0 }
   }
-}
 
-// Improved manual migration function
-const forceMigration = async () => {
-  console.log("[v0] Forzando migración manual...")
-  
-  // Show loading toast
-  const loadingToast = toast({
-    title: "🔄 Migración en progreso",
-    description: "Verificando tareas pendientes...",
-    duration: 0, // Don't auto-dismiss
-  })
-  
-  try {
-    const result = await migratePendingTasks()
-    
-    // Dismiss loading toast
-    loadingToast.dismiss?.()
-    
-    if (result.success) {
-      await loadBoards()
+  // Improved manual migration function
+  const forceMigration = async () => {
+    console.log("[v0] Forzando migración manual...")
+
+    // Show loading toast
+    const loadingToast = toast({
+      title: "🔄 Migración en progreso",
+      description: "Verificando tareas pendientes...",
+      duration: 0, // Don't auto-dismiss
+    })
+
+    try {
+      const result = await migratePendingTasks()
+
+      // Dismiss loading toast
+      loadingToast.dismiss?.()
+
+      if (result.success) {
+        await loadBoards()
+        toast({
+          title: "✅ Migración completada",
+          description: `Se procesaron ${result.migratedTasks} tareas`,
+          duration: 5000,
+        })
+      }
+    } catch (error) {
+      loadingToast.dismiss?.()
       toast({
-        title: "✅ Migración completada",
-        description: `Se procesaron ${result.migratedTasks} tareas`,
+        title: "❌ Error en migración manual",
+        description: "No se pudo completar la migración",
+        variant: "destructive",
         duration: 5000,
       })
     }
-  } catch (error) {
-    loadingToast.dismiss?.()
-    toast({
-      title: "❌ Error en migración manual",
-      description: "No se pudo completar la migración",
-      variant: "destructive",
-      duration: 5000,
-    })
   }
-}
 
-// Enhanced board closing with better error handling
-const closePastBoards = async () => {
-  try {
-    console.log("[v0] Cerrando boards pasados...")
-    const today = getCurrentDatePeru()
+  // Enhanced board closing with better error handling
+  const closePastBoards = async () => {
+    try {
+      console.log("[v0] Cerrando boards pasados...")
+      const today = getCurrentDatePeru()
 
-    const { data, error } = await supabase
-      .from("task_boards")
-      .update({
-        status: "closed",
-        closed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .lt("board_date", today)
-      .eq("status", "active")
-      .select("id, board_date, user_id")
+      const { data, error } = await supabase
+        .from("task_boards")
+        .update({
+          status: "closed",
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .lt("board_date", today)
+        .eq("status", "active")
+        .select("id, board_date, user_id")
 
-    if (error) {
+      if (error) {
+        console.error("[v0] Error cerrando boards pasados:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        console.log(`[v0] Se cerraron ${data.length} boards pasados:`, data)
+        // Only reload if boards were actually closed
+        await loadBoards()
+
+        // Show notification for closed boards
+        toast({
+          title: "📋 Boards cerrados automáticamente",
+          description: `Se cerraron ${data.length} pizarrones de fechas pasadas`,
+          duration: 4000,
+        })
+      }
+    } catch (error) {
       console.error("[v0] Error cerrando boards pasados:", error)
-      return
     }
-
-    if (data && data.length > 0) {
-      console.log(`[v0] Se cerraron ${data.length} boards pasados:`, data)
-      // Only reload if boards were actually closed
-      await loadBoards()
-      
-      // Show notification for closed boards
-      toast({
-        title: "📋 Boards cerrados automáticamente",
-        description: `Se cerraron ${data.length} pizarrones de fechas pasadas`,
-        duration: 4000,
-      })
-    }
-  } catch (error) {
-    console.error("[v0] Error cerrando boards pasados:", error)
   }
-}
 
   const loadBoards = async () => {
     try {
@@ -406,7 +417,14 @@ const closePastBoards = async () => {
     try {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select(`
+          *,
+          migrated_from_board,
+          migrated_from_date,
+          migrated_at,
+          migrated_to_date,
+          migrated_to_board
+        `)
         .eq("board_id", boardId)
         .order("position", { ascending: true })
 
@@ -454,7 +472,6 @@ const closePastBoards = async () => {
       // Ejecutar migración después de crear el board
       console.log("[v0] Ejecutando migración después de crear board...")
       await migratePendingTasks()
-
     } catch (error) {
       console.error("Error creating board:", error)
       toast({
@@ -550,6 +567,7 @@ const closePastBoards = async () => {
         in_progress: "en progreso",
         completed: "completada",
         cancelled: "cancelada",
+        migrated: "migrada",
       }
 
       toast({
@@ -565,8 +583,6 @@ const closePastBoards = async () => {
       })
     }
   }
-
-
 
   const calculateBoardProgress = (boardTasks: Task[]) => {
     if (boardTasks.length === 0) return 0
@@ -632,13 +648,8 @@ const closePastBoards = async () => {
           )}
 
           {/* Botón para migración manual (solo para admins o en desarrollo) */}
-          {(canViewAllBoards || process.env.NODE_ENV === 'development') && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={forceMigration}
-              className="text-xs"
-            >
+          {(canViewAllBoards || process.env.NODE_ENV === "development") && (
+            <Button variant="outline" size="sm" onClick={forceMigration} className="text-xs bg-transparent">
               🔄 Migrar
             </Button>
           )}
@@ -790,12 +801,12 @@ const closePastBoards = async () => {
                   {canEditBoard && (
                     <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-slate-700 hover:bg-slate-800 text-white">
+                        <Button className="bg-slate-700 hover:bg-slate-800 text-white ml-4">
                           <Plus className="h-4 w-4 mr-2" />
                           Nueva Tarea
                         </Button>
                       </DialogTrigger>
-                      
+
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Crear Nueva Tarea</DialogTitle>
@@ -889,23 +900,39 @@ const closePastBoards = async () => {
                   </div>
                 ) : (
                   tasks.map((task) => {
-                    const StatusIcon = statusIcons[task.status]
+                    const isActuallyMigrated =
+                      task.status === "cancelled" && task.migrated_from_board && task.migrated_at
+                    const effectiveStatus = isActuallyMigrated ? "migrated" : task.status
+                    const StatusIcon = statusIcons[effectiveStatus]
+                    const isMigratedFromPast = task.migrated_from_board && task.migrated_from_date
+
                     return (
                       <div key={task.id} className="task-card p-4 relative">
                         <div className={`priority-indicator priority-${task.priority}`} />
+
+                        {isMigratedFromPast && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1">
+                            <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                              <ArrowUpRight className="h-3 w-3" />
+                              Migrada
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-start justify-between ml-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
                               <div
                                 className={`p-1.5 rounded-full ${
-                                  task.status === "completed"
+                                  effectiveStatus === "completed"
                                     ? "bg-green-100 text-green-600"
-                                    : task.status === "in_progress"
+                                    : effectiveStatus === "in_progress"
                                       ? "bg-blue-100 text-blue-600"
-                                      : task.status === "pending"
+                                      : effectiveStatus === "pending"
                                         ? "bg-yellow-100 text-yellow-600"
-                                        : "bg-red-100 text-red-600"
+                                        : effectiveStatus === "migrated"
+                                          ? "bg-purple-100 text-purple-600"
+                                          : "bg-red-100 text-red-600"
                                 }`}
                               >
                                 <StatusIcon className="h-4 w-4" />
@@ -915,10 +942,75 @@ const closePastBoards = async () => {
                                 {task.priority === "urgent" && <Zap className="h-3 w-3" />}
                                 {task.priority}
                               </Badge>
+                              {isMigratedFromPast && (
+                                <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                                  <ArrowUpRight className="h-3 w-3" />
+                                  Migrada
+                                </div>
+                              )}
                             </div>
 
                             {task.description && (
                               <p className="text-sm text-muted-foreground mb-3 ml-10">{task.description}</p>
+                            )}
+
+                            {isActuallyMigrated && (
+                              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3 ml-10">
+                                <div className="flex items-center gap-2 text-sm text-purple-700">
+                                  <ArrowRight className="h-4 w-4" />
+                                  <span className="font-medium">Tarea migrada</span>
+                                </div>
+                                <p className="text-xs text-purple-600 mt-1">
+                                  Migrada el{" "}
+                                  {new Date(task.migrated_at!).toLocaleDateString("es-ES", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                  {task.migrated_to_date && (
+                                    <span>
+                                      {" "}
+                                      al pizarrón del{" "}
+                                      {new Date(task.migrated_to_date + "T00:00:00").toLocaleDateString("es-ES", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+
+                            {isMigratedFromPast && !isActuallyMigrated && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 ml-10">
+                                <div className="flex items-center gap-2 text-sm text-blue-700">
+                                  <ArrowUpRight className="h-4 w-4" />
+                                  <span className="font-medium">Tarea migrada</span>
+                                </div>
+                                <p className="text-xs text-blue-600 mt-1">
+                                  Migrada desde el{" "}
+                                  {new Date(task.migrated_from_date + "T00:00:00").toLocaleDateString("es-ES", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                  {task.migrated_at && (
+                                    <span>
+                                      {" "}
+                                      el{" "}
+                                      {new Date(task.migrated_at).toLocaleDateString("es-ES", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
                             )}
 
                             <div className="flex items-center gap-4 text-xs text-muted-foreground ml-10">
@@ -943,7 +1035,7 @@ const closePastBoards = async () => {
                             </div>
                           </div>
 
-                          {canEditBoard && (
+                          {!isActuallyMigrated && (
                             <div className="flex gap-2">
                               {task.status !== "completed" && (
                                 <Button
@@ -971,12 +1063,13 @@ const closePastBoards = async () => {
                         </div>
 
                         <div className="mt-3 ml-2">
-                          <Badge className={`status-badge status-${task.status}`}>
+                          <Badge className={`status-badge status-${effectiveStatus}`}>
                             <StatusIcon className="h-3 w-3" />
-                            {task.status === "pending" && "Pendiente"}
-                            {task.status === "in_progress" && "En Progreso"}
-                            {task.status === "completed" && "Completada"}
-                            {task.status === "cancelled" && "Cancelada"}
+                            {effectiveStatus === "pending" && "Pendiente"}
+                            {effectiveStatus === "in_progress" && "En Progreso"}
+                            {effectiveStatus === "completed" && "Completada"}
+                            {effectiveStatus === "cancelled" && "Cancelada"}
+                            {effectiveStatus === "migrated" && "Migrada"}
                           </Badge>
                         </div>
                       </div>

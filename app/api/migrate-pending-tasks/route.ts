@@ -15,13 +15,13 @@ function getPeruDate() {
 export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Starting automatic task migration...")
-    
+
     const currentDate = getPeruDate()
     console.log("[v0] Current Peru date:", currentDate)
 
     // STEP 1: Debug - First let's see all tasks and boards to understand the data structure
     console.log("[v0] === DEBUGGING QUERY STEP BY STEP ===")
-    
+
     // Check all tasks with their board info
     const { data: allTasksDebug, error: debugError } = await supabaseAdmin
       .from("tasks")
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         title,
         status,
         created_at,
-        task_boards!inner (
+        task_boards!tasks_board_id_fkey (
           id,
           board_date,
           user_id,
@@ -45,42 +45,19 @@ export async function POST(request: NextRequest) {
       console.error("[v0] Debug query error:", debugError)
     } else {
       console.log(`[v0] Found ${allTasksDebug?.length || 0} pending/in_progress tasks total:`)
-      allTasksDebug?.forEach(task => {
-        console.log(`[v0] Task: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status}`)
+      allTasksDebug?.forEach((task) => {
+        if (task.task_boards) {
+          console.log(
+            `[v0] Task: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status}`,
+          )
+        } else {
+          console.log(`[v0] Task: "${task.title}" - Status: ${task.status} - Board: NULL`)
+        }
       })
     }
 
-    // Check specifically for tasks from boards with date < currentDate
-    const { data: tasksFromPastBoards, error: pastBoardsError } = await supabaseAdmin
-      .from("tasks")
-      .select(`
-        id,
-        title,
-        status,
-        created_at,
-        task_boards!inner (
-          id,
-          board_date,
-          user_id,
-          company_id,
-          status,
-          title
-        )
-      `)
-      .in("status", ["pending", "in_progress"])
-      .lt("task_boards.board_date", currentDate)
-
-    if (pastBoardsError) {
-      console.error("[v0] Past boards query error:", pastBoardsError)
-    } else {
-      console.log(`[v0] Found ${tasksFromPastBoards?.length || 0} pending/in_progress tasks from past boards:`)
-      tasksFromPastBoards?.forEach(task => {
-        console.log(`[v0] Past Task: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status}`)
-      })
-    }
-
-    // Now the actual migration query with detailed logging
-    const { data: tasksToMigrate, error: tasksError } = await supabaseAdmin
+    // First get all pending/in_progress tasks, then filter in memory
+    const { data: allPendingTasks, error: allTasksError } = await supabaseAdmin
       .from("tasks")
       .select(`
         id,
@@ -92,7 +69,9 @@ export async function POST(request: NextRequest) {
         created_by,
         assigned_by,
         status,
-        task_boards!inner (
+        created_at,
+        board_id,
+        task_boards!tasks_board_id_fkey (
           id,
           board_date,
           user_id,
@@ -102,21 +81,34 @@ export async function POST(request: NextRequest) {
         )
       `)
       .in("status", ["pending", "in_progress"])
-      .lt("task_boards.board_date", currentDate)
+
+    if (allTasksError) {
+      console.error("[v0] All tasks query error:", allTasksError)
+      throw allTasksError
+    }
+
+    const tasksFromPastBoards =
+      allPendingTasks?.filter((task) => task.task_boards && task.task_boards.board_date < currentDate) || []
+
+    console.log(`[v0] Found ${tasksFromPastBoards.length} pending/in_progress tasks from past boards:`)
+    tasksFromPastBoards.forEach((task) => {
+      console.log(
+        `[v0] Past Task: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status}`,
+      )
+    })
+
+    const tasksToMigrate = tasksFromPastBoards
 
     console.log("[v0] Migration query details:")
     console.log("- Looking for tasks with status: pending, in_progress")
     console.log("- From boards with date <", currentDate)
     console.log("- Any board status (removed the closed filter temporarily)")
 
-    if (tasksError) {
-      console.error("[v0] Error finding tasks to migrate:", tasksError)
-      throw tasksError
-    }
-
-    console.log(`[v0] Migration query found ${tasksToMigrate?.length || 0} tasks to migrate:`)
-    tasksToMigrate?.forEach(task => {
-      console.log(`[v0] Migrate: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status} - User: ${task.task_boards.user_id}`)
+    console.log(`[v0] Migration query found ${tasksToMigrate.length} tasks to migrate:`)
+    tasksToMigrate.forEach((task) => {
+      console.log(
+        `[v0] Migrate: "${task.title}" - Status: ${task.status} - Board Date: ${task.task_boards.board_date} - Board Status: ${task.task_boards.status} - User: ${task.task_boards.user_id} - Created By: ${task.created_by}`,
+      )
     })
 
     if (!tasksToMigrate || tasksToMigrate.length === 0) {
@@ -131,15 +123,15 @@ export async function POST(request: NextRequest) {
           debug: {
             currentDate,
             totalPendingTasks: allTasksDebug?.length || 0,
-            tasksFromPastBoards: tasksFromPastBoards?.length || 0
-          }
+            tasksFromPastBoards: tasksFromPastBoards.length,
+          },
         },
       })
     }
 
     // Continue with migration logic...
     const userTasks = new Map<string, any[]>()
-    tasksToMigrate.forEach(task => {
+    tasksToMigrate.forEach((task) => {
       const userId = task.task_boards.user_id
       if (!userTasks.has(userId)) {
         userTasks.set(userId, [])
@@ -157,7 +149,7 @@ export async function POST(request: NextRequest) {
     for (const [userId, userTasksList] of userTasks) {
       try {
         console.log(`[v0] Processing ${userTasksList.length} tasks for user ${userId}`)
-        
+
         const companyId = userTasksList[0].task_boards.company_id
 
         // Check if user already has a board for today
@@ -169,7 +161,7 @@ export async function POST(request: NextRequest) {
           .eq("status", "active")
           .single()
 
-        if (boardCheckError && boardCheckError.code !== 'PGRST116') {
+        if (boardCheckError && boardCheckError.code !== "PGRST116") {
           console.error(`[v0] Error checking existing board for user ${userId}:`, boardCheckError)
           continue
         }
@@ -181,10 +173,10 @@ export async function POST(request: NextRequest) {
           targetBoardId = existingBoard.id
         } else {
           // Create new board for today
-          const boardTitle = `Tareas del ${new Date(currentDate + 'T00:00:00').toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit', 
-            year: 'numeric'
+          const boardTitle = `Tareas del ${new Date(currentDate + "T00:00:00").toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
           })}`
 
           console.log(`[v0] Creating new board with title: "${boardTitle}"`)
@@ -234,31 +226,40 @@ export async function POST(request: NextRequest) {
           assigned_by: task.assigned_by,
           status: task.status, // Keep original status (pending or in_progress)
           position: startPosition + index,
+          migrated_from_board: task.task_boards.id,
+          migrated_from_date: task.task_boards.board_date,
+          migrated_at: new Date().toISOString(),
         }))
 
         console.log(`[v0] Inserting ${tasksToInsert.length} tasks:`)
         tasksToInsert.forEach((task, index) => {
-          console.log(`[v0] - Task ${index + 1}: "${task.title}" - Status: ${task.status} - Position: ${task.position}`)
+          console.log(
+            `[v0] - Task ${index + 1}: "${task.title}" - Status: ${task.status} - Position: ${task.position} - Created By: ${task.created_by}`,
+          )
         })
 
-        const { error: insertError } = await supabaseAdmin
-          .from("tasks")
-          .insert(tasksToInsert)
+        const { error: insertError } = await supabaseAdmin.from("tasks").insert(tasksToInsert)
 
         if (insertError) {
           console.error(`[v0] Error inserting migrated tasks for user ${userId}:`, insertError)
           continue
         }
 
-        // Mark original tasks as cancelled
-        const originalTaskIds = userTasksList.map(task => task.id)
-        console.log(`[v0] Marking ${originalTaskIds.length} original tasks as cancelled`)
+        // Mark original tasks as migrated
+        const originalTaskIds = userTasksList.map((task) => task.id)
+        console.log(`[v0] Marking ${originalTaskIds.length} original tasks as migrated`)
 
         const { error: updateError } = await supabaseAdmin
           .from("tasks")
-          .update({ 
-            status: "cancelled",
-            updated_at: new Date().toISOString()
+          .update({
+            status: "migrated", // Now using proper 'migrated' status after CHECK constraint update
+            migrated_from_board: userTasksList[0].task_boards.id,
+            migrated_from_date: userTasksList[0].task_boards.board_date,
+            migrated_to_board: targetBoardId,
+            migrated_to_date: currentDate,
+            migrated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            updated_by: userTasksList[0].created_by, // Set updated_by to prevent task_history trigger error
           })
           .in("id", originalTaskIds)
 
@@ -269,9 +270,8 @@ export async function POST(request: NextRequest) {
 
         totalMigratedTasks += userTasksList.length
         affectedUsers.push(userId)
-        
-        console.log(`[v0] Successfully migrated ${userTasksList.length} tasks for user ${userId}`)
 
+        console.log(`[v0] Successfully migrated ${userTasksList.length} tasks for user ${userId}`)
       } catch (userError) {
         console.error(`[v0] Error processing tasks for user ${userId}:`, userError)
         continue
@@ -291,7 +291,6 @@ export async function POST(request: NextRequest) {
       success: true,
       data: result,
     })
-
   } catch (error: any) {
     console.error("[v0] Unexpected error in task migration:", error)
     return NextResponse.json(
@@ -308,18 +307,23 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const currentDate = getPeruDate()
-    
+
     console.log("[v0] Checking pending tasks for migration. Current Peru date:", currentDate)
 
-    // Find tasks that need migration - removed the board status filter to debug
-    const { data: pendingTasks, error } = await supabaseAdmin
+    const { data: allPendingTasks, error } = await supabaseAdmin
       .from("tasks")
       .select(`
         id,
         title,
+        description,
+        priority,
+        estimated_time,
+        due_time,
+        created_by,
+        assigned_by,
         status,
         created_at,
-        task_boards!inner (
+        task_boards!tasks_board_id_fkey (
           id,
           board_date,
           status,
@@ -331,20 +335,22 @@ export async function GET() {
         )
       `)
       .in("status", ["pending", "in_progress"])
-      .lt("task_boards.board_date", currentDate)
 
     if (error) {
       console.error("[v0] Error checking pending tasks:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log("[v0] Found pending tasks for migration:", pendingTasks?.length || 0)
+    const pendingTasks =
+      allPendingTasks?.filter((task) => task.task_boards && task.task_boards.board_date < currentDate) || []
+
+    console.log("[v0] Found pending tasks for migration:", pendingTasks.length)
 
     return NextResponse.json({
       currentPeruTime: new Date().toLocaleString("en-US", { timeZone: "America/Lima" }),
       currentDate: currentDate,
-      pendingMigrations: pendingTasks?.length || 0,
-      tasks: pendingTasks?.map((task) => ({
+      pendingMigrations: pendingTasks.length,
+      tasks: pendingTasks.map((task) => ({
         id: task.id,
         title: task.title,
         status: task.status,
@@ -352,10 +358,9 @@ export async function GET() {
         boardStatus: task.task_boards.status,
         userName: task.task_boards.profiles?.full_name,
         daysOverdue: Math.floor(
-          (new Date(currentDate).getTime() - new Date(task.task_boards.board_date).getTime()) / 
-          (1000 * 60 * 60 * 24)
+          (new Date(currentDate).getTime() - new Date(task.task_boards.board_date).getTime()) / (1000 * 60 * 60 * 24),
         ),
-      })) || [],
+      })),
     })
   } catch (error: any) {
     console.error("[v0] Error in migration status check:", error)
