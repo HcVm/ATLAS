@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
-import { Sun, User, RefreshCw, Building2 } from "lucide-react"
+import { Cog, User, RefreshCw, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -177,12 +177,6 @@ export default function DashboardLayoutClient({
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none text-foreground">{user.full_name}</p>
                       <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                      <p className="text-xs leading-none text-muted-foreground">Rol: {user.role}</p>
-                      {user.company_id && (
-                        <p className="text-xs leading-none text-muted-foreground">
-                          Empresa: {user.companies?.name || "Sin asignar"}
-                        </p>
-                      )}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -194,34 +188,9 @@ export default function DashboardLayoutClient({
                     onClick={() => router.push("/settings")}
                     className="text-foreground hover:bg-accent"
                   >
-                    <Sun className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Cog className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>Configuración</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="text-foreground hover:bg-accent"
-                  >
-                    {refreshing ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 text-muted-foreground animate-spin" />
-                        <span>Actualizando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <span>Actualizar Sesión</span>
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  {user.role !== "admin" && (
-                    <DropdownMenuItem
-                      onClick={() => router.push("/user-debug")}
-                      className="text-foreground hover:bg-accent"
-                    >
-                      <span>Diagnóstico</span>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-foreground hover:bg-accent">
                     <span>Cerrar sesión</span>
