@@ -1042,7 +1042,7 @@ export default function TasksPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => updateTaskStatus(task.id, "completed")}
-                                  className="hover:bg-green-50 hover:border-green-200 hover:text-green-700"
+                                  className="hover:bg-green-50 hover:border-green-200 hover:text-green-700 mt-6"
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
@@ -1053,7 +1053,7 @@ export default function TasksPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => updateTaskStatus(task.id, "in_progress")}
-                                  className="hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700"
+                                  className="hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 mt-6"
                                 >
                                   <Clock className="h-4 w-4" />
                                 </Button>
