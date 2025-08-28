@@ -107,7 +107,7 @@ export default function SupervisionPage() {
               role, 
               company_id
             ),
-            tasks(
+            tasks!tasks_board_id_fkey(
               id,
               title,
               description,

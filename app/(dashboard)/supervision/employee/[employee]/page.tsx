@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle, ArrowLeft, Calendar, Target, Timer, BarChart3 } from "lucide-react"
+import { CheckCircle, ArrowLeft, Calendar, Target, Timer, BarChart3, ChevronDown, ChevronUp } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { TaskAssignmentModal } from "@/components/task-assignment-modal"
@@ -76,6 +76,7 @@ export default function EmployeeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false)
+  const [expandedBoards, setExpandedBoards] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     console.log("[v0] useEffect triggered with:", { employeeId, selectedCompany, dateRange })
@@ -175,7 +176,7 @@ export default function EmployeeDetailPage() {
           board_date,
           status,
           created_at,
-          tasks (
+          tasks!tasks_board_id_fkey (
             id,
             title,
             description,
@@ -340,6 +341,16 @@ export default function EmployeeDetailPage() {
     loadEmployeeData()
   }
 
+  const toggleBoardExpansion = (boardId: string) => {
+    const newExpanded = new Set(expandedBoards)
+    if (newExpanded.has(boardId)) {
+      newExpanded.delete(boardId)
+    } else {
+      newExpanded.add(boardId)
+    }
+    setExpandedBoards(newExpanded)
+  }
+
   if (error) {
     return (
       <div className="container mx-auto p-6">
@@ -484,15 +495,29 @@ export default function EmployeeDetailPage() {
               <Card key={board.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{board.title}</CardTitle>
-                      <CardDescription>
-                        {format(new Date(board.board_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-                      </CardDescription>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">
+                        Tareas del {format(new Date(board.board_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                      </CardTitle>
+                      <CardDescription>{board.title}</CardDescription>
                     </div>
-                    <Badge variant={board.status === "active" ? "default" : "secondary"}>
-                      {board.status === "active" ? "Activo" : "Cerrado"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={board.status === "active" ? "default" : "secondary"}>
+                        {board.status === "active" ? "Activo" : "Cerrado"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleBoardExpansion(board.id)}
+                        className="p-1 h-8 w-8"
+                      >
+                        {expandedBoards.has(board.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -515,40 +540,50 @@ export default function EmployeeDetailPage() {
                     </div>
                   </div>
 
-                  {board.tasks && board.tasks.length > 0 && (
+                  {expandedBoards.has(board.id) && board.tasks && board.tasks.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-700">Tareas recientes:</h4>
-                      {board.tasks.slice(0, 3).map((task) => (
+                      <h4 className="text-sm font-medium text-gray-700">Tareas:</h4>
+                      {board.tasks.map((task) => (
                         <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
-                            <Badge className={`text-xs mt-1 ${getStatusColor(task.status)}`}>
-                              {task.status === "pending"
-                                ? "Pendiente"
-                                : task.status === "in_progress"
-                                  ? "En progreso"
-                                  : "Completada"}
-                            </Badge>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className={`text-xs ${getStatusColor(task.status)}`}>
+                                {task.status === "pending"
+                                  ? "Pendiente"
+                                  : task.status === "in_progress"
+                                    ? "En progreso"
+                                    : "Completada"}
+                              </Badge>
+                              {task.priority && (
+                                <Badge className={`text-xs ${getPriorityColor(task.priority)}`}>
+                                  {task.priority === "urgent"
+                                    ? "Urgente"
+                                    : task.priority === "high"
+                                      ? "Alta"
+                                      : task.priority === "medium"
+                                        ? "Media"
+                                        : "Baja"}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
-                      {board.tasks.length > 3 && (
-                        <p className="text-xs text-gray-500">+{board.tasks.length - 3} tareas más</p>
-                      )}
+                    </div>
+                  )}
+
+                  {filteredBoards.length === 0 && (
+                    <div className="text-center py-12">
+                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron pizarrones</h3>
+                      <p className="text-gray-600">No hay pizarrones para el período seleccionado.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {filteredBoards.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron pizarrones</h3>
-              <p className="text-gray-600">No hay pizarrones para el período seleccionado.</p>
-            </div>
-          )}
         </TabsContent>
       </Tabs>
 
