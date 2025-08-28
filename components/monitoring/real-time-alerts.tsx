@@ -73,7 +73,7 @@ export function RealTimeAlerts({ refreshTrigger, onAlertClick }: RealTimeAlertsP
           board_date,
           created_at,
           status,
-          tasks(
+          tasks!tasks_board_id_fkey(
             id,
             title,
             status,

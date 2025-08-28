@@ -910,15 +910,6 @@ export default function TasksPage() {
                       <div key={task.id} className="task-card p-4 relative">
                         <div className={`priority-indicator priority-${task.priority}`} />
 
-                        {isMigratedFromPast && (
-                          <div className="absolute top-2 right-2 flex items-center gap-1">
-                            <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                              <ArrowUpRight className="h-3 w-3" />
-                              Migrada
-                            </div>
-                          </div>
-                        )}
-
                         <div className="flex items-start justify-between ml-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">

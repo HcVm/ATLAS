@@ -129,7 +129,7 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
               role, 
               company_id
             ),
-            tasks(
+            tasks!tasks_board_id_fkey(
               id,
               title,
               description,
@@ -785,11 +785,15 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
               >
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {new Date(day.date).toLocaleDateString("es-PE", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    })}
+                    {(() => {
+                      const [year, month, dayNum] = day.date.split("-").map(Number)
+                      const date = new Date(year, month - 1, dayNum)
+                      return date.toLocaleDateString("es-PE", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })
+                    })()}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {day.tasksCompleted}/{day.tasksCreated} tareas completadas • {day.employeesActive} empleados activos
