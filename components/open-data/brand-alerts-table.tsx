@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Edit, CheckCircle, XCircle, ExternalLink } from "lucide-react"
+import { Search, Edit, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
@@ -28,6 +28,9 @@ interface BrandAlert {
   brand_name: string
   status: "pending" | "attended" | "rejected"
   notes?: string
+  ruc_proveedor?: string
+  razon_social_proveedor?: string
+  estado_orden_electronica?: string
   created_at: string
   updated_at: string
 }
@@ -192,9 +195,10 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Orden Electrónica</TableHead>
-                <TableHead>Acuerdo Marco</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Estado Orden</TableHead>
                 <TableHead>Marca</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Estado Alerta</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
@@ -203,10 +207,28 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
               {filteredAlerts.map((alert) => (
                 <TableRow key={alert.id}>
                   <TableCell className="font-mono text-sm">{alert.orden_electronica}</TableCell>
-                  <TableCell className="max-w-xs truncate" title={alert.acuerdo_marco}>
-                    {alert.acuerdo_marco.length > 50
-                      ? `${alert.acuerdo_marco.substring(0, 50)}...`
-                      : alert.acuerdo_marco}
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="font-medium text-sm">
+                        {alert.razon_social_proveedor || "N/A"}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        RUC: {alert.ruc_proveedor || "N/A"}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        alert.estado_orden_electronica === "ACEPTADA" ? "default" :
+                        alert.estado_orden_electronica === "PENDIENTE" ? "secondary" :
+                        alert.estado_orden_electronica === "RECHAZADA" ? "destructive" :
+                        "outline"
+                      }
+                      className="text-xs"
+                    >
+                      {alert.estado_orden_electronica || "N/A"}
+                    </Badge>
                   </TableCell>
                   <TableCell>{getBrandBadge(alert.brand_name)}</TableCell>
                   <TableCell>{getStatusBadge(alert.status)}</TableCell>
@@ -239,24 +261,55 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Editar Alerta</DialogTitle>
                             <DialogDescription>Actualiza el estado y notas de la alerta de marca</DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
-                            <div>
-                              <label className="text-sm font-medium">Orden Electrónica</label>
-                              <div className="font-mono text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
-                                {editingAlert?.orden_electronica}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium">Orden Electrónica</label>
+                                <div className="font-mono text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                                  {editingAlert?.orden_electronica}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Marca</label>
+                                <div className="p-2">{editingAlert && getBrandBadge(editingAlert.brand_name)}</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium">Proveedor</label>
+                                <div className="text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                                  {editingAlert?.razon_social_proveedor || "N/A"}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">RUC</label>
+                                <div className="font-mono text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                                  {editingAlert?.ruc_proveedor || "N/A"}
+                                </div>
                               </div>
                             </div>
                             <div>
-                              <label className="text-sm font-medium">Marca</label>
-                              <div className="p-2">{editingAlert && getBrandBadge(editingAlert.brand_name)}</div>
+                              <label className="text-sm font-medium">Estado de la Orden</label>
+                              <div className="p-2">
+                                <Badge 
+                                  variant={
+                                    editingAlert?.estado_orden_electronica === "ACEPTADA" ? "default" :
+                                    editingAlert?.estado_orden_electronica === "PENDIENTE" ? "secondary" :
+                                    editingAlert?.estado_orden_electronica === "RECHAZADA" ? "destructive" :
+                                    "outline"
+                                  }
+                                >
+                                  {editingAlert?.estado_orden_electronica || "N/A"}
+                                </Badge>
+                              </div>
                             </div>
                             <div>
-                              <label className="text-sm font-medium">Estado</label>
+                              <label className="text-sm font-medium">Estado de la Alerta</label>
                               <Select value={editStatus} onValueChange={setEditStatus}>
                                 <SelectTrigger>
                                   <SelectValue />

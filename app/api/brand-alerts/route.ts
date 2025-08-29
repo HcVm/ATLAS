@@ -10,6 +10,9 @@ interface BrandAlert {
   brand_name: string
   status: "pending" | "attended" | "rejected"
   notes?: string | null
+  ruc_proveedor?: string | null
+  razon_social_proveedor?: string | null
+  estado_orden_electronica?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -20,6 +23,9 @@ interface OpenDataEntry {
   codigo_acuerdo_marco?: string
   acuerdo_marco?: string
   marca_ficha_producto?: string // Only this column will be used for brand detection
+  ruc_proveedor?: string
+  razon_social_proveedor?: string
+  estado_orden_electronica?: string
 }
 
 // Define las marcas base y sus patrones de búsqueda
@@ -46,12 +52,6 @@ BASE_MONITORED_BRANDS.forEach((brand) => {
   ALL_BRAND_SEARCH_PATTERNS.set(`marca: ${brand.toLowerCase()}`, brand)
   ALL_BRAND_SEARCH_PATTERNS.set(`marca:${brand.toLowerCase()}`, brand)
   ALL_BRAND_SEARCH_PATTERNS.set(`marca ${brand.toLowerCase()}`, brand)
-
-  // Patrón con primera letra mayúscula
-  const titleCase = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase()
-  ALL_BRAND_SEARCH_PATTERNS.set(`Marca: ${titleCase}`, brand)
-  ALL_BRAND_SEARCH_PATTERNS.set(`Marca:${titleCase}`, brand)
-  ALL_BRAND_SEARCH_PATTERNS.set(`Marca ${titleCase}`, brand)
 
   // Patrones adicionales para casos específicos
   if (brand === "HOPE LIFE") {
@@ -110,7 +110,7 @@ async function ensureBrandAlertsPopulated(supabase: any) {
       // Buscar en TODOS los acuerdos marco, no solo uno específico
       const { data: openDataEntriesBatch, error: openDataError } = await supabase
         .from("open_data_entries")
-        .select("id, orden_electronica, codigo_acuerdo_marco, acuerdo_marco, marca_ficha_producto")
+        .select("id, orden_electronica, codigo_acuerdo_marco, acuerdo_marco, marca_ficha_producto, ruc_proveedor, razon_social_proveedor, estado_orden_electronica")
         .not("marca_ficha_producto", "is", null) // Solo registros que tengan marca_ficha_producto
         .range(offset, offset + BATCH_SIZE - 1) // Fetch BATCH_SIZE records
 
@@ -165,12 +165,15 @@ async function ensureBrandAlertsPopulated(supabase: any) {
               brand_name: detectedBrand, // Usa el nombre de marca base
               status: "pending", // New alerts are always pending
               notes: `Detectado automáticamente en marca_ficha_producto: "${entry.marca_ficha_producto || "N/A"}" usando patrón: "${matchedPattern}"`,
+              ruc_proveedor: entry.ruc_proveedor || null,
+              razon_social_proveedor: entry.razon_social_proveedor || null,
+              estado_orden_electronica: entry.estado_orden_electronica || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
             existingAlertsSet.add(uniqueKey) // Add to set to prevent duplicates within the same batch
             console.log(
-              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}`,
+              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}. Proveedor: ${entry.razon_social_proveedor || 'N/A'}`,
             )
           }
         }
