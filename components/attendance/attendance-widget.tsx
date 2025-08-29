@@ -66,12 +66,10 @@ export function AttendanceWidget() {
 
     if (currentTotalMinutes < earlyCheckinMinutes) {
       return "too_early" // Before 7:50 AM
-    } else if (currentTotalMinutes <= workStartMinutes) {
-      return "normal" // Between 7:50 AM and 8:00 AM
     } else if (currentTotalMinutes <= lateThresholdMinutes) {
-      return "late" // Between 8:00 AM and 8:30 AM
+      return "normal" // Between 7:50 AM and 8:30 AM
     } else {
-      return "too_late" // After 8:30 AM
+      return "late" // After 8:30 AM
     }
   }
 
@@ -401,18 +399,6 @@ export function AttendanceWidget() {
         )
 
       case "late":
-        return (
-          <Button
-            onClick={handleCheckIn}
-            disabled={actionLoading}
-            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-          >
-            <AlertCircle className="h-4 w-4 mr-2" />
-            {actionLoading ? "Marcando..." : "Marcar Entrada (Tardanza)"}
-          </Button>
-        )
-
-      case "too_late":
         return (
           <div className="space-y-2">
             <Button
