@@ -34,6 +34,8 @@ interface AttendanceRecord {
   attendance_date: string
   check_in_time: string | null
   check_out_time: string | null
+  lunch_start_time: string | null
+  lunch_end_time: string | null
   is_late: boolean
   late_minutes: number
   worked_hours: number
@@ -57,6 +59,10 @@ interface AttendanceStats {
   absentToday: number
   averageWorkHours: number
   punctualityRate: number
+  lunchComplianceRate: number
+  averageLunchDuration: number
+  onTimeLunchStart: number
+  onTimeLunchReturn: number
 }
 
 interface DepartmentStats {
@@ -82,6 +88,10 @@ export default function AttendancePage() {
     absentToday: 0,
     averageWorkHours: 0,
     punctualityRate: 0,
+    lunchComplianceRate: 0,
+    averageLunchDuration: 0,
+    onTimeLunchStart: 0,
+    onTimeLunchReturn: 0,
   })
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -212,6 +222,46 @@ export default function AttendancePage() {
     const punctualRecords = records.filter((record) => record.check_in_time && !record.is_late)
     const punctualityRate = records.length > 0 ? (punctualRecords.length / records.length) * 100 : 0
 
+    const recordsWithLunch = records.filter((record) => record.lunch_start_time && record.lunch_end_time)
+
+    // Calculate lunch compliance (start around 1:00 PM, return around 2:00 PM)
+    let onTimeLunchStart = 0
+    let onTimeLunchReturn = 0
+    let totalLunchDuration = 0
+
+    recordsWithLunch.forEach((record) => {
+      if (record.lunch_start_time && record.lunch_end_time) {
+        try {
+          const lunchStart = parseISO(record.lunch_start_time)
+          const lunchEnd = parseISO(record.lunch_end_time)
+
+          // Check if lunch started between 12:58 PM and 1:15 PM (reasonable window)
+          const startHour = lunchStart.getHours()
+          const startMinute = lunchStart.getMinutes()
+          if ((startHour === 12 && startMinute >= 58) || (startHour === 13 && startMinute <= 15)) {
+            onTimeLunchStart++
+          }
+
+          // Check if lunch ended between 1:45 PM and 2:15 PM (reasonable window)
+          const endHour = lunchEnd.getHours()
+          const endMinute = lunchEnd.getMinutes()
+          if ((endHour === 13 && endMinute >= 45) || (endHour === 14 && endMinute <= 15)) {
+            onTimeLunchReturn++
+          }
+
+          // Calculate lunch duration in minutes
+          const duration = (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60)
+          totalLunchDuration += duration
+        } catch (error) {
+          console.error("Error parsing lunch times:", error)
+        }
+      }
+    })
+
+    const lunchComplianceRate =
+      recordsWithLunch.length > 0 ? ((onTimeLunchStart + onTimeLunchReturn) / (recordsWithLunch.length * 2)) * 100 : 0
+    const averageLunchDuration = recordsWithLunch.length > 0 ? totalLunchDuration / recordsWithLunch.length : 0
+
     setStats({
       totalEmployees,
       presentToday,
@@ -219,6 +269,10 @@ export default function AttendancePage() {
       absentToday,
       averageWorkHours,
       punctualityRate,
+      lunchComplianceRate,
+      averageLunchDuration,
+      onTimeLunchStart,
+      onTimeLunchReturn,
     })
 
     // Calculate department stats
@@ -303,16 +357,44 @@ export default function AttendancePage() {
     }
   }
 
+  const formatLunchDuration = (record: AttendanceRecord) => {
+    if (!record.lunch_start_time || !record.lunch_end_time) return "--"
+    try {
+      const start = parseISO(record.lunch_start_time)
+      const end = parseISO(record.lunch_end_time)
+      const duration = (end.getTime() - start.getTime()) / (1000 * 60) // minutes
+      const hours = Math.floor(duration / 60)
+      const minutes = Math.floor(duration % 60)
+      return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+    } catch {
+      return "--"
+    }
+  }
+
   const exportData = () => {
     // Simple CSV export functionality
     const csvContent = [
-      ["Empleado", "Fecha", "Entrada", "Salida", "Horas Trabajadas", "Tardanza", "Departamento"].join(","),
+      [
+        "Empleado",
+        "Fecha",
+        "Entrada",
+        "Salida",
+        "Inicio Almuerzo",
+        "Regreso Almuerzo",
+        "Duración Almuerzo",
+        "Horas Trabajadas",
+        "Tardanza",
+        "Departamento",
+      ].join(","),
       ...attendanceRecords.map((record) =>
         [
           record.user_profile?.full_name || "",
           record.attendance_date,
           formatTime(record.check_in_time),
           formatTime(record.check_out_time),
+          formatTime(record.lunch_start_time),
+          formatTime(record.lunch_end_time),
+          formatLunchDuration(record),
           record.worked_hours.toFixed(2),
           record.is_late ? `${record.late_minutes} min` : "No",
           record.user_profile?.departments?.name || "",
@@ -455,6 +537,52 @@ export default function AttendancePage() {
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">{stats.punctualityRate.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">Promedio general</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Cumplimiento Almuerzo</CardTitle>
+                <Clock className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">{stats.lunchComplianceRate.toFixed(1)}%</div>
+                <p className="text-xs text-muted-foreground">Horarios apropiados</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Duración Promedio</CardTitle>
+                <Clock className="h-4 w-4 text-indigo-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-indigo-600">{Math.round(stats.averageLunchDuration)}m</div>
+                <p className="text-xs text-muted-foreground">Tiempo de almuerzo</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Salidas a Tiempo</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{stats.onTimeLunchStart}</div>
+                <p className="text-xs text-muted-foreground">Cerca de la 1:00 PM</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Regresos a Tiempo</CardTitle>
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{stats.onTimeLunchReturn}</div>
+                <p className="text-xs text-muted-foreground">Cerca de las 2:00 PM</p>
               </CardContent>
             </Card>
           </div>
@@ -636,6 +764,18 @@ export default function AttendancePage() {
                         <div className="text-sm">{formatTime(record.check_out_time)}</div>
                       </div>
                       <div className="text-center">
+                        <div className="text-sm font-medium">Almuerzo</div>
+                        <div className="text-sm">
+                          {record.lunch_start_time ? formatTime(record.lunch_start_time) : "--:--"}
+                          {" - "}
+                          {record.lunch_end_time ? formatTime(record.lunch_end_time) : "--:--"}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">Duración</div>
+                        <div className="text-sm">{formatLunchDuration(record)}</div>
+                      </div>
+                      <div className="text-center">
                         <div className="text-sm font-medium">Horas</div>
                         <div className="text-sm">{record.worked_hours.toFixed(1)}h</div>
                       </div>
@@ -643,6 +783,32 @@ export default function AttendancePage() {
                         {record.is_late && (
                           <Badge variant="destructive" className="text-xs">
                             {record.late_minutes} min tarde
+                          </Badge>
+                        )}
+                        {record.lunch_start_time && record.lunch_end_time && (
+                          <Badge variant="secondary" className="text-xs">
+                            {(() => {
+                              try {
+                                const start = parseISO(record.lunch_start_time!)
+                                const end = parseISO(record.lunch_end_time!)
+                                const startHour = start.getHours()
+                                const startMinute = start.getMinutes()
+                                const endHour = end.getHours()
+                                const endMinute = end.getMinutes()
+
+                                const onTimeStart =
+                                  (startHour === 12 && startMinute >= 58) || (startHour === 13 && startMinute <= 15)
+                                const onTimeEnd =
+                                  (endHour === 13 && endMinute >= 45) || (endHour === 14 && endMinute <= 15)
+
+                                if (onTimeStart && onTimeEnd) return "Almuerzo OK"
+                                if (onTimeStart) return "Salida OK"
+                                if (onTimeEnd) return "Regreso OK"
+                                return "Fuera de horario"
+                              } catch {
+                                return "Error"
+                              }
+                            })()}
                           </Badge>
                         )}
                         {record.check_in_location && (

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, Coffee } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useAuth } from "@/lib/auth-context"
@@ -16,6 +16,8 @@ interface TodayAttendance {
   id: string
   check_in_time: string | null
   check_out_time: string | null
+  lunch_start_time: string | null // Added lunch break fields
+  lunch_end_time: string | null
   is_late: boolean
   late_minutes: number
   worked_hours: number
@@ -48,6 +50,8 @@ export function AttendanceWidget() {
   const WORK_START_TIME = { hours: 8, minutes: 0 } // 8:00 AM
   const EARLY_CHECKIN_MINUTES = 10 // 10 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
+  const LUNCH_START_TIME = { hours: 12, minutes: 58 } // Added lunch time constants
+  const LUNCH_END_TIME = { hours: 13, minutes: 0 } // 1:00 PM
 
   const getTimeStatus = () => {
     const now = new Date()
@@ -73,48 +77,19 @@ export function AttendanceWidget() {
     }
   }
 
-  const getLocalTimeString = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const day = String(date.getDate()).padStart(2, "0")
-    const hours = String(date.getHours()).padStart(2, "0")
-    const minutes = String(date.getMinutes()).padStart(2, "0")
-    const seconds = String(date.getSeconds()).padStart(2, "0")
+  const getLunchTimeStatus = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTotalMinutes = currentHour * 60 + currentMinute
 
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-  }
+    const lunchStartMinutes = LUNCH_START_TIME.hours * 60 + LUNCH_START_TIME.minutes // 12:58 PM
+    const lunchEndMinutes = LUNCH_END_TIME.hours * 60 + LUNCH_END_TIME.minutes // 1:00 PM
 
-  const getLocalDateString = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const day = String(date.getDate()).padStart(2, "0")
-
-    return `${year}-${month}-${day}`
-  }
-
-  const fetchTodayAttendance = async () => {
-    try {
-      setLoading(true)
-
-      const today = getLocalDateString(new Date())
-
-      const { data, error } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("user_id", user?.id)
-        .eq("attendance_date", today)
-
-      if (error) {
-        console.error("Error fetching attendance:", error)
-        return
-      }
-
-      setTodayAttendance(data && data.length > 0 ? data[0] : null)
-    } catch (error) {
-      console.error("Error fetching today's attendance:", error)
-    } finally {
-      setLoading(false)
+    if (currentTotalMinutes >= lunchStartMinutes) {
+      return "lunch_available"
     }
+    return "lunch_not_available"
   }
 
   const getLocation = (): Promise<string> => {
@@ -267,6 +242,132 @@ export function AttendanceWidget() {
     }
   }
 
+  const handleLunchStart = async () => {
+    try {
+      setActionLoading(true)
+
+      if (!todayAttendance) {
+        toast.error("Debe marcar entrada antes del almuerzo")
+        return
+      }
+
+      const location = await getLocation()
+      const now = new Date()
+
+      const { data, error } = await supabase
+        .from("attendance")
+        .update({
+          lunch_start_time: getLocalTimeString(now),
+        })
+        .eq("id", todayAttendance.id)
+        .select()
+
+      if (error) {
+        console.error("Error starting lunch:", error)
+        toast.error("Error al marcar inicio de almuerzo: " + error.message)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        toast.error("No se pudo actualizar el registro")
+        return
+      }
+
+      setTodayAttendance(data[0])
+      toast.success("Inicio de almuerzo marcado correctamente")
+    } catch (error) {
+      console.error("Error starting lunch:", error)
+      toast.error("Error al marcar inicio de almuerzo")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleLunchEnd = async () => {
+    try {
+      setActionLoading(true)
+
+      if (!todayAttendance) {
+        toast.error("No hay registro de almuerzo")
+        return
+      }
+
+      const location = await getLocation()
+      const now = new Date()
+
+      const { data, error } = await supabase
+        .from("attendance")
+        .update({
+          lunch_end_time: getLocalTimeString(now),
+        })
+        .eq("id", todayAttendance.id)
+        .select()
+
+      if (error) {
+        console.error("Error ending lunch:", error)
+        toast.error("Error al marcar fin de almuerzo: " + error.message)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        toast.error("No se pudo actualizar el registro")
+        return
+      }
+
+      setTodayAttendance(data[0])
+      toast.success("Regreso de almuerzo marcado correctamente")
+    } catch (error) {
+      console.error("Error ending lunch:", error)
+      toast.error("Error al marcar fin de almuerzo")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const fetchTodayAttendance = async () => {
+    try {
+      setLoading(true)
+
+      const today = getLocalDateString(new Date())
+
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("user_id", user?.id)
+        .eq("attendance_date", today)
+
+      if (error) {
+        console.error("Error fetching attendance:", error)
+        return
+      }
+
+      setTodayAttendance(data && data.length > 0 ? data[0] : null)
+    } catch (error) {
+      console.error("Error fetching today's attendance:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getLocalTimeString = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    const seconds = String(date.getSeconds()).padStart(2, "0")
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+
+    return `${year}-${month}-${day}`
+  }
+
   const formatTime = (timeString: string | null) => {
     if (!timeString) return "--:--"
     return format(new Date(timeString), "HH:mm", { locale: es })
@@ -285,6 +386,17 @@ export function AttendanceWidget() {
       return (
         <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
           Sin entrada
+        </Badge>
+      )
+    }
+
+    if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800"
+        >
+          En almuerzo
         </Badge>
       )
     }
@@ -347,23 +459,89 @@ export function AttendanceWidget() {
     }
   }
 
+  const renderLunchButtons = () => {
+    if (!todayAttendance?.check_in_time || todayAttendance?.check_out_time) {
+      return null
+    }
+
+    const lunchStatus = getLunchTimeStatus()
+
+    // If lunch hasn't started yet
+    if (!todayAttendance.lunch_start_time) {
+      if (lunchStatus === "lunch_not_available") {
+        return (
+          <div className="space-y-2">
+            <Button disabled className="flex-1 w-full bg-slate-400 text-white cursor-not-allowed">
+              <Coffee className="h-4 w-4 mr-2" />
+              Marcar Almuerzo (Disponible a las 12:58)
+            </Button>
+          </div>
+        )
+      } else {
+        return (
+          <Button
+            onClick={handleLunchStart}
+            disabled={actionLoading}
+            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <Coffee className="h-4 w-4 mr-2" />
+            {actionLoading ? "Marcando..." : "Iniciar Almuerzo"}
+          </Button>
+        )
+      }
+    }
+
+    // If lunch has started but not ended
+    if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
+      return (
+        <Button
+          onClick={handleLunchEnd}
+          disabled={actionLoading}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+        >
+          <Coffee className="h-4 w-4 mr-2" />
+          {actionLoading ? "Marcando..." : "Regresar de Almuerzo"}
+        </Button>
+      )
+    }
+
+    return null
+  }
+
   const renderCheckInButtons = () => {
     const timeStatus = getTimeStatus()
     const restrictionMessage = getTimeRestrictionMessage()
 
-    // If already checked in, show check out button
+    // If already checked in, show check out button or lunch buttons
     if (todayAttendance?.check_in_time) {
       if (!todayAttendance?.check_out_time) {
-        return (
-          <Button
-            onClick={handleCheckOut}
-            disabled={actionLoading}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-          >
-            <XCircle className="h-4 w-4 mr-2" />
-            {actionLoading ? "Marcando..." : "Marcar Salida"}
-          </Button>
-        )
+        const lunchButtons = renderLunchButtons()
+        if (lunchButtons) {
+          return (
+            <div className="space-y-2">
+              {lunchButtons}
+              <Button
+                onClick={handleCheckOut}
+                disabled={actionLoading}
+                className="flex-1 w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                {actionLoading ? "Marcando..." : "Marcar Salida"}
+              </Button>
+            </div>
+          )
+        } else {
+          return (
+            <Button
+              onClick={handleCheckOut}
+              disabled={actionLoading}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              {actionLoading ? "Marcando..." : "Marcar Salida"}
+            </Button>
+          )
+        }
       } else {
         return (
           <div className="flex-1 text-center py-2 text-sm text-slate-600 dark:text-slate-400">
@@ -373,7 +551,7 @@ export function AttendanceWidget() {
       }
     }
 
-    // Handle different time statuses for check-in
+    // Existing code for check-in buttons
     switch (timeStatus) {
       case "too_early":
         return (
@@ -490,6 +668,30 @@ export function AttendanceWidget() {
                 </div>
               )}
             </div>
+
+            {(todayAttendance.lunch_start_time || todayAttendance.lunch_end_time) && (
+              <>
+                <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-800/50">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Coffee className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    <span className="font-medium text-slate-700 dark:text-slate-300">Almuerzo</span>
+                  </div>
+                  <div className="font-mono text-slate-800 dark:text-slate-200">
+                    {formatTime(todayAttendance.lunch_start_time)}
+                  </div>
+                </div>
+
+                <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-800/50">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Coffee className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="font-medium text-slate-700 dark:text-slate-300">Regreso</span>
+                  </div>
+                  <div className="font-mono text-slate-800 dark:text-slate-200">
+                    {formatTime(todayAttendance.lunch_end_time)}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
