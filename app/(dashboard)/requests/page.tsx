@@ -152,8 +152,8 @@ export default function RequestsPage() {
 
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
-      request.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (request.subject?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (request.description?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || request.status === statusFilter
     const matchesType = typeFilter === "all" || request.request_type === typeFilter
 

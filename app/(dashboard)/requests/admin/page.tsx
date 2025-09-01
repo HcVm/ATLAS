@@ -125,22 +125,45 @@ export default function AdminRequestsPage() {
   const fetchRequests = async () => {
     try {
       const { data, error } = await supabase
-        .from("requests_with_details")
-        .select("*")
+        .from("employee_requests")
+        .select(`
+          *,
+          profiles!employee_requests_user_id_fkey(full_name, email),
+          departments!employee_requests_department_id_fkey(name),
+          companies!employee_requests_company_id_fkey(name),
+          reviewer:profiles!employee_requests_reviewed_by_fkey(full_name)
+        `)
         .order("created_at", { ascending: false })
 
       if (error) throw error
-      setRequests(data || [])
+
+      const transformedData =
+        data?.map((request) => ({
+          ...request,
+          requester_name: request.profiles?.full_name || "Usuario Desconocido",
+          requester_email: request.profiles?.email || "",
+          department_name: request.departments?.name || "Sin Departamento",
+          company_name: request.companies?.name || "Sin Empresa",
+          reviewer_name: request.reviewer?.full_name || null,
+          is_expired: new Date(request.expires_at) < new Date(),
+        })) || []
+
+      setRequests(transformedData)
     } catch (error) {
       console.error("Error fetching requests:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from("employee_requests")
-        .select("status, request_type, department_id, departments(name)")
+      const { data, error } = await supabase.from("employee_requests").select(`
+          status, 
+          request_type, 
+          department_id, 
+          departments!employee_requests_department_id_fkey(name)
+        `)
 
       if (error) throw error
 
@@ -154,12 +177,10 @@ export default function AdminRequestsPage() {
         by_department: {},
       }
 
-      // Agrupar por tipo
       data?.forEach((request) => {
         stats.by_type[request.request_type] = (stats.by_type[request.request_type] || 0) + 1
       })
 
-      // Agrupar por departamento
       data?.forEach((request) => {
         const deptName = request.departments?.name || "Sin Departamento"
         stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1
@@ -199,7 +220,7 @@ export default function AdminRequestsPage() {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("*").eq("is_active", true)
+      const { data, error } = await supabase.from("departments").select("*")
 
       if (error) throw error
       setDepartments(data || [])
@@ -224,8 +245,8 @@ export default function AdminRequestsPage() {
 
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
-      request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.reason.toLowerCase().includes(searchTerm.toLowerCase())
+      (request.requester_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (request.reason?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || request.status === statusFilter
     const matchesType = typeFilter === "all" || request.request_type === typeFilter
     const matchesDepartment = departmentFilter === "all" || request.department_name === departmentFilter
