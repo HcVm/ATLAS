@@ -33,6 +33,8 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  FileCheck,
+  UserCheck,
 } from "lucide-react"
 
 import {
@@ -83,6 +85,35 @@ const menuSections = {
         url: "/calendar",
         icon: CalendarDays,
         roles: ["admin", "supervisor", "user"],
+      },
+    ],
+  },
+  requests: {
+    title: "SOLICITUDES",
+    items: [
+      {
+        title: "Mis Solicitudes",
+        url: "/requests",
+        icon: FileCheck,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Nueva Solicitud",
+        url: "/requests/new",
+        icon: Plus,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Aprobaciones",
+        url: "/requests/approvals",
+        icon: UserCheck,
+        roles: ["admin", "supervisor"],
+      },
+      {
+        title: "Administrar Solicitudes",
+        url: "/requests/admin",
+        icon: Settings,
+        roles: ["admin"],
       },
     ],
   },
@@ -305,6 +336,7 @@ export function AppSidebar() {
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     main: true, // PRINCIPAL section expanded by default
+    requests: false,
     documents: false,
     sales: false,
     warehouse: false,

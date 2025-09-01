@@ -28,3 +28,6 @@ next-env.d.ts
 
 # scripts
 /scripts
+
+# schema
+.schema
