@@ -3,7 +3,7 @@
 import type React from "react"
 
 import type { ReactElement } from "react"
-import { useState } from "react"
+import { useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -58,7 +58,7 @@ const REQUEST_TYPES = {
     timeLimit: "24 horas",
     urgent: true,
   },
-  permission_request: {
+  leave_request: {
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
     icon: Calendar,
@@ -104,7 +104,7 @@ const overtimeRequestSchema = baseSchema.extend({
   end_time: z.string().min(1, "La hora de fin es requerida"),
 })
 
-const permissionRequestSchema = baseSchema.extend({
+const leaveRequestSchema = baseSchema.extend({
   incident_date: z.string().min(1, "La fecha de inicio es requerida"),
   end_date: z.string().optional(),
 })
@@ -128,8 +128,8 @@ function getSchemaForType(type: string) {
       return absenceJustificationSchema
     case "overtime_request":
       return overtimeRequestSchema
-    case "permission_request":
-      return permissionRequestSchema
+    case "leave_request":
+      return leaveRequestSchema
     case "equipment_request":
       return equipmentRequestSchema
     case "general_request":
@@ -146,7 +146,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
   const [loading, setLoading] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
 
-  const resolvedParams = params
+  const resolvedParams = use(params)
   const requestType = REQUEST_TYPES[resolvedParams.type as keyof typeof REQUEST_TYPES]
 
   const schema = getSchemaForType(resolvedParams.type)
@@ -223,28 +223,62 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
       const attachmentUrls: string[] = []
 
       if (uploadedFiles.length > 0) {
+        console.log("[v0] Starting file upload process for", uploadedFiles.length, "files")
+        console.log("[v0] User ID:", user.id)
+
         for (const file of uploadedFiles) {
           const fileName = `${user.id}/${Date.now()}-${file.name}`
+          console.log("[v0] Uploading file:", fileName)
+
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from("request-attachments")
             .upload(fileName, file)
 
           if (uploadError) {
-            console.error("Error uploading file:", uploadError)
-            toast({
-              title: "Error subiendo archivo",
-              description: `No se pudo subir ${file.name}`,
-              variant: "destructive",
+            console.error("[v0] Error uploading file:", uploadError)
+            console.error("[v0] Error details:", {
+              message: uploadError.message,
+              statusCode: uploadError.statusCode,
+              error: uploadError.error,
             })
-            continue
+
+            if (uploadError.message?.includes("row-level security policy") || uploadError.statusCode === "403") {
+              toast({
+                title: "Error de permisos",
+                description: "No tienes permisos para subir archivos. Contacta al administrador del sistema.",
+                variant: "destructive",
+              })
+              setLoading(false)
+              return
+            } else if (uploadError.message?.includes("Bucket not found")) {
+              toast({
+                title: "Error de configuración",
+                description: "El sistema de archivos no está configurado correctamente. Contacta al administrador.",
+                variant: "destructive",
+              })
+              setLoading(false)
+              return
+            } else {
+              toast({
+                title: "Error subiendo archivo",
+                description: `No se pudo subir ${file.name}: ${uploadError.message}`,
+                variant: "destructive",
+              })
+              continue
+            }
           }
+
+          console.log("[v0] File uploaded successfully:", uploadData)
 
           const {
             data: { publicUrl },
           } = supabase.storage.from("request-attachments").getPublicUrl(fileName)
 
           attachmentUrls.push(publicUrl)
+          console.log("[v0] Generated public URL:", publicUrl)
         }
+
+        console.log("[v0] All files processed. Attachment URLs:", attachmentUrls)
       }
 
       const requestData = {
@@ -262,9 +296,16 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
         supporting_documents: attachmentUrls.length > 0 ? attachmentUrls : null,
       }
 
+      console.log("[v0] Creating request with data:", requestData)
+
       const { data, error } = await supabase.from("employee_requests").insert(requestData).select().single()
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error creating request:", error)
+        throw error
+      }
+
+      console.log("[v0] Request created successfully:", data)
 
       toast({
         title: "Solicitud creada",
@@ -273,7 +314,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
 
       router.push("/requests")
     } catch (error: any) {
-      console.error("Error creating request:", error)
+      console.error("[v0] Error in onSubmit:", error)
       toast({
         title: "Error",
         description: error.message || "No se pudo crear la solicitud",
@@ -445,7 +486,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                   </>
                 )}
 
-                {resolvedParams.type === "permission_request" && (
+                {resolvedParams.type === "leave_request" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

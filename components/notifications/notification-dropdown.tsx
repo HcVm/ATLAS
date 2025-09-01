@@ -266,6 +266,10 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
         case "payment_voucher":
           router.push(`/sales?voucher=${notification.related_id}`)
           break
+        case "attendance":
+        case "attendance_missing":
+          router.push(`/requests/new/justificacion-ausencia`)
+          break
         default:
           console.warn("Unhandled notification type for navigation:", relatedInfo.type)
           toast({
@@ -314,6 +318,12 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
         return "Comprobante subido"
       case "payment_voucher_confirmed":
         return "Comprobante confirmado"
+      case "attendance_late":
+        return "Tardanza"
+      case "attendance_missing":
+        return "Ausencia"
+      case "attendance_incomplete":
+        return "Asistencia incompleta"
       default:
         return "Sistema"
     }
@@ -343,6 +353,12 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
         return "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-300"
       case "payment_voucher_confirmed":
         return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300"
+      case "attendance_late":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300"
+      case "attendance_missing":
+        return "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300"
+      case "attendance_incomplete":
+        return "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-300"
       default:
         return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
     }

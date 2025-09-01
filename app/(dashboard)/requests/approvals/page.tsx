@@ -17,8 +17,9 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
+import { requestsDB } from "@/lib/requests-db"
 import { useToast } from "@/hooks/use-toast"
+import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 import {
   Clock,
   UserX,
@@ -36,29 +37,41 @@ import {
   ThumbsDown,
   User,
   CalendarIcon,
+  FileText,
+  History,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Request {
   id: string
+  user_id: string
+  company_id: string
+  department_id: string
   request_type: string
-  status: string
-  subject: string
-  description: string
+  incident_date: string
+  end_date?: string
+  incident_time?: string
+  end_time?: string
+  reason: string
+  equipment_details?: any
+  supporting_documents?: any
+  status: "pending" | "in_progress" | "approved" | "rejected" | "expired"
+  priority: "low" | "normal" | "high" | "urgent"
+  reviewed_by?: string
+  reviewed_at?: string
+  review_comments?: string
   created_at: string
-  expires_at: string | null
-  approved_at: string | null
-  rejected_at: string | null
-  approver_comments: string | null
-  metadata: any
-  profiles: {
-    full_name: string
-    email: string
-    departments?: {
-      name: string
-    }
-  }
+  updated_at: string
+  expires_at: string
+  requester_name: string
+  requester_email: string
+  department_name: string
+  company_name: string
+  reviewer_name?: string
+  is_expired: boolean
+  permission_validation?: string
+  permission_days?: number
 }
 
 const REQUEST_TYPES = {
@@ -77,7 +90,7 @@ const REQUEST_TYPES = {
     icon: Plus,
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   },
-  leave_request: {
+  permission_request: {
     label: "Solicitud de Permiso",
     icon: Calendar,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -121,6 +134,8 @@ export default function ApprovalsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [requests, setRequests] = useState<Request[]>([])
+  const [approvalHistory, setApprovalHistory] = useState<Request[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -130,6 +145,7 @@ export default function ApprovalsPage() {
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject">("approve")
   const [approverComments, setApproverComments] = useState("")
   const [processingApproval, setProcessingApproval] = useState(false)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   useEffect(() => {
     if (user && (user.role === "admin" || user.role === "supervisor")) {
@@ -142,42 +158,27 @@ export default function ApprovalsPage() {
       setLoading(true)
       setError(null)
 
-      // For admins: get all pending requests
-      // For supervisors: get requests from their department or requests they can approve
-      let query = supabase
-        .from("employee_requests")
-        .select(`
-          *,
-          profiles!employee_requests_user_id_fkey (
-            full_name,
-            email,
-            departments!profiles_department_id_fkey (
-              name
-            )
-          )
-        `)
-        .in("status", ["pending", "in_progress"])
-        .order("created_at", { ascending: false })
+      if (!user) return
 
-      // If supervisor, filter by department
-      if (user?.role === "supervisor" && user.department_id) {
-        // Get requests from users in the same department
-        const { data: departmentUsers } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("department_id", user.department_id)
-
-        if (departmentUsers && departmentUsers.length > 0) {
-          const userIds = departmentUsers.map((u) => u.id)
-          query = query.in("user_id", userIds)
-        }
+      let result
+      if (user.role === "admin") {
+        result = await requestsDB.getAllRequests(user.company_id)
+      } else if (user.role === "supervisor") {
+        result = await requestsDB.getRequestsForApproval(user.id, user.company_id)
+      } else {
+        setError("No tienes permisos para ver aprobaciones")
+        return
       }
 
-      const { data, error } = await query
+      if (result.error) {
+        throw result.error
+      }
 
-      if (error) throw error
+      const filteredRequests = (result.data || []).filter(
+        (request: Request) => request.status === "pending" || request.status === "in_progress",
+      )
 
-      setRequests(data || [])
+      setRequests(filteredRequests)
     } catch (err: any) {
       console.error("Error fetching requests:", err)
       setError(err.message || "Error al cargar las solicitudes")
@@ -186,11 +187,49 @@ export default function ApprovalsPage() {
     }
   }
 
+  const fetchApprovalHistory = async () => {
+    if (!user || user.role !== "supervisor") return
+
+    try {
+      setLoadingHistory(true)
+      console.log("[v0] Fetching approval history for user:", user.id)
+
+      const result = await requestsDB.getApprovalHistory(user.id, user.company_id)
+
+      if (result.error) {
+        console.error("[v0] Error fetching approval history:", result.error)
+        throw result.error
+      }
+
+      console.log("[v0] Approval history fetched:", result.data?.length || 0, "records")
+      setApprovalHistory(result.data || [])
+    } catch (err: any) {
+      console.error("Error fetching approval history:", err)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial de aprobaciones",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
   const filteredRequests = requests.filter((request) => {
     const matchesSearch =
-      request.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+      request.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.department_name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = typeFilter === "all" || request.request_type === typeFilter
+
+    return matchesSearch && matchesType
+  })
+
+  const filteredHistory = approvalHistory.filter((request) => {
+    const matchesSearch =
+      request.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.department_name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = typeFilter === "all" || request.request_type === typeFilter
 
     return matchesSearch && matchesType
@@ -212,30 +251,20 @@ export default function ApprovalsPage() {
 
     setProcessingApproval(true)
     try {
-      const now = new Date().toISOString()
-      const updateData: any = {
+      const result = await requestsDB.updateRequestStatus(selectedRequest.id, user.id, {
         status: approvalAction === "approve" ? "approved" : "rejected",
-        reviewed_by: user.id,
-        review_comments: approverComments || null,
-        updated_at: now,
+        review_comments: approverComments || undefined,
+      })
+
+      if (result.error) {
+        throw result.error
       }
-
-      if (approvalAction === "approve") {
-        updateData.reviewed_at = now
-      } else {
-        updateData.reviewed_at = now
-      }
-
-      const { error } = await supabase.from("employee_requests").update(updateData).eq("id", selectedRequest.id)
-
-      if (error) throw error
 
       toast({
         title: approvalAction === "approve" ? "Solicitud Aprobada" : "Solicitud Rechazada",
-        description: `La solicitud de ${selectedRequest.profiles.full_name} ha sido ${approvalAction === "approve" ? "aprobada" : "rechazada"} correctamente`,
+        description: `La solicitud de ${selectedRequest.requester_name} ha sido ${approvalAction === "approve" ? "aprobada" : "rechazada"} correctamente`,
       })
 
-      // Refresh the list
       await fetchPendingRequests()
       setShowApprovalDialog(false)
       setSelectedRequest(null)
@@ -273,6 +302,11 @@ export default function ApprovalsPage() {
     const Icon = requestType?.icon || MessageSquare
     const StatusIcon = status?.icon || AlertCircle
 
+    const handleViewDetails = () => {
+      setSelectedRequest(request)
+      setShowDetailsDialog(true)
+    }
+
     return (
       <Card className="glass-card hover:shadow-lg transition-all duration-300">
         <CardHeader className="pb-3">
@@ -282,7 +316,7 @@ export default function ApprovalsPage() {
                 <Icon className="h-4 w-4" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-lg">{request.subject}</CardTitle>
+                <CardTitle className="text-lg">{requestType?.label || request.request_type}</CardTitle>
                 <CardDescription className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={requestType?.color}>
                     {requestType?.label || request.request_type}
@@ -307,45 +341,41 @@ export default function ApprovalsPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
-              <span>{request.profiles.full_name}</span>
-              {request.profiles.departments?.name && (
+              <span>{request.requester_name}</span>
+              {request.department_name && (
                 <>
                   <span>•</span>
-                  <span>{request.profiles.departments.name}</span>
+                  <span>{request.department_name}</span>
                 </>
               )}
             </div>
 
-            <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{request.reason}</p>
 
-            {/* Show specific metadata based on request type */}
-            {request.metadata && (
-              <div className="text-xs text-muted-foreground space-y-1">
-                {request.request_type === "late_justification" && request.metadata.incident_date && (
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-3 w-3" />
-                    <span>Fecha: {new Date(request.metadata.incident_date).toLocaleDateString("es-ES")}</span>
-                    {request.metadata.incident_time && <span>• Hora: {request.metadata.incident_time}</span>}
-                  </div>
-                )}
-                {request.request_type === "overtime_request" && request.metadata.work_date && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    <span>Fecha: {new Date(request.metadata.work_date).toLocaleDateString("es-ES")}</span>
-                    {request.metadata.hours_worked && <span>• Horas: {request.metadata.hours_worked}</span>}
-                  </div>
-                )}
-                {request.request_type === "leave_request" && request.metadata.start_date && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {new Date(request.metadata.start_date).toLocaleDateString("es-ES")} -{" "}
-                      {request.metadata.end_date ? new Date(request.metadata.end_date).toLocaleDateString("es-ES") : ""}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground space-y-1">
+              {request.incident_date && (
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-3 w-3" />
+                  <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+                  {request.incident_time && <span>• Hora: {request.incident_time}</span>}
+                </div>
+              )}
+              {request.end_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3 w-3" />
+                  <span>
+                    Hasta: {new Date(request.end_date).toLocaleDateString("es-ES")}
+                    {request.end_time && <span> • {request.end_time}</span>}
+                  </span>
+                </div>
+              )}
+              {request.supporting_documents && request.supporting_documents.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-3 w-3" />
+                  <span>{request.supporting_documents.length} archivo(s) adjunto(s)</span>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Creada: {formatDate(request.created_at)}</span>
@@ -354,34 +384,48 @@ export default function ApprovalsPage() {
               )}
             </div>
 
-            {/* Action buttons */}
             <div className="flex gap-2 pt-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleApprovalAction(request, "approve")}
-                className="flex-1 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950"
-              >
-                <ThumbsUp className="h-3 w-3 mr-1" />
-                Aprobar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleApprovalAction(request, "reject")}
-                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
-              >
-                <ThumbsDown className="h-3 w-3 mr-1" />
-                Rechazar
+              <Button size="sm" variant="outline" onClick={handleViewDetails} className="flex-1 bg-transparent">
+                <Eye className="h-3 w-3 mr-1" />
+                Ver Detalles
               </Button>
             </div>
+            {(request.status === "pending" || request.status === "in_progress") && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleApprovalAction(request, "approve")}
+                  className="flex-1 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950"
+                >
+                  <ThumbsUp className="h-3 w-3 mr-1" />
+                  Aprobar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleApprovalAction(request, "reject")}
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+                >
+                  <ThumbsDown className="h-3 w-3 mr-1" />
+                  Rechazar
+                </Button>
+              </div>
+            )}
+            {(request.status === "approved" || request.status === "rejected") && request.reviewed_at && (
+              <div className="text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <span>Revisada: {formatDate(request.reviewed_at)}</span>
+                </div>
+                {request.review_comments && <p className="mt-1 text-xs italic">"{request.review_comments}"</p>}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  // Check permissions
   if (!user || (user.role !== "admin" && user.role !== "supervisor")) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -411,7 +455,6 @@ export default function ApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Aprobaciones</h1>
         <p className="text-muted-foreground mt-1">
@@ -426,7 +469,6 @@ export default function ApprovalsPage() {
         </Alert>
       )}
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4">
@@ -469,7 +511,6 @@ export default function ApprovalsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -477,7 +518,7 @@ export default function ApprovalsPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por asunto, descripción o solicitante..."
+                  placeholder="Buscar por razón, solicitante o departamento..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -501,11 +542,23 @@ export default function ApprovalsPage() {
         </CardContent>
       </Card>
 
-      {/* Requests Tabs */}
       <Tabs defaultValue="pending" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${user.role === "supervisor" ? "grid-cols-3" : "grid-cols-2"}`}>
           <TabsTrigger value="pending">Pendientes ({getRequestsByStatus("pending").length})</TabsTrigger>
           <TabsTrigger value="in_progress">En Proceso ({getRequestsByStatus("in_progress").length})</TabsTrigger>
+          {user.role === "supervisor" && (
+            <TabsTrigger
+              value="history"
+              onClick={() => {
+                if (approvalHistory.length === 0) {
+                  fetchApprovalHistory()
+                }
+              }}
+            >
+              <History className="h-4 w-4 mr-1" />
+              Historial ({approvalHistory.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -543,9 +596,37 @@ export default function ApprovalsPage() {
             </div>
           )}
         </TabsContent>
+
+        {user.role === "supervisor" && (
+          <TabsContent value="history" className="space-y-4">
+            {loadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center space-y-4">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                  <p className="text-muted-foreground">Cargando historial de aprobaciones...</p>
+                </div>
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="p-8 text-center">
+                  <History className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No hay historial de aprobaciones</h3>
+                  <p className="text-muted-foreground">
+                    Aún no has procesado ninguna solicitud o no hay solicitudes que coincidan con los filtros.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredHistory.map((request) => (
+                  <RequestCard key={request.id} request={request} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
-      {/* Approval Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -553,7 +634,8 @@ export default function ApprovalsPage() {
             <DialogDescription>
               {selectedRequest && (
                 <>
-                  <strong>{selectedRequest.subject}</strong> de {selectedRequest.profiles.full_name}
+                  <strong>{REQUEST_TYPES[selectedRequest.request_type as keyof typeof REQUEST_TYPES]?.label}</strong> de{" "}
+                  {selectedRequest.requester_name}
                 </>
               )}
             </DialogDescription>
@@ -609,6 +691,8 @@ export default function ApprovalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RequestDetailsDialog request={selectedRequest} open={showDetailsDialog} onOpenChange={setShowDetailsDialog} />
     </div>
   )
 }

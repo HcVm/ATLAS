@@ -218,9 +218,9 @@ export class RequestsDB {
   // Obtener estadísticas de solicitudes
   async getRequestStats(companyId?: string) {
     try {
-      let query = this.supabase
-        .from("employee_requests")
-        .select("status, request_type, department_id, departments(name)")
+      console.log("[v0] Getting request stats for company:", companyId)
+
+      let query = this.supabase.from("requests_with_details").select("status, request_type, department_name")
 
       if (companyId) {
         query = query.eq("company_id", companyId)
@@ -228,7 +228,12 @@ export class RequestsDB {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error in getRequestStats query:", error)
+        throw error
+      }
+
+      console.log("[v0] Raw stats data:", data?.length || 0, "records")
 
       const stats = {
         total: data?.length || 0,
@@ -241,19 +246,24 @@ export class RequestsDB {
       }
 
       // Agrupar por tipo
-      data?.forEach((request) => {
-        stats.by_type[request.request_type] = (stats.by_type[request.request_type] || 0) + 1
-      })
+      if (data && data.length > 0) {
+        data.forEach((request) => {
+          if (request.request_type) {
+            stats.by_type[request.request_type] = (stats.by_type[request.request_type] || 0) + 1
+          }
+        })
 
-      // Agrupar por departamento
-      data?.forEach((request) => {
-        const deptName = request.departments?.name || "Sin Departamento"
-        stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1
-      })
+        // Agrupar por departamento
+        data.forEach((request) => {
+          const deptName = request.department_name || "Sin Departamento"
+          stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1
+        })
+      }
 
+      console.log("[v0] Calculated stats:", stats)
       return { data: stats, error: null }
     } catch (error) {
-      console.error("Error fetching request stats:", error)
+      console.error("[v0] Error fetching request stats:", error)
       return { data: null, error }
     }
   }
@@ -319,6 +329,32 @@ export class RequestsDB {
       return { data: data || [], error: null }
     } catch (error) {
       console.error("Error fetching available equipment:", error)
+      return { data: [], error }
+    }
+  }
+
+  // Obtener historial de trámites atendidos por supervisores
+  async getApprovalHistory(reviewerId: string, companyId: string) {
+    try {
+      console.log("[v0] Getting approval history for reviewer:", reviewerId, "company:", companyId)
+
+      const { data, error } = await this.supabase
+        .from("requests_with_details")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("reviewed_by", reviewerId)
+        .in("status", ["approved", "rejected"])
+        .order("reviewed_at", { ascending: false })
+
+      if (error) {
+        console.error("[v0] Error in getApprovalHistory query:", error)
+        throw error
+      }
+
+      console.log("[v0] Approval history data:", data?.length || 0, "records")
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error("[v0] Error fetching approval history:", error)
       return { data: [], error }
     }
   }

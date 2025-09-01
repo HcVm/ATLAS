@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 
 interface Request {
   id: string
@@ -116,6 +117,8 @@ export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -186,6 +189,11 @@ export default function RequestsPage() {
     const Icon = requestType?.icon || MessageSquare
     const StatusIcon = status?.icon || AlertCircle
 
+    const handleViewDetails = () => {
+      setSelectedRequest(request)
+      setShowDetailsDialog(true)
+    }
+
     return (
       <Card className="glass-card hover:shadow-lg transition-all duration-300">
         <CardHeader className="pb-3">
@@ -230,6 +238,11 @@ export default function RequestsPage() {
               <p className="text-sm">{request.approver_comments}</p>
             </div>
           )}
+          <div className="mt-4 pt-2 border-t">
+            <Button size="sm" variant="outline" onClick={handleViewDetails} className="w-full bg-transparent">
+              Ver Detalles
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )
@@ -248,7 +261,6 @@ export default function RequestsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Mis Solicitudes</h1>
@@ -269,7 +281,6 @@ export default function RequestsPage() {
         </Alert>
       )}
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4">
@@ -325,7 +336,6 @@ export default function RequestsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -369,7 +379,6 @@ export default function RequestsPage() {
         </CardContent>
       </Card>
 
-      {/* Requests List */}
       {filteredRequests.length === 0 ? (
         <Card className="glass-card">
           <CardContent className="p-8 text-center">
@@ -395,6 +404,8 @@ export default function RequestsPage() {
           ))}
         </div>
       )}
+
+      <RequestDetailsDialog request={selectedRequest} open={showDetailsDialog} onOpenChange={setShowDetailsDialog} />
     </div>
   )
 }

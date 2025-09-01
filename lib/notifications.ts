@@ -180,7 +180,7 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
           .eq("id", relatedId)
           .single()
         return { type: "sale", data: sale }
-      case "quotation_review": // Nuevo caso para notificaciones de cotización
+      case "quotation_review":
       case "quotation_status_update":
         const { data: quotation } = await supabase
           .from("quotations")
@@ -201,6 +201,17 @@ export async function getRelatedInfo(type: string, relatedId: string | null) {
           .eq("id", relatedId)
           .single()
         return { type: "payment_voucher", data: paymentVoucher }
+      case "attendance_late":
+      case "attendance_incomplete":
+        const { data: attendance } = await supabase
+          .from("attendance")
+          .select("id, attendance_date, check_in_time, check_out_time, is_late, late_minutes")
+          .eq("id", relatedId)
+          .single()
+        return { type: "attendance", data: attendance }
+      case "attendance_missing":
+        // For missing attendance, there's no related record, so return a generic response
+        return { type: "attendance_missing", data: { message: "Ausencia sin justificar" } }
       default:
         return null
     }

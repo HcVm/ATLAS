@@ -16,37 +16,14 @@ import { useCompany } from "@/lib/company-context"
 import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-
-interface RequestWithDetails {
-  id: string
-  user_id: string
-  company_id: string
-  department_id: string
-  request_type: string
-  incident_date: string
-  end_date?: string
-  incident_time?: string
-  end_time?: string
-  reason: string
-  equipment_details?: any
-  supporting_documents?: any
-  status: string
-  priority: string
-  reviewed_by?: string
-  reviewed_at?: string
-  review_comments?: string
-  created_at: string
-  updated_at: string
-  expires_at: string
-  requester_name: string
-  requester_email: string
-  department_name: string
-  company_name: string
-  reviewer_name?: string
-  is_expired: boolean
-  permission_validation?: string
-  permission_days?: number
-}
+import {
+  requestsDB,
+  type RequestWithDetails,
+  REQUEST_TYPE_LABELS,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
+} from "@/lib/requests-db"
+import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 
 interface RequestStats {
   total: number
@@ -67,30 +44,6 @@ interface Approver {
   is_active: boolean
   approver_name: string
   department_name?: string
-}
-
-const REQUEST_TYPE_LABELS = {
-  late_justification: "Justificación de Tardanza",
-  absence_justification: "Justificación de Ausencia",
-  overtime_request: "Registro de Horas Extras",
-  permission_request: "Solicitud de Permiso",
-  equipment_request: "Solicitud de Equipos",
-  general_request: "Solicitud General",
-}
-
-const STATUS_LABELS = {
-  pending: "Pendiente",
-  in_progress: "En Proceso",
-  approved: "Aprobada",
-  rejected: "Rechazada",
-  expired: "Expirada",
-}
-
-const PRIORITY_LABELS = {
-  low: "Baja",
-  normal: "Normal",
-  high: "Alta",
-  urgent: "Urgente",
 }
 
 export default function AdminRequestsPage() {
@@ -123,42 +76,29 @@ export default function AdminRequestsPage() {
   )
 
   useEffect(() => {
-    if (user) {
+    if (user && selectedCompany) {
       fetchRequests()
       fetchStats()
       fetchApprovers()
       fetchDepartments()
       fetchUsers()
     }
-  }, [user])
+  }, [user, selectedCompany])
 
   const fetchRequests = async () => {
+    if (!selectedCompany?.id) return
+
     try {
-      const { data, error } = await supabase
-        .from("employee_requests")
-        .select(`
-          *,
-          profiles!employee_requests_user_id_fkey(full_name, email),
-          departments!employee_requests_department_id_fkey(name),
-          companies!employee_requests_company_id_fkey(name),
-          reviewer:profiles!employee_requests_reviewed_by_fkey(full_name)
-        `)
-        .order("created_at", { ascending: false })
+      console.log("[v0] Fetching requests for company:", selectedCompany.id)
+      const { data, error } = await requestsDB.getAllRequests(selectedCompany.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error fetching requests:", error)
+        throw error
+      }
 
-      const transformedData =
-        data?.map((request) => ({
-          ...request,
-          requester_name: request.profiles?.full_name || "Usuario Desconocido",
-          requester_email: request.profiles?.email || "",
-          department_name: request.departments?.name || "Sin Departamento",
-          company_name: request.companies?.name || "Sin Empresa",
-          reviewer_name: request.reviewer?.full_name || null,
-          is_expired: new Date(request.expires_at) < new Date(),
-        })) || []
-
-      setRequests(transformedData)
+      console.log("[v0] Fetched requests:", data?.length || 0)
+      setRequests(data || [])
     } catch (error) {
       console.error("Error fetching requests:", error)
     } finally {
@@ -167,70 +107,48 @@ export default function AdminRequestsPage() {
   }
 
   const fetchStats = async () => {
+    if (!selectedCompany?.id) return
+
     try {
-      const { data, error } = await supabase.from("employee_requests").select(`
-          status, 
-          request_type, 
-          department_id, 
-          departments!employee_requests_department_id_fkey(name)
-        `)
+      console.log("[v0] Fetching stats for company:", selectedCompany.id)
+      const { data, error } = await requestsDB.getRequestStats(selectedCompany.id)
 
-      if (error) throw error
-
-      const stats: RequestStats = {
-        total: data?.length || 0,
-        pending: data?.filter((r) => r.status === "pending").length || 0,
-        approved: data?.filter((r) => r.status === "approved").length || 0,
-        rejected: data?.filter((r) => r.status === "rejected").length || 0,
-        expired: data?.filter((r) => r.status === "expired").length || 0,
-        by_type: {},
-        by_department: {},
+      if (error) {
+        console.error("[v0] Error fetching stats:", error)
+        throw error
       }
 
-      data?.forEach((request) => {
-        stats.by_type[request.request_type] = (stats.by_type[request.request_type] || 0) + 1
-      })
-
-      data?.forEach((request) => {
-        const deptName = request.departments?.name || "Sin Departamento"
-        stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1
-      })
-
-      setStats(stats)
+      console.log("[v0] Fetched stats:", data)
+      setStats(data)
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
   }
 
   const fetchApprovers = async () => {
+    if (!selectedCompany?.id) return
+
     try {
-      const { data, error } = await supabase
-        .from("request_approvers")
-        .select(`
-          *,
-          profiles!request_approvers_approver_user_id_fkey(full_name),
-          departments(name)
-        `)
-        .eq("is_active", true)
+      console.log("[v0] Fetching approvers for company:", selectedCompany.id)
+      const { data, error } = await requestsDB.getApprovers(selectedCompany.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error fetching approvers:", error)
+        throw error
+      }
 
-      const approversData =
-        data?.map((approver) => ({
-          ...approver,
-          approver_name: approver.profiles?.full_name || "Usuario Desconocido",
-          department_name: approver.departments?.name,
-        })) || []
-
-      setApprovers(approversData)
+      console.log("[v0] Fetched approvers:", data?.length || 0)
+      setApprovers(data || [])
     } catch (error) {
       console.error("Error fetching approvers:", error)
     }
   }
 
   const fetchDepartments = async () => {
+    if (!selectedCompany?.id) return
+
     try {
-      const { data, error } = await supabase.from("departments").select("*")
+      const { data, error } = await supabase.from("departments").select("*").eq("company_id", selectedCompany.id)
 
       if (error) throw error
       setDepartments(data || [])
@@ -240,10 +158,13 @@ export default function AdminRequestsPage() {
   }
 
   const fetchUsers = async () => {
+    if (!selectedCompany?.id) return
+
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, role")
+        .eq("company_id", selectedCompany.id)
         .in("role", ["supervisor", "admin"])
 
       if (error) throw error
@@ -298,14 +219,7 @@ export default function AdminRequestsPage() {
 
   const reassignRequest = async (requestId: string, newApproverId: string) => {
     try {
-      const { error } = await supabase
-        .from("employee_requests")
-        .update({
-          reviewed_by: newApproverId,
-          status: "in_progress",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", requestId)
+      const { error } = await requestsDB.reassignRequest(requestId, newApproverId)
 
       if (error) throw error
 
@@ -419,13 +333,25 @@ export default function AdminRequestsPage() {
     )
   }
 
+  if (!selectedCompany) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No hay empresa seleccionada</h3>
+          <p className="text-muted-foreground">Selecciona una empresa para ver las solicitudes</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Administración de Solicitudes</h1>
-          <p className="text-muted-foreground">Gestiona todas las solicitudes del sistema</p>
+          <p className="text-muted-foreground">Gestiona todas las solicitudes del sistema - {selectedCompany.name}</p>
         </div>
         <Button onClick={() => setShowApproverDialog(true)}>
           <Settings className="h-4 w-4 mr-2" />
@@ -553,48 +479,66 @@ export default function AdminRequestsPage() {
 
           {/* Requests List */}
           <div className="grid gap-4">
-            {filteredRequests.map((request) => (
-              <Card key={request.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getStatusBadgeVariant(request.status)}>
-                          {STATUS_LABELS[request.status as keyof typeof STATUS_LABELS]}
-                        </Badge>
-                        <Badge variant={getPriorityBadgeVariant(request.priority)}>
-                          {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
-                        </Badge>
-                        <Badge variant="outline">
-                          {REQUEST_TYPE_LABELS[request.request_type as keyof typeof REQUEST_TYPE_LABELS]}
-                        </Badge>
-                        {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{request.requester_name}</h3>
-                        <p className="text-sm text-muted-foreground">{request.department_name}</p>
-                      </div>
-                      <p className="text-sm">{request.reason}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</span>
-                        <span>Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}</span>
-                        {request.reviewer_name && <span>Revisor: {request.reviewer_name}</span>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                        Ver Detalles
-                      </Button>
-                      {(request.status === "pending" || request.status === "in_progress") && (
-                        <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                          Reasignar
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+            {filteredRequests.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No se encontraron solicitudes</h3>
+                  <p className="text-muted-foreground">
+                    {requests.length === 0
+                      ? "No hay solicitudes registradas en el sistema"
+                      : "No hay solicitudes que coincidan con los filtros aplicados"}
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              filteredRequests.map((request) => (
+                <Card key={request.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getStatusBadgeVariant(request.status)}>
+                            {STATUS_LABELS[request.status as keyof typeof STATUS_LABELS]}
+                          </Badge>
+                          <Badge variant={getPriorityBadgeVariant(request.priority)}>
+                            {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
+                          </Badge>
+                          <Badge variant="outline">
+                            {REQUEST_TYPE_LABELS[request.request_type as keyof typeof REQUEST_TYPE_LABELS]}
+                          </Badge>
+                          {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">{request.requester_name}</h3>
+                          <p className="text-sm text-muted-foreground">{request.department_name}</p>
+                        </div>
+                        <p className="text-sm">{request.reason}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>
+                            Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                          </span>
+                          <span>
+                            Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                          </span>
+                          {request.reviewer_name && <span>Revisor: {request.reviewer_name}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
+                          Ver Detalles
+                        </Button>
+                        {(request.status === "pending" || request.status === "in_progress") && (
+                          <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
+                            Reasignar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
@@ -818,67 +762,24 @@ export default function AdminRequestsPage() {
 
       {/* Request Details Dialog */}
       {selectedRequest && (
-        <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Detalles de Solicitud</DialogTitle>
-              <DialogDescription>
-                {REQUEST_TYPE_LABELS[selectedRequest.request_type as keyof typeof REQUEST_TYPE_LABELS]}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Solicitante</Label>
-                  <p className="text-sm">{selectedRequest.requester_name}</p>
-                </div>
-                <div>
-                  <Label>Departamento</Label>
-                  <p className="text-sm">{selectedRequest.department_name}</p>
-                </div>
-                <div>
-                  <Label>Estado</Label>
-                  <Badge variant={getStatusBadgeVariant(selectedRequest.status)}>
-                    {STATUS_LABELS[selectedRequest.status as keyof typeof STATUS_LABELS]}
-                  </Badge>
-                </div>
-                <div>
-                  <Label>Prioridad</Label>
-                  <Badge variant={getPriorityBadgeVariant(selectedRequest.priority)}>
-                    {PRIORITY_LABELS[selectedRequest.priority as keyof typeof PRIORITY_LABELS]}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <Label>Razón</Label>
-                <p className="text-sm mt-1">{selectedRequest.reason}</p>
-              </div>
-              {selectedRequest.review_comments && (
-                <div>
-                  <Label>Comentarios del Revisor</Label>
-                  <p className="text-sm mt-1">{selectedRequest.review_comments}</p>
-                </div>
-              )}
-              {(selectedRequest.status === "pending" || selectedRequest.status === "in_progress") && (
-                <div>
-                  <Label>Reasignar a</Label>
-                  <Select onValueChange={(value) => reassignRequest(selectedRequest.id, value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Seleccionar aprobador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.full_name} ({user.role})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <RequestDetailsDialog
+          request={selectedRequest}
+          open={!!selectedRequest}
+          onOpenChange={() => setSelectedRequest(null)}
+          onApprove={async (requestId, comments) => {
+            if (!user?.id) return
+            await requestsDB.updateRequestStatus(requestId, user.id, { status: "approved", review_comments: comments })
+            fetchRequests()
+            setSelectedRequest(null)
+          }}
+          onReject={async (requestId, comments) => {
+            if (!user?.id) return
+            await requestsDB.updateRequestStatus(requestId, user.id, { status: "rejected", review_comments: comments })
+            fetchRequests()
+            setSelectedRequest(null)
+          }}
+          showActions={true}
+        />
       )}
     </div>
   )
