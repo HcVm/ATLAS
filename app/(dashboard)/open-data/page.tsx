@@ -39,7 +39,6 @@ async function getOpenDataStats() {
   const supabase = createServerClient()
 
   try {
-    // Primero obtener el conteo total
     const { count: totalCount, error: countError } = await supabase
       .from("open_data_entries")
       .select("*", { count: "exact", head: true })
@@ -48,9 +47,6 @@ async function getOpenDataStats() {
       console.error("Error fetching total count:", countError)
     }
 
-    console.log("Total records in database:", totalCount)
-
-    // Obtener conteos por cada acuerdo marco específicamente
     const acuerdosCount: Record<string, number> = {}
 
     for (const acuerdo of ACUERDOS_MARCO) {
@@ -64,27 +60,7 @@ async function getOpenDataStats() {
         acuerdosCount[acuerdo.id] = 0
       } else {
         acuerdosCount[acuerdo.id] = count || 0
-        console.log(`${acuerdo.id}: ${count} records`)
       }
-    }
-
-    // También verificar si hay otros códigos de acuerdo marco
-    const { data: allCodes, error: codesError } = await supabase
-      .from("open_data_entries")
-      .select("codigo_acuerdo_marco")
-      .not("codigo_acuerdo_marco", "is", null)
-
-    if (!codesError && allCodes) {
-      const uniqueCodes = [...new Set(allCodes.map((item) => item.codigo_acuerdo_marco))]
-      console.log("All unique codigo_acuerdo_marco values:", uniqueCodes)
-
-      // Contar cada código único
-      const allCodesCount: Record<string, number> = {}
-      for (const code of uniqueCodes) {
-        const count = allCodes.filter((item) => item.codigo_acuerdo_marco === code).length
-        allCodesCount[code] = count
-      }
-      console.log("Count by all codes:", allCodesCount)
     }
 
     return {
@@ -137,8 +113,6 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
   const count = stats.acuerdosCount?.[acuerdo.id] || 0
   const isAvailable = count > 0
 
-  console.log(`Rendering card for ${acuerdo.id}: count=${count}, available=${isAvailable}`)
-
   return (
     <Card className={`transition-all duration-200 hover:shadow-lg ${isAvailable ? "hover:scale-105" : "opacity-60"}`}>
       <CardHeader className="pb-3">
@@ -175,12 +149,6 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
                   <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`}>
                     <Eye className="h-4 w-4 mr-1" />
                     Ver Datos
-                  </Link>
-                </Button>
-                <Button asChild variant="default" size="sm">
-                  <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}?download=true`}>
-                    <Download className="h-4 w-4 mr-1" />
-                    Descargar
                   </Link>
                 </Button>
               </>

@@ -2,11 +2,12 @@ import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download, Building, Package, DollarSign } from "lucide-react"
+import { ArrowLeft, Building, Package, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { OpenDataTable } from "@/components/open-data/open-data-table"
 import { OpenDataFilters } from "@/components/open-data/open-data-filters"
+import { ExportButtons } from "@/components/open-data/export-buttons"
 
 // Definir los acuerdos marco válidos
 const ACUERDOS_MARCO = {
@@ -34,10 +35,10 @@ const ACUERDOS_MARCO = {
 }
 
 interface PageProps {
-  params: Promise<{
+  params: {
     acuerdo: string
-  }>
-  searchParams: Promise<{
+  }
+  searchParams: {
     page?: string
     search?: string
     entidad?: string
@@ -45,10 +46,10 @@ interface PageProps {
     fecha_desde?: string
     fecha_hasta?: string
     download?: string
-  }>
+  }
 }
 
-async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any) {
+async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any, exportAll = false) {
   const supabase = createServerClient()
 
   try {
@@ -94,7 +95,24 @@ async function getAcuerdoData(acuerdoMarcoFullString: string, searchParams: any)
       query = query.lte("fecha_publicacion", searchParams.fecha_hasta)
     }
 
-    // Configurar paginación
+    if (exportAll) {
+      const { data, error, count } = await query
+
+      if (error) {
+        console.error("Supabase error:", error)
+        return { data: [], count: 0, error: error.message }
+      }
+
+      return {
+        data: data || [],
+        count: count || 0,
+        error: null,
+        currentPage: 1,
+        totalPages: 1,
+      }
+    }
+
+    // Configurar paginación solo si no es exportación
     const page = Math.max(1, Number.parseInt(searchParams.page || "1"))
     const pageSize = 50
     const from = (page - 1) * pageSize
@@ -210,13 +228,10 @@ function StatsCards({ stats }: { stats: any }) {
 }
 
 export default async function AcuerdoMarcoPage({ params, searchParams }: PageProps) {
-  // Await both params and searchParams
-  const resolvedParams = await params
+  const acuerdoMarco = decodeURIComponent(params.acuerdo)
   const resolvedSearchParams = await searchParams
 
-  const acuerdoMarco = decodeURIComponent(resolvedParams.acuerdo)
-
-  console.log("Page params:", resolvedParams)
+  console.log("Page params:", params)
   console.log("Search params:", resolvedSearchParams)
   console.log("Decoded acuerdo marco:", acuerdoMarco)
 
@@ -228,12 +243,6 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
   }
 
   const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarco as keyof typeof ACUERDOS_MARCO]
-
-  // Si es una solicitud de descarga, manejar la descarga
-  if (resolvedSearchParams.download === "true") {
-    // Aquí implementarías la lógica de descarga
-    // Por ahora, redirigimos de vuelta sin el parámetro download
-  }
 
   const [result, stats] = await Promise.all([
     getAcuerdoData(acuerdoMarco, resolvedSearchParams),
@@ -289,16 +298,12 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
           <Badge variant="secondary" className="font-mono text-xs">
             {acuerdoInfo.id}
           </Badge>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar Excel
-            </Button>
-          </div>
+          <ExportButtons
+            data={data}
+            acuerdoMarco={acuerdoInfo.name}
+            searchParams={resolvedSearchParams}
+            acuerdoMarcoFullString={acuerdoMarco}
+          />
         </div>
       </div>
 

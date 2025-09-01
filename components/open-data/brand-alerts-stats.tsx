@@ -53,19 +53,19 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
 
   const fetchStats = async () => {
     try {
-      console.log("[v0] Fetching brand alerts stats from API...")
+      console.log("Fetching brand alerts stats from API...")
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
-        cache: "no-store",
+        cache: "no-store", // Ensure no caching to match preview component
       })
       const result = await response.json()
 
       if (!response.ok) {
-        console.error("[v0] Error fetching brand alerts from API:", result.error)
+        console.error("Error fetching brand alerts from API:", result.error)
         return
       }
 
       const alerts: BrandAlert[] = result.data || []
-      console.log("[v0] API response for stats:", alerts.length, "alerts")
+      console.log("API response for stats:", alerts.length, "alerts")
 
       const now = new Date()
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -94,10 +94,10 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
         brandCounts,
       }
 
-      console.log("[v0] Brand alerts stats result:", statsResult)
+      console.log("Brand alerts stats result:", statsResult)
       setStats(statsResult)
     } catch (error) {
-      console.error("[v0] Error in fetchStats:", error)
+      console.error("Error in fetchStats:", error)
     } finally {
       setLoading(false)
     }

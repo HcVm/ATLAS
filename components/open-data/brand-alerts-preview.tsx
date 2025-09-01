@@ -19,7 +19,7 @@ async function getBrandAlertsPreview() {
   try {
     console.log("Fetching brand alerts preview from API...")
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
-      next: { revalidate: 6400 }, // Ensure fresh data
+      cache: "no-store", // Remove caching to ensure consistent data with main brand alerts page
     })
     const result = await response.json()
 
