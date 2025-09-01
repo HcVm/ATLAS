@@ -1,5 +1,6 @@
-export const dynamic = "force-dynamic";
+"use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, CheckCircle, XCircle, Clock, TrendingUp, Calendar } from "lucide-react"
@@ -15,69 +16,13 @@ interface BrandAlert {
   updated_at: string
 }
 
-async function getBrandAlertsStats() {
-  try {
-    console.log("Fetching brand alerts stats from API...")
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
-      next: { revalidate: 6400 }, // Ensure fresh data
-    })
-    const result = await response.json()
-
-    if (!response.ok) {
-      console.error("Error fetching brand alerts from API:", result.error)
-      return {
-        totalAlerts: 0,
-        pendingAlerts: 0,
-        attendedAlerts: 0,
-        rejectedAlerts: 0,
-        recentAlerts: 0,
-        brandCounts: {},
-      }
-    }
-
-    const alerts: BrandAlert[] = result.data || []
-    console.log("API response for stats:", alerts.length, "alerts")
-
-    const now = new Date()
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-    // Calcular estadísticas
-    const totalAlerts = alerts.length
-    const pendingAlerts = alerts.filter((alert) => alert.status === "pending").length
-    const attendedAlerts = alerts.filter((alert) => alert.status === "attended").length
-    const rejectedAlerts = alerts.filter((alert) => alert.status === "rejected").length
-
-    // Alertas recientes (últimos 7 días)
-    const recentAlerts = alerts.filter((alert) => new Date(alert.created_at) >= sevenDaysAgo).length
-
-    // Contar por marca
-    const brandCounts = alerts.reduce((acc: Record<string, number>, alert) => {
-      acc[alert.brand_name] = (acc[alert.brand_name] || 0) + 1
-      return acc
-    }, {})
-
-    const statsResult = {
-      totalAlerts,
-      pendingAlerts,
-      attendedAlerts,
-      rejectedAlerts,
-      recentAlerts,
-      brandCounts,
-    }
-
-    console.log("Brand alerts stats result:", statsResult)
-    return statsResult
-  } catch (error) {
-    console.error("Error in getBrandAlertsStats:", error)
-    return {
-      totalAlerts: 0,
-      pendingAlerts: 0,
-      attendedAlerts: 0,
-      rejectedAlerts: 0,
-      recentAlerts: 0,
-      brandCounts: {},
-    }
-  }
+interface StatsData {
+  totalAlerts: number
+  pendingAlerts: number
+  attendedAlerts: number
+  rejectedAlerts: number
+  recentAlerts: number
+  brandCounts: Record<string, number>
 }
 
 function getBrandBadge(brandName: string) {
@@ -91,8 +36,80 @@ function getBrandBadge(brandName: string) {
   return <Badge className={colors[brandName as keyof typeof colors] || "bg-gray-500 text-white"}>{brandName}</Badge>
 }
 
-export async function BrandAlertsStats() {
-  const stats = await getBrandAlertsStats()
+interface BrandAlertsStatsProps {
+  refreshTrigger?: number
+}
+
+export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
+  const [stats, setStats] = useState<StatsData>({
+    totalAlerts: 0,
+    pendingAlerts: 0,
+    attendedAlerts: 0,
+    rejectedAlerts: 0,
+    recentAlerts: 0,
+    brandCounts: {},
+  })
+  const [loading, setLoading] = useState(true)
+
+  const fetchStats = async () => {
+    try {
+      console.log("[v0] Fetching brand alerts stats from API...")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
+        cache: "no-store",
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("[v0] Error fetching brand alerts from API:", result.error)
+        return
+      }
+
+      const alerts: BrandAlert[] = result.data || []
+      console.log("[v0] API response for stats:", alerts.length, "alerts")
+
+      const now = new Date()
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+      // Calcular estadísticas
+      const totalAlerts = alerts.length
+      const pendingAlerts = alerts.filter((alert) => alert.status === "pending").length
+      const attendedAlerts = alerts.filter((alert) => alert.status === "attended").length
+      const rejectedAlerts = alerts.filter((alert) => alert.status === "rejected").length
+
+      // Alertas recientes (últimos 7 días)
+      const recentAlerts = alerts.filter((alert) => new Date(alert.created_at) >= sevenDaysAgo).length
+
+      // Contar por marca
+      const brandCounts = alerts.reduce((acc: Record<string, number>, alert) => {
+        acc[alert.brand_name] = (acc[alert.brand_name] || 0) + 1
+        return acc
+      }, {})
+
+      const statsResult = {
+        totalAlerts,
+        pendingAlerts,
+        attendedAlerts,
+        rejectedAlerts,
+        recentAlerts,
+        brandCounts,
+      }
+
+      console.log("[v0] Brand alerts stats result:", statsResult)
+      setStats(statsResult)
+    } catch (error) {
+      console.error("[v0] Error in fetchStats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+  }, [refreshTrigger])
+
+  if (loading) {
+    return <div>Cargando estadísticas...</div>
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

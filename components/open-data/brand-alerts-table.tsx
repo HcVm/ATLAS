@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Edit, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
+import { Search, Edit, CheckCircle, XCircle, ExternalLink, Download } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { exportToExcel, exportToCSV } from "@/lib/export-utils"
 
 interface BrandAlert {
   id: string
@@ -37,9 +38,10 @@ interface BrandAlert {
 
 interface BrandAlertsTableProps {
   status?: "pending" | "attended" | "rejected"
+  onAlertsUpdated?: () => void
 }
 
-export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
+export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTableProps) {
   const [alerts, setAlerts] = useState<BrandAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -91,6 +93,9 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
       if (error) throw error
 
       await fetchAlerts()
+      if (onAlertsUpdated) {
+        onAlertsUpdated()
+      }
       toast({
         title: "Éxito",
         description: "Estado de la alerta actualizado correctamente",
@@ -167,6 +172,103 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
     }
   }
 
+  const handleExportToExcel = () => {
+    const exportData = filteredAlerts.map((alert) => ({
+      orden_electronica: alert.orden_electronica,
+      acuerdo_marco: alert.acuerdo_marco,
+      brand_name: alert.brand_name,
+      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Rechazada",
+      ruc_proveedor: alert.ruc_proveedor || "N/A",
+      razon_social_proveedor: alert.razon_social_proveedor || "N/A",
+      estado_orden_electronica: alert.estado_orden_electronica || "N/A",
+      notes: alert.notes || "",
+      created_at: new Date(alert.created_at).toLocaleDateString("es-PE"),
+      updated_at: new Date(alert.updated_at).toLocaleDateString("es-PE"),
+    }))
+
+    const headers = {
+      orden_electronica: "Orden Electrónica",
+      acuerdo_marco: "Acuerdo Marco",
+      brand_name: "Marca",
+      status: "Estado Alerta",
+      ruc_proveedor: "RUC Proveedor",
+      razon_social_proveedor: "Razón Social Proveedor",
+      estado_orden_electronica: "Estado Orden",
+      notes: "Notas",
+      created_at: "Fecha Creación",
+      updated_at: "Fecha Actualización",
+    }
+
+    const filename = `alertas-marca-${status || "todas"}-${new Date().toISOString().split("T")[0]}`
+
+    const success = exportToExcel(exportData, {
+      filename,
+      sheetName: "Alertas de Marca",
+      headers,
+    })
+
+    if (success) {
+      toast({
+        title: "Éxito",
+        description: "Alertas exportadas a Excel correctamente",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo exportar a Excel",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleExportToCSV = () => {
+    const exportData = filteredAlerts.map((alert) => ({
+      orden_electronica: alert.orden_electronica,
+      acuerdo_marco: alert.acuerdo_marco,
+      brand_name: alert.brand_name,
+      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Rechazada",
+      ruc_proveedor: alert.ruc_proveedor || "N/A",
+      razon_social_proveedor: alert.razon_social_proveedor || "N/A",
+      estado_orden_electronica: alert.estado_orden_electronica || "N/A",
+      notes: alert.notes || "",
+      created_at: new Date(alert.created_at).toLocaleDateString("es-PE"),
+      updated_at: new Date(alert.updated_at).toLocaleDateString("es-PE"),
+    }))
+
+    const headers = {
+      orden_electronica: "Orden Electrónica",
+      acuerdo_marco: "Acuerdo Marco",
+      brand_name: "Marca",
+      status: "Estado Alerta",
+      ruc_proveedor: "RUC Proveedor",
+      razon_social_proveedor: "Razón Social Proveedor",
+      estado_orden_electronica: "Estado Orden",
+      notes: "Notas",
+      created_at: "Fecha Creación",
+      updated_at: "Fecha Actualización",
+    }
+
+    const filename = `alertas-marca-${status || "todas"}-${new Date().toISOString().split("T")[0]}`
+
+    const success = exportToCSV(exportData, {
+      filename,
+      headers,
+    })
+
+    if (success) {
+      toast({
+        title: "Éxito",
+        description: "Alertas exportadas a CSV correctamente",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo exportar a CSV",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">Cargando alertas...</div>
   }
@@ -183,6 +285,28 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
             className="pl-10"
           />
         </div>
+        {filteredAlerts.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToExcel}
+              className="flex items-center gap-2 bg-transparent"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToCSV}
+              className="flex items-center gap-2 bg-transparent"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+          </div>
+        )}
       </div>
 
       {filteredAlerts.length === 0 ? (
@@ -209,21 +333,20 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
                   <TableCell className="font-mono text-sm">{alert.orden_electronica}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="font-medium text-sm">
-                        {alert.razon_social_proveedor || "N/A"}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        RUC: {alert.ruc_proveedor || "N/A"}
-                      </div>
+                      <div className="font-medium text-sm">{alert.razon_social_proveedor || "N/A"}</div>
+                      <div className="text-xs text-muted-foreground font-mono">RUC: {alert.ruc_proveedor || "N/A"}</div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge 
+                    <Badge
                       variant={
-                        alert.estado_orden_electronica === "ACEPTADA" ? "default" :
-                        alert.estado_orden_electronica === "PENDIENTE" ? "secondary" :
-                        alert.estado_orden_electronica === "RECHAZADA" ? "destructive" :
-                        "outline"
+                        alert.estado_orden_electronica === "ACEPTADA"
+                          ? "default"
+                          : alert.estado_orden_electronica === "PENDIENTE"
+                            ? "secondary"
+                            : alert.estado_orden_electronica === "RECHAZADA"
+                              ? "destructive"
+                              : "outline"
                       }
                       className="text-xs"
                     >
@@ -296,12 +419,15 @@ export function BrandAlertsTable({ status }: BrandAlertsTableProps) {
                             <div>
                               <label className="text-sm font-medium">Estado de la Orden</label>
                               <div className="p-2">
-                                <Badge 
+                                <Badge
                                   variant={
-                                    editingAlert?.estado_orden_electronica === "ACEPTADA" ? "default" :
-                                    editingAlert?.estado_orden_electronica === "PENDIENTE" ? "secondary" :
-                                    editingAlert?.estado_orden_electronica === "RECHAZADA" ? "destructive" :
-                                    "outline"
+                                    editingAlert?.estado_orden_electronica === "ACEPTADA"
+                                      ? "default"
+                                      : editingAlert?.estado_orden_electronica === "PENDIENTE"
+                                        ? "secondary"
+                                        : editingAlert?.estado_orden_electronica === "RECHAZADA"
+                                          ? "destructive"
+                                          : "outline"
                                   }
                                 >
                                   {editingAlert?.estado_orden_electronica || "N/A"}

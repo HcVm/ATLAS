@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -8,6 +10,12 @@ import { BrandAlertsStats } from "@/components/open-data/brand-alerts-stats"
 import { BrandAlertsTable } from "@/components/open-data/brand-alerts-table"
 
 export default function BrandAlertsPage() {
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const handleAlertsUpdated = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1)
+  }, [])
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {/* Header */}
@@ -34,9 +42,7 @@ export default function BrandAlertsPage() {
       </div>
 
       {/* Stats */}
-      <Suspense fallback={<div>Cargando estadísticas...</div>}>
-        <BrandAlertsStats />
-      </Suspense>
+      <BrandAlertsStats refreshTrigger={refreshTrigger} />
 
       {/* Alertas por estado */}
       <Card className="mt-6">
@@ -59,25 +65,25 @@ export default function BrandAlertsPage() {
 
             <TabsContent value="all" className="space-y-4">
               <Suspense fallback={<div>Cargando alertas...</div>}>
-                <BrandAlertsTable />
+                <BrandAlertsTable onAlertsUpdated={handleAlertsUpdated} />
               </Suspense>
             </TabsContent>
 
             <TabsContent value="pending" className="space-y-4">
               <Suspense fallback={<div>Cargando alertas pendientes...</div>}>
-                <BrandAlertsTable status="pending" />
+                <BrandAlertsTable status="pending" onAlertsUpdated={handleAlertsUpdated} />
               </Suspense>
             </TabsContent>
 
             <TabsContent value="attended" className="space-y-4">
               <Suspense fallback={<div>Cargando alertas atendidas...</div>}>
-                <BrandAlertsTable status="attended" />
+                <BrandAlertsTable status="attended" onAlertsUpdated={handleAlertsUpdated} />
               </Suspense>
             </TabsContent>
 
             <TabsContent value="rejected" className="space-y-4">
               <Suspense fallback={<div>Cargando alertas rechazadas...</div>}>
-                <BrandAlertsTable status="rejected" />
+                <BrandAlertsTable status="rejected" onAlertsUpdated={handleAlertsUpdated} />
               </Suspense>
             </TabsContent>
           </Tabs>
