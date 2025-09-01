@@ -198,7 +198,7 @@ function isEmptyValue(value: any): boolean {
   if (value === null || value === undefined) return true
   if (typeof value === "string") {
     const trimmed = value.trim()
-    return trimmed === "" || trimmed === "-" || trimmed === "N/A" || trimmed === "n/a"
+    return trimmed === "" || trimmed === "-"
   }
   return false
 }
