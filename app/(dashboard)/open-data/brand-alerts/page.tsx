@@ -8,6 +8,7 @@ import { ArrowLeft, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { BrandAlertsStats } from "@/components/open-data/brand-alerts-stats"
 import { BrandAlertsTable } from "@/components/open-data/brand-alerts-table"
+import { BrandAlertsRepairButton } from "@/components/open-data/brand-alerts-repair-button"
 
 export default function BrandAlertsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -27,7 +28,7 @@ export default function BrandAlertsPage() {
               Volver a Datos Abiertos
             </Link>
           </Button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center text-white text-lg">
               <AlertTriangle className="h-5 w-5" />
             </div>
@@ -38,6 +39,7 @@ export default function BrandAlertsPage() {
               </p>
             </div>
           </div>
+          <BrandAlertsRepairButton onRepairComplete={handleAlertsUpdated} />
         </div>
       </div>
 

@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/lib/auth-context"
-import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { useCompany } from "@/lib/company-context"
+import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -94,6 +95,7 @@ const PRIORITY_LABELS = {
 
 export default function AdminRequestsPage() {
   const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [requests, setRequests] = useState<RequestWithDetails[]>([])
   const [stats, setStats] = useState<RequestStats | null>(null)
   const [approvers, setApprovers] = useState<Approver[]>([])
@@ -106,6 +108,14 @@ export default function AdminRequestsPage() {
   const [showApproverDialog, setShowApproverDialog] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [selectedApprover, setSelectedApprover] = useState<Approver | null>(null)
+  const [approverForm, setApproverForm] = useState({
+    approver_user_id: "",
+    department_id: "",
+    request_types: [] as string[],
+    is_active: true,
+  })
+  const [savingApprover, setSavingApprover] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -304,6 +314,101 @@ export default function AdminRequestsPage() {
     } catch (error) {
       console.error("Error reassigning request:", error)
     }
+  }
+
+  const saveApprover = async () => {
+    console.log("[v0] saveApprover function called")
+    console.log("[v0] Current approverForm:", approverForm)
+    console.log("[v0] Selected company_id:", selectedCompany?.id)
+    console.log("[v0] Validation checks:")
+    console.log("[v0] - Has company_id:", !!selectedCompany?.id)
+    console.log("[v0] - Has approver_user_id:", !!approverForm.approver_user_id)
+    console.log("[v0] - Has request_types:", approverForm.request_types.length > 0)
+
+    if (!selectedCompany?.id || !approverForm.approver_user_id || approverForm.request_types.length === 0) {
+      console.log("[v0] Validation failed - missing required fields")
+      return
+    }
+
+    setSavingApprover(true)
+    try {
+      const approverData = {
+        company_id: selectedCompany.id,
+        approver_user_id: approverForm.approver_user_id,
+        department_id:
+          approverForm.department_id === "all" || !approverForm.department_id ? null : approverForm.department_id,
+        request_types: approverForm.request_types,
+        is_active: approverForm.is_active,
+      }
+
+      console.log("[v0] Saving approver data:", approverData)
+
+      let response
+      if (selectedApprover) {
+        console.log("[v0] Updating existing approver")
+        response = await fetch("/api/requests/approvers", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...approverData, id: selectedApprover.id }),
+        })
+      } else {
+        console.log("[v0] Creating new approver")
+        response = await fetch("/api/requests/approvers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(approverData),
+        })
+      }
+
+      console.log("[v0] API Response status:", response.status)
+      const result = await response.json()
+      console.log("[v0] API Response data:", result)
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error desconocido")
+      }
+
+      console.log("[v0] Approver operation completed successfully:", result)
+
+      await fetchApprovers()
+      setShowApproverDialog(false)
+      resetApproverForm()
+    } catch (error) {
+      console.error("[v0] Error saving approver:", error)
+      alert(`Error al guardar el aprobador: ${error.message || "Error desconocido"}`)
+    } finally {
+      setSavingApprover(false)
+    }
+  }
+
+  const resetApproverForm = () => {
+    setSelectedApprover(null)
+    setApproverForm({
+      approver_user_id: "",
+      department_id: "",
+      request_types: [],
+      is_active: true,
+    })
+  }
+
+  const editApprover = (approver: Approver) => {
+    setSelectedApprover(approver)
+    setApproverForm({
+      approver_user_id: approver.approver_user_id,
+      department_id: approver.department_id || "",
+      request_types: approver.request_types,
+      is_active: approver.is_active,
+    })
+    setShowApproverDialog(true)
+  }
+
+  const toggleRequestType = (type: string) => {
+    setApproverForm((prev) => ({
+      ...prev,
+      request_types: prev.request_types.includes(type)
+        ? prev.request_types.filter((t) => t !== type)
+        : [...prev.request_types, type],
+    }))
   }
 
   if (loading) {
@@ -532,35 +637,184 @@ export default function AdminRequestsPage() {
 
         <TabsContent value="approvers" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Aprobadores Configurados</CardTitle>
-              <CardDescription>Usuarios autorizados para aprobar solicitudes por departamento</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Aprobadores Configurados</CardTitle>
+                <CardDescription>Usuarios autorizados para aprobar solicitudes por departamento</CardDescription>
+              </div>
+              <Button
+                onClick={() => {
+                  resetApproverForm()
+                  setShowApproverDialog(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Aprobador
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {approvers.map((approver) => (
-                  <div key={approver.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{approver.approver_name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {approver.department_name || "Todos los departamentos"}
-                      </p>
-                      <div className="flex gap-1 mt-2">
-                        {approver.request_types.map((type) => (
-                          <Badge key={type} variant="outline" className="text-xs">
-                            {REQUEST_TYPE_LABELS[type as keyof typeof REQUEST_TYPE_LABELS]}
-                          </Badge>
-                        ))}
+                {approvers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No hay aprobadores configurados</h3>
+                    <p className="text-muted-foreground mb-4">Agrega usuarios que puedan aprobar solicitudes</p>
+                    <Button
+                      onClick={() => {
+                        resetApproverForm()
+                        setShowApproverDialog(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Primer Aprobador
+                    </Button>
+                  </div>
+                ) : (
+                  approvers.map((approver) => (
+                    <div key={approver.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h4 className="font-medium">{approver.approver_name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {approver.department_name || "Todos los departamentos"}
+                        </p>
+                        <div className="flex gap-1 mt-2">
+                          {approver.request_types.map((type) => (
+                            <Badge key={type} variant="outline" className="text-xs">
+                              {REQUEST_TYPE_LABELS[type as keyof typeof REQUEST_TYPE_LABELS]}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch checked={approver.is_active} disabled />
+                        <Button variant="outline" size="sm" onClick={() => editApprover(approver)}>
+                          Editar
+                        </Button>
                       </div>
                     </div>
-                    <Switch checked={approver.is_active} disabled />
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Approver Management Dialog */}
+      <Dialog
+        open={showApproverDialog}
+        onOpenChange={(open) => {
+          setShowApproverDialog(open)
+          if (!open) resetApproverForm()
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedApprover ? "Editar Aprobador" : "Agregar Aprobador"}</DialogTitle>
+            <DialogDescription>Configura los permisos de aprobación para un usuario</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Usuario Aprobador</Label>
+                <Select
+                  value={approverForm.approver_user_id}
+                  onValueChange={(value) => setApproverForm((prev) => ({ ...prev, approver_user_id: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Seleccionar usuario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name} ({user.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Departamento (Opcional)</Label>
+                <Select
+                  value={approverForm.department_id || "all"}
+                  onValueChange={(value) => setApproverForm((prev) => ({ ...prev, department_id: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Todos los departamentos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los departamentos</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Tipos de Solicitudes que puede Aprobar</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {Object.entries(REQUEST_TYPE_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={key}
+                      checked={approverForm.request_types.includes(key)}
+                      onChange={() => toggleRequestType(key)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor={key} className="text-sm font-normal">
+                      {label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={approverForm.is_active}
+                onCheckedChange={(checked) => setApproverForm((prev) => ({ ...prev, is_active: checked }))}
+              />
+              <Label>Activo</Label>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowApproverDialog(false)} disabled={savingApprover}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                console.log("[v0] Create button clicked")
+                console.log(
+                  "[v0] Button disabled state:",
+                  savingApprover || !approverForm.approver_user_id || approverForm.request_types.length === 0,
+                )
+                console.log("[v0] - savingApprover:", savingApprover)
+                console.log("[v0] - approver_user_id:", approverForm.approver_user_id)
+                console.log("[v0] - request_types length:", approverForm.request_types.length)
+                saveApprover()
+              }}
+              disabled={savingApprover || !approverForm.approver_user_id || approverForm.request_types.length === 0}
+            >
+              {savingApprover ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Guardando...
+                </>
+              ) : selectedApprover ? (
+                "Actualizar"
+              ) : (
+                "Crear"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Request Details Dialog */}
       {selectedRequest && (
