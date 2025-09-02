@@ -10,7 +10,7 @@ interface BrandAlert {
   orden_electronica: string
   acuerdo_marco: string
   brand_name: string
-  status: "pending" | "attended" | "rejected"
+  status: "pending" | "attended" | "observed"
   notes: string | null
   created_at: string
   updated_at: string
@@ -20,7 +20,7 @@ interface StatsData {
   totalAlerts: number
   pendingAlerts: number
   attendedAlerts: number
-  rejectedAlerts: number
+  observedAlerts: number
   recentAlerts: number
   brandCounts: Record<string, number>
 }
@@ -45,7 +45,7 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
     totalAlerts: 0,
     pendingAlerts: 0,
     attendedAlerts: 0,
-    rejectedAlerts: 0,
+    observedAlerts: 0,
     recentAlerts: 0,
     brandCounts: {},
   })
@@ -74,7 +74,7 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
       const totalAlerts = alerts.length
       const pendingAlerts = alerts.filter((alert) => alert.status === "pending").length
       const attendedAlerts = alerts.filter((alert) => alert.status === "attended").length
-      const rejectedAlerts = alerts.filter((alert) => alert.status === "rejected").length
+      const observedAlerts = alerts.filter((alert) => alert.status === "observed").length
 
       // Alertas recientes (últimos 7 días)
       const recentAlerts = alerts.filter((alert) => new Date(alert.created_at) >= sevenDaysAgo).length
@@ -89,7 +89,7 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
         totalAlerts,
         pendingAlerts,
         attendedAlerts,
-        rejectedAlerts,
+        observedAlerts,
         recentAlerts,
         brandCounts,
       }
@@ -149,15 +149,15 @@ export function BrandAlertsStats({ refreshTrigger }: BrandAlertsStatsProps) {
         </CardContent>
       </Card>
 
-      {/* Alertas rechazadas */}
+      {/* Alertas observadas */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Rechazadas</CardTitle>
-          <XCircle className="h-4 w-4 text-red-500" />
+          <CardTitle className="text-sm font-medium">Observadas</CardTitle>
+          <XCircle className="h-4 w-4 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{stats.rejectedAlerts}</div>
-          <p className="text-xs text-muted-foreground">No procesadas</p>
+          <div className="text-2xl font-bold text-orange-600">{stats.observedAlerts}</div>
+          <p className="text-xs text-muted-foreground">Requieren observación</p>
         </CardContent>
       </Card>
 

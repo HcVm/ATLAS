@@ -8,7 +8,7 @@ interface BrandAlert {
   orden_electronica: string
   acuerdo_marco: string
   brand_name: string
-  status: "pending" | "attended" | "rejected"
+  status: "pending" | "attended" | "observed"
   notes?: string | null
   ruc_proveedor?: string | null
   razon_social_proveedor?: string | null
@@ -48,11 +48,6 @@ BASE_MONITORED_BRANDS.forEach((brand) => {
   // Patrón con "MARCA " (sin dos puntos)
   ALL_BRAND_SEARCH_PATTERNS.set(`MARCA ${brand}`, brand)
 
-  // Patrón con minúsculas
-  ALL_BRAND_SEARCH_PATTERNS.set(`marca: ${brand.toLowerCase()}`, brand)
-  ALL_BRAND_SEARCH_PATTERNS.set(`marca:${brand.toLowerCase()}`, brand)
-  ALL_BRAND_SEARCH_PATTERNS.set(`marca ${brand.toLowerCase()}`, brand)
-
   // Patrones adicionales para casos específicos
   if (brand === "HOPE LIFE") {
     ALL_BRAND_SEARCH_PATTERNS.set("HOPELIFE", brand)
@@ -61,6 +56,11 @@ BASE_MONITORED_BRANDS.forEach((brand) => {
     ALL_BRAND_SEARCH_PATTERNS.set("Hope Life", brand)
     ALL_BRAND_SEARCH_PATTERNS.set("HopeLife", brand)
   }
+
+  // Patrón con minúsculas
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca: ${brand.toLowerCase()}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca:${brand.toLowerCase()}`, brand)
+  ALL_BRAND_SEARCH_PATTERNS.set(`marca ${brand.toLowerCase()}`, brand)
 })
 
 console.log("Brand search patterns configured:", Array.from(ALL_BRAND_SEARCH_PATTERNS.keys()))
@@ -110,7 +110,9 @@ async function ensureBrandAlertsPopulated(supabase: any) {
       // Buscar en TODOS los acuerdos marco, no solo uno específico
       const { data: openDataEntriesBatch, error: openDataError } = await supabase
         .from("open_data_entries")
-        .select("id, orden_electronica, codigo_acuerdo_marco, acuerdo_marco, marca_ficha_producto, ruc_proveedor, razon_social_proveedor, estado_orden_electronica")
+        .select(
+          "id, orden_electronica, codigo_acuerdo_marco, acuerdo_marco, marca_ficha_producto, ruc_proveedor, razon_social_proveedor, estado_orden_electronica",
+        )
         .not("marca_ficha_producto", "is", null) // Solo registros que tengan marca_ficha_producto
         .range(offset, offset + BATCH_SIZE - 1) // Fetch BATCH_SIZE records
 
@@ -173,7 +175,7 @@ async function ensureBrandAlertsPopulated(supabase: any) {
             })
             existingAlertsSet.add(uniqueKey) // Add to set to prevent duplicates within the same batch
             console.log(
-              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}. Proveedor: ${entry.razon_social_proveedor || 'N/A'}`,
+              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}. Proveedor: ${entry.razon_social_proveedor || "N/A"}`,
             )
           }
         }
@@ -267,7 +269,7 @@ export async function GET(request: NextRequest) {
     console.log("API GET: Fetching alerts from brand_alerts table...")
     let query = supabase.from("brand_alerts").select("*").order("created_at", { ascending: false })
 
-    if (status && ["pending", "attended", "rejected"].includes(status)) {
+    if (status && ["pending", "attended", "observed"].includes(status)) {
       query = query.eq("status", status)
       console.log(`API GET: Applying status filter: ${status}`)
     }
@@ -306,9 +308,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "ID and status are required" }, { status: 400 })
     }
 
-    if (!["pending", "attended", "rejected"].includes(status)) {
+    if (!["pending", "attended", "observed"].includes(status)) {
       console.error("API PATCH: Invalid status provided:", status)
       return NextResponse.json({ error: "Invalid status" }, { status: 400 })
+    }
+
+    if (status === "observed" && (!notes || notes.trim() === "")) {
+      console.error("API PATCH: Notes are required when marking alert as observed")
+      return NextResponse.json({ error: "Notes are required when marking alert as observed" }, { status: 400 })
     }
 
     console.log(`API PATCH: Updating alert ID: ${id} to status: ${status}`)

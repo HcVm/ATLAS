@@ -12,9 +12,123 @@ function getPeruDate() {
   return new Date(peruTime).toISOString().split("T")[0]
 }
 
+async function checkAttendanceNotifications() {
+  try {
+    console.log("[v0] Starting attendance notifications check...")
+
+    const currentDate = getPeruDate()
+    const yesterdayDate = new Date(new Date(currentDate).getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+
+    console.log("[v0] Checking attendance for date:", yesterdayDate)
+
+    // Get all active employees
+    const { data: employees, error: employeesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, email, company_id")
+      .eq("status", "active")
+      .not("role", "eq", "admin") // Skip admins from attendance checks
+
+    if (employeesError) {
+      console.error("[v0] Error fetching employees:", employeesError)
+      return
+    }
+
+    console.log(`[v0] Found ${employees?.length || 0} active employees to check`)
+
+    // Check for absences (no attendance record for yesterday)
+    for (const employee of employees || []) {
+      const { data: attendance, error: attendanceError } = await supabaseAdmin
+        .from("attendance")
+        .select("id, is_late, absence_notified")
+        .eq("user_id", employee.id)
+        .eq("date", yesterdayDate)
+        .single()
+
+      if (attendanceError && attendanceError.code !== "PGRST116") {
+        console.error(`[v0] Error checking attendance for user ${employee.id}:`, attendanceError)
+        continue
+      }
+
+      // If no attendance record found, it's an absence
+      if (!attendance) {
+        console.log(`[v0] Found absence for ${employee.full_name} on ${yesterdayDate}`)
+
+        // Check if absence notification already sent
+        const { data: existingNotification } = await supabaseAdmin
+          .from("notifications")
+          .select("id")
+          .eq("user_id", employee.id)
+          .eq("type", "attendance_absence")
+          .eq("metadata->absence_date", yesterdayDate)
+          .single()
+
+        if (!existingNotification) {
+          // Send absence notification
+          await supabaseAdmin.from("notifications").insert({
+            user_id: employee.id,
+            company_id: employee.company_id,
+            type: "attendance_absence",
+            title: "Justificación de Ausencia Requerida",
+            message: `No se registró tu asistencia el ${new Date(yesterdayDate).toLocaleDateString("es-ES")}. Tienes 24 horas para justificar tu ausencia.`,
+            metadata: {
+              absence_date: yesterdayDate,
+              deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              action_url: "/requests/new/justificacion-ausencia",
+            },
+            created_at: new Date().toISOString(),
+          })
+
+          console.log(`[v0] Sent absence notification to ${employee.full_name}`)
+        }
+      }
+      // If attendance exists but was late and not notified
+      else if (attendance.is_late && !attendance.absence_notified) {
+        console.log(`[v0] Found unnotified tardiness for ${employee.full_name} on ${yesterdayDate}`)
+
+        // Check if tardiness notification already sent
+        const { data: existingNotification } = await supabaseAdmin
+          .from("notifications")
+          .select("id")
+          .eq("user_id", employee.id)
+          .eq("type", "attendance_tardiness")
+          .eq("metadata->tardiness_date", yesterdayDate)
+          .single()
+
+        if (!existingNotification) {
+          // Send tardiness notification
+          await supabaseAdmin.from("notifications").insert({
+            user_id: employee.id,
+            company_id: employee.company_id,
+            type: "attendance_tardiness",
+            title: "Justificación de Tardanza Requerida",
+            message: `Llegaste tarde el ${new Date(yesterdayDate).toLocaleDateString("es-ES")}. Tienes 24 horas para justificar tu tardanza.`,
+            metadata: {
+              tardiness_date: yesterdayDate,
+              deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              action_url: "/requests/new/justificacion-tardanza",
+            },
+            created_at: new Date().toISOString(),
+          })
+
+          // Mark as notified
+          await supabaseAdmin.from("attendance").update({ absence_notified: true }).eq("id", attendance.id)
+
+          console.log(`[v0] Sent tardiness notification to ${employee.full_name}`)
+        }
+      }
+    }
+
+    console.log("[v0] Attendance notifications check completed")
+  } catch (error) {
+    console.error("[v0] Error in attendance notifications check:", error)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Starting automatic task migration...")
+
+    await checkAttendanceNotifications()
 
     const currentDate = getPeruDate()
     console.log("[v0] Current Peru date:", currentDate)

@@ -62,7 +62,7 @@ export default function BrandAlertsPage() {
               <TabsTrigger value="all">Todas</TabsTrigger>
               <TabsTrigger value="pending">Pendientes</TabsTrigger>
               <TabsTrigger value="attended">Atendidas</TabsTrigger>
-              <TabsTrigger value="rejected">Rechazadas</TabsTrigger>
+              <TabsTrigger value="observed">Observadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all" className="space-y-4">
@@ -83,9 +83,9 @@ export default function BrandAlertsPage() {
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="rejected" className="space-y-4">
-              <Suspense fallback={<div>Cargando alertas rechazadas...</div>}>
-                <BrandAlertsTable status="rejected" onAlertsUpdated={handleAlertsUpdated} />
+            <TabsContent value="observed" className="space-y-4">
+              <Suspense fallback={<div>Cargando alertas observadas...</div>}>
+                <BrandAlertsTable status="observed" onAlertsUpdated={handleAlertsUpdated} />
               </Suspense>
             </TabsContent>
           </Tabs>

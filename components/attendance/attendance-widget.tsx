@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { createNotification } from "@/lib/notifications"
 
 interface TodayAttendance {
   id: string
@@ -47,11 +48,60 @@ export function AttendanceWidget() {
     }
   }, [user, selectedCompany])
 
+  useEffect(() => {
+    if (user && selectedCompany) {
+      checkPendingAttendanceNotifications()
+    }
+  }, [user, selectedCompany])
+
   const WORK_START_TIME = { hours: 8, minutes: 0 } // 8:00 AM
   const EARLY_CHECKIN_MINUTES = 10 // 10 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
   const LUNCH_START_TIME = { hours: 12, minutes: 58 } // Added lunch time constants
   const LUNCH_END_TIME = { hours: 13, minutes: 0 } // 1:00 PM
+
+  const checkPendingAttendanceNotifications = async () => {
+    try {
+      const today = new Date()
+      const todayFormatted = format(today, "yyyy-MM-dd")
+      const currentHour = today.getHours()
+
+      // Only check after 5:30 PM for absence notifications
+      if (currentHour >= 17) {
+        const { data: attendance } = await supabase
+          .from("attendance")
+          .select("id")
+          .eq("user_id", user?.id)
+          .eq("attendance_date", todayFormatted)
+          .limit(1)
+
+        // If no attendance record and after 5:30 PM, check if notification was sent
+        if (!attendance || attendance.length === 0) {
+          const { data: existingNotification } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("user_id", user?.id)
+            .eq("type", "attendance_absence")
+            .eq("metadata->absence_date", todayFormatted)
+            .limit(1)
+
+          // Send notification if not already sent
+          if (!existingNotification || existingNotification.length === 0) {
+            await createNotification({
+              userId: user?.id!,
+              title: "Justificación de Ausencia Requerida",
+              message: "No se registró asistencia hoy. Tienes 24 horas para justificar tu ausencia desde las 5:30 PM.",
+              type: "attendance_absence",
+              companyId: selectedCompany?.id!,
+              actionUrl: "/requests/new/justificacion-ausencia",
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking pending attendance notifications:", error)
+    }
+  }
 
   const getTimeStatus = () => {
     const now = new Date()
@@ -178,6 +228,25 @@ export function AttendanceWidget() {
       console.log("[v0] Late check-in successful, data:", data)
       setTodayAttendance(data)
       toast.success("Entrada con tardanza marcada correctamente")
+
+      try {
+        await createNotification({
+          userId: user?.id!,
+          title: "Justificación de Tardanza Requerida",
+          message: "Has marcado entrada con tardanza. Tienes 24 horas desde ahora para justificar tu tardanza.",
+          type: "attendance_tardiness",
+          companyId: selectedCompany?.id!,
+          actionUrl: "/requests/new/justificacion-tardanza",
+          metadata: {
+            tardiness_date: getLocalDateString(now),
+            deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            check_in_time: getLocalTimeString(now),
+          },
+        })
+        console.log("[v0] Tardiness notification sent successfully")
+      } catch (notificationError) {
+        console.error("Error sending tardiness notification:", notificationError)
+      }
     } catch (error) {
       console.error("Error checking in late:", error)
       toast.error("Error al marcar entrada con tardanza")

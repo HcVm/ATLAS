@@ -27,7 +27,7 @@ interface BrandAlert {
   orden_electronica: string
   acuerdo_marco: string
   brand_name: string
-  status: "pending" | "attended" | "rejected"
+  status: "pending" | "attended" | "observed"
   notes?: string
   ruc_proveedor?: string
   razon_social_proveedor?: string
@@ -37,7 +37,7 @@ interface BrandAlert {
 }
 
 interface BrandAlertsTableProps {
-  status?: "pending" | "attended" | "rejected"
+  status?: "pending" | "attended" | "observed"
   onAlertsUpdated?: () => void
 }
 
@@ -48,6 +48,8 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
   const [editingAlert, setEditingAlert] = useState<BrandAlert | null>(null)
   const [editStatus, setEditStatus] = useState<string>("")
   const [editNotes, setEditNotes] = useState("")
+  const [observingAlert, setObservingAlert] = useState<BrandAlert | null>(null)
+  const [observationNotes, setObservationNotes] = useState("")
 
   useEffect(() => {
     fetchAlerts()
@@ -81,6 +83,15 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
 
   const updateAlertStatus = async (alertId: string, newStatus: string, notes?: string) => {
     try {
+      if (newStatus === "observed" && (!notes || notes.trim() === "")) {
+        toast({
+          title: "Error",
+          description: "Las notas son obligatorias cuando se marca una alerta como observada",
+          variant: "destructive",
+        })
+        return
+      }
+
       const { error } = await supabase
         .from("brand_alerts")
         .update({
@@ -110,8 +121,16 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
     }
   }
 
-  const handleQuickAction = async (alertId: string, action: "attended" | "rejected") => {
-    await updateAlertStatus(alertId, action)
+  const handleQuickAction = async (alertId: string, action: "attended" | "observed") => {
+    if (action === "observed") {
+      const alert = alerts.find((a) => a.id === alertId)
+      if (alert) {
+        setObservingAlert(alert)
+        setObservationNotes("")
+      }
+    } else {
+      await updateAlertStatus(alertId, action)
+    }
   }
 
   const handleEditSubmit = async () => {
@@ -127,6 +146,23 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
     setEditingAlert(alert)
     setEditStatus(alert.status)
     setEditNotes(alert.notes || "")
+  }
+
+  const handleObservationSubmit = async () => {
+    if (!observingAlert) return
+
+    if (!observationNotes.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe proporcionar una nota explicando por qué se observa esta alerta",
+        variant: "destructive",
+      })
+      return
+    }
+
+    await updateAlertStatus(observingAlert.id, "observed", observationNotes)
+    setObservingAlert(null)
+    setObservationNotes("")
   }
 
   const filteredAlerts = alerts.filter(
@@ -161,10 +197,13 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
             Atendida
           </Badge>
         )
-      case "rejected":
+      case "observed":
         return (
-          <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-            Rechazada
+          <Badge
+            variant="destructive"
+            className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+          >
+            Observada
           </Badge>
         )
       default:
@@ -177,7 +216,7 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
       orden_electronica: alert.orden_electronica,
       acuerdo_marco: alert.acuerdo_marco,
       brand_name: alert.brand_name,
-      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Rechazada",
+      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Observada",
       ruc_proveedor: alert.ruc_proveedor || "N/A",
       razon_social_proveedor: alert.razon_social_proveedor || "N/A",
       estado_orden_electronica: alert.estado_orden_electronica || "N/A",
@@ -226,7 +265,7 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
       orden_electronica: alert.orden_electronica,
       acuerdo_marco: alert.acuerdo_marco,
       brand_name: alert.brand_name,
-      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Rechazada",
+      status: alert.status === "pending" ? "Pendiente" : alert.status === "attended" ? "Atendida" : "Observada",
       ruc_proveedor: alert.ruc_proveedor || "N/A",
       razon_social_proveedor: alert.razon_social_proveedor || "N/A",
       estado_orden_electronica: alert.estado_orden_electronica || "N/A",
@@ -371,8 +410,8 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleQuickAction(alert.id, "rejected")}
-                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleQuickAction(alert.id, "observed")}
+                            className="text-orange-600 hover:text-orange-700"
                           >
                             <XCircle className="h-4 w-4" />
                           </Button>
@@ -443,7 +482,7 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
                                 <SelectContent>
                                   <SelectItem value="pending">Pendiente</SelectItem>
                                   <SelectItem value="attended">Atendida</SelectItem>
-                                  <SelectItem value="rejected">Rechazada</SelectItem>
+                                  <SelectItem value="observed">Observada</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -480,6 +519,51 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
           </Table>
         </div>
       )}
+      <Dialog open={!!observingAlert} onOpenChange={() => setObservingAlert(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Marcar como Observada</DialogTitle>
+            <DialogDescription>
+              Proporcione una nota explicando por qué esta alerta debe ser observada
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Orden Electrónica</label>
+                <div className="font-mono text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                  {observingAlert?.orden_electronica}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Marca</label>
+                <div className="p-2">{observingAlert && getBrandBadge(observingAlert.brand_name)}</div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Motivo de la observación *</label>
+              <Textarea
+                value={observationNotes}
+                onChange={(e) => setObservationNotes(e.target.value)}
+                placeholder="Explique por qué esta alerta debe ser marcada como observada..."
+                rows={4}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                * Este campo es obligatorio para marcar la alerta como observada
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setObservingAlert(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleObservationSubmit} className="bg-orange-600 hover:bg-orange-700">
+              Marcar como Observada
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
