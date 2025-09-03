@@ -50,12 +50,12 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
   "HOPE LIFE":
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOPELIFE-MEMBRETECMARCA.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFE.png",
   WORLDLIFE:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/WORLDLIFE-MEMBRENEW.png",
-  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ZEUS-HOJA%20MEMBRETADAF.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFE.png",
+  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ZEUS2.png",
   VALHALLA:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/VALHALLA-MEMBRETECMARCA.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLA.png",
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
@@ -232,27 +232,22 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
       <div style="position: relative; z-index: 2; padding: 30mm 30mm 20mm 30mm; height: calc(297mm - 80mm); box-sizing: border-box;">
 
         <!-- Título principal -->
-        <div style="text-align: center; margin-bottom: 6mm;">
+        <div style="text-align: center; margin-bottom: 12mm;">
           <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
             CERTIFICADO DE GARANTÍA
           </h1>
         </div>
-
-        <!-- Fecha -->
-        <div style="text-align: right; margin-bottom: 7mm;">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #000;">Lima, ${currentDate}</p>
-        </div>
-
         <!-- Información del destinatario -->
-        <div style="margin-bottom: 5mm;">
-          <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #000;">SEÑORES:</p>
-          <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
-          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">Ruc: ${data.clientRuc}</p>
-          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; line-height: 1.4;">${addressToDisplay}.</p>
+        <div style="margin-bottom: 4mm;">
+          <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #000;">Lima, ${currentDate}</p>
+          <p style="margin: 0 0 1mm 0; font-size: 11px; font-weight: 600; color: #000;">SEÑORES:</p>
+          <h3 style="margin: 0 0 1mm 0; font-size: 13px; font-weight: 800; color: #000;">${data.clientName}</h3>
+          <p style="margin: 0 0 1mm 0; font-size: 10px; color: #000;">Ruc: ${data.clientRuc}</p>
+          <p style="margin: 0 0 1mm 0; font-size: 10px; color: #000; line-height: 1.4;">${addressToDisplay}.</p>
         </div>
 
         <!-- Contenido principal -->
-        <div style="margin-bottom: 5mm; line-height: 1.5; text-align: justify;">
+        <div style="margin-bottom: 3mm; line-height: 1.5; text-align: justify;">
           <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">
             Por medio de la presente, <strong>AGLE PERUVIAN COMPANY E.I.R.L.</strong> garantiza este producto por un período de <strong>${data.warrantyMonths === 1 ? "un (1) mes" : data.warrantyMonths === 12 ? "doce (12) meses" : `${data.warrantyMonths} meses`}</strong> contados a partir de la fecha de entrega al usuario final. Esta garantía cubre defectos de fabricación y fallos de funcionamiento en todos los componentes, así como la mano de obra necesaria para su reparación o reemplazo, siempre que dichos defectos sean atribuibles a procesos de fabricación.
           </p>
@@ -324,8 +319,8 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
         </div>
 
         <!-- Firma -->
-        <div style="margin-top: 8mm;">
-          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #000;">Atentamente,</p>
+        <div style="margin-top: 5mm;">
+          <p style="margin: 0 0 6mm 10mm; font-size: 10px; color: #000;">Atentamente,</p>
         </div>
       </div>
     </div>
@@ -413,7 +408,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         </div>
 
         <!-- Condiciones de garantía -->
-        <div style="margin-bottom: 8mm;">
+        <div style="margin-bottom: 4mm;">
           <p style="margin: 0 0 4mm 0; font-size: 10px; font-weight: 700; color: #000;">ESTA GARANTÍA NO ES VÁLIDA EN CUALQUIERA DE LOS SIGUIENTES CASOS:</p>
           
           <p style="margin: 0 0 2mm 0; font-size: 10px; line-height: 1.3; color: #000;">
@@ -436,10 +431,19 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
         </div>
 
         <!-- Firma -->
-        <div style="margin-top: 15mm;">
-          <p style="margin: 0 0 10mm 0; font-size: 10px; color: #000;">Atentamente,</p>
+        <div style="margin-top: 0mm;">
+          <p style="margin: 0 0 2mm 0; font-size: 10px; color: #000;">Atentamente,</p>
           
         </div>
+       <div style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+          <img src="otros/firma-milagros-villadeza.png" style="width: 100px; height: auto; max-height: 100mm;" />
+          
+          <p style="margin: 2mm 0 0 0; font-size: 10px; color: #000; font-weight: 700;">Milagros Villadeza</p>
+          <p style="margin: 0 0 0 0; font-size: 10px; color: #000;">Gerente General</p>
+          <p style="margin: 0 0 0 0; font-size: 9px; color: #000; font-weight: 700;">ARM CORPORATIONS DEL PERÚ E.I.R.L.</p>
+          <p style="margin: 0; font-size: 10px; color: #000;">RUC: 20600000001</p>
+        </div>
+
       </div>
     </div>
   `
