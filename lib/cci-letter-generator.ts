@@ -35,8 +35,8 @@ export interface CCILetterData {
 
 // URLs de las hojas membretadas
 const LETTERHEAD_URLS = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLE.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARM.png",
+  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLEFIX.png",
+  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARMFIX.png",
 }
 
 // Función para determinar qué hoja membretada usar

@@ -50,12 +50,12 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
   "HOPE LIFE":
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFE.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFEFIX.png",
   WORLDLIFE:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFE.png",
-  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ZEUS2.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFEFIX.png",
+  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ZEUSFIX.png",
   VALHALLA:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLA.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLAFIX.png",
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
