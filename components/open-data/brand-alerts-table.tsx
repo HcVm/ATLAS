@@ -14,10 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Edit, CheckCircle, XCircle, ExternalLink, Download } from "lucide-react"
+import { Search, Edit, CheckCircle, XCircle, ExternalLink, Download, Eye } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { exportToExcel, exportToCSV } from "@/lib/export-utils"
@@ -50,10 +51,41 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
   const [editNotes, setEditNotes] = useState("")
   const [observingAlert, setObservingAlert] = useState<BrandAlert | null>(null)
   const [observationNotes, setObservationNotes] = useState("")
+  const [viewingNotesAlert, setViewingNotesAlert] = useState<BrandAlert | null>(null)
 
   useEffect(() => {
     fetchAlerts()
   }, [status])
+
+  const handleOpenPeruCompras = (orden: string) => {
+  const form = document.createElement("form")
+  form.method = "POST"
+  form.action = "https://www.catalogos.perucompras.gob.pe/ConsultaOrdenesPub"
+  form.target = "_blank"
+
+  // Campo principal
+  const inputOrden = document.createElement("input")
+  inputOrden.type = "hidden"
+  inputOrden.name = "consultaOrdenes"   // este nombre debe ser EXACTO
+  inputOrden.value = orden
+  form.appendChild(inputOrden)
+
+  // Otros campos obligatorios (aunque vacíos)
+  const otrosCampos = ["acuerdoMarco", "proveedor", "fechaInicio", "fechaFin"]
+  otrosCampos.forEach((name) => {
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = name
+    input.value = ""
+    form.appendChild(input)
+  })
+
+  document.body.appendChild(form)
+  form.submit()
+  document.body.removeChild(form)
+}
+
+
 
   const fetchAlerts = async () => {
     try {
@@ -417,6 +449,54 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
                           </Button>
                         </>
                       )}
+                      {alert.status === "observed" && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-blue-600 hover:text-blue-700">
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                              <DialogTitle>Notas de la Observación</DialogTitle>
+                              <DialogDescription>
+                                Detalles de por qué esta alerta fue observada
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md text-sm whitespace-pre-line space-y-2">
+                              {alert.notes ? (
+                                alert.notes.split(/\s+/).map((word, index) =>
+                                  word.startsWith("http") ? (
+                                    <Button
+                                      key={index}
+                                      variant="outline"
+                                      size="sm"
+                                      asChild
+                                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mx-1"
+                                    >
+                                      <a href={word} target="_blank" rel="noopener noreferrer">
+                                        <Eye className="h-4 w-4" />
+                                        Ver documento
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <span key={index} className="mx-1">
+                                      {word}
+                                    </span>
+                                  )
+                                )
+                              ) : (
+                                <span>No se registraron notas para esta observación.</span>
+                              )}
+                            </div>
+                            <DialogFooter>
+                            <DialogClose asChild>
+                              <Button variant="outline">Cerrar</Button>
+                            </DialogClose>
+                          </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      )}
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" onClick={() => openEditDialog(alert)}>
@@ -497,19 +577,21 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
                             </div>
                           </div>
                           <DialogFooter>
-                            <Button variant="outline" onClick={() => setEditingAlert(null)}>
-                              Cancelar
-                            </Button>
+                            <DialogClose asChild>
+                              <Button variant="outline" onClick={() => setEditingAlert(null)}>
+                                Cancelar
+                              </Button>
+                            </DialogClose>
                             <Button onClick={handleEditSubmit}>Guardar Cambios</Button>
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link
-                          href={`/open-data/${encodeURIComponent(alert.acuerdo_marco)}?search=${alert.orden_electronica}`}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenPeruCompras(alert.orden_electronica)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
