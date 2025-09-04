@@ -55,7 +55,7 @@ export function AttendanceWidget() {
   }, [user, selectedCompany])
 
   const WORK_START_TIME = { hours: 8, minutes: 0 } // 8:00 AM
-  const EARLY_CHECKIN_MINUTES = 10 // 10 minutes before work start
+  const EARLY_CHECKIN_MINUTES = 70 // 70 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
   const LUNCH_START_TIME = { hours: 12, minutes: 58 } // Added lunch time constants
   const LUNCH_END_TIME = { hours: 13, minutes: 0 } // 1:00 PM
@@ -112,14 +112,14 @@ export function AttendanceWidget() {
     // Work start time in minutes (8:00 AM = 480 minutes)
     const workStartMinutes = WORK_START_TIME.hours * 60 + WORK_START_TIME.minutes
 
-    // Early check-in allowed from 7:50 AM (470 minutes)
+    // Early check-in allowed from 6:50 AM (400 minutes)
     const earlyCheckinMinutes = workStartMinutes - EARLY_CHECKIN_MINUTES
 
     // Late threshold at 8:30 AM (510 minutes)
     const lateThresholdMinutes = workStartMinutes + LATE_THRESHOLD_MINUTES
 
     if (currentTotalMinutes < earlyCheckinMinutes) {
-      return "too_early" // Before 7:50 AM
+      return "too_early" // Before 6:50 AM
     } else if (currentTotalMinutes <= lateThresholdMinutes) {
       return "normal" // Between 7:50 AM and 8:30 AM
     } else {

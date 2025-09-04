@@ -435,15 +435,6 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
           <p style="margin: 0 0 2mm 0; font-size: 10px; color: #000;">Atentamente,</p>
           
         </div>
-       <div style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-          <img src="otros/firma-milagros-villadeza.png" style="width: 100px; height: auto; max-height: 100mm;" />
-          
-          <p style="margin: 2mm 0 0 0; font-size: 10px; color: #000; font-weight: 700;">Milagros Villadeza</p>
-          <p style="margin: 0 0 0 0; font-size: 10px; color: #000;">Gerente General</p>
-          <p style="margin: 0 0 0 0; font-size: 9px; color: #000; font-weight: 700;">ARM CORPORATIONS DEL PERÚ E.I.R.L.</p>
-          <p style="margin: 0; font-size: 10px; color: #000;">RUC: 20600000001</p>
-        </div>
-
       </div>
     </div>
   `

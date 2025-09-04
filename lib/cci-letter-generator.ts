@@ -35,8 +35,8 @@ export interface CCILetterData {
 
 // URLs de las hojas membretadas
 const LETTERHEAD_URLS = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/AGLE-MEMBRETEFIXEDFINAL.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/ARM-MEMBRETEFIXEXFINCMARCA.png",
+  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLE.png",
+  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARM.png",
 }
 
 // Función para determinar qué hoja membretada usar
@@ -367,8 +367,8 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
       <div style="position: relative; z-index: 2; padding: 0; margin: 0; width: 100%; height: 100%;">
 
         <!-- Área de fecha - Posicionada en la esquina superior derecha -->
-        <div style="position: absolute; top: 30mm; right: 20mm; text-align: right;">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
+        <div style="position: absolute; top: 40mm; right: 40mm; text-align: right;">
+          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}</p>
         </div>
 
         <!-- Título de la carta -->
@@ -403,53 +403,53 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
           <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">RUC:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">RUC:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">
                   ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.cci || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">OCAM:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">OCAM:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
+                <td style="padding: 3mm 6mm;olor: #1a1a1a; font-weight: 700;">${data.siaf}</td>
               </tr>
             </table>
           </div>
 
-          <p style="margin: 6mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
+          <p style="margin: 4mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
             Se certifica que el número de cuenta bancaria informado se encuentra vinculado al RUC 
             indicado, conforme a los datos registrados en el sistema financiero nacional al momento de su 
             apertura.
           </p>
 
-          <p style="margin: 6mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
+          <p style="margin: 5mm 0; font-size: 11px; color: #1a1a1a; text-align: justify;">
             Asimismo, dejo constancia que la factura a ser emitida por mi representada, una vez cumplida o 
             atendida la correspondiente Orden de Compra y/o de Servicio o las prestaciones en bienes y/o 
             servicios materia del contrato quedará cancelada para todos sus efectos mediante la sola 
@@ -459,33 +459,10 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
         </div>
 
         <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 30mm; left: 20mm; right: 20mm;">
+        <div style="position: absolute; bottom: 40mm; left: 30mm; right: 20mm;">
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
         </div>
 
-        <div style="position: absolute; bottom: 6mm; left: 6mm;">
-          ${
-            data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left;">
-                    ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
-                    ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
-                    ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
-                  </p>`
-              : ""
-          }
-            
-            ${
-              data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 1mm 0; font-size: 11px; color: #1a1a1a; text-align: left;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
-                : ""
-            }
-            
-            ${
-              data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0; font-size: 10px; color: #1a1a1a; text-align: left; line-height: 1.2;">${data.bankingInfo.fiscalAddress}</p>`
-                : ""
-            }
-          </div>
       </div>
     </div>
   `
@@ -598,31 +575,6 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
           <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
           
         </div>
-
-        <div style="position: absolute; bottom: 13mm; left: 7mm;">
-          ${
-            data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left; font-weight: 700;">
-
-                    ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
-                    ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
-                    ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
-                  </p>`
-              : ""
-          }
-            
-            ${
-              data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<p style="margin: 0 0 1mm 0; font-size: 10px; color: #1a1a1a; text-align: left; font-weight: 700;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
-                : ""
-            }
-            
-            ${
-              data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0; font-size: 9px; color: #1a1a1a; text-align: left; line-height: 1.2; font-weight: 700;">${data.bankingInfo.fiscalAddress}</p>`
-                : ""
-            }
-          </div>
       </div>
     </div>
   `
