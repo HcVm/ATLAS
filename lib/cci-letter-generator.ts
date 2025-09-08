@@ -400,41 +400,41 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
           </p>
 
           <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
-          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm;">
+          <div style="margin: 8mm 0;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">RUC:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">RUC:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">
                   ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.cci || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">OCAM:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
               </tr>
               <tr>
-                <td style="padding: 2mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
-                <td style="padding: 3mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
               </tr>
               <tr>
                 <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
@@ -512,37 +512,37 @@ const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, 
           </p>
 
           <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
-          <div style="margin: 8mm 0; border: 1px solid #ddd; border-radius: 3mm;">
+          <div style="margin: 8mm 0;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">RUC:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">RUC:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">
                   ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
                   ${data.bankingInfo?.bankAccount?.cci || "N/A"}
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; font-weight: 600; color: #666;">OCAM:</td>
-                <td style="padding: 4mm 6mm; border-bottom: 1px solid #eee; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
+                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
+                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
               </tr>
               <tr>
                 <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
