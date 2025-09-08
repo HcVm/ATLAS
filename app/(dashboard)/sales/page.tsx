@@ -20,8 +20,6 @@ import {
   Eye,
   AlertTriangle,
   ShoppingCart,
-  Shield,
-  CreditCard,
   MoreHorizontal,
   Receipt,
   Check,
@@ -51,6 +49,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog" // Import the new management dialog
 import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
+import { ConditionalLetterButtons } from "@/components/sales/conditional-letter-buttons"
 
 interface Sale {
   id: string
@@ -136,6 +135,7 @@ interface SalesEntity {
   ruc: string
   executing_unit: string | null
   fiscal_address: string | null
+  client_type: "private" | "government" | null
 }
 
 export default function SalesPage() {
@@ -364,7 +364,21 @@ export default function SalesPage() {
     }
   }
 
-  // Función para obtener la dirección fiscal de una entidad
+  const fetchEntityClientType = async (entityId: string): Promise<"private" | "government" | null> => {
+    try {
+      const { data, error } = await supabase.from("sales_entities").select("client_type").eq("id", entityId).single()
+
+      if (error) {
+        console.error("Error fetching entity client type:", error)
+        return null
+      }
+      return data?.client_type || null
+    } catch (error) {
+      console.error("Error in fetchEntityClientType:", error)
+      return null
+    }
+  }
+
   const fetchEntityFiscalAddress = async (entityId: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase.from("sales_entities").select("fiscal_address").eq("id", entityId).single()
@@ -378,6 +392,16 @@ export default function SalesPage() {
       console.error("Error in fetchEntityFiscalAddress:", error)
       return null
     }
+  }
+
+  const shouldShowWarrantyButton = (clientType: "private" | "government" | null): boolean => {
+    // Siempre mostrar carta de garantía (tanto para privados como gubernamentales)
+    return true
+  }
+
+  const shouldShowCCIButton = (clientType: "private" | "government" | null): boolean => {
+    // Solo mostrar carta de CCI para clientes gubernamentales
+    return clientType === "government"
   }
 
   const handleEditSale = (sale: Sale) => {
@@ -538,6 +562,10 @@ export default function SalesPage() {
       setWarrantyDateDialog((prev) => ({ ...prev, isGenerating: true }))
       toast.info("Generando carta de garantía...")
 
+      // Obtener el tipo de cliente para validación adicional
+      const clientType = await fetchEntityClientType(sale.entity_id)
+      console.log("🏢 Tipo de cliente:", clientType)
+
       // Obtener la dirección fiscal de la entidad
       const clientFiscalAddress = await fetchEntityFiscalAddress(sale.entity_id)
 
@@ -635,6 +663,14 @@ export default function SalesPage() {
 
   const handleGenerateCCILetter = async (sale: Sale, selectedDate?: Date) => {
     if (!selectedDate) {
+      // Verificar tipo de cliente antes de abrir el diálogo
+      const clientType = await fetchEntityClientType(sale.entity_id)
+
+      if (clientType !== "government") {
+        toast.error("Las cartas de CCI solo están disponibles para clientes gubernamentales")
+        return
+      }
+
       // Abrir diálogo de selección de fecha
       setCciDateDialog({
         open: true,
@@ -647,6 +683,12 @@ export default function SalesPage() {
     try {
       setCciDateDialog((prev) => ({ ...prev, isGenerating: true }))
       toast.info("Generando carta de CCI...")
+
+      // Validación adicional del tipo de cliente
+      const clientType = await fetchEntityClientType(sale.entity_id)
+      if (clientType !== "government") {
+        throw new Error("Las cartas de CCI solo están disponibles para clientes gubernamentales")
+      }
 
       // Obtener la dirección fiscal de la entidad
       const clientFiscalAddress = await fetchEntityFiscalAddress(sale.entity_id)
@@ -997,14 +1039,12 @@ export default function SalesPage() {
                                 Comprobante de pago
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleGenerateWarrantyLetter(sale)}>
-                                <Shield className="mr-2 h-4 w-4 text-green-600" />
-                                Carta de garantía
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleGenerateCCILetter(sale)}>
-                                <CreditCard className="mr-2 h-4 w-4 text-blue-600" />
-                                Carta de CCI
-                              </DropdownMenuItem>
+                              <ConditionalLetterButtons
+                                entityId={sale.entity_id}
+                                onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
+                                onGenerateCCI={() => handleGenerateCCILetter(sale)}
+                                variant="dropdown"
+                              />
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1093,24 +1133,13 @@ export default function SalesPage() {
                           <Receipt className="h-4 w-4 mr-1" />
                           Comp.
                         </Button>
-                        <Button
-                          variant="outline"
+                        <ConditionalLetterButtons
+                          entityId={sale.entity_id}
+                          onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
+                          onGenerateCCI={() => handleGenerateCCILetter(sale)}
+                          variant="buttons"
                           size="sm"
-                          className="w-full bg-transparent text-green-600 hover:bg-green-50"
-                          onClick={() => handleGenerateWarrantyLetter(sale)}
-                        >
-                          <Shield className="h-4 w-4 mr-1" />
-                          Garantía
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
-                          onClick={() => handleGenerateCCILetter(sale)}
-                        >
-                          <CreditCard className="h-4 w-4 mr-1" />
-                          CCI
-                        </Button>
+                        />
                       </div>
                     </div>
                   </div>

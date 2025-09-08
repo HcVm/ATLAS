@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface SalesEntity {
   id: string
@@ -23,6 +24,7 @@ interface SalesEntity {
   fiscal_address: string | null
   email: string | null
   contact_person: string | null
+  client_type: "private" | "government" | null
 }
 
 interface EntitySelectorProps {
@@ -59,7 +61,30 @@ export function EntitySelector({
     fiscal_address: "",
     email: "",
     contact_person: "",
+    client_type: "private" as "private" | "government",
   })
+
+  const getClientTypeLabel = (clientType: "private" | "government" | null) => {
+    switch (clientType) {
+      case "private":
+        return "Privado"
+      case "government":
+        return "Gubernamental"
+      default:
+        return "No definido"
+    }
+  }
+
+  const getClientTypeBadgeVariant = (clientType: "private" | "government" | null) => {
+    switch (clientType) {
+      case "private":
+        return "secondary"
+      case "government":
+        return "default"
+      default:
+        return "outline"
+    }
+  }
 
   useEffect(() => {
     if (selectedCompany) {
@@ -68,7 +93,6 @@ export function EntitySelector({
   }, [selectedCompany])
 
   useEffect(() => {
-    // Filtrar entidades basado en el texto de búsqueda
     if (searchValue.trim() === "") {
       setFilteredEntities(entities)
     } else {
@@ -86,7 +110,6 @@ export function EntitySelector({
   }, [searchValue, entities])
 
   useEffect(() => {
-    // Encontrar la entidad seleccionada por ID
     if (value) {
       const entity = entities.find((e) => e.id === value)
       setSelectedEntity(entity || null)
@@ -102,7 +125,7 @@ export function EntitySelector({
     try {
       const { data, error } = await supabase
         .from("sales_entities")
-        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person")
+        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person, client_type")
         .eq("company_id", selectedCompany.id)
         .order("name")
 
@@ -136,6 +159,7 @@ export function EntitySelector({
             fiscal_address: newEntity.fiscal_address.trim() || null,
             email: newEntity.email.trim() || null,
             contact_person: newEntity.contact_person.trim() || null,
+            client_type: newEntity.client_type,
             company_id: selectedCompany.id,
           },
         ])
@@ -146,15 +170,19 @@ export function EntitySelector({
 
       toast.success("Entidad creada exitosamente")
 
-      // Actualizar la lista de entidades
       setEntities((prev) => [...prev, data])
-
-      // Seleccionar la nueva entidad
       onSelect(data)
       setSelectedEntity(data)
 
-      // Limpiar formulario y cerrar diálogo
-      setNewEntity({ name: "", ruc: "", executing_unit: "", fiscal_address: "", email: "", contact_person: "" })
+      setNewEntity({
+        name: "",
+        ruc: "",
+        executing_unit: "",
+        fiscal_address: "",
+        email: "",
+        contact_person: "",
+        client_type: "private",
+      })
       setShowCreateDialog(false)
       setOpen(false)
     } catch (error: any) {
@@ -171,7 +199,6 @@ export function EntitySelector({
   }
 
   const handleCreateFromSearch = () => {
-    // Pre-llenar el formulario con el texto de búsqueda si parece ser un nombre
     if (searchValue.trim() && !searchValue.includes("-") && searchValue.length > 2) {
       setNewEntity((prev) => ({ ...prev, name: searchValue.trim() }))
     }
@@ -202,8 +229,10 @@ export function EntitySelector({
                   <Badge variant="outline" className="text-xs shrink-0">
                     {selectedEntity.ruc}
                   </Badge>
+                  <Badge variant={getClientTypeBadgeVariant(selectedEntity.client_type)} className="text-xs shrink-0">
+                    {getClientTypeLabel(selectedEntity.client_type)}
+                  </Badge>
                 </div>
-                {/* Additional info badges in a wrapping container */}
                 <div className="flex flex-wrap items-center gap-1">
                   {selectedEntity.executing_unit && (
                     <Badge variant="secondary" className="text-xs">
@@ -278,6 +307,9 @@ export function EntitySelector({
                                 <Badge variant="outline" className="text-xs">
                                   {entity.ruc}
                                 </Badge>
+                                <Badge variant={getClientTypeBadgeVariant(entity.client_type)} className="text-xs">
+                                  {getClientTypeLabel(entity.client_type)}
+                                </Badge>
                                 {entity.executing_unit && (
                                   <Badge variant="secondary" className="text-xs">
                                     U.E: {entity.executing_unit}
@@ -304,7 +336,6 @@ export function EntitySelector({
                         </CommandItem>
                       ))}
 
-                      {/* Opción para crear nueva entidad siempre visible */}
                       <CommandItem onSelect={handleCreateFromSearch}>
                         <Plus className="h-4 w-4 mr-2" />
                         <span>Crear nueva entidad</span>
@@ -318,7 +349,6 @@ export function EntitySelector({
         </PopoverContent>
       </Popover>
 
-      {/* Diálogo para crear nueva entidad */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
@@ -347,6 +377,24 @@ export function EntitySelector({
                 placeholder="20123456789"
                 required
               />
+            </div>
+
+            <div>
+              <Label htmlFor="new_entity_client_type">Tipo de Cliente *</Label>
+              <Select
+                value={newEntity.client_type}
+                onValueChange={(value: "private" | "government") =>
+                  setNewEntity((prev) => ({ ...prev, client_type: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el tipo de cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">Privado</SelectItem>
+                  <SelectItem value="government">Público (Gubernamental)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

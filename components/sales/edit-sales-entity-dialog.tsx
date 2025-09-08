@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface SalesEntity {
   id: string
@@ -27,6 +28,7 @@ interface SalesEntity {
   fiscal_address: string | null
   email: string | null
   contact_person: string | null
+  client_type: "private" | "government" | null
 }
 
 interface EditSalesEntityDialogProps {
@@ -43,6 +45,9 @@ const formSchema = z.object({
   fiscal_address: z.string().nullable(),
   email: z.string().email("Formato de email inválido").nullable().or(z.literal("")),
   contact_person: z.string().nullable(),
+  client_type: z.enum(["private", "government"], {
+    required_error: "Debe seleccionar un tipo de cliente",
+  }),
 })
 
 export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }: EditSalesEntityDialogProps) {
@@ -55,6 +60,7 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
       fiscal_address: entity.fiscal_address,
       email: entity.email,
       contact_person: entity.contact_person,
+      client_type: entity.client_type || "private",
     },
   })
 
@@ -67,6 +73,7 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
         fiscal_address: entity.fiscal_address,
         email: entity.email,
         contact_person: entity.contact_person,
+        client_type: entity.client_type || "private",
       })
     }
   }, [entity, form])
@@ -82,6 +89,7 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
           fiscal_address: values.fiscal_address,
           email: values.email || null,
           contact_person: values.contact_person,
+          client_type: values.client_type,
           updated_at: new Date().toISOString(),
         })
         .eq("id", entity.id)
@@ -130,6 +138,27 @@ export function EditSalesEntityDialog({ open, onOpenChange, entity, onSuccess }:
                   <FormControl>
                     <Input placeholder="RUC de la entidad" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="client_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cliente</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el tipo de cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="private">Privado</SelectItem>
+                      <SelectItem value="government">Público (Gubernamental)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

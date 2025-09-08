@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Edit } from "lucide-react"
 import { EditSalesEntityDialog } from "./edit-sales-entity-dialog"
+import { Badge } from "@/components/ui/badge"
 
 interface SalesEntity {
   id: string
@@ -18,6 +19,7 @@ interface SalesEntity {
   fiscal_address: string | null
   email: string | null
   contact_person: string | null
+  client_type: "private" | "government" | null
 }
 
 interface SalesEntityManagementDialogProps {
@@ -50,7 +52,7 @@ export function SalesEntityManagementDialog({
     try {
       const { data, error } = await supabase
         .from("sales_entities")
-        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person")
+        .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person, client_type")
         .eq("company_id", companyId)
         .order("name")
 
@@ -77,6 +79,28 @@ export function SalesEntityManagementDialog({
     }
   }
 
+  const getClientTypeLabel = (clientType: "private" | "government" | null) => {
+    switch (clientType) {
+      case "private":
+        return "Privado"
+      case "government":
+        return "Gubernamental"
+      default:
+        return "No definido"
+    }
+  }
+
+  const getClientTypeBadgeVariant = (clientType: "private" | "government" | null) => {
+    switch (clientType) {
+      case "private":
+        return "secondary"
+      case "government":
+        return "default"
+      default:
+        return "outline"
+    }
+  }
+
   const filteredSalesEntities = salesEntities.filter(
     (entity) =>
       entity.name.toLowerCase().includes(entitySearchTerm.toLowerCase()) ||
@@ -89,7 +113,7 @@ export function SalesEntityManagementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
         <DialogHeader>
           <DialogTitle className="text-slate-800 dark:text-slate-100">Gestionar Entidades de Venta</DialogTitle>
           <DialogDescription className="text-slate-600 dark:text-slate-300">
@@ -127,6 +151,7 @@ export function SalesEntityManagementDialog({
                 <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50">
                   <TableHead className="text-slate-700 dark:text-slate-200">Nombre</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">RUC</TableHead>
+                  <TableHead className="text-slate-700 dark:text-slate-200">Tipo</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">Unidad Ejecutora</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">Dirección Fiscal</TableHead>
                   <TableHead className="text-slate-700 dark:text-slate-200">Email</TableHead>
@@ -142,6 +167,11 @@ export function SalesEntityManagementDialog({
                   >
                     <TableCell className="font-medium text-slate-700 dark:text-slate-200">{entity.name}</TableCell>
                     <TableCell className="text-slate-600 dark:text-slate-300">{entity.ruc}</TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300">
+                      <Badge variant={getClientTypeBadgeVariant(entity.client_type)}>
+                        {getClientTypeLabel(entity.client_type)}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-slate-600 dark:text-slate-300">
                       {entity.executing_unit || "N/A"}
                     </TableCell>

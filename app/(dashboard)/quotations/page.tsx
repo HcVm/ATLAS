@@ -134,6 +134,7 @@ interface Quotation {
   sales_entities?: {
     // Corrected from 'entities' to 'sales_entities'
     fiscal_address: string | null
+    client_type: string | null
   }
 }
 
@@ -272,7 +273,7 @@ export default function QuotationsPage() {
         .select(`
     *,
     profiles!quotations_created_by_fkey (full_name),
-    sales_entities!quotations_entity_id_fkey (fiscal_address),
+    sales_entities!quotations_entity_id_fkey (fiscal_address, client_type),
     quotation_items (
       id,
       product_id,
@@ -562,7 +563,7 @@ export default function QuotationsPage() {
           .select(`
   *,
   profiles!quotations_created_by_fkey (full_name),
-  sales_entities!quotations_entity_id_fkey (fiscal_address),
+  sales_entities!quotations_entity_id_fkey (fiscal_address, client_type),
   quotation_items (
     id,
     product_id,
@@ -1022,8 +1023,9 @@ export default function QuotationsPage() {
                                         <FileText className="mr-2 h-4 w-4" /> Generar PDFs
                                       </DropdownMenuSubTrigger>
                                       <DropdownMenuSubContent className="bg-popover border-border">
-                                        {selectedCompany.code === "ARM" ? (
-                                          <>
+                                        {quotation.sales_entities?.client_type === "government" ? (
+                                          // Solo mostrar PDF para entidades gubernamentales
+                                          selectedCompany.code === "ARM" ? (
                                             <DropdownMenuItem asChild>
                                               <ARMEntityQuotationPDFGenerator
                                                 quotation={{
@@ -1033,18 +1035,7 @@ export default function QuotationsPage() {
                                                 companyInfo={selectedCompany}
                                               />
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                              <ARMPrivateQuotationPDFGenerator
-                                                quotation={{
-                                                  ...quotation,
-                                                  fiscal_address: quotation.sales_entities?.fiscal_address || null,
-                                                }}
-                                                companyInfo={selectedCompany}
-                                              />
-                                            </DropdownMenuItem>
-                                          </>
-                                        ) : (
-                                          <>
+                                          ) : (
                                             <DropdownMenuItem asChild>
                                               <EntityQuotationPDFGenerator
                                                 quotation={{
@@ -1054,16 +1045,28 @@ export default function QuotationsPage() {
                                                 companyInfo={selectedCompany}
                                               />
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                              <PrivateQuotationPDFGenerator
-                                                quotation={{
-                                                  ...quotation,
-                                                  fiscal_address: quotation.sales_entities?.fiscal_address || null,
-                                                }}
-                                                companyInfo={selectedCompany}
-                                              />
-                                            </DropdownMenuItem>
-                                          </>
+                                          )
+                                        ) : // Solo mostrar PDF para empresas privadas
+                                        selectedCompany.code === "ARM" ? (
+                                          <DropdownMenuItem asChild>
+                                            <ARMPrivateQuotationPDFGenerator
+                                              quotation={{
+                                                ...quotation,
+                                                fiscal_address: quotation.sales_entities?.fiscal_address || null,
+                                              }}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem asChild>
+                                            <PrivateQuotationPDFGenerator
+                                              quotation={{
+                                                ...quotation,
+                                                fiscal_address: quotation.sales_entities?.fiscal_address || null,
+                                              }}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
                                         )}
                                         <DropdownMenuItem asChild>
                                           <QuotationPDFGenerator
