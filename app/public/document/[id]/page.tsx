@@ -52,6 +52,7 @@ const statusOptions = [
 export default function PublicDocumentPage() {
   const params = useParams()
   const [documentData, setDocumentData] = useState<any>(null)
+  const [attachments, setAttachments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [downloadLoading, setDownloadLoading] = useState(false)
@@ -64,6 +65,7 @@ export default function PublicDocumentPage() {
   useEffect(() => {
     if (params.id) {
       fetchDocument()
+      fetchAttachments()
     }
   }, [params.id])
 
@@ -181,6 +183,30 @@ export default function PublicDocumentPage() {
     }
   }
 
+  const fetchAttachments = async () => {
+    try {
+      console.log("[v0] Fetching attachments for document ID:", params.id)
+
+      const { data, error } = await supabasePublic
+        .from("document_attachments")
+        .select("*")
+        .eq("document_id", params.id)
+        .order("created_at", { ascending: false })
+
+      console.log("[v0] Attachments query result:", { data, error })
+
+      if (error) {
+        console.error("Error fetching attachments:", error)
+        return
+      }
+
+      console.log("[v0] Setting attachments:", data || [])
+      setAttachments(data || [])
+    } catch (error) {
+      console.error("Error fetching attachments:", error)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const option = statusOptions.find((opt) => opt.value === status)
     if (option) {
@@ -267,6 +293,77 @@ export default function PublicDocumentPage() {
       console.log("Download tracked successfully:", data)
     } catch (error) {
       console.error("Error in trackPublicDownload:", error)
+      throw error
+    }
+  }
+
+  const trackPublicAttachmentDownload = async (
+    anonymousData: AnonymousUserData,
+    downloadToken: string,
+    attachment: any,
+  ) => {
+    try {
+      // Generar session ID único
+      let sessionId = localStorage.getItem("public_session_id")
+      if (!sessionId) {
+        sessionId = `pub_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+        localStorage.setItem("public_session_id", sessionId)
+      }
+
+      // Obtener información básica
+      const userAgent = navigator.userAgent
+      const referrer = window.document.referrer || window.location.href
+
+      // Intentar obtener IP y geolocalización
+      let ipInfo = { ip: null, country: null, city: null }
+      try {
+        const ipResponse = await fetch("https://ipapi.co/json/")
+        if (ipResponse.ok) {
+          const ipData = await ipResponse.json()
+          ipInfo = {
+            ip: ipData.ip || null,
+            country: ipData.country_name || null,
+            city: ipData.city || null,
+          }
+        }
+      } catch (e) {
+        console.log("Could not get IP info:", e)
+      }
+
+      // Preparar datos para insertar
+      const downloadData = {
+        document_id: documentData.id,
+        user_id: null,
+        download_type: "attachment",
+        attachment_id: attachment.id,
+        session_id: sessionId,
+        ip_address: ipInfo.ip,
+        user_agent: userAgent,
+        referrer: referrer,
+        country: ipInfo.country,
+        city: ipInfo.city,
+        file_name: attachment.file_name,
+        file_size: attachment.file_size,
+        is_public_access: true,
+        anonymous_name: anonymousData.name,
+        anonymous_organization: anonymousData.organization,
+        anonymous_contact: anonymousData.contact,
+        anonymous_purpose: anonymousData.purpose,
+        download_token: downloadToken,
+        downloaded_at: new Date().toISOString(),
+      }
+
+      // Registrar la descarga
+      const { data, error } = await supabasePublic.from("document_downloads").insert(downloadData)
+
+      if (error) {
+        console.error("Error tracking attachment download:", error)
+        throw error
+      }
+
+      console.log("Attachment download tracked successfully:", data)
+    } catch (error) {
+      console.error("Error in trackPublicAttachmentDownload:", error)
       throw error
     }
   }
@@ -433,6 +530,109 @@ export default function PublicDocumentPage() {
       console.error("Error downloading file:", error)
       toast({
         title: "Error al descargar el archivo",
+        description: error.message || "Intente nuevamente más tarde",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
+
+  const downloadAttachment = async (attachment: any, anonymousData: AnonymousUserData) => {
+    if (!attachment?.file_url) {
+      toast({
+        title: "Error",
+        description: "No se encontró el archivo adjunto.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setDownloadLoading(true)
+
+      // Generar token único para esta descarga
+      const downloadToken = generateDownloadToken()
+
+      // Registrar la descarga del adjunto
+      await trackPublicAttachmentDownload(anonymousData, downloadToken, attachment)
+
+      // Extraer la ruta del archivo de manera más robusta
+      let filePath = attachment.file_url
+      let bucketName = "document_attachments"
+
+      if (filePath.startsWith("http")) {
+        try {
+          const url = new URL(filePath)
+          let pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/document_attachments\/(.+)/)
+          if (pathMatch && pathMatch[1]) {
+            filePath = pathMatch[1]
+          } else {
+            pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/(.+?)\/(.+)/)
+            if (pathMatch && pathMatch[1] && pathMatch[2]) {
+              bucketName = pathMatch[1]
+              filePath = pathMatch[2]
+            } else {
+              filePath = url.pathname.replace("/storage/v1/object/public/", "")
+              if (filePath.startsWith("document_attachments/")) {
+                filePath = filePath.replace("document_attachments/", "")
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing URL:", e)
+        }
+      }
+
+      // Crear URL firmada
+      const { data: signedUrlData, error: signedUrlError } = await supabasePublic.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, 60)
+
+      if (signedUrlError) {
+        console.error("Error creating signed URL:", signedUrlError)
+        throw new Error(`Error al crear URL firmada: ${signedUrlError.message}`)
+      }
+
+      if (signedUrlData?.signedUrl) {
+        // Descargar el archivo original
+        const response = await fetch(signedUrlData.signedUrl)
+        const originalBlob = await response.blob()
+
+        // Crear opciones para la marca de agua
+        const watermarkOptions = {
+          documentTitle: `${documentData.title} - Adjunto: ${attachment.file_name}`,
+          downloadedBy: anonymousData.name,
+          organization: anonymousData.organization,
+          downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
+          downloadToken: downloadToken,
+          documentId: documentData.id,
+        }
+
+        // Mostrar información de descarga
+        toast({
+          title: "Descarga de Archivo Adjunto",
+          description: `Descargando: ${attachment.file_name}`,
+          duration: 5000,
+        })
+
+        // Si es PDF, aplicar marca de agua, si no, descargar directamente
+        if (attachment.file_name.toLowerCase().endsWith(".pdf")) {
+          const watermarkedBlob = await applyWatermarkToPdf(originalBlob, watermarkOptions)
+          downloadBlob(watermarkedBlob, attachment.file_name)
+        } else {
+          // Para archivos que no son PDF, descargar directamente
+          downloadBlob(originalBlob, attachment.file_name)
+        }
+
+        return
+      }
+
+      throw new Error("No se pudo obtener el archivo adjunto")
+    } catch (error: any) {
+      console.error("Error downloading attachment:", error)
+      toast({
+        title: "Error al descargar el archivo adjunto",
         description: error.message || "Intente nuevamente más tarde",
         variant: "destructive",
       })
@@ -626,6 +826,109 @@ export default function PublicDocumentPage() {
               )}
             </div>
           </div>
+
+          {attachments.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Archivos Adjuntos
+                </h3>
+                <div className="space-y-3">
+                  {attachments.map((attachment) => (
+                    <Card key={attachment.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                            {attachment.file_name}
+                          </div>
+                          <div className="text-sm text-muted-foreground dark:text-slate-400">
+                            {attachment.profiles?.full_name && (
+                              <span>Subido por {attachment.profiles.full_name} • </span>
+                            )}
+                            {format(new Date(attachment.created_at), "dd/MM/yyyy", { locale: es })}
+                            {attachment.file_size && (
+                              <span> • {(attachment.file_size / 1024 / 1024).toFixed(1)} MB</span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Crear un formulario temporal para la descarga del adjunto
+                            const attachmentForm = document.createElement("div")
+                            attachmentForm.innerHTML = `
+                              <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg max-w-md w-full mx-4">
+                                  <h3 class="text-lg font-semibold mb-4">Descargar Archivo Adjunto</h3>
+                                  <p class="text-sm text-muted-foreground mb-4">
+                                    Para descargar "${attachment.file_name}", necesitamos algunos datos:
+                                  </p>
+                                  <form id="attachment-form" class="space-y-4">
+                                    <div>
+                                      <label class="block text-sm font-medium mb-1">Nombre completo *</label>
+                                      <input type="text" name="name" required class="w-full p-2 border rounded" />
+                                    </div>
+                                    <div>
+                                      <label class="block text-sm font-medium mb-1">Organización</label>
+                                      <input type="text" name="organization" class="w-full p-2 border rounded" />
+                                    </div>
+                                    <div>
+                                      <label class="block text-sm font-medium mb-1">Contacto (email/teléfono)</label>
+                                      <input type="text" name="contact" class="w-full p-2 border rounded" />
+                                    </div>
+                                    <div>
+                                      <label class="block text-sm font-medium mb-1">Propósito de descarga</label>
+                                      <textarea name="purpose" rows="2" class="w-full p-2 border rounded"></textarea>
+                                    </div>
+                                    <div class="flex gap-2 pt-4">
+                                      <button type="submit" class="flex-1 bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+                                        Descargar
+                                      </button>
+                                      <button type="button" onclick="this.closest('.fixed').remove()" class="px-4 py-2 border rounded hover:bg-gray-50">
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  </form>
+                                </div>
+                              </div>
+                            `
+                            document.body.appendChild(attachmentForm)
+
+                            const form = attachmentForm.querySelector("#attachment-form") as HTMLFormElement
+                            form.addEventListener("submit", async (e) => {
+                              e.preventDefault()
+                              const formData = new FormData(form)
+                              const anonymousData = {
+                                name: formData.get("name") as string,
+                                organization: (formData.get("organization") as string) || "",
+                                contact: (formData.get("contact") as string) || "",
+                                purpose: (formData.get("purpose") as string) || "",
+                              }
+
+                              if (!anonymousData.name.trim()) {
+                                alert("El nombre es requerido")
+                                return
+                              }
+
+                              attachmentForm.remove()
+                              await downloadAttachment(attachment, anonymousData)
+                            })
+                          }}
+                          disabled={downloadLoading}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          {downloadLoading ? "Descargando..." : "Descargar"}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
@@ -634,7 +937,11 @@ export default function PublicDocumentPage() {
           <div className="w-full flex flex-col sm:flex-row gap-3 justify-between">
             {documentData.file_url ? (
               <>
-                <Button variant="outline" className="flex-1" onClick={() => viewFile(documentData.file_url)}>
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-transparent"
+                  onClick={() => viewFile(documentData.file_url)}
+                >
                   <Eye className="mr-2 h-4 w-4" />
                   Ver Documento
                 </Button>
@@ -682,7 +989,7 @@ export default function PublicDocumentPage() {
               Esta es una vista previa de solo lectura. Para descargar el documento con marca de agua, utilice el botón
               "Descargar Documento".
             </DialogDescription>
-            <Button variant="outline" size="sm" className="absolute right-4 top-4" onClick={closeViewer}>
+            <Button variant="outline" size="sm" className="absolute right-4 top-4 bg-transparent" onClick={closeViewer}>
               <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
