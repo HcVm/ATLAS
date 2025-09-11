@@ -6,19 +6,7 @@ import type { ReactElement } from "react"
 import { useState, useEffect, useRef } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-  Download,
-  FileText,
-  Eye,
-  X,
-  Shield,
-  CheckCircle,
-  AlertTriangle,
-  Calendar,
-  User,
-  Clock,
-  Lock,
-} from "lucide-react"
+import { Download, FileText, Eye, X, Shield, CheckCircle, AlertTriangle, Clock, Lock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -818,57 +806,38 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                 <div>
                   <p className="text-sm text-muted-foreground">Tipo de Certificación</p>
-                  <p className="font-medium">{documentData.certification_type || "Certificado General"}</p>
+                  <p className="font-medium break-words">{documentData.certification_type || "Certificado General"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Número de Certificado</p>
-                  <p className="font-medium">{documentData.certificate_number || "No especificado"}</p>
+                  <p className="font-medium break-words">{documentData.certificate_number || "No especificado"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground flex items-center">
-                    <Calendar className="mr-1 h-4 w-4 text-muted-foreground" />
-                    Fecha de Emisión
-                  </p>
-                  <p className="font-medium">{formatDate(documentData.issued_date)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center">
-                    <Calendar className="mr-1 h-4 w-4 text-muted-foreground" />
-                    Fecha de Expiración
-                  </p>
-                  <p className="font-medium">{formatDate(documentData.expiry_date)}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground flex items-center">
-                    <User className="mr-1 h-4 w-4 text-muted-foreground" />
-                    Emitido por
-                  </p>
+                  <p className="text-sm text-muted-foreground">📅 Fecha de Emisión</p>
                   <p className="font-medium">
-                    {documentData.issuer_name || "No especificado"}
-                    {documentData.issuer_position && (
-                      <span className="text-muted-foreground ml-1">({documentData.issuer_position})</span>
-                    )}
+                    {documentData.issue_date
+                      ? format(new Date(documentData.issue_date), "dd 'de' MMMM 'de' yyyy", { locale: es })
+                      : "No especificada"}
                   </p>
                 </div>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center text-amber-800 dark:text-amber-300 mb-2">
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  <h4 className="font-semibold">Verificación de Autenticidad</h4>
+                <div>
+                  <p className="text-sm text-muted-foreground">📅 Fecha de Expiración</p>
+                  <p className="font-medium">
+                    {documentData.expiry_date
+                      ? format(new Date(documentData.expiry_date), "dd 'de' MMMM 'de' yyyy", { locale: es })
+                      : "No especificada"}
+                  </p>
                 </div>
-                <p className="text-sm text-amber-700 dark:text-amber-400">
-                  Este documento ha sido verificado como auténtico. El código QR y el hash de verificación garantizan la
-                  integridad del documento.
-                </p>
-                {documentData.verification_hash && (
-                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-500 font-mono overflow-hidden text-ellipsis">
-                    Hash: {documentData.verification_hash}
-                  </div>
-                )}
+                <div className="col-span-1 sm:col-span-2">
+                  <p className="text-sm text-muted-foreground">👤 Emitido por</p>
+                  <p className="font-medium break-words">
+                    {documentData.issued_by || "LUIS ARELLANO"}{" "}
+                    {documentData.issuer_role && `(${documentData.issuer_role})`}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -879,7 +848,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
           <div>
             <h3 className="text-lg font-semibold mb-4">Información del Documento</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Estado</p>
                 <div className="mt-1">{getStatusBadge(documentData.status)}</div>
@@ -905,7 +874,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
                 </div>
               )}
               {documentData.description && (
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Descripción</p>
                   <p className="mt-1 whitespace-pre-line">{documentData.description}</p>
                 </div>
@@ -921,17 +890,22 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
               Documento Principal
             </h3>
             <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-700 dark:text-slate-200">{documentData.title}</div>
+                  <div className="font-medium text-slate-700 dark:text-slate-200 break-words">{documentData.title}</div>
                   <div className="text-sm text-muted-foreground dark:text-slate-400">
                     Documento certificado • {format(new Date(documentData.created_at), "dd/MM/yyyy", { locale: es })}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   {documentData.file_url && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => viewFile(documentData.file_url)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => viewFile(documentData.file_url)}
+                        className="w-full sm:w-auto"
+                      >
                         <Eye className="mr-1 h-4 w-4" />
                         Ver
                       </Button>
@@ -939,7 +913,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
                         size="sm"
                         onClick={() => setDownloadFormOpen(true)}
                         disabled={downloadLoading}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                       >
                         <Download className="mr-1 h-4 w-4" />
                         {downloadLoading ? "Procesando..." : "Descargar"}
