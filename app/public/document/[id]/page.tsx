@@ -818,7 +818,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
                 <div>
                   <p className="text-sm text-muted-foreground">📅 Fecha de Emisión</p>
                   <p className="font-medium">
-                    {documentData.issue_date
+                    {documentData.issued_date
                       ? format(new Date(documentData.issued_date), "dd 'de' MMMM 'de' yyyy", { locale: es })
                       : "No especificada"}
                   </p>
