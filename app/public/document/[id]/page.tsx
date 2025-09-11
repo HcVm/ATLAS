@@ -56,6 +56,7 @@ const brandColors = {
     accent: "#2b9df4",
     light: "#165f9d",
     bg: "#f0f8ff",
+    logo: "/logos/valhalla-logo.png",
   },
   ZEUS: {
     primary: "#08215b",
@@ -63,6 +64,7 @@ const brandColors = {
     accent: "#1084b7",
     light: "#2a81ad",
     bg: "#f8fafc",
+    logo: "/logos/zeus-logo.png",
   },
   WORLDLIFE: {
     primary: "#066d19",
@@ -70,6 +72,7 @@ const brandColors = {
     accent: "#b4e27d",
     light: "#044410",
     bg: "#f0fdf4",
+    logo: "/logos/worldlife-logo.png",
   },
   HOPELIFE: {
     primary: "#065806",
@@ -77,6 +80,7 @@ const brandColors = {
     accent: "#43db49",
     light: "#1882b6",
     bg: "#f0fdf4",
+    logo: "/logos/hopelife-logo.png",
   },
 }
 
@@ -749,13 +753,24 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
           }
         >
           <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-bold text-white">{documentData.title}</CardTitle>
-              <CardDescription className="text-base mt-1 text-gray-200">
-                {documentData.document_number && (
-                  <span className="font-medium">No. {documentData.document_number}</span>
-                )}
-              </CardDescription>
+            <div className="flex items-center gap-4">
+              {brandTheme?.logo && (
+                <div className="flex-shrink-0">
+                  <img
+                    src={brandTheme.logo || "/placeholder.svg"}
+                    alt={`${detectedBrand} logo`}
+                    className="h-12 w-auto object-contain bg-white rounded p-1"
+                  />
+                </div>
+              )}
+              <div>
+                <CardTitle className="text-2xl font-bold text-white">{documentData.title}</CardTitle>
+                <CardDescription className="text-base mt-1 text-gray-200">
+                  {documentData.document_number && (
+                    <span className="font-medium">No. {documentData.document_number}</span>
+                  )}
+                </CardDescription>
+              </div>
             </div>
             {documentData.is_certified && (
               <Badge
