@@ -740,7 +740,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
               : {}
           }
         >
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             <div className="flex items-center gap-4">
               {brandTheme?.logo && (
                 <div className="flex-shrink-0">
@@ -763,7 +763,7 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
             {documentData.is_certified && (
               <Badge
                 variant="outline"
-                className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700 flex items-center gap-1 px-3 py-1.5"
+                className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700 flex items-center gap-1 px-3 py-1.5 self-start sm:self-auto"
                 style={
                   brandTheme
                     ? {
@@ -774,8 +774,8 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
                     : {}
                 }
               >
-                <Shield className="h-4 w-4" />
-                <span>Documento Certificado</span>
+                <Shield className="h-4 w-4 text-white" />
+                <span className="text-white">Documento Certificado</span>
               </Badge>
             )}
           </div>
@@ -1088,9 +1088,6 @@ export default function PublicDocumentPage({ params }: { params: { id: string } 
               Esta es una vista previa de solo lectura. Para descargar el documento con marca de agua, utilice el botón
               "Descargar Documento".
             </DialogDescription>
-            <Button variant="outline" size="sm" className="absolute right-4 top-4 bg-transparent" onClick={closeViewer}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden relative">
             {viewerUrl && (
