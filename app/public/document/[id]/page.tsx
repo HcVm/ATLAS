@@ -2,8 +2,8 @@
 
 import type React from "react"
 
+import type { ReactElement } from "react"
 import { useState, useEffect, useRef } from "react"
-import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -49,8 +49,53 @@ const statusOptions = [
   { value: "cancelled", label: "Cancelado", color: "bg-red-50 text-red-700 border-red-200" },
 ]
 
-export default function PublicDocumentPage() {
-  const params = useParams()
+const brandColors = {
+  VALHALLA: {
+    primary: "#032854",
+    secondary: "#0b3c6e",
+    accent: "#2b9df4",
+    light: "#165f9d",
+    bg: "#f0f8ff",
+  },
+  ZEUS: {
+    primary: "#08215b",
+    secondary: "#0c2f80",
+    accent: "#1084b7",
+    light: "#2a81ad",
+    bg: "#f8fafc",
+  },
+  WORLDLIFE: {
+    primary: "#066d19",
+    secondary: "#519a4f",
+    accent: "#b4e27d",
+    light: "#044410",
+    bg: "#f0fdf4",
+  },
+  HOPELIFE: {
+    primary: "#065806",
+    secondary: "#071e66",
+    accent: "#43db49",
+    light: "#1882b6",
+    bg: "#f0fdf4",
+  },
+}
+
+const detectBrandFromDescription = (description: string): keyof typeof brandColors | null => {
+  if (!description) return null
+
+  const upperDescription = description.toUpperCase()
+
+  if (upperDescription.includes("VALHALLA")) return "VALHALLA"
+  if (upperDescription.includes("ZEUS")) return "ZEUS"
+  if (upperDescription.includes("WORLDLIFE")) return "WORLDLIFE"
+  if (upperDescription.includes("HOPE LIFE") || upperDescription.includes("HOPELIFE")) return "HOPELIFE"
+
+  return null
+}
+
+export default function PublicDocumentPage({ params }: { params: { id: string } }): ReactElement {
+  const { id } = params
+
   const [documentData, setDocumentData] = useState<any>(null)
   const [attachments, setAttachments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,11 +108,11 @@ export default function PublicDocumentPage() {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (params.id) {
+    if (id) {
       fetchDocument()
       fetchAttachments()
     }
-  }, [params.id])
+  }, [id])
 
   // Efecto para prevenir interacciones específicas pero permitir scroll
   useEffect(() => {
@@ -155,7 +200,7 @@ export default function PublicDocumentPage() {
           profiles!documents_created_by_fkey (id, full_name, email),
           departments!documents_current_department_id_fkey (id, name, color)
         `)
-        .eq("id", params.id)
+        .eq("id", id)
         .eq("is_public", true)
         .single()
 
@@ -185,13 +230,10 @@ export default function PublicDocumentPage() {
 
   const fetchAttachments = async () => {
     try {
-      console.log("[v0] Fetching attachments for document ID:", params.id)
+      console.log("[v0] Fetching attachments for document ID:", id)
+      console.log("[v0] Document ID type:", typeof id)
 
-      const { data, error } = await supabasePublic
-        .from("document_attachments")
-        .select("*")
-        .eq("document_id", params.id)
-        .order("created_at", { ascending: false })
+      const { data, error } = await supabasePublic.from("document_attachments").select("*").eq("document_id", id)
 
       console.log("[v0] Attachments query result:", { data, error })
 
@@ -200,10 +242,10 @@ export default function PublicDocumentPage() {
         return
       }
 
-      console.log("[v0] Setting attachments:", data || [])
       setAttachments(data || [])
+      console.log("[v0] Setting attachments:", data || [])
     } catch (error) {
-      console.error("Error fetching attachments:", error)
+      console.error("Error in fetchAttachments:", error)
     }
   }
 
@@ -538,7 +580,7 @@ export default function PublicDocumentPage() {
     }
   }
 
-  const downloadAttachment = async (attachment: any, anonymousData: AnonymousUserData) => {
+  const downloadAttachment = async (attachment: any) => {
     if (!attachment?.file_url) {
       toast({
         title: "Error",
@@ -555,7 +597,11 @@ export default function PublicDocumentPage() {
       const downloadToken = generateDownloadToken()
 
       // Registrar la descarga del adjunto
-      await trackPublicAttachmentDownload(anonymousData, downloadToken, attachment)
+      await trackPublicAttachmentDownload(
+        { name: "", organization: "", contact: "", purpose: "" },
+        downloadToken,
+        attachment,
+      )
 
       // Extraer la ruta del archivo de manera más robusta
       let filePath = attachment.file_url
@@ -602,8 +648,8 @@ export default function PublicDocumentPage() {
         // Crear opciones para la marca de agua
         const watermarkOptions = {
           documentTitle: `${documentData.title} - Adjunto: ${attachment.file_name}`,
-          downloadedBy: anonymousData.name,
-          organization: anonymousData.organization,
+          downloadedBy: "",
+          organization: "",
           downloadDate: format(new Date(), "dd/MM/yyyy HH:mm"),
           downloadToken: downloadToken,
           documentId: documentData.id,
@@ -640,6 +686,9 @@ export default function PublicDocumentPage() {
       setDownloadLoading(false)
     }
   }
+
+  const detectedBrand = documentData ? detectBrandFromDescription(documentData.description) : null
+  const brandTheme = detectedBrand ? brandColors[detectedBrand] : null
 
   if (loading) {
     return (
@@ -682,14 +731,27 @@ export default function PublicDocumentPage() {
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      <Card className="shadow-lg">
+      <Card
+        className="shadow-lg mb-8"
+        style={brandTheme ? { backgroundColor: brandTheme.bg, borderColor: brandTheme.light } : {}}
+      >
         <CardHeader
-          className={`${documentData.is_certified ? "bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900" : ""}`}
+          className="pb-4"
+          style={
+            brandTheme
+              ? {
+                  backgroundColor: brandTheme.primary,
+                  color: "white",
+                  borderTopLeftRadius: "0.5rem",
+                  borderTopRightRadius: "0.5rem",
+                }
+              : {}
+          }
         >
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl font-bold">{documentData.title}</CardTitle>
-              <CardDescription className="text-base mt-1">
+              <CardTitle className="text-2xl font-bold text-white">{documentData.title}</CardTitle>
+              <CardDescription className="text-base mt-1 text-gray-200">
                 {documentData.document_number && (
                   <span className="font-medium">No. {documentData.document_number}</span>
                 )}
@@ -699,9 +761,18 @@ export default function PublicDocumentPage() {
               <Badge
                 variant="outline"
                 className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700 flex items-center gap-1 px-3 py-1.5"
+                style={
+                  brandTheme
+                    ? {
+                        backgroundColor: brandTheme.accent + "20",
+                        color: brandTheme.primary,
+                        borderColor: brandTheme.accent,
+                      }
+                    : {}
+                }
               >
-                <Shield className="h-4 w-4" />
-                <span>Documento Certificado</span>
+                <Shield className="h-4 w-4 text-white" />
+                <span className="text-white">Documento Certificado</span>
               </Badge>
             )}
           </div>
@@ -732,7 +803,7 @@ export default function PublicDocumentPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                 <div>
                   <p className="text-sm text-muted-foreground">Tipo de Certificación</p>
                   <p className="font-medium">{documentData.certification_type || "Certificado General"}</p>
@@ -827,6 +898,45 @@ export default function PublicDocumentPage() {
             </div>
           </div>
 
+          {/* Documento Principal */}
+          <Separator />
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <FileText className="mr-2 h-5 w-5" />
+              Documento Principal
+            </h3>
+            <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-slate-700 dark:text-slate-200">{documentData.title}</div>
+                  <div className="text-sm text-muted-foreground dark:text-slate-400">
+                    Documento certificado • {format(new Date(documentData.created_at), "dd/MM/yyyy", { locale: es })}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {documentData.file_url && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => viewFile(documentData.file_url)}>
+                        <Eye className="mr-1 h-4 w-4" />
+                        Ver
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setDownloadFormOpen(true)}
+                        disabled={downloadLoading}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Download className="mr-1 h-4 w-4" />
+                        {downloadLoading ? "Procesando..." : "Descargar"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Archivos Adjuntos */}
           {attachments.length > 0 && (
             <>
               <Separator />
@@ -844,10 +954,7 @@ export default function PublicDocumentPage() {
                             {attachment.file_name}
                           </div>
                           <div className="text-sm text-muted-foreground dark:text-slate-400">
-                            {attachment.profiles?.full_name && (
-                              <span>Subido por {attachment.profiles.full_name} • </span>
-                            )}
-                            {format(new Date(attachment.created_at), "dd/MM/yyyy", { locale: es })}
+                            {formatDate(attachment.created_at)} •{" "}
                             {attachment.file_size && (
                               <span> • {(attachment.file_size / 1024 / 1024).toFixed(1)} MB</span>
                             )}
@@ -934,30 +1041,6 @@ export default function PublicDocumentPage() {
         <CardFooter className="flex flex-col space-y-4">
           <Separator />
 
-          <div className="w-full flex flex-col sm:flex-row gap-3 justify-between">
-            {documentData.file_url ? (
-              <>
-                <Button
-                  variant="outline"
-                  className="flex-1 bg-transparent"
-                  onClick={() => viewFile(documentData.file_url)}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Ver Documento
-                </Button>
-
-                <Button className="flex-1" onClick={() => setDownloadFormOpen(true)} disabled={downloadLoading}>
-                  <Download className="mr-2 h-4 w-4" />
-                  {downloadLoading ? "Procesando..." : "Descargar Documento"}
-                </Button>
-              </>
-            ) : (
-              <div className="flex-1 text-center text-muted-foreground">
-                <p>Archivo no disponible</p>
-              </div>
-            )}
-          </div>
-
           <div className="w-full text-center text-xs text-muted-foreground mt-4 pt-4 border-t">
             <p>Este documento está disponible para acceso público y puede ser verificado por su autenticidad.</p>
             <p className="mt-1 flex items-center justify-center">
@@ -989,9 +1072,6 @@ export default function PublicDocumentPage() {
               Esta es una vista previa de solo lectura. Para descargar el documento con marca de agua, utilice el botón
               "Descargar Documento".
             </DialogDescription>
-            <Button variant="outline" size="sm" className="absolute right-4 top-4 bg-transparent" onClick={closeViewer}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           <div className="flex-1 overflow-hidden relative">
             {viewerUrl && (
