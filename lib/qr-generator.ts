@@ -3,7 +3,7 @@ import QRCode from "qrcode"
 export async function generateDocumentQR(documentId: string): Promise<string> {
   try {
     // Obtener la URL base del sitio
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agpcdocs.vercel.app"
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://atlasdoc.vercel.app"
 
     // Crear la URL pública del documento
     const documentUrl = `${baseUrl}/public/document/${documentId}`
