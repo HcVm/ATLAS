@@ -131,6 +131,15 @@ const DeliveryDetailsDialog = memo(
   }) => {
     if (!delivery) return null
 
+    const parseDate = (dateString: string) => {
+      // If it's just a date (YYYY-MM-DD), treat it as local date
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split("-").map(Number)
+        return new Date(year, month - 1, day) // month is 0-indexed
+      }
+      return new Date(dateString)
+    }
+
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -149,7 +158,7 @@ const DeliveryDetailsDialog = memo(
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha de Venta</p>
                   <p className="font-medium">
-                    {format(new Date(delivery.sales.sale_date), "dd/MM/yyyy", { locale: es })}
+                    {format(parseDate(delivery.sales.sale_date), "dd/MM/yyyy", { locale: es })}
                   </p>
                 </div>
                 <div>
@@ -210,7 +219,7 @@ const DeliveryDetailsDialog = memo(
                     <div>
                       <p className="text-sm text-muted-foreground">Fecha de Inicio</p>
                       <p className="font-medium text-blue-600">
-                        {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })}
+                        {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })}
                       </p>
                     </div>
                   )}
@@ -218,7 +227,7 @@ const DeliveryDetailsDialog = memo(
                     <div>
                       <p className="text-sm text-muted-foreground">Fecha de Fin</p>
                       <p className="font-medium text-blue-600">
-                        {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
+                        {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
                       </p>
                     </div>
                   )}
@@ -227,8 +236,8 @@ const DeliveryDetailsDialog = memo(
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
                     <p className="text-sm text-blue-700">
                       <strong>Plazo:</strong>{" "}
-                      {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })} -{" "}
-                      {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
+                      {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })} -{" "}
+                      {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
                     </p>
                   </div>
                 )}
@@ -284,7 +293,7 @@ const DeliveryDetailsDialog = memo(
                   <div>
                     <p className="text-sm text-muted-foreground">Fecha de Entrega</p>
                     <p className="font-medium text-green-600">
-                      {format(new Date(delivery.actual_delivery_date), "dd/MM/yyyy", { locale: es })}
+                      {format(parseDate(delivery.actual_delivery_date), "dd/MM/yyyy", { locale: es })}
                     </p>
                   </div>
                 )}
@@ -329,6 +338,15 @@ const DeliveryCard = memo(
   }) => {
     const isDelivered = delivery.delivery_status === "delivered"
 
+    const parseDate = (dateString: string) => {
+      // If it's just a date (YYYY-MM-DD), treat it as local date
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split("-").map(Number)
+        return new Date(year, month - 1, day) // month is 0-indexed
+      }
+      return new Date(dateString)
+    }
+
     return (
       <Draggable key={delivery.id} draggableId={delivery.id} index={index} isDragDisabled={!canEditDeliveryStatus}>
         {(provided, snapshot) => (
@@ -356,7 +374,7 @@ const DeliveryCard = memo(
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="secondary" className="text-xs">
-                      {format(new Date(delivery.sales.sale_date), "dd/MM", { locale: es })}
+                      {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
                     </Badge>
                     <Button
                       variant="ghost"
@@ -377,7 +395,7 @@ const DeliveryCard = memo(
                   </div>
                   {delivery.actual_delivery_date && (
                     <div className="text-xs text-green-600 font-medium">
-                      {format(new Date(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
+                      {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
                     </div>
                   )}
                 </div>
@@ -406,7 +424,7 @@ const DeliveryCard = memo(
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <Badge variant="secondary" className="text-xs">
-                      {format(new Date(delivery.sales.sale_date), "dd/MM", { locale: es })}
+                      {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
                       {delivery.sales.sale_status}
@@ -509,22 +527,22 @@ const DeliveryCard = memo(
                       <span className="text-xs text-muted-foreground">Plazo de Entrega:</span>
                     </div>
                     {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
-                      <div className="text-xs bg-red-100 border border-blue-200 p-2 rounded">
-                        <span className="text-red-700 font-bold">
-                          {format(new Date(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
-                          {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
+                      <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
+                        <span className="text-blue-700 font-medium">
+                          {format(parseDate(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
+                          {format(parseDate(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
                         </span>
                       </div>
                     ) : (
                       <div className="text-xs">
                         {delivery.sales.delivery_start_date && (
                           <span className="text-blue-600">
-                            Inicio: {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
+                            Inicio: {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
                           </span>
                         )}
                         {delivery.sales.delivery_end_date && (
                           <span className="text-blue-600">
-                            Fin: {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
+                            Fin: {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
                           </span>
                         )}
                       </div>
@@ -698,10 +716,27 @@ export default function SalesKanbanPage() {
       if (!destColumnInfo) return
 
       try {
-        const updateData: any = { delivery_status: destColumnInfo.deliveryStatus, updated_at: new Date().toISOString() }
-        if (destColumnInfo.deliveryStatus === "delivered") {
-          updateData.actual_delivery_date = new Date().toISOString()
+        const getPeruDate = () => {
+          const now = new Date()
+          // Use Intl.DateTimeFormat to get the date in Peru timezone (America/Lima)
+          const peruDate = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/Lima",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(now)
+          return peruDate // Returns YYYY-MM-DD format
         }
+
+        const updateData: any = {
+          delivery_status: destColumnInfo.deliveryStatus,
+          updated_at: new Date().toISOString(),
+        }
+
+        if (destColumnInfo.deliveryStatus === "delivered") {
+          updateData.actual_delivery_date = getPeruDate()
+        }
+
         const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
         if (error) throw error
         toast.success(`Entrega movida a ${destColumnInfo.title}`)
