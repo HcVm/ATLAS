@@ -99,7 +99,7 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
           <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">
               <Calendar className="h-5 w-5 inline mr-1" />
-              2024
+              2025
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Año Vigente</div>
           </div>
@@ -175,7 +175,7 @@ export default async function OpenDataPage() {
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Datos Abiertos</h1>
             <p className="text-slate-600 dark:text-slate-400 text-lg">
               Accede a los datos públicos de contrataciones por acuerdo marco. Información transparente sobre las
-              compras gubernamentales del año 2024.
+              compras gubernamentales del año 2025.
             </p>
           </div>
           <Button asChild>
@@ -303,9 +303,9 @@ export default async function OpenDataPage() {
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-3">Acuerdos Disponibles 2024</h3>
+              <h3 className="text-lg font-semibold mb-3">Acuerdos Disponibles 2025</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Actualmente disponemos de información detallada sobre tres acuerdos marco vigentes para el año 2024, con
+                Actualmente disponemos de información detallada sobre tres acuerdos marco vigentes para el año 2025, con
                 datos actualizados sobre las contrataciones realizadas.
               </p>
               <div className="space-y-2">
