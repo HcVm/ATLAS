@@ -96,7 +96,6 @@ const generateSaleNumber = async (companyId: string, companyCode: string): Promi
   }
 }
 
-
 export default function SaleForm({ onSuccess }: SaleFormProps) {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -127,8 +126,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
     warehouse_manager: "",
     payment_method: "",
     unit_price_with_tax: "0",
-    delivery_date: undefined as Date | undefined,
-    delivery_term: "",
+    delivery_start_date: undefined as Date | undefined,
+    delivery_end_date: undefined as Date | undefined,
     observations: "",
     sale_status: "",
   })
@@ -342,8 +341,8 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         payment_method: formData.payment_method,
         unit_price_with_tax: Number.parseFloat(formData.unit_price_with_tax),
         total_sale: totalSale,
-        delivery_date: formData.delivery_date?.toISOString().split("T")[0] || null,
-        delivery_term: formData.delivery_term,
+        delivery_start_date: formData.delivery_start_date?.toISOString().split("T")[0] || null,
+        delivery_end_date: formData.delivery_end_date?.toISOString().split("T")[0] || null,
         observations: formData.observations,
         created_by: user.id,
         sale_status: formData.sale_status,
@@ -415,14 +414,14 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
             <Input value={selectedCompany?.ruc || ""} disabled />
           </div>
         </div>
-          {selectedCompany?.code && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700">
-                <strong>Código de empresa:</strong> {selectedCompany.code} - Las ventas se generarán con el formato: VEN-
-                {new Date().getFullYear()}-{selectedCompany.code}-XXXX
-              </p>
-            </div>
-            )}
+        {selectedCompany?.code && (
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
+              <strong>Código de empresa:</strong> {selectedCompany.code} - Las ventas se generarán con el formato: VEN-
+              {new Date().getFullYear()}-{selectedCompany.code}-XXXX
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator />
@@ -729,20 +728,19 @@ export default function SaleForm({ onSuccess }: SaleFormProps) {
         <h3 className="text-lg font-semibold">Información de Entrega</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Fecha de Entrega</Label>
+            <Label>Fecha de Inicio de Entrega</Label>
             <DatePickerImproved
-              date={formData.delivery_date}
-              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_date: date }))}
-              placeholder="Seleccionar fecha de entrega"
+              date={formData.delivery_start_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_start_date: date }))}
+              placeholder="Seleccionar fecha de inicio"
             />
           </div>
           <div>
-            <Label htmlFor="delivery_term">Plazo de Entrega</Label>
-            <Input
-              id="delivery_term"
-              value={formData.delivery_term}
-              onChange={(e) => setFormData((prev) => ({ ...prev, delivery_term: e.target.value }))}
-              placeholder="Ej: 15 días hábiles"
+            <Label>Fecha de Fin de Entrega</Label>
+            <DatePickerImproved
+              date={formData.delivery_end_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_end_date: date }))}
+              placeholder="Seleccionar fecha de fin"
             />
           </div>
         </div>

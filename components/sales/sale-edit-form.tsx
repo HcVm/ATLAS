@@ -64,8 +64,8 @@ interface Sale {
   payment_method: string
   unit_price_with_tax: number
   total_sale: number
-  delivery_date: string | null
-  delivery_term: string | null
+  delivery_start_date: string | null
+  delivery_end_date: string | null
   observations: string | null
   sale_status: string
 }
@@ -101,8 +101,10 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
     warehouse_manager: sale.warehouse_manager || "",
     payment_method: sale.payment_method,
     unit_price_with_tax: sale.unit_price_with_tax.toString(),
-    delivery_date: sale.delivery_date ? new Date(sale.delivery_date) : (undefined as Date | undefined),
-    delivery_term: sale.delivery_term || "",
+    delivery_start_date: sale.delivery_start_date
+      ? new Date(sale.delivery_start_date)
+      : (undefined as Date | undefined),
+    delivery_end_date: sale.delivery_end_date ? new Date(sale.delivery_end_date) : (undefined as Date | undefined),
     observations: sale.observations || "",
     sale_status: sale.sale_status,
   })
@@ -116,14 +118,12 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
     }
   }, [selectedCompany])
 
-  // Calcular total cuando cambian cantidad o precio
   useEffect(() => {
     const quantity = Number.parseFloat(formData.quantity) || 0
     const unitPrice = Number.parseFloat(formData.unit_price_with_tax) || 0
     setTotalSale(quantity * unitPrice)
   }, [formData.quantity, formData.unit_price_with_tax])
 
-  // Verificar stock cuando cambia la cantidad
   useEffect(() => {
     if (formData.product_id && formData.quantity) {
       const product = products.find((p) => p.id === formData.product_id)
@@ -168,7 +168,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
     setLoading(true)
 
     try {
-      // Validaciones
       if (!formData.entity_id || !formData.product_id || !formData.quotation_code) {
         toast.error("Por favor completa todos los campos obligatorios")
         return
@@ -195,8 +194,8 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         payment_method: formData.payment_method,
         unit_price_with_tax: Number.parseFloat(formData.unit_price_with_tax),
         total_sale: totalSale,
-        delivery_date: formData.delivery_date?.toISOString().split("T")[0] || null,
-        delivery_term: formData.delivery_term || null,
+        delivery_start_date: formData.delivery_start_date?.toISOString().split("T")[0] || null,
+        delivery_end_date: formData.delivery_end_date?.toISOString().split("T")[0] || null,
         observations: formData.observations || null,
         sale_status: formData.sale_status,
         updated_at: new Date().toISOString(),
@@ -218,7 +217,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Header con número de venta */}
       {sale.sale_number && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <h3 className="text-lg font-semibold text-blue-900">Editando Venta: {sale.sale_number}</h3>
@@ -228,7 +226,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         </div>
       )}
 
-      {/* Información de la Empresa */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información de la Empresa</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -245,7 +242,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Información del Cliente */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Cliente</h3>
         <EntitySelector
@@ -276,7 +272,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Detalles de la Venta */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Detalles de la Venta</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -303,7 +298,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Información del Producto */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información del Producto</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -379,7 +373,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Información Adicional */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información Adicional</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -432,7 +425,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Información Financiera */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información Financiera</h3>
         <div className="grid grid-cols-3 gap-4">
@@ -491,25 +483,23 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
 
       <Separator />
 
-      {/* Información de Entrega */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Información de Entrega</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Fecha de Entrega</Label>
+            <Label>Fecha de Inicio de Entrega</Label>
             <DatePickerImproved
-              date={formData.delivery_date}
-              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_date: date }))}
-              placeholder="Seleccionar fecha de entrega"
+              date={formData.delivery_start_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_start_date: date }))}
+              placeholder="Seleccionar fecha de inicio"
             />
           </div>
           <div>
-            <Label htmlFor="delivery_term">Plazo de Entrega</Label>
-            <Input
-              id="delivery_term"
-              value={formData.delivery_term}
-              onChange={(e) => setFormData((prev) => ({ ...prev, delivery_term: e.target.value }))}
-              placeholder="Ej: 15 días hábiles"
+            <Label>Fecha de Fin de Entrega</Label>
+            <DatePickerImproved
+              date={formData.delivery_end_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_end_date: date }))}
+              placeholder="Seleccionar fecha de fin"
             />
           </div>
         </div>
@@ -525,7 +515,6 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
         </div>
       </div>
 
-      {/* Botones */}
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar

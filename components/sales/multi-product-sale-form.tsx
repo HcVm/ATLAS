@@ -98,8 +98,8 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
     final_destination: "",
     warehouse_manager: "",
     payment_method: "",
-    delivery_date: undefined as Date | undefined,
-    delivery_term: "",
+    delivery_start_date: undefined as Date | undefined,
+    delivery_end_date: undefined as Date | undefined,
     observations: "",
     sale_status: "",
   })
@@ -288,8 +288,8 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
         warehouse_manager: formData.warehouse_manager || null,
         payment_method: formData.payment_method,
         total_sale: totals.total_sale,
-        delivery_date: formData.delivery_date?.toISOString().split("T")[0] || null,
-        delivery_term: formData.delivery_term || null,
+        delivery_start_date: formData.delivery_start_date?.toISOString().split("T")[0] || null,
+        delivery_end_date: formData.delivery_end_date?.toISOString().split("T")[0] || null,
         observations: formData.observations || null,
         sale_status: formData.sale_status,
         created_by: user.id,
@@ -753,20 +753,19 @@ export default function MultiProductSaleForm({ onSuccess }: MultiProductSaleForm
         <h3 className="text-lg font-semibold">Información de Entrega</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Fecha de Entrega</Label>
+            <Label>Fecha de Inicio de Entrega</Label>
             <DatePickerImproved
-              date={formData.delivery_date}
-              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_date: date }))}
-              placeholder="Seleccionar fecha de entrega"
+              date={formData.delivery_start_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_start_date: date }))}
+              placeholder="Seleccionar fecha de inicio"
             />
           </div>
           <div>
-            <Label htmlFor="delivery_term">Plazo de Entrega</Label>
-            <Input
-              id="delivery_term"
-              value={formData.delivery_term}
-              onChange={(e) => setFormData((prev) => ({ ...prev, delivery_term: e.target.value }))}
-              placeholder="Ej: 15 días hábiles"
+            <Label>Fecha de Fin de Entrega</Label>
+            <DatePickerImproved
+              date={formData.delivery_end_date}
+              setDate={(date) => setFormData((prev) => ({ ...prev, delivery_end_date: date }))}
+              placeholder="Seleccionar fecha de fin"
             />
           </div>
         </div>
