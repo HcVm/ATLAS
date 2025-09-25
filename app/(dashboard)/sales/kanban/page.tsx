@@ -66,6 +66,7 @@ interface Delivery {
     sale_items?: {
       product_name: string
       product_brand?: string | null
+      product_code?: string | null // agregando product_code al tipo
       product_description?: string | null
       quantity: number
     }[]
@@ -198,6 +199,11 @@ const DeliveryDetailsDialog = memo(
                   <div key={index} className="flex justify-between items-center p-3 bg-muted rounded-lg">
                     <div className="flex-1">
                       <p className="font-medium">{item.product_name}</p>
+                      {item.product_code && (
+                        <p className="text-sm text-muted-foreground">
+                          Código: <span className="font-mono bg-background px-1 rounded">{item.product_code}</span>
+                        </p>
+                      )}
                       {item.product_brand && (
                         <p className="text-sm text-muted-foreground">Marca: {item.product_brand}</p>
                       )}
@@ -405,13 +411,18 @@ const DeliveryCard = memo(
                         <div>
                           <p className="text-sm font-medium">{delivery.sales.items_count} productos diferentes</p>
                           <div className="text-xs text-muted-foreground space-y-0.5">
-                            {delivery.sales.sale_items.slice(0, 2).map((item, index) => (
+                            {delivery.sales.sale_items.slice(0, 3).map((item, index) => (
                               <p key={index}>
                                 • {item.product_name} (x{item.quantity})
+                                {item.product_code && (
+                                  <span className="ml-1 font-mono text-xs bg-muted px-1 rounded">
+                                    {item.product_code}
+                                  </span>
+                                )}
                               </p>
                             ))}
-                            {delivery.sales.sale_items.length > 2 && (
-                              <p>• +{delivery.sales.sale_items.length - 2} productos más</p>
+                            {delivery.sales.sale_items.length > 3 && (
+                              <p>• +{delivery.sales.sale_items.length - 3} productos más</p>
                             )}
                           </div>
                         </div>
@@ -420,11 +431,17 @@ const DeliveryCard = memo(
                           <p className="text-sm truncate" title={delivery.sales.sale_items[0].product_name}>
                             {delivery.sales.sale_items[0].product_name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Cantidad: {delivery.sales.sale_items[0].quantity}
-                            {delivery.sales.sale_items[0].product_brand &&
-                              ` • ${delivery.sales.sale_items[0].product_brand}`}
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Cantidad: {delivery.sales.sale_items[0].quantity}</span>
+                            {delivery.sales.sale_items[0].product_code && (
+                              <span className="font-mono bg-muted px-1 rounded">
+                                {delivery.sales.sale_items[0].product_code}
+                              </span>
+                            )}
+                            {delivery.sales.sale_items[0].product_brand && (
+                              <span>• {delivery.sales.sale_items[0].product_brand}</span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -477,7 +494,6 @@ const DeliveryCard = memo(
   },
 )
 
-
 export default function SalesKanbanPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -487,45 +503,36 @@ export default function SalesKanbanPage() {
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null)
   const [editingDelivery, setEditingDelivery] = useState<Partial<Delivery>>({})
   const [isDragging, setIsDragging] = useState(false)
-  const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null) // Tu nueva adición, ¡bien hecho!
+  const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null)
 
-  // CAMBIO 1: Re-aplicar useMemo para romper el bucle infinito
   const companyToUse = useMemo(() => {
-    if (user?.role === "admin") {
-      return selectedCompany
-    }
-    if (user?.company_id) {
-      return { id: user.company_id, name: user.company_name }
-    }
-    return null
-  }, [user?.role, user?.company_id, user?.company_name, selectedCompany])
+  if (user?.role === "admin") {
+    return selectedCompany
+  }
+  if (user?.company_id) {
+    return { id: user.company_id, name: user.company_name }
+  }
+  return null
+}, [user?.role, user?.company_id, user?.company_name, selectedCompany])
 
-  // ... (hasSalesAccess, canViewAllSales, canEditDeliveryStatus se mantienen igual)
-  const hasSalesAccess =
+  const hasSalesAccess = useMemo(() => 
     user?.role === "admin" ||
     user?.role === "supervisor" ||
-    user?.departments?.name === "Ventas" ||
-    user?.departments?.name === "Administración" ||
-    user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "Jefatura de Ventas" ||
-    user?.departments?.name === "Contabilidad"
-
-  const canViewAllSales =
+    ["Ventas", "Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(user?.departments?.name ?? ""),
+  [user?.role, user?.departments?.name])
+  
+  const canViewAllSales = useMemo(() => 
     user?.role === "admin" ||
     user?.role === "supervisor" ||
-    user?.departments?.name === "Administración" ||
-    user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "Jefatura de Ventas" ||
-    user?.departments?.name === "Contabilidad"
+    ["Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(user?.departments?.name ?? ""),
+  [user?.role, user?.departments?.name])
 
   const canEditDeliveryStatus = canSupervise
 
   const fetchDeliveries = useCallback(async () => {
     if (!companyToUse) return
-
     try {
       setLoading(true)
-      // La lógica de fetchDeliveries está bien, se mantiene
       let query = supabase
         .from("deliveries")
         .select(`
@@ -536,7 +543,7 @@ export default function SalesKanbanPage() {
             total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
             final_destination,
             profiles!sales_created_by_fkey (full_name),
-            sale_items (product_name, product_brand, product_description, quantity)
+            sale_items (product_name, product_brand, product_code, product_description, quantity)
           ),
           assigned_user:profiles!deliveries_assigned_to_fkey (full_name)
         `)
@@ -547,7 +554,6 @@ export default function SalesKanbanPage() {
       }
 
       const { data, error } = await query.order("created_at", { ascending: false })
-
       if (error) throw error
 
       const organizedColumns = KANBAN_COLUMNS.map((col) => ({
@@ -563,7 +569,6 @@ export default function SalesKanbanPage() {
     }
   }, [companyToUse, canViewAllSales, user?.id])
 
-  // Este useEffect ahora funcionará correctamente gracias a useMemo
   useEffect(() => {
     if (companyToUse && hasSalesAccess) {
       fetchDeliveries()
@@ -583,63 +588,50 @@ export default function SalesKanbanPage() {
       const { destination, source, draggableId } = result
       setIsDragging(false)
 
-      if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
-        return
-      }
+      if (!destination) return
+      if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
-      const originalColumns = columns // Guardar para revertir
-      let deliveryToMove: Delivery | undefined
-
-      // CAMBIO 2: Re-aplicar la actualización funcional para estabilizar el callback
-      setColumns((prevColumns) => {
-        const sourceColumn = prevColumns.find((col) => col.id === source.droppableId)
-        const destColumn = prevColumns.find((col) => col.id === destination.droppableId)
-
-        if (!sourceColumn || !destColumn) return prevColumns
-
-        deliveryToMove = sourceColumn.deliveries.find((d) => d.id === draggableId)
-        if (!deliveryToMove) return prevColumns
-
-        const newSourceDeliveries = sourceColumn.deliveries.filter((d) => d.id !== draggableId)
-        const newDestDeliveries = [...destColumn.deliveries]
-        const updatedDelivery = {
-          ...deliveryToMove,
-          delivery_status: destColumn.deliveryStatus,
-          ...(destColumn.deliveryStatus === "delivered" && { actual_delivery_date: new Date().toISOString() }),
-        }
-        newDestDeliveries.splice(destination.index, 0, updatedDelivery)
-
-        return prevColumns.map((col) => {
-          if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries }
-          if (col.id === destination.droppableId) return { ...col, deliveries: newDestDeliveries }
-          return col
-        })
-      })
+      const originalColumns = columns
       
-      const destColumnInfo = KANBAN_COLUMNS.find((col) => col.id === destination.droppableId)
-      if (!destColumnInfo) return; // Chequeo de seguridad
-      
-      toast.success(`Entrega movida a ${destColumnInfo.title}`)
+      setColumns(prevColumns => {
+        const sourceCol = prevColumns.find(c => c.id === source.droppableId);
+        const destCol = prevColumns.find(c => c.id === destination.droppableId);
+        if (!sourceCol || !destCol) return prevColumns;
+
+        const movedItem = sourceCol.deliveries.find(d => d.id === draggableId);
+        if (!movedItem) return prevColumns;
+
+        const newSourceDeliveries = sourceCol.deliveries.filter(d => d.id !== draggableId);
+        const newDestDeliveries = [...destCol.deliveries];
+        newDestDeliveries.splice(destination.index, 0, {
+          ...movedItem,
+          delivery_status: destCol.deliveryStatus,
+        });
+
+        return prevColumns.map(col => {
+          if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries };
+          if (col.id === destination.droppableId) return { ...col, deliveries: newDestDeliveries };
+          return col;
+        });
+      });
+
+      const destColumnInfo = KANBAN_COLUMNS.find(c => c.id === destination.droppableId);
+      if(!destColumnInfo) return;
 
       try {
-        const updateData: any = {
-          delivery_status: destColumnInfo.deliveryStatus,
-          updated_at: new Date().toISOString(),
-        }
-
+        const updateData: any = { delivery_status: destColumnInfo.deliveryStatus, updated_at: new Date().toISOString() };
         if (destColumnInfo.deliveryStatus === "delivered") {
-          updateData.actual_delivery_date = new Date().toISOString()
+          updateData.actual_delivery_date = new Date().toISOString();
         }
-
-        const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
-
-        if (error) throw error
+        const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId);
+        if (error) throw error;
+        toast.success(`Entrega movida a ${destColumnInfo.title}`);
       } catch (error: any) {
-        setColumns(originalColumns) // Revertir en caso de error
-        toast.error("Error al actualizar el estado: " + error.message)
+        setColumns(originalColumns);
+        toast.error("Error al actualizar el estado: " + error.message);
       }
     },
-    [canEditDeliveryStatus], // Ahora solo depende de 'canEditDeliveryStatus'
+    [canEditDeliveryStatus, columns],
   )
 
   const handleDragStart = useCallback(() => {
@@ -648,7 +640,6 @@ export default function SalesKanbanPage() {
 
   const handleUpdateDelivery = useCallback(async () => {
     if (!selectedDelivery || !canEditDeliveryStatus) return
-
     try {
       const { error } = await supabase
         .from("deliveries")
@@ -667,14 +658,13 @@ export default function SalesKanbanPage() {
       setSelectedDelivery(null)
       setEditingDelivery({})
 
-      // CAMBIO 3: Reutilizar fetchDeliveries en lugar de duplicar código
       fetchDeliveries()
+
     } catch (error: any) {
       toast.error("Error al actualizar la entrega: " + error.message)
     }
   }, [selectedDelivery, canEditDeliveryStatus, editingDelivery, fetchDeliveries])
 
-  // getProductDisplayName y handleEditDelivery se mantienen igual, están bien.
   const getProductDisplayName = useCallback((delivery: Delivery): string => {
     if (!delivery.sales.sale_items || delivery.sales.sale_items.length === 0) {
       return "Sin productos"
@@ -697,8 +687,7 @@ export default function SalesKanbanPage() {
       assigned_to: delivery.assigned_to || "",
     })
   }, [])
-  
-  // Tu nuevo handler, ¡está perfecto!
+
   const handleViewDetails = useCallback((delivery: Delivery) => {
     setViewingDelivery(delivery)
   }, [])
