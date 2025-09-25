@@ -158,6 +158,20 @@ const menuSections = {
         ],
       },
       {
+        title: "Tablero de Entregas",
+        url: "/sales/kanban",
+        icon: Activity,
+        roles: ["admin", "supervisor", "user"],
+        departments: [
+          "ventas",
+          "administración",
+          "administracion",
+          "operaciones",
+          "jefatura de ventas",
+          "contabilidad",
+        ],
+      },
+      {
         title: "Cotizaciones",
         url: "/quotations",
         icon: FileText,
