@@ -60,6 +60,9 @@ interface Delivery {
     is_multi_product?: boolean
     items_count?: number
     final_destination?: string | null
+    delivery_start_date?: string | null
+    delivery_end_date?: string | null
+    warehouse_manager?: string | null
     profiles?: {
       full_name: string
     }
@@ -176,6 +179,14 @@ const DeliveryDetailsDialog = memo(
                   </Badge>
                 </div>
               )}
+              {delivery.sales.warehouse_manager && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Encargado de Almacén</p>
+                  <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
+                    {delivery.sales.warehouse_manager}
+                  </Badge>
+                </div>
+              )}
             </div>
 
             {delivery.sales.final_destination && (
@@ -185,6 +196,42 @@ const DeliveryDetailsDialog = memo(
                   Dirección de Entrega
                 </h3>
                 <p className="text-sm bg-muted p-3 rounded-lg">{delivery.sales.final_destination}</p>
+              </div>
+            )}
+
+            {(delivery.sales.delivery_start_date || delivery.sales.delivery_end_date) && (
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Plazo de Entrega
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {delivery.sales.delivery_start_date && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha de Inicio</p>
+                      <p className="font-medium text-blue-600">
+                        {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })}
+                      </p>
+                    </div>
+                  )}
+                  {delivery.sales.delivery_end_date && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha de Fin</p>
+                      <p className="font-medium text-blue-600">
+                        {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date && (
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <strong>Plazo:</strong>{" "}
+                      {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yyyy", { locale: es })} -{" "}
+                      {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yyyy", { locale: es })}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -231,14 +278,6 @@ const DeliveryDetailsDialog = memo(
                   <div>
                     <p className="text-sm text-muted-foreground">Tracking</p>
                     <p className="font-mono text-sm">{delivery.tracking_number}</p>
-                  </div>
-                )}
-                {delivery.estimated_delivery_date && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fecha Estimada</p>
-                    <p className="font-medium">
-                      {format(new Date(delivery.estimated_delivery_date), "dd/MM/yyyy", { locale: es })}
-                    </p>
                   </div>
                 )}
                 {delivery.actual_delivery_date && (
@@ -342,6 +381,12 @@ const DeliveryCard = memo(
                     </div>
                   )}
                 </div>
+                {delivery.sales.warehouse_manager && (
+                  <div className="flex items-center gap-1">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Almacén: {delivery.sales.warehouse_manager}</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -457,12 +502,40 @@ const DeliveryCard = memo(
                   </div>
                 )}
 
-                {delivery.estimated_delivery_date && (
+                {(delivery.sales.delivery_start_date || delivery.sales.delivery_end_date) && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Plazo de Entrega:</span>
+                    </div>
+                    {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
+                      <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
+                        <span className="text-blue-700 font-medium">
+                          {format(new Date(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
+                          {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs">
+                        {delivery.sales.delivery_start_date && (
+                          <span className="text-blue-600">
+                            Inicio: {format(new Date(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
+                          </span>
+                        )}
+                        {delivery.sales.delivery_end_date && (
+                          <span className="text-blue-600">
+                            Fin: {format(new Date(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {delivery.sales.warehouse_manager && (
                   <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      Est: {format(new Date(delivery.estimated_delivery_date), "dd/MM/yy", { locale: es })}
-                    </span>
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Almacén: {delivery.sales.warehouse_manager}</span>
                   </div>
                 )}
 
@@ -506,26 +579,32 @@ export default function SalesKanbanPage() {
   const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null)
 
   const companyToUse = useMemo(() => {
-  if (user?.role === "admin") {
-    return selectedCompany
-  }
-  if (user?.company_id) {
-    return { id: user.company_id, name: user.company_name }
-  }
-  return null
-}, [user?.role, user?.company_id, user?.company_name, selectedCompany])
+    if (user?.role === "admin") {
+      return selectedCompany
+    }
+    if (user?.company_id) {
+      return { id: user.company_id, name: user.company_name }
+    }
+    return null
+  }, [user?.role, user?.company_id, user?.company_name, selectedCompany])
 
-  const hasSalesAccess = useMemo(() => 
-    user?.role === "admin" ||
-    user?.role === "supervisor" ||
-    ["Ventas", "Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(user?.departments?.name ?? ""),
-  [user?.role, user?.departments?.name])
-  
-  const canViewAllSales = useMemo(() => 
-    user?.role === "admin" ||
-    user?.role === "supervisor" ||
-    ["Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(user?.departments?.name ?? ""),
-  [user?.role, user?.departments?.name])
+  const hasSalesAccess = useMemo(
+    () =>
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      ["Ventas", "Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(
+        user?.departments?.name ?? "",
+      ),
+    [user?.role, user?.departments?.name],
+  )
+
+  const canViewAllSales = useMemo(
+    () =>
+      user?.role === "admin" ||
+      user?.role === "supervisor" ||
+      ["Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad"].includes(user?.departments?.name ?? ""),
+    [user?.role, user?.departments?.name],
+  )
 
   const canEditDeliveryStatus = canSupervise
 
@@ -541,7 +620,7 @@ export default function SalesKanbanPage() {
           sales!inner (
             id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
             total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
-            final_destination,
+            final_destination, delivery_start_date, delivery_end_date, warehouse_manager,
             profiles!sales_created_by_fkey (full_name),
             sale_items (product_name, product_brand, product_code, product_description, quantity)
           ),
@@ -592,43 +671,43 @@ export default function SalesKanbanPage() {
       if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
       const originalColumns = columns
-      
-      setColumns(prevColumns => {
-        const sourceCol = prevColumns.find(c => c.id === source.droppableId);
-        const destCol = prevColumns.find(c => c.id === destination.droppableId);
-        if (!sourceCol || !destCol) return prevColumns;
 
-        const movedItem = sourceCol.deliveries.find(d => d.id === draggableId);
-        if (!movedItem) return prevColumns;
+      setColumns((prevColumns) => {
+        const sourceCol = prevColumns.find((c) => c.id === source.droppableId)
+        const destCol = prevColumns.find((c) => c.id === destination.droppableId)
+        if (!sourceCol || !destCol) return prevColumns
 
-        const newSourceDeliveries = sourceCol.deliveries.filter(d => d.id !== draggableId);
-        const newDestDeliveries = [...destCol.deliveries];
+        const movedItem = sourceCol.deliveries.find((d) => d.id === draggableId)
+        if (!movedItem) return prevColumns
+
+        const newSourceDeliveries = sourceCol.deliveries.filter((d) => d.id !== draggableId)
+        const newDestDeliveries = [...destCol.deliveries]
         newDestDeliveries.splice(destination.index, 0, {
           ...movedItem,
           delivery_status: destCol.deliveryStatus,
-        });
+        })
 
-        return prevColumns.map(col => {
-          if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries };
-          if (col.id === destination.droppableId) return { ...col, deliveries: newDestDeliveries };
-          return col;
-        });
-      });
+        return prevColumns.map((col) => {
+          if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries }
+          if (col.id === destination.droppableId) return { ...col, deliveries: newDestDeliveries }
+          return col
+        })
+      })
 
-      const destColumnInfo = KANBAN_COLUMNS.find(c => c.id === destination.droppableId);
-      if(!destColumnInfo) return;
+      const destColumnInfo = KANBAN_COLUMNS.find((c) => c.id === destination.droppableId)
+      if (!destColumnInfo) return
 
       try {
-        const updateData: any = { delivery_status: destColumnInfo.deliveryStatus, updated_at: new Date().toISOString() };
+        const updateData: any = { delivery_status: destColumnInfo.deliveryStatus, updated_at: new Date().toISOString() }
         if (destColumnInfo.deliveryStatus === "delivered") {
-          updateData.actual_delivery_date = new Date().toISOString();
+          updateData.actual_delivery_date = new Date().toISOString()
         }
-        const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId);
-        if (error) throw error;
-        toast.success(`Entrega movida a ${destColumnInfo.title}`);
+        const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
+        if (error) throw error
+        toast.success(`Entrega movida a ${destColumnInfo.title}`)
       } catch (error: any) {
-        setColumns(originalColumns);
-        toast.error("Error al actualizar el estado: " + error.message);
+        setColumns(originalColumns)
+        toast.error("Error al actualizar el estado: " + error.message)
       }
     },
     [canEditDeliveryStatus, columns],
@@ -645,7 +724,7 @@ export default function SalesKanbanPage() {
         .from("deliveries")
         .update({
           tracking_number: editingDelivery.tracking_number,
-          estimated_delivery_date: editingDelivery.estimated_delivery_date,
+          // estimated_delivery_date: editingDelivery.estimated_delivery_date, // Removed as it's now in sales table
           notes: editingDelivery.notes,
           assigned_to: editingDelivery.assigned_to,
           updated_at: new Date().toISOString(),
@@ -659,7 +738,6 @@ export default function SalesKanbanPage() {
       setEditingDelivery({})
 
       fetchDeliveries()
-
     } catch (error: any) {
       toast.error("Error al actualizar la entrega: " + error.message)
     }
@@ -682,7 +760,7 @@ export default function SalesKanbanPage() {
     setSelectedDelivery(delivery)
     setEditingDelivery({
       tracking_number: delivery.tracking_number || "",
-      estimated_delivery_date: delivery.estimated_delivery_date || "",
+      // estimated_delivery_date: delivery.estimated_delivery_date || "", // Removed as it's now in sales table
       notes: delivery.notes || "",
       assigned_to: delivery.assigned_to || "",
     })
@@ -854,15 +932,6 @@ export default function SalesKanbanPage() {
                   value={editingDelivery.tracking_number || ""}
                   onChange={(e) => setEditingDelivery((prev) => ({ ...prev, tracking_number: e.target.value }))}
                   placeholder="Ej: TRK123456789"
-                />
-              </div>
-              <div>
-                <Label htmlFor="estimated">Fecha Estimada de Entrega</Label>
-                <Input
-                  id="estimated"
-                  type="date"
-                  value={editingDelivery.estimated_delivery_date?.split("T")[0] || ""}
-                  onChange={(e) => setEditingDelivery((prev) => ({ ...prev, estimated_delivery_date: e.target.value }))}
                 />
               </div>
               <div>
