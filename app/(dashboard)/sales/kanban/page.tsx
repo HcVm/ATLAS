@@ -509,8 +509,8 @@ const DeliveryCard = memo(
                       <span className="text-xs text-muted-foreground">Plazo de Entrega:</span>
                     </div>
                     {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
-                      <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
-                        <span className="text-blue-700 font-medium">
+                      <div className="text-xs bg-red-100 border border-blue-200 p-2 rounded">
+                        <span className="text-red-700 font-bold">
                           {format(new Date(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
                           {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
                         </span>
