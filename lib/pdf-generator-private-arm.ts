@@ -1021,7 +1021,7 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                   <th style="width: 8%;">Unid.</th>
                   <th style="width: 12%;">Marca</th>
                   <th style="width: 12%;">P. Unit.</th>
-                  <th style="width: 12%;">Total</th>
+                  <th style="width: 12%;">SubTotal</th>
                 </tr>
               </thead>
               <tbody>

@@ -861,7 +861,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                 <th style="width: 8%;">Cant.</th>
                 <th style="width: 6%;">Unid.</th>
                 <th style="width: 9%;">P. Unit.</th>
-                <th style="width: 9%;">Total</th>
+                <th style="width: 9%;">SubTotal</th>
               </tr>
             </thead>
             <tbody>
