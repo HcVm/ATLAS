@@ -675,8 +675,28 @@ export default function SalesKanbanPage() {
   }, [selectedDelivery, canEditDeliveryStatus, editingDelivery, fetchDeliveries])
 
   // getProductDisplayName y handleEditDelivery se mantienen igual, están bien.
-  const getProductDisplayName = useCallback(/* ... */)
-  const handleEditDelivery = useCallback(/* ... */)
+  const getProductDisplayName = useCallback((delivery: Delivery): string => {
+    if (!delivery.sales.sale_items || delivery.sales.sale_items.length === 0) {
+      return "Sin productos"
+    }
+
+    if (delivery.sales.is_multi_product && delivery.sales.items_count && delivery.sales.items_count > 1) {
+      return `${delivery.sales.items_count} productos`
+    }
+
+    const firstItem = delivery.sales.sale_items[0]
+    return firstItem.product_name || "Producto sin nombre"
+  }, [])
+
+  const handleEditDelivery = useCallback((delivery: Delivery) => {
+    setSelectedDelivery(delivery)
+    setEditingDelivery({
+      tracking_number: delivery.tracking_number || "",
+      estimated_delivery_date: delivery.estimated_delivery_date || "",
+      notes: delivery.notes || "",
+      assigned_to: delivery.assigned_to || "",
+    })
+  }, [])
   
   // Tu nuevo handler, ¡está perfecto!
   const handleViewDetails = useCallback((delivery: Delivery) => {
