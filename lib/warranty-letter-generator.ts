@@ -391,7 +391,7 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
               .map(
                 (product) => `
               <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000; line-height: 1.3;">
-                ${product.quantity} ${getProductDisplayText(product).toUpperCase()} DE MARCA ${product.brand.toUpperCase()}${product.code ? ` CON CÓDIGO ${product.code.toUpperCase()}` : ""}.
+                ${product.quantity} UNIDADES DE ${getProductDisplayText(product).toUpperCase()} DE MARCA ${product.brand.toUpperCase()}${product.code ? ` CON CÓDIGO ${product.code.toUpperCase()}` : ""}.
               </p>
             `,
               )
