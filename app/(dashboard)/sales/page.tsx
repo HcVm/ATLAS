@@ -47,7 +47,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog" // Import the new management dialog
+import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog"
 import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
 import { ConditionalLetterButtons } from "@/components/sales/conditional-letter-buttons"
 
@@ -66,7 +66,8 @@ interface Sale {
   display_product_code: string
   total_sale: number
   payment_method: string
-  delivery_date: string | null
+  delivery_start_date: string | null
+  delivery_end_date: string | null
   created_by: string
   profiles?: {
     full_name: string
@@ -76,9 +77,8 @@ interface Sale {
   ocam?: string | null
   physical_order?: string | null
   project_meta?: string | null
-  final_destination?: string | null
+  final_destination: string | null
   warehouse_manager?: string | null
-  delivery_term?: string | null
   observations?: string | null
   created_at?: string | null
   is_multi_product: boolean
@@ -263,7 +263,7 @@ export default function SalesPage() {
           id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
           quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
           ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
-          total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
+          total_sale, delivery_start_date, delivery_end_date, observations, sale_status, created_at, is_multi_product,
           created_by, profiles!sales_created_by_fkey (full_name),
           payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
         `)
@@ -289,7 +289,7 @@ export default function SalesPage() {
     try {
       let query = supabase
         .from("sales_with_items")
-        .select("total_sale, delivery_date, created_by")
+        .select("total_sale, delivery_end_date, created_by")
         .eq("company_id", companyId)
 
       // Si el usuario no puede ver todas las ventas, filtrar solo por las suyas
@@ -305,7 +305,7 @@ export default function SalesPage() {
       const totalAmount = data?.reduce((sum, sale) => sum + (sale.total_sale || 0), 0) || 0
       const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0
       const pendingDeliveries =
-        data?.filter((sale) => sale.delivery_date && new Date(sale.delivery_date) > new Date()).length || 0
+        data?.filter((sale) => sale.delivery_end_date && new Date(sale.delivery_end_date) > new Date()).length || 0
 
       setStats({ totalSales, totalAmount, averageTicket, pendingDeliveries })
     } catch (error: any) {
@@ -432,7 +432,8 @@ export default function SalesPage() {
         product_brand: "",
         total_sale: sale.total_sale,
         payment_method: sale.payment_method,
-        delivery_date: sale.delivery_date,
+        delivery_start_date: sale.delivery_start_date,
+        delivery_end_date: sale.delivery_end_date,
         sale_status: sale.sale_status,
         exp_siaf: sale.exp_siaf,
         ocam: sale.ocam,
@@ -440,7 +441,6 @@ export default function SalesPage() {
         project_meta: sale.project_meta,
         final_destination: sale.final_destination,
         warehouse_manager: sale.warehouse_manager,
-        delivery_term: sale.delivery_term,
         observations: sale.observations,
         unit_price_with_tax: sale.total_quantity > 0 ? sale.total_sale / sale.total_quantity : 0,
         created_at: sale.created_at,
@@ -527,7 +527,7 @@ export default function SalesPage() {
           id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
           quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
           ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
-          total_sale, delivery_date, delivery_term, observations, sale_status, created_at, is_multi_product,
+          total_sale, delivery_start_date, delivery_end_date, observations, sale_status, created_at, is_multi_product,
           created_by, profiles!sales_created_by_fkey (full_name),
           payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
         `)
@@ -1416,21 +1416,25 @@ export default function SalesPage() {
                   <CardContent className="space-y-3">
                     <div>
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        Fecha de Entrega
+                        Plazo de Entrega
                       </Label>
-                      <p className="text-sm text-slate-700 dark:text-slate-200">
-                        {selectedSale.delivery_date
-                          ? format(new Date(selectedSale.delivery_date), "dd/MM/yyyy", { locale: es })
-                          : "No especificada"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        Término de Entrega
-                      </Label>
-                      <p className="text-sm text-slate-700 dark:text-slate-200">
-                        {selectedSale.delivery_term || "N/A"}
-                      </p>
+                      <div className="space-y-1">
+                        {selectedSale.delivery_start_date && (
+                          <p className="text-sm text-slate-700 dark:text-slate-200">
+                            <span className="font-medium">Inicio:</span>{" "}
+                            {format(new Date(selectedSale.delivery_start_date), "dd/MM/yyyy", { locale: es })}
+                          </p>
+                        )}
+                        {selectedSale.delivery_end_date && (
+                          <p className="text-sm text-slate-700 dark:text-slate-200">
+                            <span className="font-medium">Fin:</span>{" "}
+                            {format(new Date(selectedSale.delivery_end_date), "dd/MM/yyyy", { locale: es })}
+                          </p>
+                        )}
+                        {!selectedSale.delivery_start_date && !selectedSale.delivery_end_date && (
+                          <p className="text-sm text-slate-700 dark:text-slate-200">No especificado</p>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <Label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
