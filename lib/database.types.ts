@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -2880,8 +2874,8 @@ export type Database = {
           company_ruc: string
           created_at: string | null
           created_by: string
-          delivery_date: string | null
-          delivery_term: string | null
+          delivery_start_date: string | null
+          delivery_end_date: string | null
           entity_executing_unit: string | null
           entity_id: string
           entity_name: string
@@ -2918,8 +2912,8 @@ export type Database = {
           company_ruc: string
           created_at?: string | null
           created_by: string
-          delivery_date?: string | null
-          delivery_term?: string | null
+          delivery_start_date?: string | null
+          delivery_end_date?: string | null
           entity_executing_unit?: string | null
           entity_id: string
           entity_name: string
@@ -2956,8 +2950,8 @@ export type Database = {
           company_ruc?: string
           created_at?: string | null
           created_by?: string
-          delivery_date?: string | null
-          delivery_term?: string | null
+          delivery_start_date?: string | null
+          delivery_end_date?: string | null
           entity_executing_unit?: string | null
           entity_id?: string
           entity_name?: string
@@ -4318,8 +4312,8 @@ export type Database = {
           company_ruc: string | null
           created_at: string | null
           created_by: string | null
-          delivery_date: string | null
-          delivery_term: string | null
+          delivery_start_date: string | null
+          delivery_end_date: string | null
           display_product_code: string | null
           display_product_name: string | null
           entity_executing_unit: string | null
@@ -4412,8 +4406,8 @@ export type Database = {
           company_ruc: string | null
           created_at: string | null
           created_by: string | null
-          delivery_date: string | null
-          delivery_term: string | null
+          delivery_start_date: string | null
+          delivery_end_date: string | null
           entity_executing_unit: string | null
           entity_id: string | null
           entity_name: string | null
@@ -4453,8 +4447,8 @@ export type Database = {
           company_ruc?: string | null
           created_at?: string | null
           created_by?: string | null
-          delivery_date?: string | null
-          delivery_term?: string | null
+          delivery_start_date?: string | null
+          delivery_end_date?: string | null
           entity_executing_unit?: string | null
           entity_id?: string | null
           entity_name?: string | null
@@ -4494,8 +4488,8 @@ export type Database = {
           company_ruc?: string | null
           created_at?: string | null
           created_by?: string | null
-          delivery_date?: string | null
-          delivery_term?: string | null
+          delivery_start_date?: string | null
+          delivery_end_date?: string | null
           entity_executing_unit?: string | null
           entity_id?: string | null
           entity_name?: string | null
@@ -4678,9 +4672,7 @@ export type Database = {
         Returns: undefined
       }
       create_entity_if_not_exists: {
-        Args:
-          | { company_uuid: string; entity_name: string }
-          | { entity_name: string }
+        Args: { company_uuid: string; entity_name: string } | { entity_name: string }
         Returns: string
       }
       debug_product_search: {
@@ -4857,8 +4849,8 @@ export type Database = {
         Args: { target_company_id: string }
         Returns: {
           created_at: string
-          delivery_date: string
-          delivery_term: string
+          delivery_start_date: string
+          delivery_end_date: string
           entity_executing_unit: string
           entity_id: string
           entity_name: string
@@ -5010,12 +5002,7 @@ export type Database = {
     }
     Enums: {
       document_status: "pending" | "in_progress" | "completed" | "cancelled"
-      request_status:
-        | "pending"
-        | "in_progress"
-        | "approved"
-        | "rejected"
-        | "expired"
+      request_status: "pending" | "in_progress" | "approved" | "rejected" | "expired"
       request_type:
         | "late_justification"
         | "absence_justification"
@@ -5054,10 +5041,8 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -5065,9 +5050,7 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5090,9 +5073,7 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5115,9 +5096,7 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5152,13 +5131,7 @@ export const Constants = {
   public: {
     Enums: {
       document_status: ["pending", "in_progress", "completed", "cancelled"],
-      request_status: [
-        "pending",
-        "in_progress",
-        "approved",
-        "rejected",
-        "expired",
-      ],
+      request_status: ["pending", "in_progress", "approved", "rejected", "expired"],
       request_type: [
         "late_justification",
         "absence_justification",

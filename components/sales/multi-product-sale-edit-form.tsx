@@ -58,7 +58,6 @@ interface Sale {
   project_meta?: string | null
   final_destination?: string | null
   warehouse_manager?: string | null
-  delivery_term?: string | null
   observations?: string | null
   created_at?: string | null
   is_multi_product: boolean

@@ -60,7 +60,7 @@ export default function SalesExportDialog({ onExport }: SalesExportDialogProps) 
           quotation_code, exp_siaf, quantity, product_name, product_code,
           product_description, product_brand, ocam, physical_order,
           project_meta, final_destination, warehouse_manager, payment_method,
-          unit_price_with_tax, total_sale, delivery_date, delivery_term,
+          unit_price_with_tax, total_sale, delivery_start_date, delivery_end_date,
           observations, sale_status, created_at,
           profiles!sales_created_by_fkey (full_name)
         `)

@@ -207,7 +207,10 @@ export const formatSalesDataForExport = (sales: any[]) => {
     Total: `S/ ${sale.total_sale.toFixed(2)}`,
     "Método Pago": sale.payment_method,
     Estado: sale.sale_status?.toUpperCase() || "PENDIENTE",
-    "Fecha Entrega": sale.delivery_date ? new Date(sale.delivery_date).toLocaleDateString("es-PE") : "-",
+    "Fecha Inicio Entrega": sale.delivery_start_date
+      ? new Date(sale.delivery_start_date).toLocaleDateString("es-PE")
+      : "-",
+    "Fecha Fin Entrega": sale.delivery_end_date ? new Date(sale.delivery_end_date).toLocaleDateString("es-PE") : "-",
     Vendedor: sale.profiles?.full_name || "N/A",
     "EXP. SIAF": sale.exp_siaf || "-",
     OCAM: sale.ocam || "-",
@@ -215,7 +218,6 @@ export const formatSalesDataForExport = (sales: any[]) => {
     "Proyecto Meta": sale.project_meta || "-",
     "Destino Final": sale.final_destination || "-",
     "Encargado Almacén": sale.warehouse_manager || "-",
-    "Plazo Entrega": sale.delivery_term || "-",
     Observaciones: sale.observations || "-",
   }))
 }
