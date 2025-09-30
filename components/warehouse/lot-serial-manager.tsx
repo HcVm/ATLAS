@@ -1,0 +1,255 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Package, Barcode, CheckCircle, Clock, Truck, Eye } from "lucide-react"
+import { getLotsForSale, getSerialsForLot, updateLotStatus } from "@/lib/lot-serial-generator"
+import { toast } from "sonner"
+
+interface LotSerialManagerProps {
+  saleId: string
+  onStatusChange?: () => void
+}
+
+export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerProps) {
+  const [lots, setLots] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedLot, setSelectedLot] = useState<any | null>(null)
+  const [showSerialsDialog, setShowSerialsDialog] = useState(false)
+  const [serials, setSerials] = useState<any[]>([])
+  const [loadingSerials, setLoadingSerials] = useState(false)
+
+  useEffect(() => {
+    if (saleId) {
+      fetchLots()
+    }
+  }, [saleId])
+
+  const fetchLots = async () => {
+    try {
+      setLoading(true)
+      const data = await getLotsForSale(saleId)
+      setLots(data)
+    } catch (error: any) {
+      toast.error("Error al cargar los lotes: " + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleViewSerials = async (lot: any) => {
+    try {
+      setSelectedLot(lot)
+      setShowSerialsDialog(true)
+      setLoadingSerials(true)
+
+      const data = await getSerialsForLot(lot.id)
+      setSerials(data)
+    } catch (error: any) {
+      toast.error("Error al cargar los números de serie: " + error.message)
+    } finally {
+      setLoadingSerials(false)
+    }
+  }
+
+  const handleUpdateStatus = async (lotId: string, newStatus: "pending" | "in_inventory" | "delivered") => {
+    try {
+      await updateLotStatus(lotId, newStatus)
+      toast.success("Estado actualizado correctamente")
+      await fetchLots()
+      if (onStatusChange) {
+        onStatusChange()
+      }
+    } catch (error: any) {
+      toast.error("Error al actualizar el estado: " + error.message)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return (
+          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+            <Clock className="h-3 w-3 mr-1" />
+            Pendiente
+          </Badge>
+        )
+      case "in_inventory":
+        return (
+          <Badge variant="default" className="text-green-600 bg-green-50 border-green-200">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            En Inventario
+          </Badge>
+        )
+      case "delivered":
+        return (
+          <Badge variant="secondary">
+            <Truck className="h-3 w-3 mr-1" />
+            Entregado
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (lots.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Lotes y Números de Serie
+          </CardTitle>
+          <CardDescription>No se han generado lotes para esta venta aún</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Lotes y Números de Serie
+          </CardTitle>
+          <CardDescription>Gestión de trazabilidad de productos</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número de Lote</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha Generación</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lots.map((lot) => (
+                  <TableRow key={lot.id}>
+                    <TableCell className="font-mono text-sm">{lot.lot_number}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{lot.product_name}</p>
+                        <p className="text-xs text-muted-foreground">{lot.product_code}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{lot.quantity}</TableCell>
+                    <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(lot.generated_date).toLocaleDateString("es-PE")}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewSerials(lot)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver Series
+                        </Button>
+                        {lot.status === "pending" && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleUpdateStatus(lot.id, "in_inventory")}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Ingresar
+                          </Button>
+                        )}
+                        {lot.status === "in_inventory" && (
+                          <Button variant="secondary" size="sm" onClick={() => handleUpdateStatus(lot.id, "delivered")}>
+                            <Truck className="h-4 w-4 mr-1" />
+                            Entregar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={showSerialsDialog} onOpenChange={setShowSerialsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Barcode className="h-5 w-5" />
+              Números de Serie - Lote {selectedLot?.lot_number}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLot?.product_name} ({selectedLot?.product_code})
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingSerials ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total de Series</p>
+                  <p className="text-2xl font-bold">{serials.length}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado del Lote</p>
+                  <div className="mt-1">{getStatusBadge(selectedLot?.status)}</div>
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>Número de Serie</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Fecha Creación</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {serials.map((serial, index) => (
+                      <TableRow key={serial.id}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell className="font-mono text-sm">{serial.serial_number}</TableCell>
+                        <TableCell>{getStatusBadge(serial.status)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(serial.created_at).toLocaleDateString("es-PE")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

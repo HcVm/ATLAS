@@ -25,6 +25,7 @@ import {
   Check,
   Clock,
   Users,
+  Hash,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -50,6 +51,8 @@ import {
 import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog"
 import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
 import { ConditionalLetterButtons } from "@/components/sales/conditional-letter-buttons"
+import { LotSerialManager } from "@/components/warehouse/lot-serial-manager" // Imported LotSerialManager
+import { generateLotsForSale } from "@/lib/lot-serial-generator" // Imported lot-serial generator function
 
 interface Sale {
   id: string
@@ -190,6 +193,10 @@ export default function SalesPage() {
     sale: null,
     isGenerating: false,
   })
+
+  // New states for Lot/Serial Management
+  const [showLotsDialog, setShowLotsDialog] = useState(false)
+  const [lotsSale, setLotsSale] = useState<Sale | null>(null)
 
   const hasSalesAccess =
     user?.role === "admin" ||
@@ -718,6 +725,30 @@ export default function SalesPage() {
     }
   }
 
+  // Handler for viewing lots
+  const handleViewLots = (sale: Sale) => {
+    setLotsSale(sale)
+    setShowLotsDialog(true)
+  }
+
+  // Handler for generating lots and serial numbers
+  const handleGenerateLots = async (sale: Sale) => {
+    if (!companyToUse?.id || !user?.id) return
+
+    try {
+      toast.info("Generando lotes y números de serie...")
+
+      await generateLotsForSale(sale.id, companyToUse.id, user.id)
+
+      toast.success("Lotes y números de serie generados exitosamente")
+
+      // Refresh sales list
+      fetchSales(companyToUse.id)
+    } catch (error: any) {
+      toast.error("Error al generar lotes: " + error.message)
+    }
+  }
+
   const filteredSales = sales.filter(
     (sale) =>
       sale.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1045,6 +1076,15 @@ export default function SalesPage() {
                                 onGenerateCCI={() => handleGenerateCCILetter(sale)}
                                 variant="dropdown"
                               />
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleViewLots(sale)}>
+                                <Package className="mr-2 h-4 w-4 text-purple-600" />
+                                Ver Lotes y Series
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGenerateLots(sale)}>
+                                <Hash className="mr-2 h-4 w-4 text-indigo-600" />
+                                Generar Lotes
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1140,6 +1180,24 @@ export default function SalesPage() {
                           variant="buttons"
                           size="sm"
                         />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent text-purple-600 hover:bg-purple-50"
+                          onClick={() => handleViewLots(sale)}
+                        >
+                          <Package className="h-4 w-4 mr-1" />
+                          Lotes
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent text-indigo-600 hover:bg-indigo-50"
+                          onClick={() => handleGenerateLots(sale)}
+                        >
+                          <Hash className="h-4 w-4 mr-1" />
+                          Gen. Lotes
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1642,6 +1700,28 @@ export default function SalesPage() {
         description="Selecciona la fecha que aparecerá en la carta de CCI."
         isGenerating={cciDateDialog.isGenerating}
       />
+
+      {/* Lot/Serial Dialog */}
+      <Dialog open={showLotsDialog} onOpenChange={setShowLotsDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lotes y Números de Serie</DialogTitle>
+            <DialogDescription>
+              Venta #{lotsSale?.sale_number} - {lotsSale?.entity_name}
+            </DialogDescription>
+          </DialogHeader>
+          {lotsSale && (
+            <LotSerialManager
+              saleId={lotsSale.id}
+              onStatusChange={() => {
+                if (companyToUse?.id) {
+                  fetchSales(companyToUse.id)
+                }
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
