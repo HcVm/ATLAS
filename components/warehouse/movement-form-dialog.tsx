@@ -20,11 +20,11 @@ import {
   MapPin,
   Building,
   Info,
-  Upload,
   X,
   Paperclip,
   Check,
   ChevronsUpDown,
+  Search,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -68,13 +68,15 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const [attachments, setAttachments] = useState<File[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [productComboOpen, setProductComboOpen] = useState(false)
+  const [searchingSale, setSearchingSale] = useState(false)
+  const [saleNumber, setSaleNumber] = useState("")
 
   const [formData, setFormData] = useState({
     product_id: selectedProduct?.id || "",
     movement_type: "",
     quantity: "",
-    entry_price: "", // Added entry price field
-    exit_price: "", // Added exit price field (replaces sale_price for exits)
+    entry_price: "",
+    exit_price: "",
     purchase_order_number: "",
     destination_entity_name: "",
     destination_department_id: "",
@@ -85,7 +87,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   })
 
   useEffect(() => {
-    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (companyId && open) {
@@ -102,7 +103,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
   const fetchData = async () => {
     try {
-      // For admin users, use selectedCompany; for others, use their assigned company
       const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
       if (!companyId) {
@@ -112,7 +112,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
       console.log("Fetching products for company:", companyId)
 
-      // Obtener productos
       const { data: productsData, error: productsError } = await supabase
         .from("products")
         .select("id, name, code, current_stock, minimum_stock, unit_of_measure, cost_price, sale_price")
@@ -125,10 +124,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         throw productsError
       }
 
-      // Obtener departamentos del Perú
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
 
-      // Fetch unique entity names from existing movements
       const { data: suggestionsData } = await supabase
         .from("inventory_movements")
         .select("destination_entity_name")
@@ -176,7 +173,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
 
-    // Validar tamaño de archivos (10MB máximo)
     const validFiles = files.filter((file) => {
       if (file.size > 10 * 1024 * 1024) {
         toast({
@@ -203,12 +199,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
     try {
       for (const file of attachments) {
-        // Generar nombre único para el archivo
         const fileExt = file.name.split(".").pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${user?.id}/${fileName}`
 
-        // Subir archivo a Supabase Storage
         const { error: uploadError } = await supabase.storage.from("inventory-attachments").upload(filePath, file)
 
         if (uploadError) {
@@ -216,12 +210,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           throw uploadError
         }
 
-        // Obtener URL pública del archivo
         const {
           data: { publicUrl },
         } = supabase.storage.from("inventory-attachments").getPublicUrl(filePath)
 
-        // Crear registro en la base de datos
         const { error: dbError } = await supabase.from("inventory_movement_attachments").insert({
           movement_id: movementId,
           file_name: file.name,
@@ -248,7 +240,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         description: error.message || "Error al subir algunos archivos adjuntos.",
         variant: "destructive",
       })
-      throw error // Re-throw para manejar en onSubmit
+      throw error
     } finally {
       setUploadingAttachments(false)
     }
@@ -257,7 +249,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (!companyId) {
@@ -269,7 +260,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       return
     }
 
-    // Validaciones
     if (!selectedProductData) {
       toast({
         title: "Error",
@@ -289,7 +279,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       return
     }
 
-    // Validar stock para salidas
     if (formData.movement_type === "salida" && quantity > selectedProductData.current_stock) {
       toast({
         title: "Stock insuficiente",
@@ -367,32 +356,28 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           : null
 
     try {
-      // Crear el movimiento primero
       const movementData = {
         ...formData,
         quantity,
-        entry_price: entryPrice, // Send entry price
-        exit_price: exitPrice, // Send exit price
+        entry_price: entryPrice,
+        exit_price: exitPrice,
         total_amount: totalAmount,
         destination_department_id: formData.destination_department_id || null,
         company_id: companyId,
       }
 
-      // Llamar a onSubmit que debería retornar el ID del movimiento creado
       const createdMovement = await onSubmit(movementData)
 
-      // Si hay archivos adjuntos y se creó el movimiento exitosamente
       if (attachments.length > 0 && createdMovement?.id) {
         await uploadAttachments(createdMovement.id)
       }
 
-      // Limpiar formulario solo después de que todo esté completo
       setFormData({
         product_id: "",
         movement_type: "",
         quantity: "",
-        entry_price: "", // Reset entry price
-        exit_price: "", // Reset exit price
+        entry_price: "",
+        exit_price: "",
         purchase_order_number: "",
         destination_entity_name: "",
         destination_department_id: "",
@@ -404,7 +389,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       setSelectedProductData(null)
       setAttachments([])
 
-      // Cerrar el diálogo
       onClose()
     } catch (error: any) {
       console.error("Error creating movement:", error)
@@ -451,15 +435,86 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     suggestion.toLowerCase().includes(formData.destination_entity_name.toLowerCase()),
   )
 
-  // Función para formatear el texto del producto en el combobox
   const formatProductDisplay = (product: Product) => {
     return `${product.code} - ${product.name}`
   }
 
-  // Función para obtener el producto seleccionado para mostrar en el trigger
   const getSelectedProductDisplay = () => {
     if (!selectedProductData) return "Seleccionar producto"
     return formatProductDisplay(selectedProductData)
+  }
+
+  const handleSaleNumberSearch = async () => {
+    if (!saleNumber.trim()) {
+      toast({
+        title: "Error",
+        description: "Ingresa un número de venta",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setSearchingSale(true)
+
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+      if (!companyId) {
+        toast({
+          title: "Error",
+          description: "No hay empresa seleccionada",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const { data: saleData, error: saleError } = await supabase
+        .from("sales")
+        .select(
+          `
+          id,
+          sale_number,
+          ocam,
+          entity_name,
+          entity_ruc,
+          entity_executing_unit,
+          final_destination
+        `,
+        )
+        .eq("company_id", companyId)
+        .eq("sale_number", saleNumber.trim())
+        .single()
+
+      if (saleError || !saleData) {
+        toast({
+          title: "Venta no encontrada",
+          description: `No se encontró una venta con el número ${saleNumber}`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        purchase_order_number: saleData.ocam || "",
+        destination_entity_name: saleData.entity_name || "",
+        destination_address: saleData.final_destination || "",
+      }))
+
+      toast({
+        title: "Datos cargados",
+        description: `Se cargaron los datos de la venta ${saleNumber}`,
+      })
+    } catch (error: any) {
+      console.error("Error searching sale:", error)
+      toast({
+        title: "Error",
+        description: "Error al buscar la venta",
+        variant: "destructive",
+      })
+    } finally {
+      setSearchingSale(false)
+    }
   }
 
   return (
@@ -471,9 +526,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
             <div className="space-y-6">
-              {/* Selección de producto con búsqueda */}
               <div className="space-y-2">
                 <Label htmlFor="product_id">Producto *</Label>
                 <Popover open={productComboOpen} onOpenChange={setProductComboOpen}>
@@ -534,7 +587,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 </Popover>
               </div>
 
-              {/* Información del producto seleccionado */}
               {selectedProductData && (
                 <Card className="bg-blue-50/50 border-blue-200">
                   <CardContent className="pt-4">
@@ -577,7 +629,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 </Card>
               )}
 
-              {/* Tipo de movimiento */}
               <div className="space-y-2">
                 <Label htmlFor="movement_type">Tipo de Movimiento *</Label>
                 <Select
@@ -643,7 +694,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 )}
               </div>
 
-              {/* Campos específicos para entradas */}
               {formData.movement_type === "entrada" && (
                 <div>
                   <Label htmlFor="supplier">Proveedor</Label>
@@ -656,7 +706,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 </div>
               )}
 
-              {/* Campos específicos para ajustes */}
               {formData.movement_type === "ajuste" && (
                 <div>
                   <Label htmlFor="reason">Motivo del Ajuste *</Label>
@@ -671,15 +720,49 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
               )}
             </div>
 
-            {/* Right Column */}
             <div className="space-y-6">
-              {/* Campos específicos para salidas */}
               {formData.movement_type === "salida" && (
                 <div className="space-y-4">
                   <h4 className="font-medium flex items-center gap-2">
                     <Building className="h-4 w-4" />
                     Información de Salida
                   </h4>
+
+                  <Card className="bg-green-50/50 border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Search className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Buscar por Número de Venta</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Ingresa el número de venta para auto-completar los datos de orden de compra, cliente y
+                          dirección
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Ej: VEN-2024-001"
+                            value={saleNumber}
+                            onChange={(e) => setSaleNumber(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                                handleSaleNumberSearch()
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleSaleNumberSearch}
+                            disabled={searchingSale || !saleNumber.trim()}
+                            className="flex-shrink-0"
+                          >
+                            {searchingSale ? "Buscando..." : "Buscar"}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   <div>
                     <Label htmlFor="purchase_order_number">Número de Orden de Compra *</Label>
@@ -759,65 +842,64 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 </div>
               )}
 
-              {/* Sección de archivos adjuntos */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" />
-                  Documentos Adjuntos (opcional)
-                </h4>
-                <p className="text-sm text-muted-foreground">
-                  Sube facturas, hojas de ruta, órdenes de compra u otros documentos relacionados.
-                </p>
-
-                <div>
-                  <Label htmlFor="attachments" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center hover:border-muted-foreground/50 transition-colors">
-                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Haz clic para seleccionar archivos</p>
-                      <p className="text-xs text-muted-foreground mt-1">PDF, DOC, XLS, JPG, PNG (máx. 10MB)</p>
-                    </div>
-                  </Label>
+              <div className="space-y-2">
+                <Label htmlFor="attachments">Adjuntar Documentos</Label>
+                <div className="flex items-center gap-2">
                   <Input
                     id="attachments"
                     type="file"
                     multiple
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                     onChange={handleFileSelect}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    className="cursor-pointer"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const input = document.getElementById("attachments") as HTMLInputElement
+                      if (input) input.click()
+                    }}
+                    className="flex-shrink-0"
+                  >
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Seleccionar
+                  </Button>
                 </div>
-
-                {/* Lista de archivos seleccionados */}
-                {attachments.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Archivos seleccionados ({attachments.length}):</Label>
-                    <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                      {attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate font-medium">{file.name}</p>
-                              <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                            className="flex-shrink-0 h-8 w-8 p-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Máximo 10MB por archivo. Formatos: PDF, Word, Excel, Imágenes
+                </p>
               </div>
 
-              {/* Notas */}
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Archivos seleccionados ({attachments.length}):</Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate font-medium">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                          className="flex-shrink-0 h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="notes">Notas Adicionales</Label>
                 <Textarea

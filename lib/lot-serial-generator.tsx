@@ -389,10 +389,7 @@ export async function updateLotStatus(
     console.log("[v0] Serials updated successfully")
 
     if (newStatus === "in_inventory") {
-      console.log("[v0] Creating inventory entry movement...")
-
-      const unitCost = productData.cost_price || 0
-      const totalCost = unitCost * lotData.quantity
+      console.log("[v0] Creating editable inventory entry movement...")
 
       const movementData = {
         product_id: lotData.product_id,
@@ -400,15 +397,21 @@ export async function updateLotStatus(
         created_by: lotData.created_by,
         movement_type: "entrada",
         quantity: lotData.quantity,
-        unit_cost: unitCost,
-        total_cost: totalCost,
-        unit_price: unitCost,
-        total_amount: totalCost,
-        sale_price: productData.sale_price || 0,
+        unit_cost: null,
+        total_cost: null,
+        unit_price: null,
+        total_amount: null,
+        sale_price: null,
+        entry_price: null,
+        exit_price: null,
         movement_date: new Date().toISOString(),
-        notes: `Ingreso de lote ${lotData.lot_number} desde venta`,
-        reason: "Ingreso de lote generado",
+        notes: `Ingreso automático de lote ${lotData.lot_number} - Pendiente de completar información contable`,
+        reason: "Ingreso de lote generado desde venta",
         reference_document: lotData.lot_number,
+        purchase_order_number: null,
+        destination_entity_name: null,
+        destination_address: null,
+        supplier: null,
       }
 
       console.log("[v0] Movement data to insert:", movementData)
@@ -417,13 +420,14 @@ export async function updateLotStatus(
         .from("inventory_movements")
         .insert(movementData)
         .select()
+        .single()
 
       if (movementError) {
         console.error("[v0] Error creating inventory movement:", movementError)
         throw new Error(`Failed to create inventory movement: ${movementError.message}`)
       }
 
-      console.log("[v0] Inventory movement created:", movementResult)
+      console.log("[v0] Editable inventory movement created:", movementResult)
 
       const currentStock = productData.current_stock || 0
       const newStock = currentStock + lotData.quantity
@@ -444,10 +448,7 @@ export async function updateLotStatus(
     }
 
     if (newStatus === "delivered") {
-      console.log("[v0] Creating inventory exit movement...")
-
-      const unitCost = productData.cost_price || 0
-      const totalCost = unitCost * lotData.quantity
+      console.log("[v0] Creating editable inventory exit movement...")
 
       const movementData = {
         product_id: lotData.product_id,
@@ -455,15 +456,21 @@ export async function updateLotStatus(
         created_by: lotData.created_by,
         movement_type: "salida",
         quantity: lotData.quantity,
-        unit_cost: unitCost,
-        total_cost: totalCost,
-        unit_price: unitCost,
-        total_amount: totalCost,
-        sale_price: productData.sale_price || 0,
+        unit_cost: null,
+        total_cost: null,
+        unit_price: null,
+        total_amount: null,
+        sale_price: null,
+        entry_price: null,
+        exit_price: null,
         movement_date: new Date().toISOString(),
-        notes: `Salida de lote ${lotData.lot_number} - entrega a cliente`,
-        reason: "Entrega de lote",
+        notes: `Salida automática de lote ${lotData.lot_number} - Pendiente de completar información contable`,
+        reason: "Entrega de lote a cliente",
         reference_document: lotData.lot_number,
+        purchase_order_number: null,
+        destination_entity_name: null,
+        destination_address: null,
+        supplier: null,
       }
 
       console.log("[v0] Movement data to insert:", movementData)
@@ -472,13 +479,14 @@ export async function updateLotStatus(
         .from("inventory_movements")
         .insert(movementData)
         .select()
+        .single()
 
       if (movementError) {
         console.error("[v0] Error creating inventory exit movement:", movementError)
         throw new Error(`Failed to create inventory exit movement: ${movementError.message}`)
       }
 
-      console.log("[v0] Inventory exit movement created:", movementResult)
+      console.log("[v0] Editable inventory exit movement created:", movementResult)
 
       const currentStock = productData.current_stock || 0
       const newStock = Math.max(0, currentStock - lotData.quantity)

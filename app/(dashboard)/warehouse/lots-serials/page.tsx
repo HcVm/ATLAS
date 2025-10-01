@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
+import { updateLotStatus as updateLotStatusWithMovement } from "@/lib/lot-serial-generator"
 
 interface ProductLot {
   id: string
@@ -99,42 +100,25 @@ export default function LotsAndSerialsPage() {
 
   const updateLotStatus = async (lotId: string, newStatus: "pending" | "in_inventory" | "delivered") => {
     try {
-      const updateData: any = { status: newStatus }
+      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
-      if (newStatus === "in_inventory" && !lots.find((l) => l.id === lotId)?.ingress_date) {
-        updateData.ingress_date = new Date().toISOString()
+      if (!companyId) {
+        throw new Error("No company ID available")
       }
 
-      if (newStatus === "delivered" && !lots.find((l) => l.id === lotId)?.delivery_date) {
-        updateData.delivery_date = new Date().toISOString()
-      }
-
-      const { error } = await supabase.from("product_lots").update(updateData).eq("id", lotId)
-
-      if (error) throw error
-
-      // Update serials status as well
-      const { error: serialsError } = await supabase
-        .from("product_serials")
-        .update({ status: newStatus })
-        .eq("lot_id", lotId)
-
-      if (serialsError) throw serialsError
+      await updateLotStatusWithMovement(lotId, newStatus, companyId)
 
       toast({
         title: "Éxito",
-        description: "Estado del lote actualizado correctamente",
+        description: "Estado del lote actualizado y movimiento creado correctamente",
       })
 
-      const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-      if (companyId) {
-        fetchLots(companyId)
-      }
+      fetchLots(companyId)
     } catch (error) {
       console.error("Error updating lot status:", error)
       toast({
         title: "Error",
-        description: "Error al actualizar el estado del lote",
+        description: error instanceof Error ? error.message : "Error al actualizar el estado del lote",
         variant: "destructive",
       })
     }
