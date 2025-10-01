@@ -30,6 +30,11 @@ export async function GET(request: Request) {
     .from("product_serials")
     .select(`
       *,
+      products:product_id (
+        brands (
+          name
+        )
+      ),
       sales:sale_id (
         delivery_start_date,
         delivery_end_date,
@@ -46,6 +51,8 @@ export async function GET(request: Request) {
     })
   }
 
+  const brandName = (serialData.products as any)?.brands?.name || null
+
   const sale = serialData.sales as any
   const deliveryDate = sale?.delivery_end_date || sale?.delivery_start_date || sale?.sale_date
 
@@ -57,6 +64,7 @@ export async function GET(request: Request) {
       serialNumber: serialData.serial_number,
       productName: serialData.product_name,
       productCode: serialData.product_code,
+      brandName,
     })
   }
 
@@ -76,6 +84,7 @@ export async function GET(request: Request) {
     serialNumber: serialData.serial_number,
     productName: serialData.product_name,
     productCode: serialData.product_code,
+    brandName,
     deliveryDate: deliveryDate,
     warrantyExpirationDate: warrantyExpirationDate.toISOString(),
     isWarrantyActive,
