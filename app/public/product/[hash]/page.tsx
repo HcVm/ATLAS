@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Package, MapPin, Calendar, Loader2, AlertTriangle, ArrowLeft, ExternalLink, FileText } from "lucide-react"
+import { Loader2, AlertTriangle, ExternalLink, FileText, CheckCircle2, ChevronDown } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface Product {
   id: string
@@ -16,15 +13,6 @@ interface Product {
   name: string
   description: string | null
   unit_of_measure: string
-  current_stock: number
-  minimum_stock: number
-  cost_price: number
-  sale_price: number
-  location: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  qr_code_hash: string | null
   modelo: string | null
   ficha_tecnica: string | null
   manual: string | null
@@ -46,6 +34,8 @@ export default function PublicProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [caracteristicasOpen, setCaracteristicasOpen] = useState(false)
+  const [especificacionesOpen, setEspecificacionesOpen] = useState(false)
 
   useEffect(() => {
     if (params.hash) {
@@ -61,7 +51,15 @@ export default function PublicProductPage() {
         .from("products")
         .select(
           `
-          *,
+          id,
+          code,
+          name,
+          description,
+          unit_of_measure,
+          modelo,
+          ficha_tecnica,
+          manual,
+          image_url,
           brands (
             id,
             name,
@@ -96,230 +94,275 @@ export default function PublicProductPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(amount)
-  }
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     )
   }
 
-  if (error) {
+  if (error || !product) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4 text-center">
         <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Error</h1>
-        <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
-        <Button asChild>
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al inicio
-          </Link>
-        </Button>
-      </div>
-    )
-  }
-
-  if (!product) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 text-center">
-        <Package className="h-16 w-16 text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Información no disponible</h1>
-        <p className="text-gray-700 dark:text-gray-300 mb-6">No se pudo cargar la información del producto.</p>
-        <Button asChild>
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al inicio
-          </Link>
-        </Button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Producto no encontrado</h1>
+        <p className="text-gray-600 dark:text-gray-400">{error || "No se pudo cargar la información del producto."}</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold flex items-center justify-center gap-2">
-            <Package className="h-7 w-7" />
-            Información del Producto
-          </CardTitle>
-          <CardDescription className="text-lg">{product.name}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Product Image */}
-          {product.image_url && (
-            <div className="flex justify-center">
-              <img
-                src={product.image_url || "/placeholder.svg"}
-                alt={product.name}
-                className="w-full max-w-md h-64 object-contain rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-              />
-            </div>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <span>Inicio</span>
+            <span>/</span>
+            {product.product_categories && (
+              <>
+                <span>{product.product_categories.name}</span>
+                <span>/</span>
+              </>
+            )}
+            <span className="text-gray-900 dark:text-gray-100 font-medium">{product.code}</span>
+          </div>
+        </div>
+      </div>
 
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Código</label>
-              <p className="text-base font-mono">{product.code}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Nombre</label>
-              <p className="text-base font-semibold">{product.name}</p>
-            </div>
-            {product.description && (
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-muted-foreground">Descripción</label>
-                <p className="text-base">{product.description}</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          {/* Product Image */}
+          <div className="relative">
+            <div className="sticky top-8">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
+                <img
+                  src={product.image_url || "/placeholder.svg?height=500&width=500"}
+                  alt={product.name}
+                  className="w-full h-auto object-contain rounded-lg"
+                />
               </div>
-            )}
-            {product.modelo && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  Modelo
-                </label>
-                <p className="text-base">{product.modelo}</p>
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Unidad de Medida</label>
-              <p className="text-base">{product.unit_of_measure}</p>
             </div>
           </div>
 
-          {/* Documents Section */}
-          {(product.ficha_tecnica || product.manual) && (
-            <>
-              <hr className="my-4" />
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Documentación
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {product.ficha_tecnica && (
+          {/* Product Information */}
+          <div className="space-y-8">
+            {/* Category Badge */}
+            {product.product_categories && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm font-medium">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: product.product_categories.color }} />
+                {product.product_categories.name}
+              </div>
+            )}
+
+            {/* Product Title */}
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-50 mb-4 leading-tight">
+                {product.name}
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-400 font-mono">{product.code}</p>
+            </div>
+
+            {/* Key Features */}
+            <div className="space-y-3">
+              {product.modelo && (
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Ficha Técnica</label>
-                    <a
-                      href={product.ficha_tecnica}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-1"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Ver ficha técnica
-                    </a>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Modelo</p>
+                    <p className="text-base text-gray-900 dark:text-gray-100">{product.modelo}</p>
                   </div>
+                </div>
+              )}
+              {product.brands && (
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Marca</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: product.brands.color }} />
+                      <p className="text-base text-gray-900 dark:text-gray-100">{product.brands.name}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Unidad de medida</p>
+                  <p className="text-base text-gray-900 dark:text-gray-100">{product.unit_of_measure}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Documentation Buttons */}
+            {(product.ficha_tecnica || product.manual) && (
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                {product.ficha_tecnica && (
+                  <Button
+                    asChild
+                    size="lg"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <a href={product.ficha_tecnica} target="_blank" rel="noopener noreferrer">
+                      <FileText className="h-5 w-5 mr-2" />
+                      Ver Ficha Técnica
+                    </a>
+                  </Button>
                 )}
                 {product.manual && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Manual del Producto</label>
-                    <a
-                      href={product.manual}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline mt-1"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Ver manual
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="flex-1 border-2 shadow-md hover:shadow-lg transition-all bg-transparent"
+                  >
+                    <a href={product.manual} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-5 w-5 mr-2" />
+                      Ver Manual
                     </a>
-                  </div>
+                  </Button>
                 )}
               </div>
-            </>
-          )}
+            )}
+          </div>
+        </div>
 
-          {/* Pricing Information */}
-          <hr className="my-4" />
-          <h3 className="text-xl font-semibold mb-4">Información de Precios</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Precio de Venta (sin IGV)</label>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(product.sale_price)}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Precio con IGV (18%)</label>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                {formatCurrency(product.sale_price * 1.18)}
-              </p>
+        {product.description && (
+          <div className="mt-16">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-4">Descripción del producto</h2>
+              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{product.description}</p>
             </div>
           </div>
+        )}
 
-          {/* Category and Brand */}
-          {(product.brands || product.product_categories) && (
-            <>
-              <hr className="my-4" />
-              <h3 className="text-xl font-semibold mb-4">Categorización</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {product.brands && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Marca</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: product.brands.color }} />
-                      <span className="text-base">{product.brands.name}</span>
+        <div className="mt-8 space-y-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">Información de productos</h2>
+
+          {/* Características */}
+          <Collapsible open={caracteristicasOpen} onOpenChange={setCaracteristicasOpen}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-lg">
+              <CollapsibleTrigger className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-50">Características</span>
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-500 transition-transform duration-200 ${
+                    caracteristicasOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-6 py-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Código</p>
+                      <p className="text-base text-gray-900 dark:text-gray-100 font-mono">{product.code}</p>
                     </div>
-                  </div>
-                )}
-                {product.product_categories && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Categoría</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: product.product_categories.color }}
-                      />
-                      <span className="text-base">{product.product_categories.name}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</p>
+                      <p className="text-base text-gray-900 dark:text-gray-100">{product.name}</p>
                     </div>
+                    {product.modelo && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Modelo</p>
+                        <p className="text-base text-gray-900 dark:text-gray-100">{product.modelo}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Unidad de Medida</p>
+                      <p className="text-base text-gray-900 dark:text-gray-100">{product.unit_of_measure}</p>
+                    </div>
+                    {product.brands && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Marca</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: product.brands.color }} />
+                          <p className="text-base text-gray-900 dark:text-gray-100">{product.brands.name}</p>
+                        </div>
+                      </div>
+                    )}
+                    {product.product_categories && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Categoría</p>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: product.product_categories.color }}
+                          />
+                          <p className="text-base text-gray-900 dark:text-gray-100">
+                            {product.product_categories.name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Additional Information */}
-          {product.location && (
-            <>
-              <hr className="my-4" />
-              <div>
-                <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  Ubicación
-                </label>
-                <p className="text-base mt-1">{product.location}</p>
-              </div>
-            </>
-          )}
-
-          {/* System Information */}
-          <hr className="my-4" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <div>
-              <label className="text-xs font-medium flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                Creado
-              </label>
-              <p>{format(new Date(product.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                </div>
+              </CollapsibleContent>
             </div>
-            <div>
-              <label className="text-xs font-medium flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                Última Actualización
-              </label>
-              <p>{format(new Date(product.updated_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+          </Collapsible>
+
+          {/* Especificaciones */}
+          <Collapsible open={especificacionesOpen} onOpenChange={setEspecificacionesOpen}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-lg">
+              <CollapsibleTrigger className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-50">Especificaciones</span>
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-500 transition-transform duration-200 ${
+                    especificacionesOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-6 py-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <div className="space-y-4">
+                    {product.description && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                          Descripción detallada
+                        </p>
+                        <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
+                          {product.description}
+                        </p>
+                      </div>
+                    )}
+                    {(product.ficha_tecnica || product.manual) && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Documentación</p>
+                        <div className="flex flex-col gap-2">
+                          {product.ficha_tecnica && (
+                            <a
+                              href={product.ficha_tecnica}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                            >
+                              <FileText className="h-4 w-4" />
+                              <span>Ficha técnica del producto</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                          {product.manual && (
+                            <a
+                              href={product.manual}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                            >
+                              <FileText className="h-4 w-4" />
+                              <span>Manual del producto</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CollapsibleContent>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </Collapsible>
+        </div>
+      </div>
     </div>
   )
 }
