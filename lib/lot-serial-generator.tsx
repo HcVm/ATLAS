@@ -313,12 +313,55 @@ export async function updateLotStatus(
   newStatus: "pending" | "in_inventory" | "delivered",
 ): Promise<void> {
   try {
+    console.log("[v0] Starting updateLotStatus for lot:", lotId, "new status:", newStatus)
+
+    const { data: lotData, error: lotFetchError } = await supabase
+      .from("product_lots")
+      .select("*")
+      .eq("id", lotId)
+      .single()
+
+    if (lotFetchError || !lotData) {
+      console.error("[v0] Error fetching lot:", lotFetchError)
+      throw new Error(`Failed to fetch lot details: ${lotFetchError?.message || "Lot not found"}`)
+    }
+
+    console.log("[v0] Lot data fetched:", lotData)
+
+    const { data: productData, error: productFetchError } = await supabase
+      .from("products")
+      .select("id, name, code, current_stock, cost_price, sale_price")
+      .eq("id", lotData.product_id)
+      .single()
+
+    if (productFetchError || !productData) {
+      console.error("[v0] Error fetching product:", productFetchError)
+      throw new Error(`Failed to fetch product details: ${productFetchError?.message || "Product not found"}`)
+    }
+
+    console.log("[v0] Product data fetched:", productData)
+
     // Update lot status
-    const { error: lotError } = await supabase.from("product_lots").update({ status: newStatus }).eq("id", lotId)
+    const updateData: any = { status: newStatus }
+
+    if (newStatus === "in_inventory") {
+      updateData.ingress_date = new Date().toISOString()
+    }
+
+    if (newStatus === "delivered") {
+      updateData.delivery_date = new Date().toISOString()
+    }
+
+    console.log("[v0] Updating lot with data:", updateData)
+
+    const { error: lotError } = await supabase.from("product_lots").update(updateData).eq("id", lotId)
 
     if (lotError) {
+      console.error("[v0] Error updating lot:", lotError)
       throw new Error(`Failed to update lot status: ${lotError.message}`)
     }
+
+    console.log("[v0] Lot status updated successfully")
 
     // Update associated serials status
     let serialStatus: "pending" | "in_inventory" | "sold" | "delivered"
@@ -331,18 +374,133 @@ export async function updateLotStatus(
       serialStatus = "pending"
     }
 
+    console.log("[v0] Updating serials to status:", serialStatus)
+
     const { error: serialsError } = await supabase
       .from("product_serials")
       .update({ status: serialStatus })
       .eq("lot_id", lotId)
 
     if (serialsError) {
+      console.error("[v0] Error updating serials:", serialsError)
       throw new Error(`Failed to update serials status: ${serialsError.message}`)
     }
 
-    console.log(`Updated lot ${lotId} and its serials to status: ${newStatus}`)
+    console.log("[v0] Serials updated successfully")
+
+    if (newStatus === "in_inventory") {
+      console.log("[v0] Creating inventory entry movement...")
+
+      const unitCost = productData.cost_price || 0
+      const totalCost = unitCost * lotData.quantity
+
+      const movementData = {
+        product_id: lotData.product_id,
+        company_id: lotData.company_id,
+        created_by: lotData.created_by,
+        movement_type: "entrada",
+        quantity: lotData.quantity,
+        unit_cost: unitCost,
+        total_cost: totalCost,
+        unit_price: unitCost,
+        total_amount: totalCost,
+        sale_price: productData.sale_price || 0,
+        movement_date: new Date().toISOString(),
+        notes: `Ingreso de lote ${lotData.lot_number} desde venta`,
+        reason: "Ingreso de lote generado",
+        reference_document: lotData.lot_number,
+      }
+
+      console.log("[v0] Movement data to insert:", movementData)
+
+      const { data: movementResult, error: movementError } = await supabase
+        .from("inventory_movements")
+        .insert(movementData)
+        .select()
+
+      if (movementError) {
+        console.error("[v0] Error creating inventory movement:", movementError)
+        throw new Error(`Failed to create inventory movement: ${movementError.message}`)
+      }
+
+      console.log("[v0] Inventory movement created:", movementResult)
+
+      const currentStock = productData.current_stock || 0
+      const newStock = currentStock + lotData.quantity
+
+      console.log("[v0] Updating stock from", currentStock, "to", newStock)
+
+      const { error: stockError } = await supabase
+        .from("products")
+        .update({ current_stock: newStock })
+        .eq("id", lotData.product_id)
+
+      if (stockError) {
+        console.error("[v0] Error updating product stock:", stockError)
+        throw new Error(`Failed to update product stock: ${stockError.message}`)
+      }
+
+      console.log("[v0] Stock updated successfully to", newStock)
+    }
+
+    if (newStatus === "delivered") {
+      console.log("[v0] Creating inventory exit movement...")
+
+      const unitCost = productData.cost_price || 0
+      const totalCost = unitCost * lotData.quantity
+
+      const movementData = {
+        product_id: lotData.product_id,
+        company_id: lotData.company_id,
+        created_by: lotData.created_by,
+        movement_type: "salida",
+        quantity: lotData.quantity,
+        unit_cost: unitCost,
+        total_cost: totalCost,
+        unit_price: unitCost,
+        total_amount: totalCost,
+        sale_price: productData.sale_price || 0,
+        movement_date: new Date().toISOString(),
+        notes: `Salida de lote ${lotData.lot_number} - entrega a cliente`,
+        reason: "Entrega de lote",
+        reference_document: lotData.lot_number,
+      }
+
+      console.log("[v0] Movement data to insert:", movementData)
+
+      const { data: movementResult, error: movementError } = await supabase
+        .from("inventory_movements")
+        .insert(movementData)
+        .select()
+
+      if (movementError) {
+        console.error("[v0] Error creating inventory exit movement:", movementError)
+        throw new Error(`Failed to create inventory exit movement: ${movementError.message}`)
+      }
+
+      console.log("[v0] Inventory exit movement created:", movementResult)
+
+      const currentStock = productData.current_stock || 0
+      const newStock = Math.max(0, currentStock - lotData.quantity)
+
+      console.log("[v0] Updating stock from", currentStock, "to", newStock)
+
+      const { error: stockError } = await supabase
+        .from("products")
+        .update({ current_stock: newStock })
+        .eq("id", lotData.product_id)
+
+      if (stockError) {
+        console.error("[v0] Error updating product stock:", stockError)
+        throw new Error(`Failed to update product stock: ${stockError.message}`)
+      }
+
+      console.log("[v0] Stock updated successfully to", newStock)
+    }
+
+    console.log("[v0] updateLotStatus completed successfully")
   } catch (error) {
-    console.error("Error in updateLotStatus:", error)
+    console.error("[v0] Error in updateLotStatus:", error)
     throw error
   }
 }

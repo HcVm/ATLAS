@@ -231,7 +231,7 @@ export default function WarehousePage() {
               Nuevo Producto
             </Button>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <Card
                 key={i}
@@ -286,23 +286,11 @@ export default function WarehousePage() {
                 Nuevo Producto
               </Link>
             </Button>
-            {/* Quick access button to lots and serials management */}
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
-              asChild
-            >
-              <Link href="/warehouse/lots-serials">
-                <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                  <Barcode className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                </div>
-                Lotes y Series
-              </Link>
-            </Button>
           </div>
+        </div>
 
         {/* Estadísticas principales */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Total Productos</CardTitle>
@@ -362,7 +350,7 @@ export default function WarehousePage() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           {/* Productos con mayor stock */}
           <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader>
@@ -482,7 +470,7 @@ export default function WarehousePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <Button
                 variant="outline"
                 className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
@@ -536,7 +524,6 @@ export default function WarehousePage() {
           </CardContent>
         </Card>
       </div>
-    </div>
     </div>
   )
 }

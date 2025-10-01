@@ -79,7 +79,10 @@ export default function LotsAndSerialsPage() {
         .eq("company_id", companyId)
         .order("generated_date", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error fetching lots:", error)
+        throw error
+      }
 
       setLots(data || [])
     } catch (error) {
