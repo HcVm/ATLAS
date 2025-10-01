@@ -19,11 +19,15 @@ import {
   Settings,
   X,
   Calendar,
+  Edit,
+  MoreVertical,
 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
 import { MovementAttachmentsDialog } from "@/components/warehouse/movement-attachments-dialog"
+import { MovementEditDialog } from "@/components/warehouse/movement-edit-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
@@ -33,17 +37,19 @@ interface InventoryMovement {
   movement_type: string
   quantity: number
   sale_price: number | null
-  entry_price: number | null // Added entry_price field
-  exit_price: number | null // Added exit_price field
+  entry_price: number | null
+  exit_price: number | null
   total_amount: number | null
   purchase_order_number: string | null
   destination_entity_name: string | null
   destination_address: string | null
+  destination_department_id: string | null
   supplier: string | null
   reason: string | null
   notes: string | null
   movement_date: string
   created_at: string
+  product_id: string
   products?: {
     id: string
     name: string
@@ -153,6 +159,7 @@ export default function InventoryPage() {
   const [showMovementForm, setShowMovementForm] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<InventoryMovement | null>(null)
   const [showAttachmentsDialog, setShowAttachmentsDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -182,11 +189,13 @@ export default function InventoryPage() {
           purchase_order_number,
           destination_entity_name,
           destination_address,
+          destination_department_id,
           supplier,
           reason,
           notes,
           movement_date,
           created_at,
+          product_id,
           products!inventory_movements_product_id_fkey (
             id,
             name,
@@ -269,8 +278,8 @@ export default function InventoryPage() {
       "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
       Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
       Unidad: movement.products?.unit_of_measure || "unidades",
-      "Precio de Entrada": movement.entry_price ? formatCurrency(movement.entry_price) : "-", // Added entry price
-      "Precio de Salida": movement.exit_price ? formatCurrency(movement.exit_price) : "-", // Added exit price
+      "Precio de Entrada": movement.entry_price ? formatCurrency(movement.entry_price) : "-",
+      "Precio de Salida": movement.exit_price ? formatCurrency(movement.exit_price) : "-",
       Total: movement.total_amount ? formatCurrency(movement.total_amount) : "-",
       "Orden de Compra": movement.purchase_order_number || "-",
       "Cliente/Entidad": movement.destination_entity_name || "-",
@@ -324,8 +333,8 @@ export default function InventoryPage() {
       "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
       Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
       Unidad: movement.products?.unit_of_measure || "unidades",
-      "Precio de Entrada": movement.entry_price || 0, // Added entry price
-      "Precio de Salida": movement.exit_price || 0, // Added exit price
+      "Precio de Entrada": movement.entry_price || 0,
+      "Precio de Salida": movement.exit_price || 0,
       Total: movement.total_amount || 0,
       "Orden de Compra": movement.purchase_order_number || "",
       "Cliente/Entidad": movement.destination_entity_name || "",
@@ -490,6 +499,23 @@ export default function InventoryPage() {
   const closeAttachmentsDialog = () => {
     setShowAttachmentsDialog(false)
     setSelectedMovement(null)
+  }
+
+  const openEditDialog = (movement: InventoryMovement) => {
+    setSelectedMovement(movement)
+    setShowEditDialog(true)
+  }
+
+  const closeEditDialog = () => {
+    setShowEditDialog(false)
+    setSelectedMovement(null)
+  }
+
+  const handleEditSuccess = () => {
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+    if (companyId) {
+      fetchMovements(companyId)
+    }
   }
 
   if (loading) {
@@ -790,15 +816,27 @@ export default function InventoryPage() {
                           <AttachmentsList movementId={movement.id} />
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openAttachmentsDialog(movement)}
-                            title="Gestionar archivos adjuntos"
-                            className="border-border text-foreground hover:bg-accent"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-border text-foreground hover:bg-accent bg-transparent"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(movement)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Editar Movimiento
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAttachmentsDialog(movement)}>
+                                <Paperclip className="h-4 w-4 mr-2" />
+                                Gestionar Archivos
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -829,6 +867,16 @@ export default function InventoryPage() {
             onClose={closeAttachmentsDialog}
             movementId={selectedMovement.id}
             movementInfo={selectedMovement}
+          />
+        )}
+
+        {showEditDialog && selectedMovement && (
+          <MovementEditDialog
+            open={showEditDialog}
+            onClose={closeEditDialog}
+            movementId={selectedMovement.id}
+            movementData={selectedMovement}
+            onSuccess={handleEditSuccess}
           />
         )}
       </div>

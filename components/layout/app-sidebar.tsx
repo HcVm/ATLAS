@@ -35,6 +35,7 @@ import {
   Clock,
   FileCheck,
   UserCheck,
+  Barcode,
 } from "lucide-react"
 
 import {
@@ -162,14 +163,7 @@ const menuSections = {
         url: "/sales/kanban",
         icon: Activity,
         roles: ["admin", "supervisor", "user"],
-        departments: [
-          "ventas",
-          "administración",
-          "administracion",
-          "operaciones",
-          "jefatura de ventas",
-          "contabilidad",
-        ],
+        departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas"],
       },
       {
         title: "Cotizaciones",
@@ -198,7 +192,7 @@ const menuSections = {
           "gerencia logística",
           "jefatura de ventas",
         ],
-        excludeDepartments: ["ventas"], // Excluir ventas del almacén principal
+        excludeDepartments: ["ventas"],
       },
       {
         title: "Productos",
@@ -214,12 +208,12 @@ const menuSections = {
           "operaciones",
           "acuerdos marco",
           "acuerdos",
-          "ventas", // Ventas puede ver productos
+          "ventas",
           "jefatura de ventas",
           "gerencia logística",
           "gerencia logistica",
         ],
-        readOnly: ["ventas"], // Solo lectura para ventas
+        readOnly: ["ventas"],
       },
       {
         title: "Inventario",
@@ -236,7 +230,37 @@ const menuSections = {
           "gerencia logística",
           "jefatura de ventas",
         ],
-        excludeDepartments: ["ventas"], // Excluir ventas del inventario
+        excludeDepartments: ["ventas"],
+      },
+      {
+        title: "Etiquetado",
+        url: "/warehouse/etiquetado",
+        icon: Barcode,
+        roles: ["admin", "supervisor", "user"],
+        departments: [
+          "almacén",
+          "almacen",
+          "administración",
+          "administracion",
+          "operaciones",
+          "ventas",
+          "jefatura de ventas",
+        ],
+      },
+      {
+        title: "Lotes y Series",
+        url: "/warehouse/lots-serials",
+        icon: Package,
+        roles: ["admin", "supervisor", "user"],
+        departments: [
+          "almacén",
+          "almacen",
+          "administración",
+          "administracion",
+          "operaciones",
+          "gerencia logística",
+          "jefatura de ventas",
+        ],
       },
     ],
   },
@@ -324,7 +348,6 @@ const menuSections = {
     ],
   },
   help: {
-    // Nueva sección de ayuda
     title: "AYUDA",
     items: [
       {
@@ -349,7 +372,7 @@ export function AppSidebar() {
   const { theme } = useTheme()
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    main: true, // PRINCIPAL section expanded by default
+    main: true,
     requests: false,
     documents: false,
     sales: false,
