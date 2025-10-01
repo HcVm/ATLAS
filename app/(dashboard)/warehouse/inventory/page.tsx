@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementFormDialog } from "@/components/warehouse/movement-form-dialog"
+import { MovementAttachmentsDialog } from "@/components/warehouse/movement-attachments-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
@@ -32,6 +33,8 @@ interface InventoryMovement {
   movement_type: string
   quantity: number
   sale_price: number | null
+  entry_price: number | null // Added entry_price field
+  exit_price: number | null // Added exit_price field
   total_amount: number | null
   purchase_order_number: string | null
   destination_entity_name: string | null
@@ -149,6 +152,7 @@ export default function InventoryPage() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [showMovementForm, setShowMovementForm] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<InventoryMovement | null>(null)
+  const [showAttachmentsDialog, setShowAttachmentsDialog] = useState(false)
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -172,6 +176,8 @@ export default function InventoryPage() {
           movement_type,
           quantity,
           sale_price,
+          entry_price,
+          exit_price,
           total_amount,
           purchase_order_number,
           destination_entity_name,
@@ -263,7 +269,8 @@ export default function InventoryPage() {
       "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
       Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
       Unidad: movement.products?.unit_of_measure || "unidades",
-      "Precio Unitario": movement.sale_price ? formatCurrency(movement.sale_price) : "-",
+      "Precio de Entrada": movement.entry_price ? formatCurrency(movement.entry_price) : "-", // Added entry price
+      "Precio de Salida": movement.exit_price ? formatCurrency(movement.exit_price) : "-", // Added exit price
       Total: movement.total_amount ? formatCurrency(movement.total_amount) : "-",
       "Orden de Compra": movement.purchase_order_number || "-",
       "Cliente/Entidad": movement.destination_entity_name || "-",
@@ -286,7 +293,8 @@ export default function InventoryPage() {
       { wch: 15 }, // Tipo
       { wch: 12 }, // Cantidad
       { wch: 10 }, // Unidad
-      { wch: 15 }, // Precio
+      { wch: 15 }, // Precio Entrada
+      { wch: 15 }, // Precio Salida
       { wch: 15 }, // Total
       { wch: 20 }, // OC
       { wch: 25 }, // Cliente
@@ -316,7 +324,8 @@ export default function InventoryPage() {
       "Tipo de Movimiento": movement.movement_type.charAt(0).toUpperCase() + movement.movement_type.slice(1),
       Cantidad: `${movement.movement_type === "entrada" ? "+" : movement.movement_type === "salida" ? "-" : "±"}${movement.quantity}`,
       Unidad: movement.products?.unit_of_measure || "unidades",
-      "Precio Unitario": movement.sale_price || 0,
+      "Precio de Entrada": movement.entry_price || 0, // Added entry price
+      "Precio de Salida": movement.exit_price || 0, // Added exit price
       Total: movement.total_amount || 0,
       "Orden de Compra": movement.purchase_order_number || "",
       "Cliente/Entidad": movement.destination_entity_name || "",
@@ -475,7 +484,12 @@ export default function InventoryPage() {
 
   const openAttachmentsDialog = (movement: InventoryMovement) => {
     setSelectedMovement(movement)
-    setShowMovementForm(true)
+    setShowAttachmentsDialog(true)
+  }
+
+  const closeAttachmentsDialog = () => {
+    setShowAttachmentsDialog(false)
+    setSelectedMovement(null)
   }
 
   if (loading) {
@@ -669,7 +683,7 @@ export default function InventoryPage() {
                     <TableHead className="text-foreground font-semibold">Producto</TableHead>
                     <TableHead className="text-foreground font-semibold">Tipo</TableHead>
                     <TableHead className="text-foreground font-semibold">Cantidad</TableHead>
-                    <TableHead className="text-foreground font-semibold">Precio/Total</TableHead>
+                    <TableHead className="text-foreground font-semibold">Precios</TableHead>
                     <TableHead className="text-foreground font-semibold">Detalles</TableHead>
                     <TableHead className="text-foreground font-semibold">Usuario</TableHead>
                     <TableHead className="text-foreground font-semibold">Adjuntos</TableHead>
@@ -708,18 +722,29 @@ export default function InventoryPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {movement.movement_type === "salida" && movement.sale_price ? (
-                            <div>
-                              <div className="text-sm text-muted-foreground">
-                                Precio: {formatCurrency(movement.sale_price)}
+                          <div className="text-sm space-y-1">
+                            {movement.entry_price && movement.movement_type === "entrada" && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Precio entrada:</div>
+                                <div className="font-medium text-blue-600">{formatCurrency(movement.entry_price)}</div>
+                                <div className="text-xs text-green-600 font-semibold">
+                                  Total: {formatCurrency(movement.total_amount)}
+                                </div>
                               </div>
-                              <div className="font-medium text-green-600">
-                                Total: {formatCurrency(movement.total_amount)}
+                            )}
+                            {movement.exit_price && movement.movement_type === "salida" && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Precio salida:</div>
+                                <div className="font-medium text-orange-600">{formatCurrency(movement.exit_price)}</div>
+                                <div className="text-xs text-green-600 font-semibold">
+                                  Total: {formatCurrency(movement.total_amount)}
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                            )}
+                            {!movement.entry_price && !movement.exit_price && (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
@@ -796,6 +821,15 @@ export default function InventoryPage() {
 
         {showMovementForm && (
           <MovementFormDialog open={showMovementForm} onClose={handleDialogClose} onSubmit={handleCreateMovement} />
+        )}
+
+        {showAttachmentsDialog && selectedMovement && (
+          <MovementAttachmentsDialog
+            open={showAttachmentsDialog}
+            onClose={closeAttachmentsDialog}
+            movementId={selectedMovement.id}
+            movementInfo={selectedMovement}
+          />
         )}
       </div>
     </div>

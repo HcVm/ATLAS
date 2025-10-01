@@ -73,7 +73,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     product_id: selectedProduct?.id || "",
     movement_type: "",
     quantity: "",
-    sale_price: "",
+    entry_price: "", // Added entry price field
+    exit_price: "", // Added exit price field (replaces sale_price for exits)
     purchase_order_number: "",
     destination_entity_name: "",
     destination_department_id: "",
@@ -127,13 +128,20 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       // Obtener departamentos del Perú
       const { data: departmentsData } = await supabase.from("peru_departments").select("id, name, code").order("name")
 
-      // Obtener sugerencias de entidades globales
-      const { data: suggestionsData } = await supabase.rpc("get_global_entity_suggestions")
+      // Fetch unique entity names from existing movements
+      const { data: suggestionsData } = await supabase
+        .from("inventory_movements")
+        .select("destination_entity_name")
+        .eq("company_id", companyId)
+        .not("destination_entity_name", "is", null)
+        .order("destination_entity_name")
 
       console.log("Products fetched:", productsData?.length || 0)
       setProducts(productsData || [])
       setDepartments(departmentsData || [])
-      setEntitySuggestions(suggestionsData?.map((item) => item.entity_name) || [])
+
+      const uniqueEntities = [...new Set(suggestionsData?.map((item) => item.destination_entity_name).filter(Boolean))]
+      setEntitySuggestions(uniqueEntities || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     }
@@ -147,7 +155,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       setFormData((prev) => ({
         ...prev,
         product_id: productId,
-        sale_price: product.sale_price.toString(),
+        entry_price: product.cost_price.toString(),
+        exit_price: product.sale_price.toString(),
       }))
     }
   }
@@ -290,7 +299,26 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       return
     }
 
-    // Validar campos requeridos para salidas
+    if (formData.movement_type === "entrada") {
+      if (!formData.entry_price) {
+        toast({
+          title: "Error",
+          description: "El precio de entrada es requerido",
+          variant: "destructive",
+        })
+        return
+      }
+      const entryPrice = Number.parseFloat(formData.entry_price)
+      if (entryPrice <= 0) {
+        toast({
+          title: "Error",
+          description: "El precio de entrada debe ser mayor a 0",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     if (formData.movement_type === "salida") {
       if (!formData.purchase_order_number) {
         toast({
@@ -308,25 +336,43 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         })
         return
       }
-      if (!formData.sale_price) {
+      if (!formData.exit_price) {
         toast({
           title: "Error",
-          description: "El precio de venta es requerido para salidas",
+          description: "El precio de salida es requerido",
+          variant: "destructive",
+        })
+        return
+      }
+      const exitPrice = Number.parseFloat(formData.exit_price)
+      if (exitPrice <= 0) {
+        toast({
+          title: "Error",
+          description: "El precio de salida debe ser mayor a 0",
           variant: "destructive",
         })
         return
       }
     }
 
-    const salePrice = formData.sale_price ? Number.parseFloat(formData.sale_price) : null
-    const totalAmount = salePrice ? salePrice * quantity : null
+    const entryPrice = formData.entry_price ? Number.parseFloat(formData.entry_price) : null
+    const exitPrice = formData.exit_price ? Number.parseFloat(formData.exit_price) : null
+    const totalAmount =
+      formData.movement_type === "entrada"
+        ? entryPrice
+          ? entryPrice * quantity
+          : null
+        : exitPrice
+          ? exitPrice * quantity
+          : null
 
     try {
       // Crear el movimiento primero
       const movementData = {
         ...formData,
         quantity,
-        sale_price: salePrice,
+        entry_price: entryPrice, // Send entry price
+        exit_price: exitPrice, // Send exit price
         total_amount: totalAmount,
         destination_department_id: formData.destination_department_id || null,
         company_id: companyId,
@@ -345,7 +391,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         product_id: "",
         movement_type: "",
         quantity: "",
-        sale_price: "",
+        entry_price: "", // Reset entry price
+        exit_price: "", // Reset exit price
         purchase_order_number: "",
         destination_entity_name: "",
         destination_department_id: "",
@@ -549,7 +596,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                 </Select>
               </div>
 
-              {/* Cantidad y precio */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="quantity">
@@ -565,18 +611,34 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                     max={formData.movement_type === "salida" ? selectedProductData?.current_stock : undefined}
                   />
                 </div>
-                {formData.movement_type === "salida" && (
+                {formData.movement_type === "entrada" && (
                   <div>
-                    <Label htmlFor="sale_price">Precio de Venta *</Label>
+                    <Label htmlFor="entry_price">Precio de Entrada *</Label>
                     <Input
-                      id="sale_price"
+                      id="entry_price"
                       type="number"
                       step="0.01"
-                      value={formData.sale_price}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, sale_price: e.target.value }))}
+                      value={formData.entry_price}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, entry_price: e.target.value }))}
                       placeholder="0.00"
                       required
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Actualizará el precio de costo del producto</p>
+                  </div>
+                )}
+                {formData.movement_type === "salida" && (
+                  <div>
+                    <Label htmlFor="exit_price">Precio de Salida *</Label>
+                    <Input
+                      id="exit_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.exit_price}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, exit_price: e.target.value }))}
+                      placeholder="0.00"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Precio al que sale el producto</p>
                   </div>
                 )}
               </div>
@@ -769,7 +831,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
             </div>
           </div>
 
-          {/* Resumen */}
           {formData.quantity && selectedProductData && (
             <Card className="bg-muted/50">
               <CardContent className="pt-4">
@@ -781,11 +842,19 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                       {formData.quantity} {selectedProductData.unit_of_measure}
                     </p>
                   </div>
-                  {formData.sale_price && formData.movement_type === "salida" && (
+                  {formData.entry_price && formData.movement_type === "entrada" && (
                     <div>
-                      <span className="text-muted-foreground">Total de Venta:</span>
+                      <span className="text-muted-foreground">Total de Entrada:</span>
+                      <p className="font-medium text-blue-600">
+                        {formatCurrency(Number.parseFloat(formData.entry_price) * Number.parseInt(formData.quantity))}
+                      </p>
+                    </div>
+                  )}
+                  {formData.exit_price && formData.movement_type === "salida" && (
+                    <div>
+                      <span className="text-muted-foreground">Total de Salida:</span>
                       <p className="font-medium text-green-600">
-                        {formatCurrency(Number.parseFloat(formData.sale_price) * Number.parseInt(formData.quantity))}
+                        {formatCurrency(Number.parseFloat(formData.exit_price) * Number.parseInt(formData.quantity))}
                       </p>
                     </div>
                   )}

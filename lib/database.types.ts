@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -311,6 +317,115 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      deliveries: {
+        Row: {
+          actual_delivery_date: string | null
+          assigned_to: string | null
+          created_at: string | null
+          created_by: string
+          delivery_address: string | null
+          delivery_status: string
+          estimated_delivery_date: string | null
+          id: string
+          notes: string | null
+          sale_id: string
+          tracking_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_delivery_date?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by: string
+          delivery_address?: string | null
+          delivery_status?: string
+          estimated_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          sale_id: string
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_delivery_date?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by?: string
+          delivery_address?: string | null
+          delivery_status?: string
+          estimated_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          sale_id?: string
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_totals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -1616,6 +1731,8 @@ export type Database = {
           destination_address: string | null
           destination_department_id: string | null
           destination_entity_name: string | null
+          entry_price: number | null
+          exit_price: number | null
           id: string
           movement_date: string | null
           movement_type: string
@@ -1640,6 +1757,8 @@ export type Database = {
           destination_address?: string | null
           destination_department_id?: string | null
           destination_entity_name?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
           id?: string
           movement_date?: string | null
           movement_type: string
@@ -1664,6 +1783,8 @@ export type Database = {
           destination_address?: string | null
           destination_department_id?: string | null
           destination_entity_name?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
           id?: string
           movement_date?: string | null
           movement_type?: string
@@ -2192,6 +2313,243 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_lots: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          delivery_date: string | null
+          generated_date: string | null
+          id: string
+          ingress_date: string | null
+          lot_number: string
+          product_code: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          sale_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          delivery_date?: string | null
+          generated_date?: string | null
+          id?: string
+          ingress_date?: string | null
+          lot_number: string
+          product_code: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          sale_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          delivery_date?: string | null
+          generated_date?: string | null
+          id?: string
+          ingress_date?: string | null
+          lot_number?: string
+          product_code?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sale_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_lots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_low_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_totals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_serials: {
+        Row: {
+          barcode_data: string | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          lot_id: string | null
+          product_code: string
+          product_id: string | null
+          product_name: string
+          sale_id: string | null
+          serial_number: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          barcode_data?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lot_id?: string | null
+          product_code: string
+          product_id?: string | null
+          product_name: string
+          sale_id?: string | null
+          serial_number: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          barcode_data?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lot_id?: string | null
+          product_code?: string
+          product_id?: string | null
+          product_name?: string
+          sale_id?: string | null
+          serial_number?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_serials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "product_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_low_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_totals"
             referencedColumns: ["id"]
           },
         ]
@@ -2874,8 +3232,8 @@ export type Database = {
           company_ruc: string
           created_at: string | null
           created_by: string
-          delivery_start_date: string | null
           delivery_end_date: string | null
+          delivery_start_date: string | null
           entity_executing_unit: string | null
           entity_id: string
           entity_name: string
@@ -2912,8 +3270,8 @@ export type Database = {
           company_ruc: string
           created_at?: string | null
           created_by: string
-          delivery_start_date?: string | null
           delivery_end_date?: string | null
+          delivery_start_date?: string | null
           entity_executing_unit?: string | null
           entity_id: string
           entity_name: string
@@ -2950,8 +3308,8 @@ export type Database = {
           company_ruc?: string
           created_at?: string | null
           created_by?: string
-          delivery_start_date?: string | null
           delivery_end_date?: string | null
+          delivery_start_date?: string | null
           entity_executing_unit?: string | null
           entity_id?: string
           entity_name?: string
@@ -4312,8 +4670,8 @@ export type Database = {
           company_ruc: string | null
           created_at: string | null
           created_by: string | null
-          delivery_start_date: string | null
           delivery_end_date: string | null
+          delivery_start_date: string | null
           display_product_code: string | null
           display_product_name: string | null
           entity_executing_unit: string | null
@@ -4406,8 +4764,8 @@ export type Database = {
           company_ruc: string | null
           created_at: string | null
           created_by: string | null
-          delivery_start_date: string | null
           delivery_end_date: string | null
+          delivery_start_date: string | null
           entity_executing_unit: string | null
           entity_id: string | null
           entity_name: string | null
@@ -4417,7 +4775,6 @@ export type Database = {
           id: string | null
           is_multi_product: boolean | null
           items_count: number | null
-          items_count_calculated: number | null
           observations: string | null
           ocam: string | null
           payment_method: string | null
@@ -4441,89 +4798,21 @@ export type Database = {
           updated_at: string | null
           warehouse_manager: string | null
         }
-        Insert: {
-          company_id?: string | null
-          company_name?: string | null
-          company_ruc?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          delivery_start_date?: string | null
-          delivery_end_date?: string | null
-          entity_executing_unit?: string | null
-          entity_id?: string | null
-          entity_name?: string | null
-          entity_ruc?: string | null
-          exp_siaf?: string | null
-          final_destination?: string | null
-          id?: string | null
-          is_multi_product?: boolean | null
-          items_count?: number | null
-          items_count_calculated?: never
-          observations?: string | null
-          ocam?: string | null
-          payment_method?: string | null
-          physical_order?: string | null
-          product_brand?: string | null
-          product_code?: string | null
-          product_description?: string | null
-          product_id?: string | null
-          product_name?: string | null
-          project_meta?: string | null
-          quantity?: number | null
-          quotation_code?: string | null
-          quotation_id?: string | null
-          sale_date?: string | null
-          sale_number?: string | null
-          sale_status?: string | null
-          total_amount?: never
-          total_quantity?: never
-          total_sale?: number | null
-          unit_price_with_tax?: number | null
-          updated_at?: string | null
-          warehouse_manager?: string | null
-        }
-        Update: {
-          company_id?: string | null
-          company_name?: string | null
-          company_ruc?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          delivery_start_date?: string | null
-          delivery_end_date?: string | null
-          entity_executing_unit?: string | null
-          entity_id?: string | null
-          entity_name?: string | null
-          entity_ruc?: string | null
-          exp_siaf?: string | null
-          final_destination?: string | null
-          id?: string | null
-          is_multi_product?: boolean | null
-          items_count?: number | null
-          items_count_calculated?: never
-          observations?: string | null
-          ocam?: string | null
-          payment_method?: string | null
-          physical_order?: string | null
-          product_brand?: string | null
-          product_code?: string | null
-          product_description?: string | null
-          product_id?: string | null
-          product_name?: string | null
-          project_meta?: string | null
-          quantity?: number | null
-          quotation_code?: string | null
-          quotation_id?: string | null
-          sale_date?: string | null
-          sale_number?: string | null
-          sale_status?: string | null
-          total_amount?: never
-          total_quantity?: never
-          total_sale?: number | null
-          unit_price_with_tax?: number | null
-          updated_at?: string | null
-          warehouse_manager?: string | null
-        }
         Relationships: [
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_low_stock"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_company_id_fkey"
             columns: ["company_id"]
@@ -4557,20 +4846,6 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "sales_entities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_low_stock"
             referencedColumns: ["id"]
           },
           {
@@ -4672,7 +4947,9 @@ export type Database = {
         Returns: undefined
       }
       create_entity_if_not_exists: {
-        Args: { company_uuid: string; entity_name: string } | { entity_name: string }
+        Args:
+          | { company_uuid: string; entity_name: string }
+          | { entity_name: string }
         Returns: string
       }
       debug_product_search: {
@@ -4713,12 +4990,20 @@ export type Database = {
         Args: Record<PropertyKey, never> | { company_uuid: string }
         Returns: string
       }
+      generate_lot_number: {
+        Args: { p_date?: string; p_product_code: string }
+        Returns: string
+      }
       generate_quotation_number: {
         Args: { company_uuid: string }
         Returns: string
       }
       generate_sale_number: {
         Args: { company_uuid: string }
+        Returns: string
+      }
+      generate_serial_number: {
+        Args: { p_lot_number: string; p_sequence: number }
         Returns: string
       }
       generate_session_id: {
@@ -4849,8 +5134,8 @@ export type Database = {
         Args: { target_company_id: string }
         Returns: {
           created_at: string
-          delivery_start_date: string
-          delivery_end_date: string
+          delivery_date: string
+          delivery_term: string
           entity_executing_unit: string
           entity_id: string
           entity_name: string
@@ -5002,7 +5287,12 @@ export type Database = {
     }
     Enums: {
       document_status: "pending" | "in_progress" | "completed" | "cancelled"
-      request_status: "pending" | "in_progress" | "approved" | "rejected" | "expired"
+      request_status:
+        | "pending"
+        | "in_progress"
+        | "approved"
+        | "rejected"
+        | "expired"
       request_type:
         | "late_justification"
         | "absence_justification"
@@ -5041,8 +5331,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -5050,7 +5342,9 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5073,7 +5367,9 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5096,7 +5392,9 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -5131,7 +5429,13 @@ export const Constants = {
   public: {
     Enums: {
       document_status: ["pending", "in_progress", "completed", "cancelled"],
-      request_status: ["pending", "in_progress", "approved", "rejected", "expired"],
+      request_status: [
+        "pending",
+        "in_progress",
+        "approved",
+        "rejected",
+        "expired",
+      ],
       request_type: [
         "late_justification",
         "absence_justification",
