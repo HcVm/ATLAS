@@ -6,6 +6,8 @@ import { Loader2, AlertTriangle, ExternalLink, FileText, CheckCircle2, ChevronDo
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Card, CardContent } from "@/components/ui/card"
+import { SerialValidator } from "@/components/serial-validator"
 
 interface Product {
   id: string
@@ -27,6 +29,49 @@ interface Product {
     name: string
     color: string
   } | null
+}
+
+// Helper function to parse description into sections
+function parseDescription(description: string) {
+  const sections: { title?: string; content: string[] }[] = []
+  const lines = description.split("\n").filter((line) => line.trim())
+
+  let currentSection: { title?: string; content: string[] } = { content: [] }
+
+  lines.forEach((line) => {
+    const trimmedLine = line.trim()
+
+    // Check if line looks like a section title (ends with : or is all caps)
+    if (trimmedLine.endsWith(":") || (trimmedLine === trimmedLine.toUpperCase() && trimmedLine.length < 50)) {
+      // Save previous section if it has content
+      if (currentSection.content.length > 0) {
+        sections.push(currentSection)
+      }
+      // Start new section
+      currentSection = {
+        title: trimmedLine.replace(/:$/, ""),
+        content: [],
+      }
+    } else if (trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || trimmedLine.startsWith("*")) {
+      // Bullet point
+      currentSection.content.push(trimmedLine.replace(/^[-•*]\s*/, ""))
+    } else if (trimmedLine.length > 0) {
+      // Regular content
+      currentSection.content.push(trimmedLine)
+    }
+  })
+
+  // Add last section
+  if (currentSection.content.length > 0) {
+    sections.push(currentSection)
+  }
+
+  // If no sections were created, treat entire description as one section
+  if (sections.length === 0 && description.trim()) {
+    sections.push({ content: [description.trim()] })
+  }
+
+  return sections
 }
 
 export default function PublicProductPage() {
@@ -228,17 +273,53 @@ export default function PublicProductPage() {
           </div>
         </div>
 
+        {/* Serial Number Validator Section */}
+        <div className="mt-16">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Verifica tu número de serie</h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Ingresa el número de serie de tu producto para verificar su autenticidad y consultar el estado de
+                garantía.
+              </p>
+            </div>
+            <SerialValidator />
+          </div>
+        </div>
+
         {product.description && (
           <div className="mt-16">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-4">Descripción del producto</h2>
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{product.description}</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">Descripción del producto</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {parseDescription(product.description).map((section, index) => (
+                <Card
+                  key={index}
+                  className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+                >
+                  <CardContent className="p-6">
+                    {section.title && (
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">
+                        <div className="w-1 h-6 bg-blue-600 rounded-full" />
+                        {section.title}
+                      </h3>
+                    )}
+                    <ul className="space-y-2">
+                      {section.content.map((item, itemIndex) => (
+                        <li key={itemIndex} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                          <span className="leading-relaxed">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="mt-8 space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">Información de productos</h2>
+        <div className="mt-12 space-y-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">Información técnica</h2>
 
           {/* Características */}
           <Collapsible open={caracteristicasOpen} onOpenChange={setCaracteristicasOpen}>
@@ -305,7 +386,7 @@ export default function PublicProductPage() {
           <Collapsible open={especificacionesOpen} onOpenChange={setEspecificacionesOpen}>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-lg">
               <CollapsibleTrigger className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                <span className="text-lg font-semibold text-gray-900 dark:text-gray-50">Especificaciones</span>
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-50">Documentación</span>
                 <ChevronDown
                   className={`h-5 w-5 text-gray-500 transition-transform duration-200 ${
                     especificacionesOpen ? "rotate-180" : ""
@@ -314,49 +395,48 @@ export default function PublicProductPage() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="px-6 py-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <div className="space-y-4">
-                    {product.description && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                          Descripción detallada
-                        </p>
-                        <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {product.description}
-                        </p>
-                      </div>
-                    )}
-                    {(product.ficha_tecnica || product.manual) && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Documentación</p>
-                        <div className="flex flex-col gap-2">
-                          {product.ficha_tecnica && (
-                            <a
-                              href={product.ficha_tecnica}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-                            >
-                              <FileText className="h-4 w-4" />
-                              <span>Ficha técnica del producto</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                          {product.manual && (
-                            <a
-                              href={product.manual}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-                            >
-                              <FileText className="h-4 w-4" />
-                              <span>Manual del producto</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {(product.ficha_tecnica || product.manual) && (
+                    <div className="space-y-3">
+                      {product.ficha_tecnica && (
+                        <a
+                          href={product.ficha_tecnica}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group"
+                        >
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors">
+                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">Ficha técnica del producto</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Especificaciones técnicas detalladas
+                            </p>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                        </a>
+                      )}
+                      {product.manual && (
+                        <a
+                          href={product.manual}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group"
+                        >
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors">
+                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">Manual del producto</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Guía de uso e instrucciones completas
+                            </p>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CollapsibleContent>
             </div>
