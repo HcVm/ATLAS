@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Loader2, AlertTriangle, ExternalLink, FileText, CheckCircle2, ChevronDown } from "lucide-react"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Card, CardContent } from "@/components/ui/card"
@@ -44,10 +44,6 @@ function parseDescription(description: string) {
   return [description.trim()]
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabasePublic = createClient(supabaseUrl, supabaseAnonKey)
-
 export default function PublicProductPage() {
   const params = useParams()
   const [product, setProduct] = useState<Product | null>(null)
@@ -68,7 +64,7 @@ export default function PublicProductPage() {
     try {
       console.log("[v0] Fetching product with hash:", params.hash)
 
-      const { data: productData, error: productError } = await supabasePublic
+      const { data: productData, error: productError } = await supabase
         .from("products")
         .select(
           `
