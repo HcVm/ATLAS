@@ -66,6 +66,8 @@ export default function PublicProductPage() {
     setLoading(true)
     setError(null)
     try {
+      console.log("[v0] Fetching product with hash:", params.hash)
+
       const { data: productData, error: productError } = await supabasePublic
         .from("products")
         .select(
@@ -92,21 +94,26 @@ export default function PublicProductPage() {
         `,
         )
         .eq("qr_code_hash", params.hash)
-        .single()
+        .maybeSingle()
+
+      console.log("[v0] Query result:", { productData, productError })
 
       if (productError) {
-        console.error("Error fetching product:", productError)
-        setError("Producto no encontrado.")
+        console.error("[v0] Error fetching product:", productError)
+        setError("Error al cargar el producto. Por favor, intenta nuevamente.")
         return
       }
 
-      if (productData) {
-        setProduct(productData as Product)
-      } else {
-        setError("Producto no encontrado.")
+      if (!productData) {
+        console.log("[v0] No product found with hash:", params.hash)
+        setError("Producto no encontrado. Verifica que el código QR sea válido.")
+        return
       }
+
+      console.log("[v0] Product loaded successfully:", productData.name)
+      setProduct(productData as Product)
     } catch (err) {
-      console.error("Unexpected error:", err)
+      console.error("[v0] Unexpected error:", err)
       setError("Ocurrió un error inesperado al cargar la información.")
     } finally {
       setLoading(false)
