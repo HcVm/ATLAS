@@ -26,6 +26,7 @@ interface Product {
   barcode: string | null
   modelo: string | null
   ficha_tecnica: string | null
+  manual: string | null
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
@@ -70,6 +71,7 @@ export default function EditProductPage() {
     barcode: "",
     modelo: "",
     ficha_tecnica: "",
+    manual: "",
     unit_of_measure: "unidad",
     minimum_stock: 0,
     current_stock: 0,
@@ -94,7 +96,6 @@ export default function EditProductPage() {
       setLoading(true)
       setError(null)
 
-      // Determinar el company_id correcto
       const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
 
       if (!companyId) {
@@ -107,7 +108,6 @@ export default function EditProductPage() {
         return
       }
 
-      // Obtener producto
       const { data: productData, error: productError } = await supabase
         .from("products")
         .select("*")
@@ -135,7 +135,6 @@ export default function EditProductPage() {
         return
       }
 
-      // Obtener marcas propias de la empresa
       const { data: companyBrands, error: companyBrandsError } = await supabase
         .from("brands")
         .select("id, name, color")
@@ -151,7 +150,6 @@ export default function EditProductPage() {
         })
       }
 
-      // Obtener marcas externas (company_id NULL)
       const { data: externalBrands, error: externalBrandsError } = await supabase
         .from("brands")
         .select("id, name, color")
@@ -167,13 +165,11 @@ export default function EditProductPage() {
         })
       }
 
-      // Combinar marcas: primero las de la empresa, luego las externas
       const allBrands = [
         ...(companyBrands || []).map((brand) => ({ ...brand, isExternal: false })),
         ...(externalBrands || []).map((brand) => ({ ...brand, isExternal: true })),
       ]
 
-      // Obtener categorías (solo de la empresa)
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("product_categories")
         .select("id, name, color")
@@ -193,7 +189,6 @@ export default function EditProductPage() {
       setBrands(allBrands)
       setCategories(categoriesData || [])
 
-      // Llenar el formulario con los datos del producto
       setFormData({
         name: productData.name || "",
         description: productData.description || "",
@@ -201,6 +196,7 @@ export default function EditProductPage() {
         barcode: productData.barcode || "",
         modelo: productData.modelo || "",
         ficha_tecnica: productData.ficha_tecnica || "",
+        manual: productData.manual || "",
         unit_of_measure: productData.unit_of_measure || "unidad",
         minimum_stock: productData.minimum_stock || 0,
         current_stock: productData.current_stock || 0,
@@ -225,20 +221,16 @@ export default function EditProductPage() {
   }
 
   const handleBrandCreated = (newBrand: Brand) => {
-    // Agregar la nueva marca a la lista
     setBrands((prev) => {
       if (newBrand.isExternal) {
-        // Agregar marca externa al final
         return [...prev, newBrand]
       } else {
-        // Agregar marca de empresa al principio (después de las otras marcas de empresa)
         const companyBrands = prev.filter((b) => !b.isExternal)
         const externalBrands = prev.filter((b) => b.isExternal)
         return [...companyBrands, newBrand, ...externalBrands]
       }
     })
 
-    // Seleccionar automáticamente la nueva marca
     setFormData((prev) => ({ ...prev, brand_id: newBrand.id }))
   }
 
@@ -254,7 +246,6 @@ export default function EditProductPage() {
       return
     }
 
-    // Validaciones adicionales
     if (formData.cost_price > 0 && formData.sale_price > 0 && formData.sale_price <= formData.cost_price) {
       toast({
         title: "Error",
@@ -285,7 +276,6 @@ export default function EditProductPage() {
     try {
       setSaving(true)
 
-      // Determinar el company_id correcto
       const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
 
       if (!companyId) {
@@ -304,6 +294,7 @@ export default function EditProductPage() {
         barcode: formData.barcode.trim() || null,
         modelo: formData.modelo.trim() || null,
         ficha_tecnica: formData.ficha_tecnica.trim() || null,
+        manual: formData.manual.trim() || null,
         unit_of_measure: formData.unit_of_measure,
         minimum_stock: Number(formData.minimum_stock),
         current_stock: Number(formData.current_stock),
@@ -325,7 +316,6 @@ export default function EditProductPage() {
       if (error) {
         console.error("Supabase error:", error)
 
-        // Manejar errores específicos de la base de datos
         if (error.code === "23505") {
           if (error.message.includes("products_code_company_id_key")) {
             toast({
@@ -447,7 +437,6 @@ export default function EditProductPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <NextLink href={`/warehouse/products/${params.id}`}>
@@ -463,7 +452,6 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Información básica */}
           <Card>
             <CardHeader>
               <CardTitle>Información Básica</CardTitle>
@@ -544,6 +532,23 @@ export default function EditProductPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="manual" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Manual del Producto (URL)
+                </Label>
+                <Input
+                  id="manual"
+                  type="url"
+                  value={formData.manual}
+                  onChange={(e) => setFormData({ ...formData, manual: e.target.value })}
+                  placeholder="https://ejemplo.com/manual-producto.pdf"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enlace al manual de usuario o instrucciones del producto
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unit_of_measure">Unidad de medida</Label>
@@ -590,7 +595,6 @@ export default function EditProductPage() {
             </CardContent>
           </Card>
 
-          {/* Stock y precios */}
           <Card>
             <CardHeader>
               <CardTitle>Stock y Precios</CardTitle>
@@ -664,7 +668,6 @@ export default function EditProductPage() {
             </CardContent>
           </Card>
 
-          {/* Categorización */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Categorización</CardTitle>
@@ -685,7 +688,6 @@ export default function EditProductPage() {
                       <SelectContent>
                         <SelectItem value="none">Sin marca</SelectItem>
 
-                        {/* Marcas de la empresa */}
                         {brands.filter((brand) => !brand.isExternal).length > 0 && (
                           <>
                             <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
@@ -704,7 +706,6 @@ export default function EditProductPage() {
                           </>
                         )}
 
-                        {/* Marcas externas */}
                         {brands.filter((brand) => brand.isExternal).length > 0 && (
                           <>
                             <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-t mt-1 pt-2">
@@ -730,7 +731,6 @@ export default function EditProductPage() {
                       </SelectContent>
                     </Select>
 
-                    {/* Botón para crear nueva marca */}
                     <BrandCreatorDialog onBrandCreated={handleBrandCreated} />
                   </div>
                 </div>
@@ -759,7 +759,6 @@ export default function EditProductPage() {
           </Card>
         </div>
 
-        {/* Botones de acción */}
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" asChild>
             <NextLink href={`/warehouse/products/${params.id}`}>Cancelar</NextLink>

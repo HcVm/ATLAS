@@ -18,10 +18,12 @@ import {
   FileText,
   ExternalLink,
   Eye,
+  QrCode,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
+import { QRCodeDisplay } from "@/components/qr-code-display"
 
 interface Product {
   id: string
@@ -31,6 +33,8 @@ interface Product {
   barcode: string | null
   modelo: string | null
   ficha_tecnica: string | null
+  manual: string | null
+  qr_code_hash: string | null
   unit_of_measure: string
   minimum_stock: number
   current_stock: number
@@ -52,6 +56,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showQRCode, setShowQRCode] = useState(false)
 
   // Verificar si el usuario puede editar productos
   const canEditProducts =
@@ -397,6 +402,24 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
+              {product.manual && (
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    Manual del Producto
+                  </label>
+                  <a
+                    href={product.manual}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex items-center gap-1"
+                  >
+                    Ver manual
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+
               {product.location && (
                 <div>
                   <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -427,6 +450,29 @@ export default function ProductDetailPage() {
                   </Badge>
                 </div>
               </div>
+
+              {product.qr_code_hash && (
+                <div>
+                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <QrCode className="h-3 w-3" />
+                    Código QR del Producto
+                  </label>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowQRCode(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Ver código QR
+                    </Button>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Escanea el QR para ver la información pública del producto
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -581,6 +627,16 @@ export default function ProductDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        {product.qr_code_hash && showQRCode && (
+          <QRCodeDisplay
+            hash={product.qr_code_hash}
+            title={`QR - ${product.name}`}
+            description="Escanea este código QR para ver la información pública del producto"
+            url={`${typeof window !== "undefined" ? window.location.origin : ""}/public/product/${product.qr_code_hash}`}
+            onClose={() => setShowQRCode(false)}
+          />
+        )}
       </div>
     </div>
   )

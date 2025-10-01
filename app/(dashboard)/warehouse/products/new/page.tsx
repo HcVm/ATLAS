@@ -40,6 +40,7 @@ interface ProductForm {
   barcode: string
   modelo: string
   ficha_tecnica: string
+  manual: string
   brand_id: string
   category_id: string
   unit_of_measure: string
@@ -68,6 +69,7 @@ export default function NewProductPage() {
     barcode: "",
     modelo: "",
     ficha_tecnica: "",
+    manual: "",
     brand_id: "",
     category_id: "",
     unit_of_measure: "unidad",
@@ -232,8 +234,17 @@ export default function NewProductPage() {
       return
     }
 
+    // Validar URL del manual si se proporciona
+    if (form.manual.trim() && !isValidUrl(form.manual.trim())) {
+      toast.error("La URL del manual no es válida")
+      return
+    }
+
     try {
       setSaving(true)
+
+      // Generar hash para el código QR
+      const qrCodeHash = crypto.randomUUID().replace(/-/g, "")
 
       // Preparar los datos para insertar
       const productData = {
@@ -243,6 +254,8 @@ export default function NewProductPage() {
         barcode: form.barcode.trim() || null,
         modelo: form.modelo.trim() || null,
         ficha_tecnica: form.ficha_tecnica.trim() || null,
+        manual: form.manual.trim() || null,
+        qr_code_hash: qrCodeHash,
         brand_id: form.brand_id || null,
         category_id: form.category_id || null,
         unit_of_measure: form.unit_of_measure,
@@ -526,6 +539,23 @@ export default function NewProductPage() {
                       placeholder="https://ejemplo.com/ficha-tecnica.pdf"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="manual" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Manual del Producto (URL)
+                  </Label>
+                  <Input
+                    id="manual"
+                    type="url"
+                    value={form.manual}
+                    onChange={(e) => updateForm("manual", e.target.value)}
+                    placeholder="https://ejemplo.com/manual-producto.pdf"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enlace al manual de usuario o instrucciones del producto
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

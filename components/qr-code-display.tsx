@@ -87,3 +87,25 @@ export function QRDisplayDialog({ open, onOpenChange, qrData, title, description
     </Dialog>
   )
 }
+
+interface QRCodeDisplayProps {
+  hash: string
+  title: string
+  description?: string
+  url: string
+  onClose: () => void
+}
+
+export function QRCodeDisplay({ hash, title, description, url, onClose }: QRCodeDisplayProps) {
+  return (
+    <QRDisplayDialog
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      qrData={url}
+      title={title}
+      description={description}
+    />
+  )
+}
