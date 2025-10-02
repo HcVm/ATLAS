@@ -199,15 +199,15 @@ export default function EtiquetadoPage() {
 
             try {
               const canvas = document.createElement("canvas")
-              canvas.width = 320
-              canvas.height = 100
+              canvas.width = 400
+              canvas.height = 120
 
               JsBarcode(canvas, barcodeText, {
                 format: "CODE128",
-                width: 2,
-                height: 65,
+                width: 8,
+                height:350,
                 displayValue: false,
-                margin: 3,
+                margin:8,
                 background: "#ffffff",
                 lineColor: "#000000",
               })
