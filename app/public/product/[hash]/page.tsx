@@ -225,8 +225,13 @@ export default function PublicProductPage() {
                 ))}
               </motion.div>
 
+              {/* --- BOTONES DE DOCUMENTACIÓN (CORREGIDO) --- */}
               {(product.ficha_tecnica || product.manual) && (
-                <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 pt-4">
+                <motion.div 
+                  variants={itemVariants} 
+                  // El único cambio es en esta línea:
+                  className="flex flex-row gap-4 pt-4"
+                >
                   {product.ficha_tecnica && (
                     <Button asChild size="lg" className="flex-1">
                       <a href={product.ficha_tecnica} target="_blank" rel="noopener noreferrer">
@@ -237,7 +242,7 @@ export default function PublicProductPage() {
                   {product.manual && (
                     <Button asChild size="lg" variant="secondary" className="flex-1">
                       <a href={product.manual} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-5 w-5 mr-2" /> Ver Manual
+                        <ExternalLink className="h-5 w-5 mr-2" /> Manual
                       </a>
                     </Button>
                   )}
