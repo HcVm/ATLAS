@@ -291,7 +291,7 @@ export default function EtiquetadoPage() {
                 .sticker-grid {
                   display: grid;
                   grid-template-columns: repeat(3, 6.2cm);
-                  gap: 5mm;
+                  gap: 2mm;
                   padding: 0;
                   justify-content: center;
                   width: 100%;
@@ -299,7 +299,7 @@ export default function EtiquetadoPage() {
                 .sticker {
                   width: 6.2cm;
                   height: 3.7cm;
-                  border: 2px solid #1f2937;
+                  border: 2px solid #000000ff;
                   border-radius: 8px;
                   padding: 3mm;
                   page-break-inside: avoid;
@@ -341,7 +341,7 @@ export default function EtiquetadoPage() {
                 .qr-label {
                   font-size: 6pt;
                   text-align: center;
-                  color: #666;
+                  color: #353535ff;
                   line-height: 1.1;
                   max-width: 65px;
                   font-weight: 400;
@@ -378,7 +378,7 @@ export default function EtiquetadoPage() {
                   color: #000;
                 }
                 .product-code {
-                  color: #666;
+                  color: #2c2c2cff;
                   font-size: 6.5pt;
                 }
                 @media print {
@@ -387,11 +387,11 @@ export default function EtiquetadoPage() {
                     padding: 10mm;
                   }
                   .sticker {
-                    border: 2px solid #1f2937 !important;
+                    border: 2px solid #000000ff !important;
                     border-radius: 8px !important;
                   }
                   .sticker-grid {
-                    gap: 5mm;
+                    gap: 2mm;
                   }
                 }
               </style>
