@@ -31,6 +31,7 @@ import { MovementEditDialog } from "@/components/warehouse/movement-edit-dialog"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
+import { createLotsForInventoryEntry } from "@/lib/lot-serial-generator"
 
 interface InventoryMovement {
   id: string
@@ -441,35 +442,63 @@ export default function InventoryPage() {
 
       if (error) throw error
 
-      const { data: productData } = await supabase
+      const { data: productData, error: productError } = await supabase
         .from("products")
-        .select("current_stock")
+        .select("id, code, name, current_stock")
         .eq("id", movementData.product_id)
         .single()
 
-      if (productData) {
-        let newStock = productData.current_stock
+      if (productError) throw productError
 
-        if (movementData.movement_type === "entrada") {
-          newStock += movementData.quantity
-        } else if (movementData.movement_type === "salida") {
-          newStock -= movementData.quantity
-        } else if (movementData.movement_type === "ajuste") {
-          newStock = movementData.quantity
-        }
+      let newStock = productData.current_stock
 
-        const { error: updateError } = await supabase
-          .from("products")
-          .update({ current_stock: newStock })
-          .eq("id", movementData.product_id)
-
-        if (updateError) throw updateError
+      if (movementData.movement_type === "entrada") {
+        newStock += movementData.quantity
+      } else if (movementData.movement_type === "salida") {
+        newStock -= movementData.quantity
+      } else if (movementData.movement_type === "ajuste") {
+        newStock = movementData.quantity
       }
 
-      toast({
-        title: "Éxito",
-        description: "Movimiento creado correctamente",
-      })
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ current_stock: newStock })
+        .eq("id", movementData.product_id)
+
+      if (updateError) throw updateError
+
+      if (movementData.movement_type === "entrada" && movementData.quantity > 0) {
+        try {
+          console.log("[v0] Creating lots for inventory entry movement")
+          await createLotsForInventoryEntry(
+            productData.id,
+            productData.code,
+            productData.name,
+            movementData.quantity,
+            companyId,
+            user.id,
+            createdMovement.id,
+          )
+          console.log("[v0] Lots and serials created successfully for inventory entry")
+
+          toast({
+            title: "Éxito",
+            description: `Movimiento creado y ${movementData.quantity} lote(s) con series generados automáticamente`,
+          })
+        } catch (lotError) {
+          console.error("[v0] Error creating lots for inventory entry:", lotError)
+          toast({
+            title: "Advertencia",
+            description: "Movimiento creado pero hubo un error al generar los lotes automáticamente",
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({
+          title: "Éxito",
+          description: "Movimiento creado correctamente",
+        })
+      }
 
       return createdMovement
     } catch (error: any) {

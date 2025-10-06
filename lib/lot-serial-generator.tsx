@@ -258,7 +258,128 @@ async function createSerial(params: SerialGenerationParams, sequence: number): P
 }
 
 /**
- * Generates lots and serials for all products in a sale
+ * Finds available lots in inventory for a product (FIFO strategy)
+ */
+export async function findAvailableLotsForProduct(
+  productId: string,
+  requestedQuantity: number,
+  companyId: string,
+): Promise<{ allocatedLots: Array<{ lotId: string; quantity: number; serials: any[] }>; remainingQuantity: number }> {
+  try {
+    console.log("[v0] Finding available lots for product:", productId, "quantity:", requestedQuantity)
+
+    // Get lots with status 'in_inventory' ordered by ingress_date (FIFO)
+    const { data: availableLots, error: lotsError } = await supabase
+      .from("product_lots")
+      .select(`
+        id,
+        lot_number,
+        quantity,
+        ingress_date,
+        product_serials!inner (
+          id,
+          serial_number,
+          status
+        )
+      `)
+      .eq("product_id", productId)
+      .eq("company_id", companyId)
+      .eq("status", "in_inventory")
+      .order("ingress_date", { ascending: true })
+
+    if (lotsError) {
+      console.error("[v0] Error fetching available lots:", lotsError)
+      throw new Error(`Failed to fetch available lots: ${lotsError.message}`)
+    }
+
+    console.log("[v0] Available lots found:", availableLots?.length || 0)
+
+    const allocatedLots: Array<{ lotId: string; quantity: number; serials: any[] }> = []
+    let remainingQuantity = requestedQuantity
+
+    if (!availableLots || availableLots.length === 0) {
+      return { allocatedLots, remainingQuantity }
+    }
+
+    // Allocate from oldest lots first (FIFO)
+    for (const lot of availableLots) {
+      if (remainingQuantity <= 0) break
+
+      // Filter available serials (in_inventory status)
+      const availableSerials = lot.product_serials.filter((s: any) => s.status === "in_inventory")
+      const availableQuantity = availableSerials.length
+
+      if (availableQuantity > 0) {
+        const quantityToAllocate = Math.min(availableQuantity, remainingQuantity)
+        const serialsToAllocate = availableSerials.slice(0, quantityToAllocate)
+
+        allocatedLots.push({
+          lotId: lot.id,
+          quantity: quantityToAllocate,
+          serials: serialsToAllocate,
+        })
+
+        remainingQuantity -= quantityToAllocate
+        console.log("[v0] Allocated", quantityToAllocate, "from lot", lot.lot_number, "remaining:", remainingQuantity)
+      }
+    }
+
+    return { allocatedLots, remainingQuantity }
+  } catch (error) {
+    console.error("[v0] Error in findAvailableLotsForProduct:", error)
+    throw error
+  }
+}
+
+/**
+ * Allocates existing serials to a sale and updates their status
+ */
+export async function allocateSerialsToSale(
+  saleId: string,
+  allocatedLots: Array<{ lotId: string; quantity: number; serials: any[] }>,
+): Promise<void> {
+  try {
+    console.log("[v0] Allocating serials to sale:", saleId)
+
+    for (const allocation of allocatedLots) {
+      const serialIds = allocation.serials.map((s) => s.id)
+
+      const { error: lotUpdateError } = await supabase
+        .from("product_lots")
+        .update({
+          sale_id: saleId,
+        })
+        .eq("id", allocation.lotId)
+
+      if (lotUpdateError) {
+        console.error("[v0] Error updating lot sale_id:", lotUpdateError)
+        throw new Error(`Failed to link lot to sale: ${lotUpdateError.message}`)
+      }
+
+      // Update serials to link them to the sale
+      const { error: updateError } = await supabase
+        .from("product_serials")
+        .update({
+          sale_id: saleId,
+          status: "sold",
+        })
+        .in("id", serialIds)
+
+      if (updateError) {
+        console.error("[v0] Error updating serials:", updateError)
+        throw new Error(`Failed to allocate serials: ${updateError.message}`)
+      }
+
+      console.log("[v0] Allocated", serialIds.length, "serials from lot", allocation.lotId, "to sale", saleId)
+    }
+  } catch (error) {
+    console.error("[v0] Error in allocateSerialsToSale:", error)
+    throw error
+  }
+}
+
+/**
+ * Generates lots and serials for all products in a sale with intelligent stock allocation
  */
 export async function generateLotsForSale(
   saleId: string,
@@ -266,6 +387,8 @@ export async function generateLotsForSale(
   createdBy: string,
 ): Promise<GeneratedLot[]> {
   try {
+    console.log("[v0] Starting intelligent lot generation for sale:", saleId)
+
     // Get sale items
     const { data: saleItems, error: itemsError } = await supabase
       .from("sale_items")
@@ -282,23 +405,42 @@ export async function generateLotsForSale(
       return []
     }
 
-    // Generate lot and serials for each product
-    const lotPromises = saleItems.map((item) =>
-      createLotWithSerials({
-        productCode: item.product_code,
-        productName: item.product_name,
-        productId: item.product_id,
-        saleId: saleId,
-        quantity: item.quantity,
-        companyId: companyId,
-        createdBy: createdBy,
-      }),
-    )
+    const generatedLots: GeneratedLot[] = []
 
-    const lots = await Promise.all(lotPromises)
+    // Process each product
+    for (const item of saleItems) {
+      console.log("[v0] Processing item:", item.product_name, "quantity:", item.quantity)
 
-    console.log(`Generated ${lots.length} lots for sale ${saleId}`)
-    return lots
+      const { allocatedLots, remainingQuantity } = await findAvailableLotsForProduct(
+        item.product_id,
+        item.quantity,
+        companyId,
+      )
+
+      if (allocatedLots.length > 0) {
+        await allocateSerialsToSale(saleId, allocatedLots)
+        console.log("[v0] Allocated", item.quantity - remainingQuantity, "units from existing stock")
+      }
+
+      if (remainingQuantity > 0) {
+        console.log("[v0] Creating new lot for remaining quantity:", remainingQuantity)
+
+        const newLot = await createLotWithSerials({
+          productCode: item.product_code,
+          productName: item.product_name,
+          productId: item.product_id,
+          saleId: saleId,
+          quantity: remainingQuantity,
+          companyId: companyId,
+          createdBy: createdBy,
+        })
+
+        generatedLots.push(newLot)
+      }
+    }
+
+    console.log(`[v0] Generated ${generatedLots.length} new lots for sale ${saleId}`)
+    return generatedLots
   } catch (error) {
     console.error("Error in generateLotsForSale:", error)
     throw error
@@ -550,4 +692,137 @@ export async function getSerialsForLot(lotId: string): Promise<any[]> {
   }
 
   return data || []
+}
+
+/**
+ * Creates lots and serials for a manual inventory entry (entrada)
+ */
+export async function createLotsForInventoryEntry(
+  productId: string,
+  productCode: string,
+  productName: string,
+  quantity: number,
+  companyId: string,
+  createdBy: string,
+  movementId?: string,
+): Promise<GeneratedLot> {
+  try {
+    console.log("[v0] Creating lot for inventory entry:", productName, "quantity:", quantity)
+
+    const lotNumber = await generateLotNumber(productCode, new Date())
+
+    const { data: lotData, error: lotError } = await supabase
+      .from("product_lots")
+      .insert({
+        lot_number: lotNumber,
+        product_id: productId,
+        product_code: productCode,
+        product_name: productName,
+        sale_id: null, // No sale associated with manual entries
+        quantity: quantity,
+        status: "in_inventory", // Directly set to in_inventory for manual entries
+        company_id: companyId,
+        created_by: createdBy,
+        generated_date: new Date().toISOString(),
+        ingress_date: new Date().toISOString(), // Set ingress date immediately
+      })
+      .select()
+      .single()
+
+    if (lotError) {
+      console.error("[v0] Error creating lot:", lotError)
+      throw new Error(`Failed to create lot: ${lotError.message}`)
+    }
+
+    // Generate serial numbers for each unit
+    const serialPromises: Promise<GeneratedSerial>[] = []
+
+    for (let i = 1; i <= quantity; i++) {
+      serialPromises.push(
+        createSerialForInventoryEntry(
+          {
+            lotId: lotData.id,
+            lotNumber: lotNumber,
+            productCode,
+            productName,
+            productId,
+            saleId: null,
+            quantity: 1,
+            companyId,
+            createdBy,
+          },
+          i,
+        ),
+      )
+    }
+
+    const serials = await Promise.all(serialPromises)
+
+    console.log("[v0] Created lot", lotNumber, "with", serials.length, "serials for inventory entry")
+
+    return {
+      id: lotData.id,
+      lot_number: lotNumber,
+      product_id: productId,
+      product_code: productCode,
+      product_name: productName,
+      sale_id: null,
+      quantity: quantity,
+      status: "in_inventory",
+      serials: serials,
+    }
+  } catch (error) {
+    console.error("[v0] Error in createLotsForInventoryEntry:", error)
+    throw error
+  }
+}
+
+/**
+ * Creates a single serial number for inventory entry
+ */
+async function createSerialForInventoryEntry(
+  params: SerialGenerationParams,
+  sequence: number,
+): Promise<GeneratedSerial> {
+  const { lotId, lotNumber, productCode, productName, productId, companyId, createdBy } = params
+
+  try {
+    const serialNumber = await generateSerialNumber(lotNumber, sequence)
+
+    const { data: serialData, error: serialError } = await supabase
+      .from("product_serials")
+      .insert({
+        serial_number: serialNumber,
+        lot_id: lotId,
+        product_id: productId,
+        product_code: productCode,
+        product_name: productName,
+        sale_id: null, // No sale for manual entries
+        status: "in_inventory", // Directly set to in_inventory
+        company_id: companyId,
+        created_by: createdBy,
+      })
+      .select()
+      .single()
+
+    if (serialError) {
+      console.error("[v0] Error creating serial:", serialError)
+      throw new Error(`Failed to create serial: ${serialError.message}`)
+    }
+
+    return {
+      id: serialData.id,
+      serial_number: serialNumber,
+      lot_id: lotId,
+      product_id: productId,
+      product_code: productCode,
+      product_name: productName,
+      sale_id: null,
+      status: "in_inventory",
+      barcode_data: serialData.barcode_data,
+    }
+  } catch (error) {
+    console.error("[v0] Error in createSerialForInventoryEntry:", error)
+    throw error
+  }
 }

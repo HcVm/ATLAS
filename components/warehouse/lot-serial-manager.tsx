@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Package, Barcode, CheckCircle, Clock, Truck, Eye } from "lucide-react"
+import { Package, Barcode, CheckCircle, Clock, Truck, Eye, AlertCircle } from "lucide-react"
 import { getLotsForSale, getSerialsForLot, updateLotStatus } from "@/lib/lot-serial-generator"
 import { toast } from "sonner"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface LotSerialManagerProps {
   saleId: string
@@ -85,6 +86,13 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
             En Inventario
           </Badge>
         )
+      case "sold":
+        return (
+          <Badge variant="default" className="text-blue-600 bg-blue-50 border-blue-200">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Asignado
+          </Badge>
+        )
       case "delivered":
         return (
           <Badge variant="secondary">
@@ -96,6 +104,10 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
         return <Badge variant="outline">{status}</Badge>
     }
   }
+
+  const hasAllocatedSerials = lots.some((lot) =>
+    lot.product_serials?.some((serial: any) => serial.status === "sold" && serial.sale_id === saleId),
+  )
 
   if (loading) {
     return (
@@ -109,7 +121,7 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
     )
   }
 
-  if (lots.length === 0) {
+  if (lots.length === 0 && !hasAllocatedSerials) {
     return (
       <Card>
         <CardHeader>
@@ -134,6 +146,16 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
           <CardDescription>Gestión de trazabilidad de productos</CardDescription>
         </CardHeader>
         <CardContent>
+          {hasAllocatedSerials && (
+            <Alert className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Esta venta incluye productos asignados desde stock existente. Los lotes mostrados pueden incluir tanto
+                stock existente como nuevos lotes generados.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
