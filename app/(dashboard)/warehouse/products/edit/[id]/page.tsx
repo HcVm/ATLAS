@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import NextLink from "next/link"
 import { BrandCreatorDialog } from "@/components/ui/brand-creator-dialog"
+import ProductImageUpload from "@/components/warehouse/product-image-upload"
 
 interface Product {
   id: string
@@ -36,6 +37,7 @@ interface Product {
   is_active: boolean
   brand_id: string | null
   category_id: string | null
+  image_url: string | null
 }
 
 interface Brand {
@@ -81,6 +83,7 @@ export default function EditProductPage() {
     is_active: true,
     brand_id: "",
     category_id: "",
+    image_url: "",
   })
 
   useEffect(() => {
@@ -206,6 +209,7 @@ export default function EditProductPage() {
         is_active: productData.is_active ?? true,
         brand_id: productData.brand_id || "",
         category_id: productData.category_id || "",
+        image_url: productData.image_url || "",
       })
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -304,6 +308,7 @@ export default function EditProductPage() {
         is_active: formData.is_active,
         brand_id: formData.brand_id || null,
         category_id: formData.category_id || null,
+        image_url: formData.image_url || null,
         updated_at: new Date().toISOString(),
       }
 
@@ -452,6 +457,20 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Imagen del Producto</CardTitle>
+              <CardDescription>Sube o reemplaza la imagen del producto</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProductImageUpload
+                currentImageUrl={formData.image_url}
+                onImageChange={(imageUrl) => setFormData({ ...formData, image_url: imageUrl || "" })}
+                productCode={formData.code}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Información Básica</CardTitle>
@@ -708,7 +727,7 @@ export default function EditProductPage() {
 
                         {brands.filter((brand) => brand.isExternal).length > 0 && (
                           <>
-                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-t mt-1 pt-2">
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground border-t mt-1 pt-2">
                               Marcas externas
                             </div>
                             {brands
