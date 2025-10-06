@@ -205,9 +205,9 @@ export default function EtiquetadoPage() {
               JsBarcode(canvas, barcodeText, {
                 format: "CODE128",
                 width: 8,
-                height:350,
+                height: 350,
                 displayValue: false,
-                margin:8,
+                margin: 8,
                 background: "#ffffff",
                 lineColor: "#000000",
               })
@@ -274,8 +274,8 @@ export default function EtiquetadoPage() {
               <meta charset="UTF-8">
               <style>
                 @page {
-                  size: A4;
-                  margin: 10mm;
+                  size: 62mm 37mm;
+                  margin: 0;
                 }
                 * {
                   box-sizing: border-box;
@@ -285,23 +285,23 @@ export default function EtiquetadoPage() {
                 body {
                   font-family: Arial, sans-serif;
                   margin: 0;
-                  padding: 10mm;
+                  padding: 0;
                   background: white;
                 }
                 .sticker-grid {
-                  display: grid;
-                  grid-template-columns: repeat(3, 6.2cm);
-                  gap: 2mm;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0;
                   padding: 0;
-                  justify-content: center;
                   width: 100%;
                 }
                 .sticker {
-                  width: 6.2cm;
-                  height: 3.7cm;
-                  border: 2px solid #000000ff;
+                  width: 62mm;
+                  height: 37mm;
+                  border: 2px solid #000000;
                   border-radius: 8px;
                   padding: 3mm;
+                  page-break-after: always;
                   page-break-inside: avoid;
                   background: white;
                   display: flex;
@@ -341,10 +341,11 @@ export default function EtiquetadoPage() {
                 .qr-label {
                   font-size: 6pt;
                   text-align: center;
-                  color: #353535ff;
+                  color: #353535;
                   line-height: 1.1;
                   max-width: 65px;
                   font-weight: 400;
+                  font-family: Arial, sans-serif;
                 }
                 .sticker-info {
                   width: 100%;
@@ -376,22 +377,21 @@ export default function EtiquetadoPage() {
                   font-size: 7.5pt;
                   margin-bottom: 0.5mm;
                   color: #000;
+                  font-family: Arial, sans-serif;
                 }
                 .product-code {
-                  color: #2c2c2cff;
+                  color: #2c2c2c;
                   font-size: 6.5pt;
+                  font-family: Arial, sans-serif;
                 }
                 @media print {
                   body {
                     margin: 0;
-                    padding: 10mm;
+                    padding: 0;
                   }
                   .sticker {
-                    border: 2px solid #000000ff !important;
+                    border: 2px solid #000000 !important;
                     border-radius: 8px !important;
-                  }
-                  .sticker-grid {
-                    gap: 2mm;
                   }
                 }
               </style>
@@ -705,11 +705,11 @@ export default function EtiquetadoPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div ref={printRef} className="sticker-grid grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div ref={printRef} className="sticker-grid flex flex-col gap-4">
                 {barcodes.map((barcode, index) => (
                   <div
                     key={index}
-                    className="sticker border-2 border-gray-800 rounded-lg p-3 bg-white flex gap-2 items-center w-[6.2cm] h-[3.7cm]"
+                    className="sticker border-2 border-gray-800 rounded-lg p-3 bg-white flex gap-2 items-center w-[62mm] h-[37mm]"
                   >
                     <div className="barcode-column flex-1 flex flex-col items-center justify-center gap-1.5 min-w-0">
                       <img
