@@ -205,7 +205,25 @@ export default function SalesPage() {
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones" ||
     user?.departments?.name === "Jefatura de Ventas" ||
-    user?.departments?.name === "Contabilidad"
+    user?.departments?.name === "Contabilidad" ||
+    user?.departments?.name === "Acuerdos Marco" ||
+    user?.departments?.name === "acuerdos marco"
+
+  const canGenerateLots =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Acuerdos Marco" ||
+    user?.departments?.name === "acuerdos marco"
+
+  const canEditSales =
+    user?.role === "admin" ||
+    user?.role === "supervisor" ||
+    user?.departments?.name === "Ventas" ||
+    user?.departments?.name === "Administración" ||
+    user?.departments?.name === "Operaciones" ||
+    user?.departments?.name === "Jefatura de Ventas"
+
+  const isAcuerdosMarco = user?.departments?.name === "Acuerdos Marco" || user?.departments?.name === "acuerdos marco"
 
   // Determinar si el usuario puede ver todas las ventas de la empresa o solo las suyas
   const canViewAllSales =
@@ -214,7 +232,9 @@ export default function SalesPage() {
     user?.departments?.name === "Administración" ||
     user?.departments?.name === "Operaciones" ||
     user?.departments?.name === "Jefatura de Ventas" ||
-    user?.departments?.name === "Contabilidad"
+    user?.departments?.name === "Contabilidad" ||
+    user?.departments?.name === "Acuerdos Marco" ||
+    user?.departments?.name === "acuerdos marco"
 
   const companyToUse =
     user?.role === "admin"
@@ -412,6 +432,11 @@ export default function SalesPage() {
   }
 
   const handleEditSale = (sale: Sale) => {
+    if (!canEditSales) {
+      toast.error("No tienes permisos para editar ventas")
+      return
+    }
+
     // Verificar si el usuario puede editar esta venta
     if (!canViewAllSales && sale.created_by !== user?.id) {
       toast.error("No tienes permisos para editar esta venta")
@@ -482,6 +507,11 @@ export default function SalesPage() {
   }
 
   const handleStatusChange = (sale: Sale) => {
+    if (!canEditSales) {
+      toast.error("No tienes permisos para cambiar el estado de ventas")
+      return
+    }
+
     // Verificar si el usuario puede cambiar el estado de esta venta
     if (!canViewAllSales && sale.created_by !== user?.id) {
       toast.error("No tienes permisos para cambiar el estado de esta venta")
@@ -853,6 +883,9 @@ export default function SalesPage() {
             Gestión de ventas de:{" "}
             <span className="font-semibold text-foreground">{selectedCompany?.name || "N/A"}</span>
             {!canViewAllSales && <span className="ml-2 text-sm text-orange-600 font-medium">(Solo tus ventas)</span>}
+            {(user?.departments?.name === "Acuerdos Marco" || user?.departments?.name === "acuerdos marco") && (
+              <span className="ml-2 text-sm text-blue-600 font-medium">(Gestión de Lotes)</span>
+            )}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -860,34 +893,36 @@ export default function SalesPage() {
           <Button
             className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md"
             onClick={() => setShowSalesEntityManagementDialog(true)}
-            disabled={!hasSalesAccess} // Changed from !canViewAllSales to !hasSalesAccess
+            disabled={!hasSalesAccess}
           >
             <Users className="h-4 w-4 mr-2" /> Gestionar Clientes
           </Button>
-          <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md">
-                <Plus className="h-4 w-4 mr-2" /> Nueva Venta
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
-              <DialogHeader>
-                <DialogTitle className="text-slate-800 dark:text-slate-100">Registrar Nueva Venta</DialogTitle>
-                <DialogDescription className="text-slate-600 dark:text-slate-300">
-                  Completa todos los campos para registrar una nueva venta
-                </DialogDescription>
-              </DialogHeader>
-              <MultiProductSaleForm
-                onSuccess={() => {
-                  setShowNewSaleDialog(false)
-                  if (companyToUse?.id) {
-                    fetchSales(companyToUse.id)
-                    fetchStats(companyToUse.id)
-                  }
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          {canEditSales && (
+            <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md">
+                  <Plus className="h-4 w-4 mr-2" /> Nueva Venta
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
+                <DialogHeader>
+                  <DialogTitle className="text-slate-800 dark:text-slate-100">Registrar Nueva Venta</DialogTitle>
+                  <DialogDescription className="text-slate-600 dark:text-slate-300">
+                    Completa todos los campos para registrar una nueva venta
+                  </DialogDescription>
+                </DialogHeader>
+                <MultiProductSaleForm
+                  onSuccess={() => {
+                    setShowNewSaleDialog(false)
+                    if (companyToUse?.id) {
+                      fetchSales(companyToUse.id)
+                      fetchStats(companyToUse.id)
+                    }
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -1050,41 +1085,51 @@ export default function SalesPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 Ver detalles
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleEditSale(sale)}
-                                disabled={!canViewAllSales && sale.created_by !== user?.id}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar venta
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusChange(sale)}
-                                disabled={!canViewAllSales && sale.created_by !== user?.id}
-                              >
-                                <Badge className="mr-2 h-4 w-4" />
-                                Cambiar estado
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleVoucherDialog(sale)}>
-                                <Receipt className="mr-2 h-4 w-4 text-blue-600" />
-                                Comprobante de pago
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <ConditionalLetterButtons
-                                entityId={sale.entity_id}
-                                onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
-                                onGenerateCCI={() => handleGenerateCCILetter(sale)}
-                                variant="dropdown"
-                              />
+                              {canEditSales && (
+                                <DropdownMenuItem
+                                  onClick={() => handleEditSale(sale)}
+                                  disabled={!canViewAllSales && sale.created_by !== user?.id}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar venta
+                                </DropdownMenuItem>
+                              )}
+                              {canEditSales && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(sale)}
+                                  disabled={!canViewAllSales && sale.created_by !== user?.id}
+                                >
+                                  <Badge className="mr-2 h-4 w-4" />
+                                  Cambiar estado
+                                </DropdownMenuItem>
+                              )}
+                              {!isAcuerdosMarco && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleVoucherDialog(sale)}>
+                                    <Receipt className="mr-2 h-4 w-4 text-blue-600" />
+                                    Comprobante de pago
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <ConditionalLetterButtons
+                                    entityId={sale.entity_id}
+                                    onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
+                                    onGenerateCCI={() => handleGenerateCCILetter(sale)}
+                                    variant="dropdown"
+                                  />
+                                </>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleViewLots(sale)}>
                                 <Package className="mr-2 h-4 w-4 text-purple-600" />
                                 Ver Lotes y Series
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleGenerateLots(sale)}>
-                                <Hash className="mr-2 h-4 w-4 text-indigo-600" />
-                                Generar Lotes
-                              </DropdownMenuItem>
+                              {canGenerateLots && (
+                                <DropdownMenuItem onClick={() => handleGenerateLots(sale)}>
+                                  <Hash className="mr-2 h-4 w-4 text-indigo-600" />
+                                  Generar Lotes
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1094,6 +1139,7 @@ export default function SalesPage() {
                 </Table>
               </div>
 
+              {/* Mobile view */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
                 {filteredSales.map((sale) => (
                   <div
@@ -1142,44 +1188,52 @@ export default function SalesPage() {
                           <Eye className="h-4 w-4 mr-2" />
                           Detalles
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent"
-                          onClick={() => handleEditSale(sale)}
-                          disabled={!canViewAllSales && sale.created_by !== user?.id}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar
-                        </Button>
+                        {canEditSales && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent"
+                            onClick={() => handleEditSale(sale)}
+                            disabled={!canViewAllSales && sale.created_by !== user?.id}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                          </Button>
+                        )}
                       </div>
                       <div className="grid grid-cols-4 gap-2 w-full">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent"
-                          onClick={() => handleStatusChange(sale)}
-                          disabled={!canViewAllSales && sale.created_by !== user?.id}
-                        >
-                          <Badge className="h-4 w-4 mr-1" />
-                          Estado
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
-                          onClick={() => handleVoucherDialog(sale)}
-                        >
-                          <Receipt className="h-4 w-4 mr-1" />
-                          Comp.
-                        </Button>
-                        <ConditionalLetterButtons
-                          entityId={sale.entity_id}
-                          onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
-                          onGenerateCCI={() => handleGenerateCCILetter(sale)}
-                          variant="buttons"
-                          size="sm"
-                        />
+                        {canEditSales && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent"
+                            onClick={() => handleStatusChange(sale)}
+                            disabled={!canViewAllSales && sale.created_by !== user?.id}
+                          >
+                            <Badge className="h-4 w-4 mr-1" />
+                            Estado
+                          </Button>
+                        )}
+                        {!isAcuerdosMarco && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
+                              onClick={() => handleVoucherDialog(sale)}
+                            >
+                              <Receipt className="h-4 w-4 mr-1" />
+                              Comp.
+                            </Button>
+                            <ConditionalLetterButtons
+                              entityId={sale.entity_id}
+                              onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
+                              onGenerateCCI={() => handleGenerateCCILetter(sale)}
+                              variant="buttons"
+                              size="sm"
+                            />
+                          </>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -1189,15 +1243,17 @@ export default function SalesPage() {
                           <Package className="h-4 w-4 mr-1" />
                           Lotes
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent text-indigo-600 hover:bg-indigo-50"
-                          onClick={() => handleGenerateLots(sale)}
-                        >
-                          <Hash className="h-4 w-4 mr-1" />
-                          Gen. Lotes
-                        </Button>
+                        {canGenerateLots && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => handleGenerateLots(sale)}
+                          >
+                            <Hash className="h-4 w-4 mr-1" />
+                            Gen. Lotes
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

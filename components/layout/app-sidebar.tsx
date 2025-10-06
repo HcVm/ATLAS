@@ -156,6 +156,8 @@ const menuSections = {
           "operaciones",
           "jefatura de ventas",
           "contabilidad",
+          "acuerdos marco",
+          "acuerdos",
         ],
       },
       {
@@ -245,6 +247,8 @@ const menuSections = {
           "operaciones",
           "ventas",
           "jefatura de ventas",
+          "acuerdos marco",
+          "acuerdos",
         ],
       },
       {
@@ -255,11 +259,14 @@ const menuSections = {
         departments: [
           "almacén",
           "almacen",
+          "contabilidad",
           "administración",
           "administracion",
           "operaciones",
           "gerencia logística",
           "jefatura de ventas",
+          "acuerdos marco",
+          "acuerdos",
         ],
       },
     ],
