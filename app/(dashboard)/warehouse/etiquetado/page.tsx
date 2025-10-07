@@ -374,7 +374,7 @@ export default function EtiquetadoPage() {
                   letter-spacing: -0.2px;
                 }
                 .lot {
-                  font-size: 8pt;
+                  font-size: 6pt;
                   color: #000000ff;
                   font-family: 'Courier New', monospace;
                   margin: 0.3mm 0;
