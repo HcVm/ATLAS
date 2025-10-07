@@ -298,6 +298,8 @@ export default function EtiquetadoPage() {
                 .sticker {
                   width: 62mm;
                   height: 37mm;
+                  border: 2px solid #000000;
+                  border-radius: 8px;
                   padding: 2mm;
                   page-break-after: always;
                   page-break-inside: avoid;
@@ -392,6 +394,10 @@ export default function EtiquetadoPage() {
                   body {
                     margin: 0;
                     padding: 0;
+                  }
+                  .sticker {
+                    border: 2px solid #000000 !important;
+                    border-radius: 8px !important;
                   }
                   .serial, .lot, .product-name, .product-code {
                     font-weight: 700 !important;
