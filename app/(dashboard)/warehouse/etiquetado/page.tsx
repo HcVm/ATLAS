@@ -342,7 +342,7 @@ export default function EtiquetadoPage() {
                   display: block;
                 }
                 .qr-label {
-                  font-size: 5.5pt;
+                  font-size: 7pt;
                   text-align: center;
                   color: #000000ff;
                   line-height: 1.1;
