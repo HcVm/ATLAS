@@ -344,7 +344,7 @@ export default function EtiquetadoPage() {
                 .qr-label {
                   font-size: 5.5pt;
                   text-align: center;
-                  color: #353535;
+                  color: #000000ff;
                   line-height: 1.1;
                   max-width: 65px;
                   font-weight: 500;
@@ -366,7 +366,7 @@ export default function EtiquetadoPage() {
                 }
                 .lot {
                   font-size: 7pt;
-                  color: #1a1a1a;
+                  color: #000000ff;
                   font-family: 'Courier New', monospace;
                   margin: 0.3mm 0;
                   line-height: 1.1;
@@ -385,7 +385,7 @@ export default function EtiquetadoPage() {
                   line-height: 1.1;
                 }
                 .product-code {
-                  color: #2c2c2c;
+                  color: #000000ff;
                   font-size: 6.5pt;
                   font-family: Arial, sans-serif;
                   font-weight: 600;
