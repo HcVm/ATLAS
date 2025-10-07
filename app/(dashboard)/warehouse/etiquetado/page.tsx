@@ -199,15 +199,15 @@ export default function EtiquetadoPage() {
 
             try {
               const canvas = document.createElement("canvas")
-              canvas.width = 700
-              canvas.height = 300
+              canvas.width = 1200
+              canvas.height = 200
 
               JsBarcode(canvas, barcodeText, {
                 format: "CODE128",
-                width: 14,
-                height: 700,
+                width: 3,
+                height: 120,
                 displayValue: false,
-                margin: 8,
+                margin: 4,
                 background: "#ffffff",
                 lineColor: "#000000",
               })
@@ -298,26 +298,36 @@ export default function EtiquetadoPage() {
                 .sticker {
                   width: 62mm;
                   height: 37mm;
-                  border: 2px solid #ffffffff;
+                  border: 2px solid #000000;
                   border-radius: 8px;
                   padding: 1.5mm;
                   page-break-after: always;
                   page-break-inside: avoid;
                   background: white;
                   display: flex;
-                  gap: 1.5mm;
-                  align-items: flex-start;
+                  flex-direction: column;
+                  gap: 1mm;
                   box-sizing: border-box;
                 }
-                .barcode-column {
+                .barcode-section {
+                  width: 100%;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                }
+                .bottom-section {
+                  flex: 1;
+                  display: flex;
+                  gap: 1.5mm;
+                  align-items: flex-start;
+                }
+                .info-column {
                   flex: 1;
                   display: flex;
                   flex-direction: column;
-                  align-items: center;
                   justify-content: flex-start;
                   gap: 0.5mm;
                   min-width: 0;
-                  padding-top: 0.5mm;
                 }
                 .qr-column {
                   display: flex;
@@ -326,13 +336,12 @@ export default function EtiquetadoPage() {
                   justify-content: flex-start;
                   gap: 0.5mm;
                   flex-shrink: 0;
-                  padding-top: 4mm;
                 }
                 .sticker img.barcode {
                   width: 100%;
-                  max-width: 100%;
+                  max-width: 58mm;
                   height: auto;
-                  max-height: 16mm;
+                  max-height: 10mm;
                   display: block;
                   object-fit: contain;
                 }
@@ -352,7 +361,7 @@ export default function EtiquetadoPage() {
                 }
                 .sticker-info {
                   width: 100%;
-                  text-align: center;
+                  text-align: left;
                 }
                 .serial {
                   font-weight: 700;
@@ -365,7 +374,7 @@ export default function EtiquetadoPage() {
                   letter-spacing: -0.2px;
                 }
                 .lot {
-                  font-size: 7pt;
+                  font-size: 8pt;
                   color: #000000ff;
                   font-family: 'Courier New', monospace;
                   margin: 0.3mm 0;
@@ -397,7 +406,7 @@ export default function EtiquetadoPage() {
                     padding: 0;
                   }
                   .sticker {
-                    border: 2px solid #ffffffff !important;
+                    border: 2px solid #000000 !important;
                     border-radius: 8px !important;
                   }
                   .serial, .lot, .product-name, .product-code {
@@ -412,27 +421,31 @@ export default function EtiquetadoPage() {
                   .map(
                     (barcode) => `
                   <div class="sticker">
-                    <div class="barcode-column">
+                    <div class="barcode-section">
                       <img src="${barcode.barcodeUrl}" alt="${barcode.serialNumber}" class="barcode" />
-                      <div class="sticker-info">
-                        <div class="serial">${barcode.serialNumber}</div>
-                        <div class="lot">Lote: ${barcode.lotNumber}</div>
-                        <div class="product">
-                          <div class="product-name">${barcode.productName}</div>
-                          <div class="product-code">${barcode.productCode}</div>
+                    </div>
+                    <div class="bottom-section">
+                      <div class="info-column">
+                        <div class="sticker-info">
+                          <div class="serial">${barcode.serialNumber}</div>
+                          <div class="lot">Lote: ${barcode.lotNumber}</div>
+                          <div class="product">
+                            <div class="product-name">${barcode.productName}</div>
+                            <div class="product-code">${barcode.productCode}</div>
+                          </div>
                         </div>
                       </div>
+                      ${
+                        barcode.qrCodeUrl
+                          ? `
+                      <div class="qr-column">
+                        <img src="${barcode.qrCodeUrl}" alt="QR Code" class="qr-code" />
+                        <div class="qr-label">Información del producto</div>
+                      </div>
+                      `
+                          : ""
+                      }
                     </div>
-                    ${
-                      barcode.qrCodeUrl
-                        ? `
-                    <div class="qr-column">
-                      <img src="${barcode.qrCodeUrl}" alt="QR Code" class="qr-code" />
-                      <div class="qr-label">Información del producto</div>
-                    </div>
-                    `
-                        : ""
-                    }
                   </div>
                 `,
                   )
@@ -719,41 +732,45 @@ export default function EtiquetadoPage() {
                 {barcodes.map((barcode, index) => (
                   <div
                     key={index}
-                    className="sticker border-2 border-gray-800 rounded-lg p-2 bg-white flex gap-1.5 items-start w-[62mm] h-[37mm]"
+                    className="sticker border-2 border-gray-800 rounded-lg p-2 bg-white flex flex-col gap-1 w-[62mm] h-[37mm]"
                   >
-                    <div className="barcode-column flex-1 flex flex-col items-center justify-start gap-1 min-w-0 pt-0.5">
+                    <div className="barcode-section w-full flex justify-center items-center">
                       <img
                         src={barcode.barcodeUrl || "/placeholder.svg"}
                         alt={barcode.serialNumber}
-                        className="barcode w-full max-w-full max-h-[16mm] object-contain"
+                        className="barcode w-full max-w-[58mm] max-h-[10mm] object-contain"
                       />
-                      <div className="sticker-info w-full text-center space-y-0.5">
-                        <div className="serial font-mono font-bold text-[9pt] leading-tight tracking-tight">
-                          {barcode.serialNumber}
-                        </div>
-                        <div className="lot font-mono text-[7pt] text-gray-900 leading-tight font-bold">
-                          Lote: {barcode.lotNumber}
-                        </div>
-                        <div className="product text-[7pt] mt-0.5 leading-tight">
-                          <div className="product-name font-bold leading-tight">{barcode.productName}</div>
-                          <div className="product-code text-gray-700 text-[6.5pt] font-semibold leading-tight">
-                            {barcode.productCode}
+                    </div>
+                    <div className="bottom-section flex-1 flex gap-1.5 items-start">
+                      <div className="info-column flex-1 flex flex-col justify-start gap-0.5 min-w-0">
+                        <div className="sticker-info w-full text-left space-y-0.5">
+                          <div className="serial font-mono font-bold text-[9pt] leading-tight tracking-tight">
+                            {barcode.serialNumber}
+                          </div>
+                          <div className="lot font-mono text-[8pt] text-gray-900 leading-tight font-bold">
+                            Lote: {barcode.lotNumber}
+                          </div>
+                          <div className="product text-[7pt] mt-0.5 leading-tight">
+                            <div className="product-name font-bold leading-tight">{barcode.productName}</div>
+                            <div className="product-code text-gray-700 text-[6.5pt] font-semibold leading-tight">
+                              {barcode.productCode}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    {barcode.qrCodeUrl && (
-                      <div className="qr-column flex flex-col items-center justify-start gap-0.5 flex-shrink-0 pt-4">
-                        <img
-                          src={barcode.qrCodeUrl || "/placeholder.svg"}
-                          alt="QR Code"
-                          className="qr-code w-[65px] h-[65px]"
-                        />
-                        <div className="qr-label text-[5.5pt] text-center text-muted-foreground leading-tight w-[65px] font-medium">
-                          Información del producto
+                      {barcode.qrCodeUrl && (
+                        <div className="qr-column flex flex-col items-center justify-start gap-0.5 flex-shrink-0">
+                          <img
+                            src={barcode.qrCodeUrl || "/placeholder.svg"}
+                            alt="QR Code"
+                            className="qr-code w-[65px] h-[65px]"
+                          />
+                          <div className="qr-label text-[5.5pt] text-center text-muted-foreground leading-tight w-[65px] font-medium">
+                            Información del producto
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
