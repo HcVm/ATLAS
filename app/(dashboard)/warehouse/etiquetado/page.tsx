@@ -365,7 +365,7 @@ export default function EtiquetadoPage() {
                 }
                 .serial {
                   font-weight: 700;
-                  font-size: 9pt;
+                  font-size: 8.5pt;
                   margin: 0.3mm 0;
                   font-family: 'Courier New', monospace;
                   word-break: break-all;
@@ -387,7 +387,7 @@ export default function EtiquetadoPage() {
                 }
                 .product-name {
                   font-weight: 700;
-                  font-size: 7pt;
+                  font-size: 6pt;
                   margin-bottom: 0.3mm;
                   color: #000;
                   font-family: Arial, sans-serif;
@@ -395,7 +395,7 @@ export default function EtiquetadoPage() {
                 }
                 .product-code {
                   color: #000000ff;
-                  font-size: 6.5pt;
+                  font-size: 6pt;
                   font-family: Arial, sans-serif;
                   font-weight: 600;
                   line-height: 1.1;
