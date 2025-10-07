@@ -365,7 +365,7 @@ export default function EtiquetadoPage() {
                 }
                 .serial {
                   font-weight: 700;
-                  font-size: 8.5pt;
+                  font-size: 7pt;
                   margin: 0.3mm 0;
                   font-family: 'Courier New', monospace;
                   word-break: break-all;
