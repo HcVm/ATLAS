@@ -298,7 +298,7 @@ export default function EtiquetadoPage() {
                 .sticker {
                   width: 62mm;
                   height: 37mm;
-                  border: 2px solid #000000;
+                  border: 2px solid #ffffffff;
                   border-radius: 8px;
                   padding: 1.5mm;
                   page-break-after: always;
@@ -406,7 +406,7 @@ export default function EtiquetadoPage() {
                     padding: 0;
                   }
                   .sticker {
-                    border: 2px solid #000000 !important;
+                    border: 2px solid #ffffffff !important;
                     border-radius: 8px !important;
                   }
                   .serial, .lot, .product-name, .product-code {
@@ -744,15 +744,15 @@ export default function EtiquetadoPage() {
                     <div className="bottom-section flex-1 flex gap-1.5 items-start">
                       <div className="info-column flex-1 flex flex-col justify-start gap-0.5 min-w-0">
                         <div className="sticker-info w-full text-left space-y-0.5">
-                          <div className="serial font-mono font-bold text-[9pt] leading-tight tracking-tight">
+                          <div className="serial font-mono font-bold text-[8pt] leading-tight tracking-tight">
                             {barcode.serialNumber}
                           </div>
                           <div className="lot font-mono text-[8pt] text-gray-900 leading-tight font-bold">
                             Lote: {barcode.lotNumber}
                           </div>
-                          <div className="product text-[7pt] mt-0.5 leading-tight">
+                          <div className="product text-[6pt] mt-0.5 leading-tight">
                             <div className="product-name font-bold leading-tight">{barcode.productName}</div>
-                            <div className="product-code text-gray-700 text-[6.5pt] font-semibold leading-tight">
+                            <div className="product-code text-gray-700 text-[6pt] font-semibold leading-tight">
                               {barcode.productCode}
                             </div>
                           </div>
