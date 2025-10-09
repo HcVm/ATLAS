@@ -121,7 +121,6 @@ export default function DocumentsPage() {
       }
       setError(null)
 
-      // Primero intentar con la relación específica incluyendo movimientos
       let query = supabase
         .from("documents")
         .select(`
@@ -131,7 +130,8 @@ export default function DocumentsPage() {
   document_movements!document_movements_document_id_fkey (
     id, 
     created_at, 
-    to_department_id
+    to_department_id,
+    from_department_id
   )
 `)
         .order("created_at", { ascending: false })
@@ -143,7 +143,7 @@ export default function DocumentsPage() {
       // Si no es admin, aplicar filtros normales de permisos
       else if (user && user.role !== "admin") {
         if (user.department_id) {
-          // Documents from their department OR documents they created
+          // Note: Historical access will be filtered client-side after fetching movements
           query = query.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
         } else {
           // Only documents they created if they don't have a department
@@ -170,7 +170,8 @@ export default function DocumentsPage() {
   document_movements!document_movements_document_id_fkey (
     id, 
     created_at, 
-    to_department_id
+    to_department_id,
+    from_department_id
   )
 `)
           .order("created_at", { ascending: false })
@@ -209,7 +210,32 @@ export default function DocumentsPage() {
 
         setDocuments(combinedData)
       } else {
-        setDocuments(data || [])
+        let filteredData = data || []
+
+        if (user && user.role !== "admin" && user.role !== "supervisor" && user.department_id) {
+          // For regular users, include documents that have historically passed through their department
+          filteredData = (data || []).filter((doc) => {
+            // Always include if user created it
+            if (doc.created_by === user.id) return true
+
+            // Always include if currently in their department
+            if (doc.current_department_id === user.department_id) return true
+
+            // Check if document has ever been in their department via movements
+            if (doc.document_movements && doc.document_movements.length > 0) {
+              const hasPassedThroughDept = doc.document_movements.some(
+                (movement: any) =>
+                  movement.to_department_id === user.department_id ||
+                  movement.from_department_id === user.department_id,
+              )
+              if (hasPassedThroughDept) return true
+            }
+
+            return false
+          })
+        }
+
+        setDocuments(filteredData)
       }
     } catch (error: any) {
       console.error("Error fetching documents:", error)
@@ -316,6 +342,22 @@ export default function DocumentsPage() {
           Mi departamento
         </Badge>
       )
+    }
+    if (user?.department_id && document.current_department_id !== user.department_id) {
+      const hasPassedThrough = document.document_movements?.some(
+        (movement: any) =>
+          movement.to_department_id === user.department_id || movement.from_department_id === user.department_id,
+      )
+      if (hasPassedThrough) {
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700 ml-2 shadow-sm"
+          >
+            Pasó por mi área
+          </Badge>
+        )
+      }
     }
     return null
   }
@@ -694,7 +736,9 @@ export default function DocumentsPage() {
                               <Eye className="h-4 w-4 mr-2 text-slate-600 dark:text-slate-300" />
                               Ver detalles
                             </DropdownMenuItem>
-                            {(user?.role === "admin" || document.created_by === user?.id) && (
+                            {(user?.role === "admin" ||
+                              (document.created_by === user?.id &&
+                                document.current_department_id === user?.department_id)) && (
                               <DropdownMenuItem
                                 onClick={() => router.push(`/documents/edit/${document.id}`)}
                                 className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200"

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, X, CheckCircle, BarChart3 } from "lucide-react"
+import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, CheckCircle, BarChart3 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/components/ui/toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -137,13 +137,18 @@ export default function DocumentDetailsPage() {
 
   const fetchDocument = async () => {
     try {
-      // Intentar con la relación específica primero
       let { data, error } = await supabase
         .from("documents")
         .select(`
           *,
           profiles!documents_created_by_fkey (id, full_name, email),
-          departments!documents_current_department_id_fkey (id, name, color)
+          departments!documents_current_department_id_fkey (id, name, color),
+          document_movements!document_movements_document_id_fkey (
+            id,
+            from_department_id,
+            to_department_id,
+            created_at
+          )
         `)
         .eq("id", params.id)
         .single()
@@ -185,10 +190,16 @@ export default function DocumentDetailsPage() {
           }
         }
 
+        const { data: movementsData } = await supabase
+          .from("document_movements")
+          .select("id, from_department_id, to_department_id, created_at")
+          .eq("document_id", params.id)
+
         // Combinar los datos
         data = {
           ...docData,
           departments: departmentData,
+          document_movements: movementsData || [],
         }
       } else if (error) {
         if (error.code === "PGRST116") {
@@ -199,12 +210,17 @@ export default function DocumentDetailsPage() {
         return
       }
 
-      // Check if user has permission to view this document
+      const hasHistoricalAccess = data.document_movements?.some(
+        (movement: any) =>
+          movement.to_department_id === user?.department_id || movement.from_department_id === user?.department_id,
+      )
+
       if (
         user?.role !== "admin" &&
         user?.role !== "supervisor" &&
         user?.department_id !== data.current_department_id &&
-        user?.id !== data.created_by
+        user?.id !== data.created_by &&
+        !hasHistoricalAccess
       ) {
         setError("No tienes permisos para ver este documento")
         return
@@ -428,16 +444,24 @@ export default function DocumentDetailsPage() {
   }
 
   const canChangeStatus = () => {
-    // Solo admins o el creador del documento pueden cambiar el estado
-    return user?.role === "admin" || user?.role === "supervisor" || user?.id === document?.created_by
+    if (user?.role === "admin" || user?.role === "supervisor") {
+      return user?.department_id === document?.current_department_id
+    }
+
+    // El creador solo puede cambiar estado si está en su departamento
+    return user?.id === document?.created_by && user?.department_id === document?.current_department_id
   }
 
   const canEdit = () => {
-    // Admins pueden editar cualquier documento
+    if (user?.department_id !== document?.current_department_id) {
+      return false
+    }
+
+    // Admins y supervisores pueden editar si está en su departamento
     if (user?.role === "admin" || user?.role === "supervisor") return true
 
-    // El creador puede editar solo si el documento está en su departamento
-    if (user?.id === document?.created_by && user?.department_id === document?.current_department_id) {
+    // El creador puede editar si está en su departamento
+    if (user?.id === document?.created_by) {
       return true
     }
 
@@ -445,11 +469,15 @@ export default function DocumentDetailsPage() {
   }
 
   const canMove = () => {
-    // Admins y supervisors pueden mover cualquier documento
+    if (user?.department_id !== document?.current_department_id) {
+      return false
+    }
+
+    // Admins pueden mover documentos que están en su departamento
     if (user?.role === "admin") return true
 
-    // Usuarios normales solo pueden mover documentos que están en su departamento
-    return user?.department_id === document?.current_department_id
+    // Cualquier usuario puede mover documentos que están en su departamento
+    return true
   }
 
   const viewFile = async (fileUrl: string) => {
@@ -746,6 +774,24 @@ export default function DocumentDetailsPage() {
           <p className="text-muted-foreground dark:text-slate-400">Documento #{document.document_number}</p>
         </div>
       </div>
+
+      {user?.role !== "admin" &&
+        user?.role !== "supervisor" &&
+        user?.department_id !== document.current_department_id &&
+        user?.id !== document.created_by && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Solo lectura</h3>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Este documento pasó por tu área pero actualmente está en otro departamento. Puedes ver toda la
+                  información pero no puedes editarlo ni moverlo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -1070,7 +1116,7 @@ export default function DocumentDetailsPage() {
             <CardContent className="space-y-2">
               {canChangeStatus() && (
                 <Button
-                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
                   variant="outline"
                   onClick={() => setStatusDialogOpen(true)}
                 >
@@ -1081,7 +1127,7 @@ export default function DocumentDetailsPage() {
 
               {canEdit() ? (
                 <Button
-                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
                   variant="outline"
                   asChild
                 >
@@ -1091,7 +1137,7 @@ export default function DocumentDetailsPage() {
                   </Link>
                 </Button>
               ) : (
-                <Button className="w-full justify-start" variant="outline" disabled>
+                <Button className="w-full justify-start bg-transparent" variant="outline" disabled>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar Documento
                 </Button>
@@ -1103,10 +1149,19 @@ export default function DocumentDetailsPage() {
                 </div>
               )}
 
+              {!canEdit() &&
+                user?.id !== document?.created_by &&
+                user?.role !== "admin" &&
+                user?.role !== "supervisor" && (
+                  <div className="text-xs text-muted-foreground dark:text-slate-400 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                    👁️ Este documento pasó por tu área. Tienes acceso de solo lectura.
+                  </div>
+                )}
+
               {document.file_url && (
                 <>
                   <Button
-                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
                     variant="outline"
                     onClick={() => viewFile(document.file_url)}
                   >
@@ -1114,7 +1169,7 @@ export default function DocumentDetailsPage() {
                     Ver Archivo
                   </Button>
                   <Button
-                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                    className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
                     variant="outline"
                     onClick={() => downloadFile(document.file_url)}
                     disabled={downloadLoading}
@@ -1145,7 +1200,7 @@ export default function DocumentDetailsPage() {
 
               {user?.role === "admin" && (
                 <Button
-                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50"
+                  className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
                   variant="outline"
                   onClick={handleViewDownloadStats}
                 >

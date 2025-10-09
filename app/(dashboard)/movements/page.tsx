@@ -224,7 +224,6 @@ export default function MovementsPage() {
             shouldFilterByCompany && companyFilter ? companyFilter : movements.length > 0 ? movements[0].id : "dummy",
           )
 
-        // Combinar y eliminar duplicados
         const combinedMovements = [
           ...(userCreatedMovements || []),
           ...(fromDeptMovements || []),
@@ -427,7 +426,7 @@ export default function MovementsPage() {
     if (isAdmin) {
       return "Historial de todos los movimientos de documentos entre departamentos"
     }
-    return "Historial de movimientos de documentos relacionados con tu área y documentos creados por ti"
+    return "Historial completo de movimientos de documentos que han pasado por tu área"
   }
 
   if (!user) {
