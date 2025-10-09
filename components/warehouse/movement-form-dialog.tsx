@@ -25,6 +25,7 @@ import {
   Check,
   ChevronsUpDown,
   Search,
+  Loader2,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -67,6 +68,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [productComboOpen, setProductComboOpen] = useState(false)
   const [searchingSale, setSearchingSale] = useState(false)
   const [saleNumber, setSaleNumber] = useState("")
@@ -249,6 +251,10 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (isSubmitting) {
+      return
+    }
+
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
     if (!companyId) {
@@ -355,6 +361,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           ? exitPrice * quantity
           : null
 
+    setIsSubmitting(true)
+
     try {
       const movementData = {
         ...formData,
@@ -397,6 +405,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
         description: error.message || "No se pudo crear el movimiento. Intente nuevamente.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -956,11 +966,20 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           )}
 
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || uploadingAttachments}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={uploadingAttachments}>
-              {uploadingAttachments ? "Subiendo archivos..." : "Crear Movimiento"}
+            <Button type="submit" disabled={isSubmitting || uploadingAttachments}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Ejecutando movimiento...
+                </>
+              ) : uploadingAttachments ? (
+                "Subiendo archivos..."
+              ) : (
+                "Crear Movimiento"
+              )}
             </Button>
           </div>
         </form>
