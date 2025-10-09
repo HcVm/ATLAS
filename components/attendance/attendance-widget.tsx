@@ -61,7 +61,7 @@ export function AttendanceWidget() {
   const LUNCH_WINDOW_1_END = { hours: 13, minutes: 5 } // 5 min after 1:00 PM
   const LUNCH_WINDOW_2_START = { hours: 13, minutes: 55 } // 5 min before 2:00 PM
   const LUNCH_WINDOW_2_END = { hours: 14, minutes: 5 } // 5 min after 2:00 PM
-  const CHECKOUT_START = { hours: 17, minutes: 35 } // 10 min before 5:45 PM
+  const CHECKOUT_START = { hours: 17, minutes: 20 } // 10 min before 5:20 PM
   const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
 
   const checkPendingAttendanceNotifications = async () => {
@@ -522,7 +522,7 @@ export function AttendanceWidget() {
 
     switch (timeStatus) {
       case "too_early":
-        return "El marcado de asistencia estará disponible a partir de las 7:50 AM"
+        return "El marcado de asistencia estará disponible a partir de las 6:50 AM"
       case "too_late":
         return todayAttendance?.check_in_time
           ? "Horario de marcado finalizado"
@@ -696,7 +696,7 @@ export function AttendanceWidget() {
             <XCircle className="h-4 w-4 mr-2" />
             {actionLoading ? "Marcando..." : "Marcar Salida"}
           </Button>
-          <p className="text-xs text-red-600 dark:text-red-400 text-center">Disponible de 17:35 a 23:59</p>
+          <p className="text-xs text-red-600 dark:text-red-400 text-center">Disponible de 17:20 a 23:59</p>
         </div>
       )
     }
