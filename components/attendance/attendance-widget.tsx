@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, Coffee } from "lucide-react"
+import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, Coffee, Sparkles } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useAuth } from "@/lib/auth-context"
@@ -57,8 +57,12 @@ export function AttendanceWidget() {
   const WORK_START_TIME = { hours: 8, minutes: 0 } // 8:00 AM
   const EARLY_CHECKIN_MINUTES = 70 // 70 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
-  const LUNCH_START_TIME = { hours: 12, minutes: 58 } // Added lunch time constants
-  const LUNCH_END_TIME = { hours: 13, minutes: 0 } // 1:00 PM
+  const LUNCH_WINDOW_1_START = { hours: 12, minutes: 55 } // 5 min before 1:00 PM
+  const LUNCH_WINDOW_1_END = { hours: 13, minutes: 5 } // 5 min after 1:00 PM
+  const LUNCH_WINDOW_2_START = { hours: 13, minutes: 55 } // 5 min before 2:00 PM
+  const LUNCH_WINDOW_2_END = { hours: 14, minutes: 5 } // 5 min after 2:00 PM
+  const CHECKOUT_START = { hours: 17, minutes: 35 } // 10 min before 5:45 PM
+  const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
 
   const checkPendingAttendanceNotifications = async () => {
     try {
@@ -133,10 +137,10 @@ export function AttendanceWidget() {
     const currentMinute = now.getMinutes()
     const currentTotalMinutes = currentHour * 60 + currentMinute
 
-    const lunchStartMinutes = LUNCH_START_TIME.hours * 60 + LUNCH_START_TIME.minutes // 12:58 PM
-    const lunchEndMinutes = LUNCH_END_TIME.hours * 60 + LUNCH_END_TIME.minutes // 1:00 PM
+    const lunchStartMinutes = LUNCH_WINDOW_1_START.hours * 60 + LUNCH_WINDOW_1_START.minutes // 12:55 PM
+    const lunchEndMinutes = LUNCH_WINDOW_1_END.hours * 60 + LUNCH_WINDOW_1_END.minutes // 1:05 PM
 
-    if (currentTotalMinutes >= lunchStartMinutes) {
+    if (currentTotalMinutes >= lunchStartMinutes && currentTotalMinutes <= lunchEndMinutes) {
       return "lunch_available"
     }
     return "lunch_not_available"
@@ -528,49 +532,109 @@ export function AttendanceWidget() {
     }
   }
 
-  const renderLunchButtons = () => {
-    if (!todayAttendance?.check_in_time || todayAttendance?.check_out_time) {
-      return null
+  const isInLunchWindow = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTotalMinutes = currentHour * 60 + currentMinute
+
+    const window1Start = LUNCH_WINDOW_1_START.hours * 60 + LUNCH_WINDOW_1_START.minutes
+    const window1End = LUNCH_WINDOW_1_END.hours * 60 + LUNCH_WINDOW_1_END.minutes
+    const window2Start = LUNCH_WINDOW_2_START.hours * 60 + LUNCH_WINDOW_2_START.minutes
+    const window2End = LUNCH_WINDOW_2_END.hours * 60 + LUNCH_WINDOW_2_END.minutes
+
+    return (
+      (currentTotalMinutes >= window1Start && currentTotalMinutes <= window1End) ||
+      (currentTotalMinutes >= window2Start && currentTotalMinutes <= window2End)
+    )
+  }
+
+  const isInCheckoutWindow = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTotalMinutes = currentHour * 60 + currentMinute
+
+    const checkoutStart = CHECKOUT_START.hours * 60 + CHECKOUT_START.minutes
+    const checkoutEnd = CHECKOUT_END.hours * 60 + CHECKOUT_END.minutes
+
+    return currentTotalMinutes >= checkoutStart && currentTotalMinutes <= checkoutEnd
+  }
+
+  const getActiveButtonType = () => {
+    if (!todayAttendance?.check_in_time) {
+      // No check-in yet, show entry button if in time window
+      const timeStatus = getTimeStatus()
+      if (timeStatus === "too_early") return "none"
+      return "entry"
     }
 
-    const lunchStatus = getLunchTimeStatus()
+    if (todayAttendance.check_out_time) {
+      // Already checked out, no buttons
+      return "none"
+    }
+
+    // Has checked in but not checked out
+    // Priority: lunch buttons > checkout button
 
     // If lunch hasn't started yet
     if (!todayAttendance.lunch_start_time) {
-      if (lunchStatus === "lunch_not_available") {
-        return (
-          <div className="space-y-2">
-            <Button disabled className="flex-1 w-full bg-slate-400 text-white cursor-not-allowed">
-              <Coffee className="h-4 w-4 mr-2" />
-              Marcar Almuerzo (Disponible a las 12:58)
-            </Button>
-          </div>
-        )
-      } else {
-        return (
+      if (isInLunchWindow()) {
+        return "lunch_start"
+      }
+    }
+
+    // If lunch started but not ended
+    if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
+      if (isInLunchWindow()) {
+        return "lunch_end"
+      }
+    }
+
+    // Check if in checkout window
+    if (isInCheckoutWindow()) {
+      return "checkout"
+    }
+
+    return "none"
+  }
+
+  const renderLunchButtons = () => {
+    const activeButton = getActiveButtonType()
+
+    if (activeButton === "lunch_start") {
+      return (
+        <div className="space-y-2">
           <Button
             onClick={handleLunchStart}
             disabled={actionLoading}
-            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+            className="flex-1 w-full bg-orange-600 hover:bg-orange-700 text-white"
           >
             <Coffee className="h-4 w-4 mr-2" />
             {actionLoading ? "Marcando..." : "Iniciar Almuerzo"}
           </Button>
-        )
-      }
+          <p className="text-xs text-orange-600 dark:text-orange-400 text-center">
+            Disponible de 12:55-13:05 y 13:55-14:05
+          </p>
+        </div>
+      )
     }
 
-    // If lunch has started but not ended
-    if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
+    if (activeButton === "lunch_end") {
       return (
-        <Button
-          onClick={handleLunchEnd}
-          disabled={actionLoading}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Coffee className="h-4 w-4 mr-2" />
-          {actionLoading ? "Marcando..." : "Regresar de Almuerzo"}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            onClick={handleLunchEnd}
+            disabled={actionLoading}
+            className="flex-1 w-full bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Coffee className="h-4 w-4 mr-2" />
+            {actionLoading ? "Marcando..." : "Regresar de Almuerzo"}
+          </Button>
+          <p className="text-xs text-green-600 dark:text-green-400 text-center">
+            Disponible de 12:55-13:05 y 13:55-14:05
+          </p>
+        </div>
       )
     }
 
@@ -578,62 +642,12 @@ export function AttendanceWidget() {
   }
 
   const renderCheckInButtons = () => {
+    const activeButton = getActiveButtonType()
     const timeStatus = getTimeStatus()
-    const restrictionMessage = getTimeRestrictionMessage()
 
-    // If already checked in, show check out button or lunch buttons
-    if (todayAttendance?.check_in_time) {
-      if (!todayAttendance?.check_out_time) {
-        const lunchButtons = renderLunchButtons()
-        if (lunchButtons) {
-          return (
-            <div className="space-y-2">
-              {lunchButtons}
-              <Button
-                onClick={handleCheckOut}
-                disabled={actionLoading}
-                className="flex-1 w-full bg-red-600 hover:bg-red-700 text-white"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                {actionLoading ? "Marcando..." : "Marcar Salida"}
-              </Button>
-            </div>
-          )
-        } else {
-          return (
-            <Button
-              onClick={handleCheckOut}
-              disabled={actionLoading}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              {actionLoading ? "Marcando..." : "Marcar Salida"}
-            </Button>
-          )
-        }
-      } else {
-        return (
-          <div className="flex-1 text-center py-2 text-sm text-slate-600 dark:text-slate-400">
-            Asistencia completa para hoy
-          </div>
-        )
-      }
-    }
-
-    // Existing code for check-in buttons
-    switch (timeStatus) {
-      case "too_early":
-        return (
-          <div className="space-y-2">
-            <Button disabled className="flex-1 w-full bg-slate-400 text-white cursor-not-allowed">
-              <Clock className="h-4 w-4 mr-2" />
-              Marcar Entrada (Bloqueado)
-            </Button>
-            <p className="text-xs text-amber-600 dark:text-amber-400 text-center">{restrictionMessage}</p>
-          </div>
-        )
-
-      case "normal":
+    // Entry buttons (when no check-in yet)
+    if (activeButton === "entry") {
+      if (timeStatus === "normal") {
         return (
           <Button
             onClick={handleCheckIn}
@@ -644,8 +658,9 @@ export function AttendanceWidget() {
             {actionLoading ? "Marcando..." : "Marcar Entrada"}
           </Button>
         )
+      }
 
-      case "late":
+      if (timeStatus === "late") {
         return (
           <div className="space-y-2">
             <Button
@@ -661,10 +676,71 @@ export function AttendanceWidget() {
             </p>
           </div>
         )
-
-      default:
-        return null
+      }
     }
+
+    // Lunch buttons
+    if (activeButton === "lunch_start" || activeButton === "lunch_end") {
+      return renderLunchButtons()
+    }
+
+    // Checkout button
+    if (activeButton === "checkout") {
+      return (
+        <div className="space-y-2">
+          <Button
+            onClick={handleCheckOut}
+            disabled={actionLoading}
+            className="flex-1 w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            <XCircle className="h-4 w-4 mr-2" />
+            {actionLoading ? "Marcando..." : "Marcar Salida"}
+          </Button>
+          <p className="text-xs text-red-600 dark:text-red-400 text-center">Disponible de 17:35 a 23:59</p>
+        </div>
+      )
+    }
+
+    // No active button - show appropriate message
+    if (activeButton === "none") {
+      if (!todayAttendance?.check_in_time) {
+        if (timeStatus === "too_early") {
+          return (
+            <div className="space-y-2">
+              <Button disabled className="flex-1 w-full bg-slate-400 text-white cursor-not-allowed">
+                <Clock className="h-4 w-4 mr-2" />
+                Marcar Entrada (Bloqueado)
+              </Button>
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                Disponible a partir de las 6:50 AM
+              </p>
+            </div>
+          )
+        }
+      } else if (todayAttendance.check_out_time) {
+        return (
+          <div className="flex-1 text-center py-2 text-sm text-slate-600 dark:text-slate-400">
+            Asistencia completa para hoy
+          </div>
+        )
+      } else {
+        // Checked in but no button available at this time
+        return (
+          <div className="flex-1 text-center py-2 text-sm text-slate-600 dark:text-slate-400">
+            <p>Esperando siguiente ventana de marcado</p>
+            <p className="text-xs mt-1">
+              {!todayAttendance.lunch_start_time && "Almuerzo: 12:55-13:05 o 13:55-14:05"}
+              {todayAttendance.lunch_start_time &&
+                !todayAttendance.lunch_end_time &&
+                "Regreso: 12:55-13:05 o 13:55-14:05"}
+              {todayAttendance.lunch_end_time && "Salida: 17:35-23:59"}
+            </p>
+          </div>
+        )
+      }
+    }
+
+    return null
   }
 
   if (loading) {
@@ -682,81 +758,118 @@ export function AttendanceWidget() {
   }
 
   return (
-    <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
-      <CardHeader className="pb-3">
+    <Card className="shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden relative group hover:shadow-slate-500/20 transition-all duration-500 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-200/30 via-slate-100/20 to-slate-300/30 dark:from-slate-700/30 dark:via-slate-800/20 dark:to-slate-600/30" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.15),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(100,116,139,0.15),transparent_50%)]" />
+
+      <CardHeader className="pb-4 relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-            <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Asistencia</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 dark:from-slate-500 dark:to-slate-600 shadow-lg shadow-slate-500/30 backdrop-blur-sm">
+              <Clock className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+                Control de Asistencia
+              </CardTitle>
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-sm mt-0.5">
+                {format(currentTime, "EEEE, dd 'de' MMMM", { locale: es })}
+              </CardDescription>
+            </div>
           </div>
           {getStatusBadge()}
         </div>
-        <CardDescription className="text-slate-600 dark:text-slate-400">
-          {format(currentTime, "EEEE, dd 'de' MMMM", { locale: es })}
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-slate-800 dark:text-slate-200 font-mono">
-            {format(currentTime, "HH:mm:ss")}
+
+      <CardContent className="space-y-6 relative z-10">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-300/30 via-slate-200/30 to-slate-300/30 dark:from-slate-600/30 dark:via-slate-700/30 dark:to-slate-600/30 blur-2xl" />
+          <div className="relative text-center p-6 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-300/50 dark:border-slate-600/50 shadow-2xl">
+            <div className="text-5xl font-bold bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 dark:from-slate-100 dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent font-mono tracking-tight">
+              {format(currentTime, "HH:mm:ss")}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-2 font-medium flex items-center justify-center gap-2">
+              <Sparkles className="h-4 w-4 text-cyan-500" />
+              Hora actual - Perú
+            </div>
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">Hora actual</div>
         </div>
 
         {todayAttendance && (
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="font-medium text-slate-700 dark:text-slate-300">Entrada</span>
-              </div>
-              <div className="font-mono text-slate-800 dark:text-slate-200">
-                {formatTime(todayAttendance.check_in_time)}
-              </div>
-              {todayAttendance.is_late && (
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <AlertCircle className="h-3 w-3 text-amber-500" />
-                  <span className="text-xs text-amber-600 dark:text-amber-400">
-                    {todayAttendance.late_minutes} min tarde
-                  </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50/80 to-green-50/80 dark:from-emerald-950/40 dark:to-green-950/40 backdrop-blur-sm p-4 border border-emerald-200/50 dark:border-emerald-800/50 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl group-hover/card:bg-emerald-500/20 transition-all" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 backdrop-blur-sm">
+                    <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <span className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">Entrada</span>
                 </div>
-              )}
+                <div className="font-mono text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                  {formatTime(todayAttendance.check_in_time)}
+                </div>
+                {todayAttendance.is_late && (
+                  <div className="flex items-center gap-1 mt-2 px-2 py-1 rounded-lg bg-amber-500/20 backdrop-blur-sm">
+                    <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                      {todayAttendance.late_minutes} min tarde
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <span className="font-medium text-slate-700 dark:text-slate-300">Salida</span>
-              </div>
-              <div className="font-mono text-slate-800 dark:text-slate-200">
-                {formatTime(todayAttendance.check_out_time)}
-              </div>
-              {todayAttendance.worked_hours > 0 && (
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {todayAttendance.worked_hours.toFixed(1)}h trabajadas
+            <div className="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-50/80 to-red-50/80 dark:from-rose-950/40 dark:to-red-950/40 backdrop-blur-sm p-4 border border-rose-200/50 dark:border-rose-800/50 hover:shadow-lg hover:shadow-rose-500/20 transition-all duration-300">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/10 rounded-full blur-2xl group-hover/card:bg-rose-500/20 transition-all" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-rose-500/20 backdrop-blur-sm">
+                    <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <span className="font-semibold text-rose-900 dark:text-rose-100 text-sm">Salida</span>
                 </div>
-              )}
+                <div className="font-mono text-2xl font-bold text-rose-700 dark:text-rose-300">
+                  {formatTime(todayAttendance.check_out_time)}
+                </div>
+                {todayAttendance.worked_hours > 0 && (
+                  <div className="text-xs font-medium text-rose-600 dark:text-rose-400 mt-2 px-2 py-1 rounded-lg bg-rose-500/20 backdrop-blur-sm">
+                    {todayAttendance.worked_hours.toFixed(1)}h trabajadas
+                  </div>
+                )}
+              </div>
             </div>
 
             {(todayAttendance.lunch_start_time || todayAttendance.lunch_end_time) && (
               <>
-                <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-800/50">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <Coffee className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Almuerzo</span>
-                  </div>
-                  <div className="font-mono text-slate-800 dark:text-slate-200">
-                    {formatTime(todayAttendance.lunch_start_time)}
+                <div className="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-50/80 to-amber-50/80 dark:from-orange-950/40 dark:to-amber-950/40 backdrop-blur-sm p-4 border border-orange-200/50 dark:border-orange-800/50 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-full blur-2xl group-hover/card:bg-orange-500/20 transition-all" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-orange-500/20 backdrop-blur-sm">
+                        <Coffee className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <span className="font-semibold text-orange-900 dark:text-orange-100 text-sm">Almuerzo</span>
+                    </div>
+                    <div className="font-mono text-2xl font-bold text-orange-700 dark:text-orange-300">
+                      {formatTime(todayAttendance.lunch_start_time)}
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-800/50">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <Coffee className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Regreso</span>
-                  </div>
-                  <div className="font-mono text-slate-800 dark:text-slate-200">
-                    {formatTime(todayAttendance.lunch_end_time)}
+                <div className="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-50/80 to-blue-50/80 dark:from-cyan-950/40 dark:to-blue-950/40 backdrop-blur-sm p-4 border border-cyan-200/50 dark:border-cyan-800/50 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-cyan-500/10 rounded-full blur-2xl group-hover/card:bg-cyan-500/20 transition-all" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-cyan-500/20 backdrop-blur-sm">
+                        <Coffee className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                      </div>
+                      <span className="font-semibold text-cyan-900 dark:text-cyan-100 text-sm">Regreso</span>
+                    </div>
+                    <div className="font-mono text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+                      {formatTime(todayAttendance.lunch_end_time)}
+                    </div>
                   </div>
                 </div>
               </>
@@ -764,12 +877,12 @@ export function AttendanceWidget() {
           </div>
         )}
 
-        <div className="flex gap-2">{renderCheckInButtons()}</div>
+        <div className="flex gap-3">{renderCheckInButtons()}</div>
 
         {todayAttendance?.check_in_location && (
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            <span>Ubicación registrada</span>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-600 dark:text-slate-400 p-3 rounded-xl bg-slate-100/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
+            <MapPin className="h-3.5 w-3.5 text-cyan-500" />
+            <span className="font-medium">Ubicación registrada correctamente</span>
           </div>
         )}
       </CardContent>

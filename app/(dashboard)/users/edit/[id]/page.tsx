@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -20,6 +22,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
   const [companies, setCompanies] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (currentUser?.role === "admin") {
@@ -60,7 +63,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase.from("departments").select("id, name").order("name")
+      const { data, error } = await supabase.from("departments").select("id, name, company_id").order("name")
       if (error) throw error
       setDepartments(data || [])
     } catch (error: any) {
@@ -83,6 +86,95 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
       setCompanies(data || [])
     } catch (error: any) {
       console.error("Error fetching companies:", error)
+    }
+  }
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true)
+
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Debes seleccionar una imagen para subir.")
+      }
+
+      const file = event.target.files[0]
+
+      // Validar tipo de archivo
+      if (!file.type.startsWith("image/")) {
+        throw new Error("El archivo debe ser una imagen.")
+      }
+
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("La imagen debe ser menor a 5MB.")
+      }
+
+      // Crear nombre de archivo con estructura que funcione con RLS
+      const fileExt = file.name.split(".").pop()
+      const timestamp = Date.now()
+      const fileName = `${params.id}/avatar-${timestamp}.${fileExt}`
+
+      console.log("Uploading file:", fileName)
+      console.log("User ID:", params.id)
+
+      // Eliminar avatar anterior si existe
+      if (user.avatar_url) {
+        try {
+          const oldPath = user.avatar_url.split("/").pop()
+          if (oldPath) {
+            await supabase.storage.from("avatars").remove([`${params.id}/${oldPath}`])
+          }
+        } catch (error) {
+          console.log("Could not delete old avatar:", error)
+        }
+      }
+
+      // Subir archivo a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      })
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        throw uploadError
+      }
+
+      console.log("Upload successful:", uploadData)
+
+      // Obtener URL pública
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
+      const publicUrl = data.publicUrl
+
+      if (!publicUrl) {
+        throw new Error("No se pudo obtener la URL de la imagen")
+      }
+
+      console.log("Public URL:", publicUrl)
+
+      // Actualizar perfil con nueva URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", params.id)
+
+      if (updateError) {
+        console.error("Profile update error:", updateError)
+        throw updateError
+      }
+
+      // Actualizar estado local
+      setUser({ ...user, avatar_url: publicUrl })
+
+      toast.success("Foto actualizada correctamente")
+    } catch (error: any) {
+      console.error("Error uploading avatar:", error)
+      toast.error(error.message || "No se pudo subir la imagen.")
+    } finally {
+      setUploading(false)
+      // Limpiar el input file
+      const input = document.getElementById("avatar-upload") as HTMLInputElement
+      if (input) input.value = ""
     }
   }
 
@@ -149,9 +241,24 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
                   .toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
-            <Button variant="outline" size="sm">
-              <Camera className="h-4 w-4 mr-2" />
-              Cambiar Foto
+            <input type="file" id="avatar-upload" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById("avatar-upload")?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Camera className="h-4 w-4 mr-2" />
+                  Cambiar Foto
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
@@ -167,7 +274,7 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
             <Button
               variant="outline"
               onClick={fetchCompanies}
-              className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+              className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
             >
               <span>Recargar empresas</span>
             </Button>

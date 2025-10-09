@@ -26,6 +26,7 @@ import {
   Clock,
   Users,
   Hash,
+  Loader2,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -170,6 +171,8 @@ export default function SalesPage() {
   const [editingMultiSale, setEditingMultiSale] = useState<Sale | null>(null)
   const [showVoucherDialog, setShowVoucherDialog] = useState(false)
   const [voucherSale, setVoucherSale] = useState<Sale | null>(null)
+
+  const [generatingLots, setGeneratingLots] = useState(false)
 
   // New state for Sales Entity Management Dialog
   const [showSalesEntityManagementDialog, setShowSalesEntityManagementDialog] = useState(false)
@@ -763,19 +766,38 @@ export default function SalesPage() {
 
   // Handler for generating lots and serial numbers
   const handleGenerateLots = async (sale: Sale) => {
-    if (!companyToUse?.id || !user?.id) return
+    if (!companyToUse?.id || !user?.id || generatingLots) return
 
     try {
+      setGeneratingLots(true)
       toast.info("Generando lotes y números de serie...")
 
       await generateLotsForSale(sale.id, companyToUse.id, user.id)
 
       toast.success("Lotes y números de serie generados exitosamente")
 
-      // Refresh sales list
-      fetchSales(companyToUse.id)
+      const { data: updatedSale, error } = await supabase
+        .from("sales_with_items")
+        .select(`
+          id, sale_number, sale_date, entity_id, entity_name, entity_ruc, entity_executing_unit,
+          quotation_code, exp_siaf, total_quantity, total_items, display_product_name, display_product_code,
+          ocam, physical_order, project_meta, final_destination, warehouse_manager, payment_method,
+          total_sale, delivery_start_date, delivery_end_date, observations, sale_status, created_at, is_multi_product,
+          created_by, profiles!sales_created_by_fkey (full_name),
+          payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
+        `)
+        .eq("id", sale.id)
+        .eq("company_id", companyToUse.id)
+        .single()
+
+      if (!error && updatedSale) {
+        // Update the specific sale in the list
+        setSales((prevSales) => prevSales.map((s) => (s.id === updatedSale.id ? updatedSale : s)))
+      }
     } catch (error: any) {
       toast.error("Error al generar lotes: " + error.message)
+    } finally {
+      setGeneratingLots(false)
     }
   }
 
@@ -874,6 +896,22 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      {generatingLots && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-8 shadow-2xl flex flex-col items-center space-y-4 max-w-sm mx-4">
+            <Loader2 className="h-16 w-16 animate-spin text-slate-600 dark:text-slate-300" />
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+                Generando Lotes y Series
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Por favor espera mientras se generan los lotes y números de serie...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
@@ -1125,7 +1163,7 @@ export default function SalesPage() {
                                 Ver Lotes y Series
                               </DropdownMenuItem>
                               {canGenerateLots && (
-                                <DropdownMenuItem onClick={() => handleGenerateLots(sale)}>
+                                <DropdownMenuItem onClick={() => handleGenerateLots(sale)} disabled={generatingLots}>
                                   <Hash className="mr-2 h-4 w-4 text-indigo-600" />
                                   Generar Lotes
                                 </DropdownMenuItem>
@@ -1249,6 +1287,7 @@ export default function SalesPage() {
                             size="sm"
                             className="w-full bg-transparent text-indigo-600 hover:bg-indigo-50"
                             onClick={() => handleGenerateLots(sale)}
+                            disabled={generatingLots}
                           >
                             <Hash className="h-4 w-4 mr-1" />
                             Gen. Lotes

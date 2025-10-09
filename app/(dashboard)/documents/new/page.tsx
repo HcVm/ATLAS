@@ -153,6 +153,10 @@ export default function NewDocumentPage() {
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (loading || uploading || uploadingAttachments) {
+      return // Prevent duplicate submissions if already processing
+    }
+
     if (!user) {
       toast({
         title: "Error",
