@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context"
 import { NewsCarousel } from "@/components/news/news-carousel"
 import { useCompany } from "@/lib/company-context"
 import { AttendanceWidget } from "@/components/attendance/attendance-widget"
+import { UpcomingEventsWidget } from "@/components/calendar/upcoming-events-widget"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -317,7 +318,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -389,33 +390,34 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-700 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">
+                    <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Noticias</CardTitle>
+                    <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
+                      Últimas actualizaciones del sistema
+                    </CardDescription>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <NewsCarousel />
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <AttendanceWidget />
+          <UpcomingEventsWidget />
         </div>
       </div>
-
-      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-700 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">
-                <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Noticias</CardTitle>
-                <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
-                  Últimas actualizaciones del sistema
-                </CardDescription>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <NewsCarousel />
-        </CardContent>
-      </Card>
 
       <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 sm:p-6">
