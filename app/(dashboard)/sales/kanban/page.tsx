@@ -17,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertTriangle,
   Package,
@@ -327,6 +329,8 @@ const DeliveryCard = memo(
     canViewAllSales,
     onEditDelivery,
     onViewDetails,
+    isDraggable = true,
+    onMoveCard,
   }: {
     delivery: Delivery
     index: number
@@ -335,6 +339,8 @@ const DeliveryCard = memo(
     canViewAllSales: boolean
     onEditDelivery: (delivery: Delivery) => void
     onViewDetails: (delivery: Delivery) => void
+    isDraggable?: boolean
+    onMoveCard?: (deliveryId: string, newStatus: string) => Promise<void>
   }) => {
     const isDelivered = delivery.delivery_status === "delivered"
 
@@ -347,241 +353,278 @@ const DeliveryCard = memo(
       return new Date(dateString)
     }
 
-    return (
-      <Draggable key={delivery.id} draggableId={delivery.id} index={index} isDragDisabled={!canEditDeliveryStatus}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            {...provided.dragHandleProps}
-            className={`board-card mb-3 rounded-lg border transition-all duration-200 ease-out will-change-transform ${
-              snapshot.isDragging
-                ? "shadow-2xl scale-105 z-50 bg-background/95 backdrop-blur-sm border-primary/50"
-                : "hover:shadow-lg hover:scale-[1.02]"
-            } ${!canEditDeliveryStatus ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${
-              isDelivered ? "p-3" : "p-4"
-            }`}
-            style={provided.draggableProps.style}
-          >
-            {isDelivered ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm text-foreground">
-                      Venta #{delivery.sales.sale_number || "N/A"}
-                    </h4>
-                    <p className="text-xs text-muted-foreground truncate">{delivery.sales.entity_name}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 hover:bg-primary/10 transition-colors"
-                      onClick={() => onViewDetails(delivery)}
-                    >
-                      <Maximize2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+    const cardContent = (provided?: any, snapshot?: any) => (
+      <div
+        ref={provided?.innerRef}
+        {...(provided?.draggableProps || {})}
+        {...(provided?.dragHandleProps || {})}
+        className={`board-card mb-3 rounded-lg border transition-all duration-200 ease-out will-change-transform max-w-full overflow-hidden ${
+          snapshot?.isDragging
+            ? "shadow-2xl scale-105 z-50 bg-background/95 backdrop-blur-sm border-primary/50"
+            : "hover:shadow-lg hover:scale-[1.02]"
+        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${
+          isDelivered ? "p-2 sm:p-3" : "p-3 sm:p-4"
+        }`}
+        style={provided?.draggableProps?.style}
+      >
+        {isDelivered ? (
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                  Venta #{delivery.sales.sale_number || "N/A"}
+                </h4>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{delivery.sales.entity_name}</p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0">
+                  {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
+                  onClick={() => onViewDetails(delivery)}
+                >
+                  <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
+                <span className="text-xs sm:text-sm font-semibold text-foreground">
+                  S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              {delivery.actual_delivery_date && (
+                <div className="text-[10px] sm:text-xs text-green-600 font-medium">
+                  {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-sm font-semibold text-foreground">
-                      S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              )}
+            </div>
+            {delivery.sales.warehouse_manager && (
+              <div className="flex items-center gap-1">
+                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  Almacén: {delivery.sales.warehouse_manager}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h4 className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                  Venta #{delivery.sales.sale_number || "N/A"}
+                </h4>
+                {delivery.sales.ocam && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] sm:text-xs mt-1 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-300 font-bold"
+                  >
+                    OCAM: {delivery.sales.ocam}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0">
+                  {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
+                </Badge>
+                <Badge variant="outline" className="text-[10px] sm:text-xs px-1 py-0">
+                  {delivery.sales.sale_status}
+                </Badge>
+                {canEditDeliveryStatus && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
+                    onClick={() => onEditDelivery(delivery)}
+                  >
+                    <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-foreground truncate" title={delivery.sales.entity_name}>
+                {delivery.sales.entity_name}
+              </p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">RUC: {delivery.sales.entity_ruc}</p>
+            </div>
+
+            {delivery.sales.final_destination && (
+              <div className="min-w-0">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Dirección:</p>
+                </div>
+                <p className="text-xs sm:text-sm truncate" title={delivery.sales.final_destination}>
+                  {delivery.sales.final_destination}
+                </p>
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 mb-0.5">
+                <Package2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Productos:</p>
+              </div>
+              <div className="space-y-1">
+                {delivery.sales.is_multi_product && delivery.sales.items_count && delivery.sales.items_count > 1 ? (
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-medium truncate">
+                      {delivery.sales.items_count} productos diferentes
+                    </p>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground space-y-0.5">
+                      {delivery.sales.sale_items.slice(0, 2).map((item, index) => (
+                        <p key={index} className="truncate">
+                          • {item.product_name} (x{item.quantity})
+                          {item.product_code && (
+                            <span className="ml-1 font-mono text-[10px] bg-muted px-1 rounded">
+                              {item.product_code}
+                            </span>
+                          )}
+                        </p>
+                      ))}
+                      {delivery.sales.sale_items.length > 2 && (
+                        <p className="text-[10px]">• +{delivery.sales.sale_items.length - 2} más</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  delivery.sales.sale_items &&
+                  delivery.sales.sale_items.length > 0 && (
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm truncate" title={delivery.sales.sale_items[0].product_name}>
+                        {delivery.sales.sale_items[0].product_name}
+                      </p>
+                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
+                        <span>Cantidad: {delivery.sales.sale_items[0].quantity}</span>
+                        {delivery.sales.sale_items[0].product_code && (
+                          <span className="font-mono bg-muted px-1 rounded truncate">
+                            {delivery.sales.sale_items[0].product_code}
+                          </span>
+                        )}
+                        {delivery.sales.sale_items[0].product_brand && (
+                          <span className="truncate">• {delivery.sales.sale_items[0].product_brand}</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+                {(!delivery.sales.sale_items || delivery.sales.sale_items.length === 0) && (
+                  <p className="text-xs sm:text-sm text-muted-foreground">Sin productos</p>
+                )}
+              </div>
+            </div>
+
+            {delivery.tracking_number && (
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Tracking:</p>
+                <p className="text-xs sm:text-sm font-mono truncate">{delivery.tracking_number}</p>
+              </div>
+            )}
+
+            {(delivery.sales.delivery_start_date || delivery.sales.delivery_end_date) && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">Plazo de Entrega:</span>
+                </div>
+                {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
+                  <div className="text-[10px] sm:text-xs bg-blue-50 border border-blue-200 p-1.5 sm:p-2 rounded">
+                    <span className="text-blue-700 font-medium">
+                      {format(parseDate(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
+                      {format(parseDate(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
                     </span>
                   </div>
-                  {delivery.actual_delivery_date && (
-                    <div className="text-xs text-green-600 font-medium">
-                      {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
-                    </div>
-                  )}
-                </div>
-                {delivery.sales.warehouse_manager && (
-                  <div className="flex items-center gap-1">
-                    <User className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Almacén: {delivery.sales.warehouse_manager}</span>
+                ) : (
+                  <div className="text-[10px] sm:text-xs">
+                    {delivery.sales.delivery_start_date && (
+                      <span className="text-blue-600">
+                        Inicio: {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
+                      </span>
+                    )}
+                    {delivery.sales.delivery_end_date && (
+                      <span className="text-blue-600">
+                        Fin: {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-semibold text-sm text-foreground">
-                      Venta #{delivery.sales.sale_number || "N/A"}
-                    </h4>
-                    {delivery.sales.ocam && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs mt-1 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-300 font-bold"
-                      >
-                        OCAM: {delivery.sales.ocam}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {delivery.sales.sale_status}
-                    </Badge>
-                    {canEditDeliveryStatus && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 hover:bg-primary/10 transition-colors"
-                        onClick={() => onEditDelivery(delivery)}
-                      >
-                        <Info className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+            )}
 
-                <div>
-                  <p className="text-sm font-medium text-foreground truncate" title={delivery.sales.entity_name}>
-                    {delivery.sales.entity_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">RUC: {delivery.sales.entity_ruc}</p>
-                </div>
+            {delivery.sales.warehouse_manager && (
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  Almacén: {delivery.sales.warehouse_manager}
+                </span>
+              </div>
+            )}
 
-                {delivery.sales.final_destination && (
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">Dirección:</p>
-                    </div>
-                    <p className="text-sm truncate" title={delivery.sales.final_destination}>
-                      {delivery.sales.final_destination}
-                    </p>
-                  </div>
-                )}
+            {delivery.assigned_user?.full_name && (
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  Asignado: {delivery.assigned_user.full_name}
+                </span>
+              </div>
+            )}
 
-                <div>
-                  <div className="flex items-center gap-1 mb-1">
-                    <Package2 className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">Productos:</p>
-                  </div>
-                  {delivery.sales.sale_items && delivery.sales.sale_items.length > 0 ? (
-                    <div className="space-y-1">
-                      {delivery.sales.is_multi_product &&
-                      delivery.sales.items_count &&
-                      delivery.sales.items_count > 1 ? (
-                        <div>
-                          <p className="text-sm font-medium">{delivery.sales.items_count} productos diferentes</p>
-                          <div className="text-xs text-muted-foreground space-y-0.5">
-                            {delivery.sales.sale_items.slice(0, 3).map((item, index) => (
-                              <p key={index}>
-                                • {item.product_name} (x{item.quantity})
-                                {item.product_code && (
-                                  <span className="ml-1 font-mono text-xs bg-muted px-1 rounded">
-                                    {item.product_code}
-                                  </span>
-                                )}
-                              </p>
-                            ))}
-                            {delivery.sales.sale_items.length > 3 && (
-                              <p>• +{delivery.sales.sale_items.length - 3} productos más</p>
-                            )}
-                          </div>
+            <div className="flex items-center justify-between pt-1.5 sm:pt-2 border-t border-border">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
+                <span className="text-xs sm:text-sm font-semibold text-foreground">
+                  S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {canViewAllSales && delivery.sales.profiles?.full_name && (
+              <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                Vendedor: {delivery.sales.profiles.full_name}
+              </div>
+            )}
+
+            {!isDraggable && canEditDeliveryStatus && onMoveCard && (
+              <div className="pt-2 border-t border-border">
+                <Label className="text-[10px] text-muted-foreground mb-1 block">Mover a:</Label>
+                <Select value={delivery.delivery_status} onValueChange={(value) => onMoveCard(delivery.id, value)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KANBAN_COLUMNS.map((col) => (
+                      <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
+                        <div className="flex items-center gap-2">
+                          <col.icon className="h-3 w-3" />
+                          {col.title}
                         </div>
-                      ) : (
-                        <div>
-                          <p className="text-sm truncate" title={delivery.sales.sale_items[0].product_name}>
-                            {delivery.sales.sale_items[0].product_name}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Cantidad: {delivery.sales.sale_items[0].quantity}</span>
-                            {delivery.sales.sale_items[0].product_code && (
-                              <span className="font-mono bg-muted px-1 rounded">
-                                {delivery.sales.sale_items[0].product_code}
-                              </span>
-                            )}
-                            {delivery.sales.sale_items[0].product_brand && (
-                              <span>• {delivery.sales.sale_items[0].product_brand}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Sin productos</p>
-                  )}
-                </div>
-
-                {delivery.tracking_number && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tracking:</p>
-                    <p className="text-sm font-mono">{delivery.tracking_number}</p>
-                  </div>
-                )}
-
-                {(delivery.sales.delivery_start_date || delivery.sales.delivery_end_date) && (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Plazo de Entrega:</span>
-                    </div>
-                    {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
-                      <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
-                        <span className="text-blue-700 font-medium">
-                          {format(parseDate(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
-                          {format(parseDate(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-xs">
-                        {delivery.sales.delivery_start_date && (
-                          <span className="text-blue-600">
-                            Inicio: {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
-                          </span>
-                        )}
-                        {delivery.sales.delivery_end_date && (
-                          <span className="text-blue-600">
-                            Fin: {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {delivery.sales.warehouse_manager && (
-                  <div className="flex items-center gap-1">
-                    <User className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Almacén: {delivery.sales.warehouse_manager}</span>
-                  </div>
-                )}
-
-                {delivery.assigned_user?.full_name && (
-                  <div className="flex items-center gap-1">
-                    <User className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Asignado: {delivery.assigned_user.full_name}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-sm font-semibold text-foreground">
-                      S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-
-                {canViewAllSales && delivery.sales.profiles?.full_name && (
-                  <div className="text-xs text-muted-foreground">Vendedor: {delivery.sales.profiles.full_name}</div>
-                )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
         )}
-      </Draggable>
+      </div>
     )
+
+    if (isDraggable) {
+      return (
+        <Draggable key={delivery.id} draggableId={delivery.id} index={index} isDragDisabled={!canEditDeliveryStatus}>
+          {(provided, snapshot) => cardContent(provided, snapshot)}
+        </Draggable>
+      )
+    }
+
+    return cardContent()
   },
 )
 
@@ -595,6 +638,7 @@ export default function SalesKanbanPage() {
   const [editingDelivery, setEditingDelivery] = useState<Partial<Delivery>>({})
   const [isDragging, setIsDragging] = useState(false)
   const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null)
+  const [activeTab, setActiveTab] = useState("entrega-pendiente")
 
   const companyToUse = useMemo(() => {
     if (user?.role === "admin") {
@@ -633,7 +677,7 @@ export default function SalesKanbanPage() {
       let query = supabase
         .from("deliveries")
         .select(`
-          id, sale_id, delivery_status, tracking_number, estimated_delivery_date, 
+          id, sale_id, delivery_status, tracking_number, estimated_delivery_date,
           actual_delivery_date, notes, assigned_to, created_at, updated_at,
           sales!inner (
             id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
@@ -659,6 +703,17 @@ export default function SalesKanbanPage() {
       }))
 
       setColumns(organizedColumns)
+      // Update active tab if the first column has no deliveries after fetch
+      if (organizedColumns.length > 0 && organizedColumns[0].deliveries.length === 0) {
+        const firstColumnWithDeliveries = organizedColumns.find((c) => c.deliveries.length > 0)
+        if (firstColumnWithDeliveries) {
+          setActiveTab(firstColumnWithDeliveries.id)
+        } else {
+          setActiveTab(organizedColumns[0].id) // Default to the first tab if all are empty
+        }
+      } else if (organizedColumns.length > 0) {
+        setActiveTab(organizedColumns[0].id)
+      }
     } catch (error: any) {
       toast.error("Error al cargar las entregas: " + error.message)
     } finally {
@@ -704,6 +759,11 @@ export default function SalesKanbanPage() {
           ...movedItem,
           delivery_status: destCol.deliveryStatus,
         })
+
+        // Update the active tab if the dragged item moves to a new column
+        if (source.droppableId !== destination.droppableId) {
+          setActiveTab(destination.droppableId)
+        }
 
         return prevColumns.map((col) => {
           if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries }
@@ -805,6 +865,80 @@ export default function SalesKanbanPage() {
     setViewingDelivery(delivery)
   }, [])
 
+  const handleMoveCard = useCallback(
+    async (deliveryId: string, newStatus: string) => {
+      if (!canEditDeliveryStatus) {
+        toast.error("Solo los supervisores pueden mover las entregas")
+        return
+      }
+
+      const delivery = columns.flatMap((col) => col.deliveries).find((d) => d.id === deliveryId)
+      if (!delivery) return
+
+      const oldStatus = delivery.delivery_status
+      if (oldStatus === newStatus) return
+
+      const originalColumns = columns
+
+      // Optimistically update UI
+      setColumns((prevColumns) => {
+        const sourceCol = prevColumns.find((c) => c.deliveryStatus === oldStatus)
+        const destCol = prevColumns.find((c) => c.deliveryStatus === newStatus)
+        if (!sourceCol || !destCol) return prevColumns
+
+        const movedItem = sourceCol.deliveries.find((d) => d.id !== deliveryId)
+        if (!movedItem) return prevColumns
+
+        const newSourceDeliveries = sourceCol.deliveries.filter((d) => d.id !== deliveryId)
+        const newDestDeliveries = [...destCol.deliveries, { ...movedItem, delivery_status: newStatus }]
+
+        // Update active tab to the destination column
+        const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
+        if (destColumnInfo) {
+          setActiveTab(destColumnInfo.id)
+        }
+
+        return prevColumns.map((col) => {
+          if (col.deliveryStatus === oldStatus) return { ...col, deliveries: newSourceDeliveries }
+          if (col.deliveryStatus === newStatus) return { ...col, deliveries: newDestDeliveries }
+          return col
+        })
+      })
+
+      try {
+        const getPeruDate = () => {
+          const now = new Date()
+          const peruDate = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/Lima",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(now)
+          return peruDate
+        }
+
+        const updateData: any = {
+          delivery_status: newStatus,
+          updated_at: new Date().toISOString(),
+        }
+
+        if (newStatus === "delivered") {
+          updateData.actual_delivery_date = getPeruDate()
+        }
+
+        const { error } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
+        if (error) throw error
+
+        const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
+        toast.success(`Entrega movida a ${destColumnInfo?.title}`)
+      } catch (error: any) {
+        setColumns(originalColumns)
+        toast.error("Error al actualizar el estado: " + error.message)
+      }
+    },
+    [canEditDeliveryStatus, columns],
+  )
+
   const memoizedColumns = useMemo(() => columns, [columns])
 
   if (!hasSalesAccess || !companyToUse) {
@@ -841,61 +975,117 @@ export default function SalesKanbanPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
             Tablero de Entregas
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Gestión visual del estado de entregas de:{" "}
             <span className="font-semibold text-foreground">{companyToUse?.name || "N/A"}</span>
-            {!canViewAllSales && <span className="ml-2 text-sm text-orange-600 font-medium">(Solo tus ventas)</span>}
+            {!canViewAllSales && <span className="ml-2 text-xs text-orange-600 font-medium">(Solo tus ventas)</span>}
           </p>
           <div className="flex items-center gap-2 mt-2">
             {canEditDeliveryStatus ? (
-              <Badge variant="default" className="text-xs">
-                <Edit className="h-3 w-3 mr-1" />
+              <Badge variant="default" className="text-[10px] sm:text-xs">
+                <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                 Modo Edición
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-xs">
-                <Eye className="h-3 w-3 mr-1" />
+              <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                 Solo Lectura
               </Badge>
             )}
           </div>
         </div>
-        <Button onClick={fetchDeliveries} variant="outline">
-          <ArrowRight className="h-4 w-4 mr-2" />
+        <Button onClick={fetchDeliveries} variant="outline" size="sm" className="w-full sm:w-auto bg-transparent">
+          <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
           Actualizar
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {memoizedColumns.map((column) => (
-          <Card key={column.id} className={`${column.color} border-2`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{column.title}</CardTitle>
-              <column.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{column.deliveries.length}</div>
-              <p className="text-xs text-muted-foreground">{column.deliveries.length === 1 ? "entrega" : "entregas"}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="lg:hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted/50">
+            {memoizedColumns.map((column) => {
+              const Icon = column.icon
+              const isActive = activeTab === column.id
+              return (
+                <TabsTrigger
+                  key={column.id}
+                  value={column.id}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all ${
+                    isActive ? "border-b-2 border-primary" : ""
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                  <span
+                    className={`text-[10px] sm:text-xs font-medium leading-tight text-center ${
+                      isActive ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {column.title}
+                  </span>
+                  <Badge
+                    variant={isActive ? "default" : "secondary"}
+                    className="text-[10px] px-1.5 py-0 min-w-[20px] justify-center"
+                  >
+                    {column.deliveries.length}
+                  </Badge>
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
+
+          {memoizedColumns.map((column) => (
+            <TabsContent key={column.id} value={column.id} className="mt-4">
+              <div className="space-y-3">
+                {column.deliveries.length > 0 ? (
+                  column.deliveries.map((delivery, index) => (
+                    <DeliveryCard
+                      key={delivery.id}
+                      delivery={delivery}
+                      index={index}
+                      canEditDeliveryStatus={canEditDeliveryStatus}
+                      getProductDisplayName={getProductDisplayName}
+                      canViewAllSales={canViewAllSales}
+                      onEditDelivery={handleEditDelivery}
+                      onViewDetails={handleViewDetails}
+                      isDraggable={false}
+                      onMoveCard={handleMoveCard}
+                    />
+                  ))
+                ) : (
+                  <Card className={`${column.color} border-2`}>
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                      <column.icon className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground font-medium">
+                        No hay entregas en {column.title.toLowerCase()}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">
+                        Las entregas aparecerán aquí cuando cambien de estado
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
 
+      {/* Desktop Kanban with drag and drop */}
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
           {memoizedColumns.map((column) => (
             <div key={column.id} className="space-y-4">
               <div className={`rounded-lg border-2 ${column.color} p-4 transition-all duration-200`}>
                 <div className="flex items-center gap-2 mb-4">
                   <column.icon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold text-foreground">{column.title}</h3>
-                  <Badge variant="secondary" className="ml-auto">
+                  <h3 className="font-semibold text-base text-foreground">{column.title}</h3>
+                  <Badge variant="secondary" className="ml-auto text-xs">
                     {column.deliveries.length}
                   </Badge>
                 </div>
@@ -921,6 +1111,7 @@ export default function SalesKanbanPage() {
                           canViewAllSales={canViewAllSales}
                           onEditDelivery={handleEditDelivery}
                           onViewDetails={handleViewDetails}
+                          isDraggable={true}
                         />
                       ))}
                       {provided.placeholder}
