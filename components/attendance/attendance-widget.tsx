@@ -58,9 +58,9 @@ export function AttendanceWidget() {
   const EARLY_CHECKIN_MINUTES = 70 // 70 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
   const LUNCH_WINDOW_1_START = { hours: 12, minutes: 55 } // 5 min before 1:00 PM
-  const LUNCH_WINDOW_1_END = { hours: 13, minutes: 5 } // 5 min after 1:00 PM
+  const LUNCH_WINDOW_1_END = { hours: 13, minutes: 20 } // 5 min after 1:00 PM
   const LUNCH_WINDOW_2_START = { hours: 13, minutes: 55 } // 5 min before 2:00 PM
-  const LUNCH_WINDOW_2_END = { hours: 14, minutes: 5 } // 5 min after 2:00 PM
+  const LUNCH_WINDOW_2_END = { hours: 14, minutes: 20 } // 5 min after 2:00 PM
   const CHECKOUT_START = { hours: 17, minutes: 20 } // 10 min before 5:20 PM
   const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
   const SATURDAY_CHECKOUT_END = { hours: 13, minutes: 0 } // 1:00 PM on Saturday
