@@ -63,6 +63,20 @@ export function AttendanceWidget() {
   const LUNCH_WINDOW_2_END = { hours: 14, minutes: 5 } // 5 min after 2:00 PM
   const CHECKOUT_START = { hours: 17, minutes: 20 } // 10 min before 5:20 PM
   const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
+  const SATURDAY_CHECKOUT_END = { hours: 13, minutes: 0 } // 1:00 PM on Saturday
+
+  const isWorkingDay = () => {
+    const dayOfWeek = currentTime.getDay() // 0 = Sunday, 6 = Saturday
+    return dayOfWeek !== 0 // Sunday is not a working day
+  }
+
+  const isSaturday = () => {
+    return currentTime.getDay() === 6
+  }
+
+  const isSunday = () => {
+    return currentTime.getDay() === 0
+  }
 
   const checkPendingAttendanceNotifications = async () => {
     try {
@@ -108,18 +122,17 @@ export function AttendanceWidget() {
   }
 
   const getTimeStatus = () => {
+    if (isSunday()) {
+      return "no_work_day"
+    }
+
     const now = new Date()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
     const currentTotalMinutes = currentHour * 60 + currentMinute
 
-    // Work start time in minutes (8:00 AM = 480 minutes)
     const workStartMinutes = WORK_START_TIME.hours * 60 + WORK_START_TIME.minutes
-
-    // Early check-in allowed from 6:50 AM (400 minutes)
     const earlyCheckinMinutes = workStartMinutes - EARLY_CHECKIN_MINUTES
-
-    // Late threshold at 8:30 AM (510 minutes)
     const lateThresholdMinutes = workStartMinutes + LATE_THRESHOLD_MINUTES
 
     if (currentTotalMinutes < earlyCheckinMinutes) {
@@ -132,6 +145,10 @@ export function AttendanceWidget() {
   }
 
   const getLunchTimeStatus = () => {
+    if (isSaturday() || isSunday()) {
+      return "lunch_not_available"
+    }
+
     const now = new Date()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
@@ -533,6 +550,10 @@ export function AttendanceWidget() {
   }
 
   const isInLunchWindow = () => {
+    if (isSaturday() || isSunday()) {
+      return false
+    }
+
     const now = new Date()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
@@ -555,6 +576,12 @@ export function AttendanceWidget() {
     const currentMinute = now.getMinutes()
     const currentTotalMinutes = currentHour * 60 + currentMinute
 
+    if (isSaturday()) {
+      const saturdayCheckoutStart = CHECKOUT_START.hours * 60 + CHECKOUT_START.minutes
+      const saturdayCheckoutEnd = SATURDAY_CHECKOUT_END.hours * 60 + SATURDAY_CHECKOUT_END.minutes
+      return currentTotalMinutes >= saturdayCheckoutStart && currentTotalMinutes <= saturdayCheckoutEnd
+    }
+
     const checkoutStart = CHECKOUT_START.hours * 60 + CHECKOUT_START.minutes
     const checkoutEnd = CHECKOUT_END.hours * 60 + CHECKOUT_END.minutes
 
@@ -562,36 +589,34 @@ export function AttendanceWidget() {
   }
 
   const getActiveButtonType = () => {
+    if (isSunday()) {
+      return "no_work_day"
+    }
+
     if (!todayAttendance?.check_in_time) {
-      // No check-in yet, show entry button if in time window
       const timeStatus = getTimeStatus()
       if (timeStatus === "too_early") return "none"
       return "entry"
     }
 
     if (todayAttendance.check_out_time) {
-      // Already checked out, no buttons
       return "none"
     }
 
-    // Has checked in but not checked out
-    // Priority: lunch buttons > checkout button
+    if (!isSaturday()) {
+      if (!todayAttendance.lunch_start_time) {
+        if (isInLunchWindow()) {
+          return "lunch_start"
+        }
+      }
 
-    // If lunch hasn't started yet
-    if (!todayAttendance.lunch_start_time) {
-      if (isInLunchWindow()) {
-        return "lunch_start"
+      if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
+        if (isInLunchWindow()) {
+          return "lunch_end"
+        }
       }
     }
 
-    // If lunch started but not ended
-    if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
-      if (isInLunchWindow()) {
-        return "lunch_end"
-      }
-    }
-
-    // Check if in checkout window
     if (isInCheckoutWindow()) {
       return "checkout"
     }
@@ -645,7 +670,15 @@ export function AttendanceWidget() {
     const activeButton = getActiveButtonType()
     const timeStatus = getTimeStatus()
 
-    // Entry buttons (when no check-in yet)
+    if (activeButton === "no_work_day") {
+      return (
+        <div className="flex-1 text-center py-4 px-4 rounded-xl bg-slate-100/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Día no laborable</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Los domingos no se trabaja</p>
+        </div>
+      )
+    }
+
     if (activeButton === "entry") {
       if (timeStatus === "normal") {
         return (
@@ -679,12 +712,10 @@ export function AttendanceWidget() {
       }
     }
 
-    // Lunch buttons
     if (activeButton === "lunch_start" || activeButton === "lunch_end") {
       return renderLunchButtons()
     }
 
-    // Checkout button
     if (activeButton === "checkout") {
       return (
         <div className="space-y-2">
@@ -696,12 +727,13 @@ export function AttendanceWidget() {
             <XCircle className="h-4 w-4 mr-2" />
             {actionLoading ? "Marcando..." : "Marcar Salida"}
           </Button>
-          <p className="text-xs text-red-600 dark:text-red-400 text-center">Disponible de 17:20 a 23:59</p>
+          <p className="text-xs text-red-600 dark:text-red-400 text-center">
+            {isSaturday() ? "Disponible hasta las 13:00" : "Disponible de 17:20 a 23:59"}
+          </p>
         </div>
       )
     }
 
-    // No active button - show appropriate message
     if (activeButton === "none") {
       if (!todayAttendance?.check_in_time) {
         if (timeStatus === "too_early") {
@@ -724,16 +756,17 @@ export function AttendanceWidget() {
           </div>
         )
       } else {
-        // Checked in but no button available at this time
         return (
           <div className="flex-1 text-center py-2 text-sm text-slate-600 dark:text-slate-400">
             <p>Esperando siguiente ventana de marcado</p>
             <p className="text-xs mt-1">
-              {!todayAttendance.lunch_start_time && "Almuerzo: 12:55-13:05 o 13:55-14:05"}
-              {todayAttendance.lunch_start_time &&
-                !todayAttendance.lunch_end_time &&
-                "Regreso: 12:55-13:05 o 13:55-14:05"}
-              {todayAttendance.lunch_end_time && "Salida: 17:35-23:59"}
+              {isSaturday()
+                ? "Salida: hasta las 13:00"
+                : !todayAttendance.lunch_start_time
+                  ? "Almuerzo: 12:55-13:05 o 13:55-14:05"
+                  : todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time
+                    ? "Regreso: 12:55-13:05 o 13:55-14:05"
+                    : "Salida: 17:35-23:59"}
             </p>
           </div>
         )
