@@ -14,6 +14,9 @@ import {
   BarChart3,
   ChevronRight,
   Clock,
+  MessageCircle,
+  Send,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,9 +27,16 @@ import { getUnreadNotificationsCount, markAllNotificationsAsRead } from "@/lib/n
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
+import { Textarea } from "@/components/ui/textarea"
 
 interface AtlixAssistantProps {
   onClose?: () => void
+}
+
+interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
 }
 
 export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
@@ -46,6 +56,11 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
   const [isCreatingEvent, setIsCreatingEvent] = useState(false)
   const [isMarkingNotifications, setIsMarkingNotifications] = useState(false)
 
+  const [showAIChat, setShowAIChat] = useState(false)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [userQuestion, setUserQuestion] = useState("")
+  const [isLoadingAI, setIsLoadingAI] = useState(false)
+
   const getMessages = useCallback(() => {
     const messages = [
       `¡Hola! Soy Atlix, tu asistente personal del sistema ATLAS. 🤖`,
@@ -55,9 +70,9 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
       `Mantén tu flujo de trabajo actualizado revisando tus documentos regularmente.`,
       `¿Necesitas ayuda navegando? Puedo llevarte a cualquier sección.`,
       `¡Excelente trabajo! Todo está al día en tu área.`,
+      `¿Tienes alguna pregunta? Ahora puedo responderte con inteligencia artificial. 💡`,
     ]
 
-    // Filtrar mensajes según los datos
     return messages.filter((_, index) => {
       if (index === 1 && unreadCount === 0) return false
       if (index === 2 && pendingDocs === 0) return false
@@ -65,6 +80,66 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
       return true
     })
   }, [unreadCount, pendingDocs, userDepartment])
+
+  const handleAskAI = async () => {
+    if (!userQuestion.trim()) return
+
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: userQuestion,
+      timestamp: new Date(),
+    }
+
+    setChatMessages((prev) => [...prev, userMsg])
+    setUserQuestion("")
+    setIsLoadingAI(true)
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userQuestion,
+          history: chatMessages, // Include conversation history
+          context: {
+            userId: user?.id,
+            companyId: selectedCompany?.id || user?.company_id,
+            department: userDepartment,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response")
+      }
+
+      const data = await response.json()
+
+      const aiMsg: ChatMessage = {
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+      }
+
+      setChatMessages((prev) => [...prev, aiMsg])
+    } catch (error: any) {
+      console.error("Error asking AI:", error)
+      toast({
+        title: "Error",
+        description: "No pude procesar tu pregunta. Intenta de nuevo.",
+        variant: "destructive",
+      })
+
+      const errorMsg: ChatMessage = {
+        role: "assistant",
+        content: "Lo siento, tuve un problema procesando tu pregunta. Por favor intenta de nuevo.",
+        timestamp: new Date(),
+      }
+      setChatMessages((prev) => [...prev, errorMsg])
+    } finally {
+      setIsLoadingAI(false)
+    }
+  }
 
   const handleCreateQuickEvent = async () => {
     if (!eventTitle.trim() || !eventDate) {
@@ -138,17 +213,14 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     window.location.href = path
   }
 
-  // Obtener datos del usuario
   const fetchUserData = useCallback(async () => {
     if (!user) return
 
     try {
-      // Obtener notificaciones no leídas
       const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
       const unreadNotifications = await getUnreadNotificationsCount(user.id, companyId)
       setUnreadCount(unreadNotifications)
 
-      // Obtener documentos pendientes del departamento del usuario
       if (user.department_id) {
         const { data: documents, error } = await supabase
           .from("documents")
@@ -160,7 +232,6 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
           setPendingDocs(documents?.length || 0)
         }
 
-        // Obtener nombre del departamento
         const { data: department } = await supabase
           .from("departments")
           .select("name")
@@ -176,14 +247,12 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     }
   }, [user, selectedCompany])
 
-  // Inicializar Atlix después del login
   useEffect(() => {
     if (!user) {
       setIsVisible(false)
       return
     }
 
-    // Mostrar Atlix 3 segundos después del login
     const showTimer = setTimeout(() => {
       setIsVisible(true)
       fetchUserData()
@@ -192,7 +261,6 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     return () => clearTimeout(showTimer)
   }, [user, fetchUserData])
 
-  // Actualizar datos cada 30 segundos
   useEffect(() => {
     if (!isVisible || !user) return
 
@@ -200,7 +268,6 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     return () => clearInterval(interval)
   }, [isVisible, user, fetchUserData])
 
-  // Cambiar mensaje cada 6 segundos
   useEffect(() => {
     if (!isVisible) return
 
@@ -214,13 +281,12 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     return () => clearInterval(interval)
   }, [isVisible, getMessages])
 
-  // Auto-ocultar después de 3 minutos
   useEffect(() => {
     if (!isVisible) return
 
     const hideTimer = setTimeout(() => {
       handleClose()
-    }, 180000) // 3 minutos
+    }, 180000)
 
     return () => clearTimeout(hideTimer)
   }, [isVisible])
@@ -229,9 +295,9 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
     setIsClosing(true)
     setTimeout(() => {
       setIsVisible(false)
-      setIsClosing(false) // Reset del estado
+      setIsClosing(false)
       onClose?.()
-    }, 800) // Reducido para coincidir mejor con la animación CSS
+    }, 800)
   }
 
   const handleMinimize = () => {
@@ -260,10 +326,8 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
           className={`w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 shadow-2xl flex items-center justify-center mb-2 atlix-float border-4 border-white relative overflow-hidden ${isMinimized ? "cursor-pointer hover:scale-110 transition-transform" : ""}`}
           onClick={handleAvatarClick}
         >
-          {/* Efecto de brillo */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
           <div className="text-white font-bold text-lg z-10">Ax</div>
-          {/* Partículas decorativas */}
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce"></div>
           <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-yellow-400 rounded-full border border-white animate-pulse"></div>
 
@@ -274,19 +338,23 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
           )}
         </div>
 
-        {/* Message Bubble */}
         {!isMinimized && (
           <div className="relative atlix-bubble rounded-2xl shadow-2xl p-4 max-w-sm animate-fadeIn">
-            {/* Speech bubble arrow */}
             <div className="absolute -top-2 right-6 w-4 h-4 bg-white dark:bg-slate-800 border-l border-t border-purple-200 dark:border-purple-600 transform rotate-45"></div>
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">Ax</span>
                 </div>
                 <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Atlix</span>
+                <Badge
+                  variant="outline"
+                  className="text-xs flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 border-purple-300 dark:border-purple-600"
+                >
+                  <Sparkles className="h-2 w-2" />
+                  AI
+                </Badge>
               </div>
               <div className="flex gap-1">
                 <Button
@@ -308,164 +376,254 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
               </div>
             </div>
 
-            {showEventForm && (
-              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                <h4 className="text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">Crear Evento Rápido</h4>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Título del evento..."
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    className="text-sm h-8"
-                  />
-                  <Input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="text-sm h-8"
-                    min={format(new Date(), "yyyy-MM-dd")}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleCreateQuickEvent}
-                      disabled={isCreatingEvent}
-                      className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isCreatingEvent ? <Clock className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                      Crear
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowEventForm(false)} className="h-7 text-xs">
-                      Cancelar
-                    </Button>
-                  </div>
+            {showAIChat ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Chat con IA
+                  </h4>
+                  <Button variant="ghost" size="sm" onClick={() => setShowAIChat(false)} className="h-6 text-xs">
+                    Volver
+                  </Button>
                 </div>
-              </div>
-            )}
 
-            {/* Message */}
-            <div className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">{currentMsg}</div>
-
-            {/* Status Indicators */}
-            <div className="flex gap-2 flex-wrap mb-3">
-              {unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="text-xs flex items-center gap-1 cursor-pointer hover:bg-red-600 transition-colors"
-                  onClick={handleMarkAllNotifications}
-                >
-                  {isMarkingNotifications ? <Clock className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
-                  {unreadCount}
-                </Badge>
-              )}
-              {pendingDocs > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="text-xs flex items-center gap-1 cursor-pointer hover:bg-gray-300 transition-colors"
-                  onClick={() => handleQuickNavigation("/documents")}
-                >
-                  <FileText className="h-3 w-3" />
-                  {pendingDocs}
-                </Badge>
-              )}
-              {unreadCount === 0 && pendingDocs === 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-xs flex items-center gap-1 text-green-600 border-green-200 dark:text-green-400 dark:border-green-600"
-                >
-                  <CheckCircle className="h-3 w-3" />
-                  Todo al día
-                </Badge>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowQuickActions(!showQuickActions)}
-                className="w-full h-7 text-xs justify-between hover:bg-purple-50 dark:hover:bg-purple-900/20"
-              >
-                <span>Acciones Rápidas</span>
-                <ChevronRight className={`h-3 w-3 transition-transform ${showQuickActions ? "rotate-90" : ""}`} />
-              </Button>
-
-              {showQuickActions && (
-                <div className="grid grid-cols-2 gap-1 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowEventForm(true)}
-                    className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
-                  >
-                    <Calendar className="h-3 w-3" />
-                    Evento
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleQuickNavigation("/notifications")}
-                    className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
-                  >
-                    <Bell className="h-3 w-3" />
-                    Notif.
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleQuickNavigation("/documents/new")}
-                    className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Doc.
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleQuickNavigation("/calendar")}
-                    className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
-                  >
-                    <Calendar className="h-3 w-3" />
-                    Agenda
-                  </Button>
-                  {user?.role === "admin" && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleQuickNavigation("/users")}
-                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                <div className="max-h-64 overflow-y-auto space-y-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
+                      <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-400" />
+                      <p>Pregúntame lo que necesites sobre ATLAS</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded-lg text-xs ${
+                          msg.role === "user"
+                            ? "bg-purple-100 dark:bg-purple-900/30 ml-4"
+                            : "bg-blue-100 dark:bg-blue-900/30 mr-4"
+                        }`}
                       >
-                        <Users className="h-3 w-3" />
-                        Usuarios
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleQuickNavigation("/statistics")}
-                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
-                      >
-                        <BarChart3 className="h-3 w-3" />
-                        Stats
-                      </Button>
-                    </>
+                        <div className="font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                          {msg.role === "user" ? "Tú" : "Atlix"}
+                        </div>
+                        <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{msg.content}</div>
+                      </div>
+                    ))
+                  )}
+                  {isLoadingAI && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 p-2">
+                      <Clock className="h-3 w-3 animate-spin" />
+                      Pensando...
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Progress dots */}
-            {messages.length > 1 && (
-              <div className="flex justify-center gap-1 mt-3">
-                {messages.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      index === currentMessage ? "bg-purple-500" : "bg-gray-300 dark:bg-gray-600"
-                    }`}
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Escribe tu pregunta..."
+                    value={userQuestion}
+                    onChange={(e) => setUserQuestion(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleAskAI()
+                      }
+                    }}
+                    className="text-sm min-h-[60px] resize-none"
+                    disabled={isLoadingAI}
                   />
-                ))}
+                  <Button
+                    size="sm"
+                    onClick={handleAskAI}
+                    disabled={isLoadingAI || !userQuestion.trim()}
+                    className="h-[60px] bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  >
+                    {isLoadingAI ? <Clock className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
+            ) : (
+              <>
+                {showEventForm && (
+                  <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <h4 className="text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">Crear Evento Rápido</h4>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Título del evento..."
+                        value={eventTitle}
+                        onChange={(e) => setEventTitle(e.target.value)}
+                        className="text-sm h-8"
+                      />
+                      <Input
+                        type="date"
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        className="text-sm h-8"
+                        min={format(new Date(), "yyyy-MM-dd")}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleCreateQuickEvent}
+                          disabled={isCreatingEvent}
+                          className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                        >
+                          {isCreatingEvent ? <Clock className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          Crear
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowEventForm(false)}
+                          className="h-7 text-xs"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">{currentMsg}</div>
+
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="text-xs flex items-center gap-1 cursor-pointer hover:bg-red-600 transition-colors"
+                      onClick={handleMarkAllNotifications}
+                    >
+                      {isMarkingNotifications ? (
+                        <Clock className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Bell className="h-3 w-3" />
+                      )}
+                      {unreadCount}
+                    </Badge>
+                  )}
+                  {pendingDocs > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs flex items-center gap-1 cursor-pointer hover:bg-gray-300 transition-colors"
+                      onClick={() => handleQuickNavigation("/documents")}
+                    >
+                      <FileText className="h-3 w-3" />
+                      {pendingDocs}
+                    </Badge>
+                  )}
+                  {unreadCount === 0 && pendingDocs === 0 && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs flex items-center gap-1 text-green-600 border-green-200 dark:text-green-400 dark:border-green-600"
+                    >
+                      <CheckCircle className="h-3 w-3" />
+                      Todo al día
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAIChat(true)}
+                    className="w-full h-8 text-xs justify-between bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/30 dark:hover:to-blue-900/30 border border-purple-200 dark:border-purple-700"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="h-3 w-3" />
+                      Pregúntame con IA
+                    </span>
+                    <MessageCircle className="h-3 w-3" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowQuickActions(!showQuickActions)}
+                    className="w-full h-7 text-xs justify-between hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  >
+                    <span>Acciones Rápidas</span>
+                    <ChevronRight className={`h-3 w-3 transition-transform ${showQuickActions ? "rotate-90" : ""}`} />
+                  </Button>
+
+                  {showQuickActions && (
+                    <div className="grid grid-cols-2 gap-1 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEventForm(true)}
+                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                      >
+                        <Calendar className="h-3 w-3" />
+                        Evento
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleQuickNavigation("/notifications")}
+                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                      >
+                        <Bell className="h-3 w-3" />
+                        Notif.
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleQuickNavigation("/documents/new")}
+                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Doc.
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleQuickNavigation("/calendar")}
+                        className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                      >
+                        <Calendar className="h-3 w-3" />
+                        Agenda
+                      </Button>
+                      {user?.role === "admin" && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleQuickNavigation("/users")}
+                            className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                          >
+                            <Users className="h-3 w-3" />
+                            Usuarios
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleQuickNavigation("/statistics")}
+                            className="h-8 text-xs flex items-center gap-1 hover:bg-white dark:hover:bg-gray-800"
+                          >
+                            <BarChart3 className="h-3 w-3" />
+                            Stats
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {messages.length > 1 && (
+                  <div className="flex justify-center gap-1 mt-3">
+                    {messages.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                          index === currentMessage ? "bg-purple-500" : "bg-gray-300 dark:bg-gray-600"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

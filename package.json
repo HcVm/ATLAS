@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@google/genai": "^1.24.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "latest",
     "@napi-rs/canvas": "^0.1.74",
