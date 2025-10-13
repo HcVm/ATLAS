@@ -57,11 +57,11 @@ export function AttendanceWidget() {
   const WORK_START_TIME = { hours: 8, minutes: 0 } // 8:00 AM
   const EARLY_CHECKIN_MINUTES = 70 // 70 minutes before work start
   const LATE_THRESHOLD_MINUTES = 30 // 30 minutes after work start
-  const LUNCH_WINDOW_1_START = { hours: 12, minutes: 55 } // 5 min before 1:00 PM
-  const LUNCH_WINDOW_1_END = { hours: 13, minutes: 20 } // 5 min after 1:00 PM
-  const LUNCH_WINDOW_2_START = { hours: 13, minutes: 55 } // 5 min before 2:00 PM
-  const LUNCH_WINDOW_2_END = { hours: 14, minutes: 20 } // 5 min after 2:00 PM
-  const CHECKOUT_START = { hours: 17, minutes: 20 } // 10 min before 5:20 PM
+  const LUNCH_WINDOW_1_START = { hours: 12, minutes: 55 } // 12:55 PM - lunch start window begins
+  const LUNCH_WINDOW_1_END = { hours: 13, minutes: 20 } // 1:20 PM - lunch start window ends
+  const LUNCH_WINDOW_2_START = { hours: 13, minutes: 55 } // 1:55 PM - lunch return window begins
+  const LUNCH_WINDOW_2_END = { hours: 14, minutes: 30 } // 2:30 PM - lunch return window ends
+  const CHECKOUT_START = { hours: 17, minutes: 25 } // 5:25 PM - checkout window begins
   const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
   const SATURDAY_CHECKOUT_END = { hours: 13, minutes: 0 } // 1:00 PM on Saturday
 
@@ -570,6 +570,38 @@ export function AttendanceWidget() {
     )
   }
 
+  const isInLunchStartWindow = () => {
+    if (isSaturday() || isSunday()) {
+      return false
+    }
+
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTotalMinutes = currentHour * 60 + currentMinute
+
+    const window1Start = LUNCH_WINDOW_1_START.hours * 60 + LUNCH_WINDOW_1_START.minutes
+    const window1End = LUNCH_WINDOW_1_END.hours * 60 + LUNCH_WINDOW_1_END.minutes
+
+    return currentTotalMinutes >= window1Start && currentTotalMinutes <= window1End
+  }
+
+  const isInLunchReturnWindow = () => {
+    if (isSaturday() || isSunday()) {
+      return false
+    }
+
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTotalMinutes = currentHour * 60 + currentMinute
+
+    const window2Start = LUNCH_WINDOW_2_START.hours * 60 + LUNCH_WINDOW_2_START.minutes
+    const window2End = LUNCH_WINDOW_2_END.hours * 60 + LUNCH_WINDOW_2_END.minutes
+
+    return currentTotalMinutes >= window2Start && currentTotalMinutes <= window2End
+  }
+
   const isInCheckoutWindow = () => {
     const now = new Date()
     const currentHour = now.getHours()
@@ -604,14 +636,16 @@ export function AttendanceWidget() {
     }
 
     if (!isSaturday()) {
+      // Check for lunch start window (12:55-1:20 PM)
       if (!todayAttendance.lunch_start_time) {
-        if (isInLunchWindow()) {
+        if (isInLunchStartWindow()) {
           return "lunch_start"
         }
       }
 
+      // Check for lunch return window (1:55-2:30 PM) - only if lunch was started
       if (todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time) {
-        if (isInLunchWindow()) {
+        if (isInLunchReturnWindow()) {
           return "lunch_end"
         }
       }
@@ -638,9 +672,7 @@ export function AttendanceWidget() {
             <Coffee className="h-4 w-4 mr-2" />
             {actionLoading ? "Marcando..." : "Iniciar Almuerzo"}
           </Button>
-          <p className="text-xs text-orange-600 dark:text-orange-400 text-center">
-            Disponible de 12:55-13:05 y 13:55-14:05
-          </p>
+          <p className="text-xs text-orange-600 dark:text-orange-400 text-center">Disponible de 12:55 PM a 1:20 PM</p>
         </div>
       )
     }
@@ -656,9 +688,7 @@ export function AttendanceWidget() {
             <Coffee className="h-4 w-4 mr-2" />
             {actionLoading ? "Marcando..." : "Regresar de Almuerzo"}
           </Button>
-          <p className="text-xs text-green-600 dark:text-green-400 text-center">
-            Disponible de 12:55-13:05 y 13:55-14:05
-          </p>
+          <p className="text-xs text-green-600 dark:text-green-400 text-center">Disponible de 1:55 PM a 2:30 PM</p>
         </div>
       )
     }
@@ -728,7 +758,7 @@ export function AttendanceWidget() {
             {actionLoading ? "Marcando..." : "Marcar Salida"}
           </Button>
           <p className="text-xs text-red-600 dark:text-red-400 text-center">
-            {isSaturday() ? "Disponible hasta las 13:00" : "Disponible de 17:20 a 23:59"}
+            {isSaturday() ? "Disponible hasta las 1:00 PM" : "Disponible de 5:25 PM a 11:59 PM"}
           </p>
         </div>
       )
@@ -763,10 +793,10 @@ export function AttendanceWidget() {
               {isSaturday()
                 ? "Salida: hasta las 13:00"
                 : !todayAttendance.lunch_start_time
-                  ? "Almuerzo: 12:55-13:05 o 13:55-14:05"
+                  ? "Almuerzo: 12:55-1:20 PM"
                   : todayAttendance.lunch_start_time && !todayAttendance.lunch_end_time
-                    ? "Regreso: 12:55-13:05 o 13:55-14:05"
-                    : "Salida: 17:35-23:59"}
+                    ? "Regreso: 1:55-2:30 PM"
+                    : "Salida: 5:25-11:59 PM"}
             </p>
           </div>
         )
