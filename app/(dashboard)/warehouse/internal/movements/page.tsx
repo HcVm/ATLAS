@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { useCompany } from "@/lib/company-context"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
-import { InternalProductSelector } from "@/components/ui/internal-product-selector"
+import { InternalProductSelector, clearInternalProductCache } from "@/components/ui/internal-product-selector"
 import {
   Dialog,
   DialogContent,
@@ -389,6 +389,9 @@ export default function InternalMovementsPage() {
       }
 
       toast.success("Movimiento registrado exitosamente. Los números de serie se generaron automáticamente.")
+
+      clearInternalProductCache()
+
       setFormData({
         product_id: "",
         movement_type: "",
@@ -645,7 +648,7 @@ export default function InternalMovementsPage() {
                               <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
                             <Command>
                               <CommandInput placeholder="Buscar número de serie..." />
                               <CommandList>

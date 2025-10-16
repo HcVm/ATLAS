@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, Package, AlertTriangle, Search, Loader2 } from "lucide-react" // Removed Tag icon
+import { Check, ChevronsUpDown, Package, AlertTriangle, Search, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
@@ -45,10 +45,9 @@ interface InternalProductSelectorProps {
   categoryId?: string | null
 }
 
-// Cache para resultados de búsqueda
-const searchCache = new Map<string, InternalProduct[]>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
-const cacheTimestamps = new Map<string, number>()
+export function clearInternalProductCache() {
+  console.log("InternalProductSelector: Cache cleared (no-op)")
+}
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -103,9 +102,9 @@ export function InternalProductSelector({
           companies!inner(id, name, ruc),
           internal_product_categories(name)
         `,
-          ) // Removed brands, changed to internal_product_categories
+          )
           .eq("id", productId)
-          .eq("company_id", selectedCompany.id) // Filter by company_id
+          .eq("company_id", selectedCompany.id)
 
         if (categoryId) {
           query = query.eq("category_id", categoryId)
@@ -116,7 +115,7 @@ export function InternalProductSelector({
         if (!error && data) {
           const formattedProduct = {
             ...data,
-            internal_product_categories: data.internal_product_categories, // Use internal_product_categories
+            internal_product_categories: data.internal_product_categories,
             company: data.companies,
           }
           setSelectedProduct(formattedProduct)
@@ -136,38 +135,9 @@ export function InternalProductSelector({
   // Debounce search value
   const debouncedSearchValue = useDebounce(searchValue, 300)
 
-  // Memoized cache key, now includes categoryId
-  const cacheKey = useMemo(() => {
-    return `internal_products_${debouncedSearchValue.toLowerCase().trim()}_${selectedCompany?.id || "all"}_${categoryId || "no-category"}`
-  }, [debouncedSearchValue, selectedCompany?.id, categoryId])
-
-  // Check if cache is valid
-  const isCacheValid = useCallback((key: string) => {
-    const timestamp = cacheTimestamps.get(key)
-    if (!timestamp) return false
-    return Date.now() - timestamp < CACHE_DURATION
-  }, [])
-
-  // Get cached results
-  const getCachedResults = useCallback(
-    (key: string) => {
-      if (isCacheValid(key)) {
-        return searchCache.get(key) || []
-      }
-      return null
-    },
-    [isCacheValid],
-  )
-
-  // Set cache
-  const setCacheResults = useCallback((key: string, results: InternalProduct[]) => {
-    searchCache.set(key, results)
-    cacheTimestamps.set(key, Date.now())
-  }, [])
-
   // Preload popular products (top 10 most sold or recently used)
   const preloadPopularProducts = useCallback(async () => {
-    if (!selectedCompany?.id) return // Ensure company is selected
+    if (!selectedCompany?.id) return
 
     try {
       let query = supabase
@@ -179,23 +149,21 @@ export function InternalProductSelector({
           companies!inner(id, name, ruc),
           internal_product_categories(name)
         `,
-        ) // Removed brands, changed to internal_product_categories
+        )
         .eq("is_active", true)
-        .eq("company_id", selectedCompany.id) // Filter by company_id
+        .eq("company_id", selectedCompany.id)
 
       if (categoryId) {
         query = query.eq("category_id", categoryId)
       }
 
-      const { data: popularData, error } = await query
-        .order("current_stock", { ascending: false }) // Or some other popularity metric
-        .limit(10)
+      const { data: popularData, error } = await query.order("current_stock", { ascending: false }).limit(10)
 
       if (!error && popularData) {
         const formattedProducts = popularData.map((p) => ({
           ...p,
           description: p.description,
-          internal_product_categories: p.internal_product_categories, // Use internal_product_categories
+          internal_product_categories: p.internal_product_categories,
           company: p.companies,
         }))
         setPopularProducts(formattedProducts)
@@ -210,7 +178,7 @@ export function InternalProductSelector({
     preloadPopularProducts()
   }, [preloadPopularProducts])
 
-  // Search products with optimization
+  // Search products without cache
   const searchProducts = useCallback(
     async (searchTerm: string) => {
       if (!selectedCompany?.id) {
@@ -220,17 +188,8 @@ export function InternalProductSelector({
       }
 
       if (searchTerm.length < 2) {
-        setProducts(popularProducts) // Show popular products if search term is too short
+        setProducts(popularProducts)
         setHasSearched(false)
-        return
-      }
-
-      // Check cache first
-      const cached = getCachedResults(cacheKey)
-      if (cached) {
-        console.log("InternalProductSelector: Using cached results for:", searchTerm)
-        setProducts(cached)
-        setHasSearched(true)
         return
       }
 
@@ -248,9 +207,9 @@ export function InternalProductSelector({
             companies!inner(id, name, ruc),
             internal_product_categories(name)
           `,
-          ) // Removed brands, changed to internal_product_categories
+          )
           .eq("is_active", true)
-          .eq("company_id", selectedCompany.id) // Filter by company_id
+          .eq("company_id", selectedCompany.id)
           .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
 
         if (categoryId) {
@@ -263,19 +222,16 @@ export function InternalProductSelector({
 
         if (!searchData || searchData.length === 0) {
           setProducts([])
-          setCacheResults(cacheKey, [])
           return
         }
 
-        // Format products with relations (categories are already fetched via select)
         const formattedProducts = searchData.map((product) => ({
           ...product,
-          internal_product_categories: product.internal_product_categories, // Use internal_product_categories
+          internal_product_categories: product.internal_product_categories,
           company: product.companies,
         }))
 
         setProducts(formattedProducts)
-        setCacheResults(cacheKey, formattedProducts)
       } catch (error: any) {
         console.error("InternalProductSelector: Search error:", error)
         toast.error("Error al buscar productos: " + error.message)
@@ -284,7 +240,7 @@ export function InternalProductSelector({
         setLoading(false)
       }
     },
-    [cacheKey, getCachedResults, setCacheResults, popularProducts, selectedCompany?.id, categoryId],
+    [popularProducts, selectedCompany?.id, categoryId],
   )
 
   // Effect for debounced search and category change
@@ -295,15 +251,12 @@ export function InternalProductSelector({
   // Find selected product
   useEffect(() => {
     if (value) {
-      // First check in current products
       let product = products.find((p) => p.id === value)
 
-      // If not found and we have popular products, check there
       if (!product && popularProducts.length > 0) {
         product = popularProducts.find((p) => p.id === value)
       }
 
-      // If still not found, fetch it directly
       if (!product) {
         fetchSelectedProduct(value)
       } else {
@@ -354,7 +307,7 @@ export function InternalProductSelector({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between bg-transparent"
-            disabled={disabled || !selectedCompany?.id || (required && !categoryId)} // Disable if no company or no category (if required)
+            disabled={disabled || !selectedCompany?.id || (required && !categoryId)}
           >
             {selectedProduct ? (
               <div className="flex items-center gap-2 flex-1 text-left">
