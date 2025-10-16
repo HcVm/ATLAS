@@ -49,6 +49,7 @@ interface Product {
     name: string
     color: string
   }
+  qr_code_hash?: string // Added new field for QR code hash
 }
 
 export default function InternalProductsPage() {
@@ -414,7 +415,7 @@ export default function InternalProductsPage() {
                             </DropdownMenuItem>
                             {product.is_serialized && (
                               <DropdownMenuItem asChild>
-                                <Link href={`/public/internal-product/${product.id}`}>
+                                <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
                                   <QrCode className="mr-2 h-4 w-4" /> Ver QRs
                                 </Link>
                               </DropdownMenuItem>

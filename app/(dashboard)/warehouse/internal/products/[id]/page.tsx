@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
   QrCode,
   Tag,
   ListOrdered,
+  Printer,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -30,6 +31,8 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { QRDisplayDialog } from "@/components/qr-code-display"
+import JsBarcode from "jsbarcode"
+import QRCodeLib from "qrcode"
 
 interface Product {
   id: string
@@ -101,6 +104,7 @@ export default function InternalProductDetailPage() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const [qrData, setQrData] = useState("")
   const [qrTitle, setQrTitle] = useState("")
+  const printRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (params.id && user?.company_id) {
@@ -193,6 +197,232 @@ export default function InternalProductDetailPage() {
     setQrData(qrContent)
     setQrTitle(qrTitleText)
     setQrDialogOpen(true)
+  }
+
+  const handlePrintSticker = async (serial: SerializedProduct) => {
+    try {
+      const { data: companyData } = await supabase.from("companies").select("name").eq("id", user?.company_id).single()
+
+      const companyName = companyData?.name || "EMPRESA"
+      const currentYear = new Date().getFullYear()
+
+      // Generate barcode
+      const barcodeCanvas = document.createElement("canvas")
+      barcodeCanvas.width = 1200
+      barcodeCanvas.height = 200
+
+      JsBarcode(barcodeCanvas, serial.serial_number, {
+        format: "CODE128",
+        width: 3,
+        height: 120,
+        displayValue: false,
+        margin: 4,
+        background: "#ffffff",
+        lineColor: "#000000",
+      })
+
+      const barcodeUrl = barcodeCanvas.toDataURL("image/png")
+
+      // Generate QR code
+      let qrCodeUrl = ""
+      if (serial.qr_code_hash) {
+        const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
+        qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
+          errorCorrectionLevel: "H",
+          width: 200,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#ffffff",
+          },
+        })
+      }
+
+      // Open print window with sticker
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Etiqueta - ${serial.serial_number}</title>
+              <meta charset="UTF-8">
+              <style>
+                @page {
+                  size: 62mm 37mm;
+                  margin: 0;
+                }
+                * {
+                  box-sizing: border-box;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                body {
+                  font-family: Arial, sans-serif;
+                  margin: 0;
+                  padding: 0;
+                  background: white;
+                }
+                .sticker {
+                  width: 62mm;
+                  height: 37mm;
+                  border: 2px solid #000;
+                  border-radius: 8px;
+                  padding: 2mm;
+                  background: white;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0.5mm;
+                  box-sizing: border-box;
+                }
+                .header-text {
+                  text-align: center;
+                  font-size: 6pt;
+                  font-weight: 700;
+                  color: #000;
+                  line-height: 1.1;
+                  margin-bottom: 0.5mm;
+                  text-transform: uppercase;
+                  letter-spacing: 0.3px;
+                }
+                .barcode-section {
+                  width: 100%;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                }
+                .barcode-section img {
+                  width: 100%;
+                  max-width: 58mm;
+                  height: auto;
+                  max-height: 9mm;
+                  display: block;
+                  object-fit: contain;
+                }
+                .bottom-section {
+                  flex: 1;
+                  display: flex;
+                  gap: 2mm;
+                  align-items: flex-start;
+                }
+                .info-column {
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: flex-start;
+                  gap: 0.5mm;
+                  min-width: 0;
+                }
+                .qr-column {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: flex-start;
+                  gap: 0.5mm;
+                  flex-shrink: 0;
+                }
+                .qr-column img {
+                  width: 50px;
+                  height: 50px;
+                  display: block;
+                }
+                .serial {
+                  font-weight: 700;
+                  font-size: 7.5pt;
+                  margin: 0.3mm 0;
+                  font-family: 'Courier New', monospace;
+                  word-break: break-all;
+                  line-height: 1.15;
+                  color: #000;
+                  letter-spacing: -0.2px;
+                }
+                .location {
+                  font-size: 6.5pt;
+                  color: #000;
+                  font-family: Arial, sans-serif;
+                  margin: 0.3mm 0;
+                  line-height: 1.1;
+                  font-weight: 600;
+                }
+                .product {
+                  margin-top: 0.3mm;
+                  line-height: 1.1;
+                }
+                .product-name {
+                  font-weight: 700;
+                  font-size: 5.5pt;
+                  margin-bottom: 0.3mm;
+                  color: #000;
+                  font-family: Arial, sans-serif;
+                  line-height: 1.1;
+                }
+                .product-code {
+                  color: #000;
+                  font-size: 5.5pt;
+                  font-family: Arial, sans-serif;
+                  font-weight: 600;
+                  line-height: 1.1;
+                }
+                .qr-label {
+                  font-size: 5pt;
+                  text-align: center;
+                  color: #000;
+                  line-height: 1.1;
+                  max-width: 50px;
+                  font-weight: 500;
+                  font-family: Arial, sans-serif;
+                }
+                @media print {
+                  body {
+                    margin: 0;
+                    padding: 0;
+                  }
+                  .sticker {
+                    border: 2px solid #000 !important;
+                    border-radius: 8px !important;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="sticker">
+                <div class="header-text">INVENTARIO ${companyName} ${currentYear}</div>
+                <div class="barcode-section">
+                  <img src="${barcodeUrl}" alt="${serial.serial_number}" />
+                </div>
+                <div class="bottom-section">
+                  <div class="info-column">
+                    <div class="serial">${serial.serial_number}</div>
+                    <div class="location">Ubicación: ${serial.current_location || "N/A"}</div>
+                    <div class="product">
+                      <div class="product-name">${product?.name || ""}</div>
+                      <div class="product-code">${product?.code || ""}</div>
+                    </div>
+                  </div>
+                  ${
+                    qrCodeUrl
+                      ? `
+                  <div class="qr-column">
+                    <img src="${qrCodeUrl}" alt="QR Code" />
+                    <div class="qr-label">Info del producto</div>
+                  </div>
+                  `
+                      : ""
+                  }
+                </div>
+              </div>
+            </body>
+          </html>
+        `)
+        printWindow.document.close()
+        setTimeout(() => {
+          printWindow.print()
+        }, 250)
+      }
+    } catch (error) {
+      console.error("Error generating sticker:", error)
+      toast.error("Error al generar la etiqueta")
+    }
   }
 
   if (loading) {
@@ -360,6 +590,9 @@ export default function InternalProductDetailPage() {
                     <p className="text-muted-foreground">
                       No hay unidades serializadas registradas para este producto.
                     </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Genera un movimiento de entrada para agregar stock y crear series automáticamente.
+                    </p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -376,7 +609,7 @@ export default function InternalProductDetailPage() {
                       <TableBody>
                         {serials.map((serial) => (
                           <TableRow key={serial.id}>
-                            <TableCell className="font-medium">{serial.serial_number}</TableCell>
+                            <TableCell className="font-medium font-mono">{serial.serial_number}</TableCell>
                             <TableCell>
                               <Badge
                                 variant={
@@ -401,10 +634,16 @@ export default function InternalProductDetailPage() {
                               {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
-                                <QrCode className="h-4 w-4" />
-                                <span className="sr-only">Generar QR para serial</span>
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
+                                  <QrCode className="h-4 w-4" />
+                                  <span className="sr-only">Generar QR para serial</span>
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handlePrintSticker(serial)}>
+                                  <Printer className="h-4 w-4" />
+                                  <span className="sr-only">Imprimir etiqueta</span>
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}

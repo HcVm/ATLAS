@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { v4 as uuidv4 } from "uuid"
+import crypto from "crypto"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -83,19 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
-      name,
-      description,
-      category_id, // This is now expected to be a string (UUID)
-      minimum_stock,
-      unit_of_measure,
-      cost_price,
-      location,
-      company_id,
-      is_serialized,
-      serial_numbers,
-      current_stock, // This is the initial_stock from the client
-    } = body
+    const { name, description, category_id, minimum_stock, unit_of_measure, cost_price, location, company_id } = body
 
     if (
       !name ||
@@ -107,11 +95,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    if (is_serialized && (!serial_numbers || serial_numbers.length === 0)) {
-      return NextResponse.json({ error: "Se requieren números de serie para productos serializados" }, { status: 400 })
-    }
-
-    // --- Server-side code generation ---
     const { data: companyData, error: companyError } = await supabase
       .from("companies")
       .select("code")
@@ -124,11 +107,32 @@ export async function POST(request: NextRequest) {
     }
     const companyCode = companyData.code
 
+    const { data: categoryData, error: categoryError } = await supabase
+      .from("internal_product_categories")
+      .select("name")
+      .eq("id", category_id)
+      .single()
+
+    if (categoryError || !categoryData?.name) {
+      console.error("Error fetching category:", categoryError)
+      return NextResponse.json({ error: "No se pudo obtener la categoría del producto." }, { status: 500 })
+    }
+
+    const categoryAbbr = categoryData.name
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "") // Remove non-alphabetic characters
+      .padEnd(3, "X") // Pad with X if less than 3 characters
+
+    const currentYear = new Date().getFullYear()
+
+    const codePattern = `${companyCode}-${categoryAbbr}-${currentYear}-%`
+
     const { data: latestProduct, error: latestProductError } = await supabase
       .from("internal_products")
       .select("code")
       .eq("company_id", company_id)
-      .like("code", `INT-${companyCode}-%`)
+      .like("code", codePattern)
       .order("code", { ascending: false })
       .limit(1)
       .single()
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const generatedCode = `INT-${companyCode}-${String(nextNumber).padStart(3, "0")}`
+    const generatedCode = `${companyCode}-${categoryAbbr}-${currentYear}-${String(nextNumber).padStart(3, "0")}`
 
     const { data: existingProduct, error: existingProductError } = await supabase
       .from("internal_products")
@@ -163,7 +167,8 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       )
     }
-    // --- End server-side code generation ---
+
+    const qrCodeHash = crypto.randomBytes(16).toString("hex")
 
     const { data: newProduct, error: productError } = await supabase
       .from("internal_products")
@@ -171,16 +176,17 @@ export async function POST(request: NextRequest) {
         name,
         description,
         code: generatedCode,
-        category_id: category_id, // Pass as string (UUID)
-        current_stock: current_stock,
-        minimum_stock: is_serialized ? 0 : minimum_stock,
-        unit_of_measure: is_serialized ? "unidad" : unit_of_measure,
+        category_id: category_id,
+        current_stock: 0,
+        minimum_stock: minimum_stock || 0,
+        unit_of_measure: unit_of_measure,
         cost_price,
         location,
         company_id,
         created_by: user.id,
         is_active: true,
-        is_serialized,
+        is_serialized: true,
+        qr_code_hash: qrCodeHash,
       })
       .select()
       .single()
@@ -188,62 +194,6 @@ export async function POST(request: NextRequest) {
     if (productError) {
       console.error("Error creating product:", productError)
       return NextResponse.json({ error: productError.message }, { status: 500 })
-    }
-
-    if (is_serialized && newProduct) {
-      const serialsToInsert = serial_numbers.map((serialNum: string) => ({
-        product_id: newProduct.id,
-        serial_number: serialNum,
-        status: "in_stock",
-        current_location: location || null,
-        company_id: company_id,
-        created_by: user.id,
-        qr_code_hash: uuidv4(),
-      }))
-
-      const { error: serialsError } = await supabase.from("internal_product_serials").insert(serialsToInsert)
-
-      if (serialsError) {
-        console.error("Error inserting serial numbers:", serialsError)
-        return NextResponse.json(
-          { error: "Producto creado, pero error al registrar números de serie." },
-          { status: 500 },
-        )
-      }
-
-      const movementPromises = serialsToInsert.map(async (serial) => {
-        const { data: insertedSerial, error: fetchSerialError } = await supabase
-          .from("internal_product_serials")
-          .select("id")
-          .eq("product_id", newProduct.id)
-          .eq("serial_number", serial.serial_number)
-          .single()
-
-        if (fetchSerialError || !insertedSerial) {
-          console.error(`Error fetching inserted serial ${serial.serial_number}:`, fetchSerialError)
-          return
-        }
-
-        const { error: movementError } = await supabase.from("internal_inventory_movements").insert({
-          product_id: newProduct.id,
-          serial_id: insertedSerial.id,
-          movement_type: "entrada",
-          quantity: 1,
-          cost_price: newProduct.cost_price,
-          total_amount: newProduct.cost_price,
-          reason: "Ingreso inicial por creación de producto serializado",
-          notes: `Número de serie: ${serial.serial_number}`,
-          requested_by: user.email,
-          company_id: company_id,
-          created_by: user.id,
-          movement_date: new Date().toISOString(),
-          supplier: "Creación de Producto",
-        })
-        if (movementError) {
-          console.error(`Error creating initial movement for serial ${serial.serial_number}:`, movementError)
-        }
-      })
-      await Promise.all(movementPromises)
     }
 
     return NextResponse.json({ success: true, product: newProduct })

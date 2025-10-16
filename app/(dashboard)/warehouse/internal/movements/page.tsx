@@ -342,18 +342,9 @@ export default function InternalMovementsPage() {
     let serialsArray: string[] = []
     if (selectedProductModel.is_serialized) {
       if (formData.movement_type === "entrada") {
-        serialsArray = formData.serials_to_process
-          .split(/[\n,]+/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-        if (serialsArray.length === 0) {
-          toast.error("Por favor, ingresa al menos un número de serie para la entrada.")
-          setIsSubmitting(false)
-          return
-        }
-        const uniqueSerials = new Set(serialsArray)
-        if (uniqueSerials.size !== serialsArray.length) {
-          toast.error("Se detectaron números de serie duplicados en la entrada. Por favor, revisa.")
+        // For entrada, we just need the quantity - serials will be auto-generated
+        if (formData.quantity <= 0) {
+          toast.error("La cantidad debe ser mayor a 0.")
           setIsSubmitting(false)
           return
         }
@@ -397,7 +388,7 @@ export default function InternalMovementsPage() {
         throw new Error(errorData.error || "Error al registrar el movimiento.")
       }
 
-      toast.success("Movimiento registrado exitosamente.")
+      toast.success("Movimiento registrado exitosamente. Los números de serie se generaron automáticamente.")
       setFormData({
         product_id: "",
         movement_type: "",
@@ -626,20 +617,18 @@ export default function InternalMovementsPage() {
                   <>
                     {formData.movement_type === "entrada" && (
                       <div className="space-y-2">
-                        <Label htmlFor="serials_to_process">
-                          Números de Serie (uno por línea o separados por coma)
-                        </Label>
-                        <Textarea
-                          id="serials_to_process"
-                          name="serials_to_process"
-                          value={formData.serials_to_process}
-                          onChange={handleChange}
-                          placeholder="Ej: ABC-001&#10;ABC-002&#10;ABC-003"
-                          rows={5}
+                        <Label htmlFor="quantity">Cantidad de Unidades</Label>
+                        <Input
+                          id="quantity"
+                          name="quantity"
+                          type="number"
+                          value={formData.quantity}
+                          onChange={handleQuantityChange}
+                          min={1}
                           required
                         />
                         <p className="text-sm text-muted-foreground">
-                          Se registrarán {formData.serials_to_process.split(/[\n,]+/).filter(Boolean).length} unidades.
+                          Se generarán automáticamente {formData.quantity} números de serie únicos.
                         </p>
                       </div>
                     )}

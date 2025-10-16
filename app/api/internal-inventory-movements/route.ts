@@ -1,6 +1,19 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import crypto from "crypto"
+
+// Helper function to generate serial numbers
+function generateSerialNumber(productCode: string, correlative: number): string {
+  // Product code format: COMPANY-CATEGORY-YEAR-NUM (e.g., ARM-TEC-2024-001)
+  // Serial format: ARMTEC2024001-S0001 (product code without hyphens + -S + correlative)
+
+  // Remove all hyphens from product code
+  const productCodeWithoutHyphens = productCode.replace(/-/g, "")
+
+  // Add -S prefix to correlative
+  return `${productCodeWithoutHyphens}-S${String(correlative).padStart(4, "0")}`
+}
 
 export async function POST(request: Request) {
   const {
@@ -16,11 +29,11 @@ export async function POST(request: Request) {
     movement_date,
     company_id,
     is_serialized_product,
-    serials_to_process, // Array of serial numbers for 'entrada'
-    selected_serials, // Array of serial IDs for 'salida'/'ajuste'
+    serials_to_process,
+    selected_serials,
   } = await request.json()
 
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -60,9 +73,41 @@ export async function POST(request: Request) {
 
     if (is_serialized_product) {
       if (movement_type === "entrada") {
-        // For serialized product entry, create new serials and movements
-        for (const serialNumber of serials_to_process) {
-          // Check if serial already exists for this product and company
+        const { data: productData, error: productError } = await supabase
+          .from("internal_products")
+          .select("code")
+          .eq("id", product_id)
+          .single()
+
+        if (productError) throw new Error(`Error fetching product data: ${productError.message}`)
+
+        // Get the last serial number for this product to determine the next correlative
+        const { data: lastSerial, error: lastSerialError } = await supabase
+          .from("internal_product_serials")
+          .select("serial_number")
+          .eq("product_id", product_id)
+          .eq("company_id", company_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single()
+
+        let nextCorrelative = 1
+        if (lastSerial && !lastSerialError) {
+          const parts = lastSerial.serial_number.split("-")
+          const lastCorrelativeStr = parts[parts.length - 1].replace("S", "")
+          const lastCorrelative = Number.parseInt(lastCorrelativeStr, 10)
+          if (!isNaN(lastCorrelative)) {
+            nextCorrelative = lastCorrelative + 1
+          }
+        }
+
+        const productCode = productData.code
+
+        // Generate serial numbers for the quantity specified
+        for (let i = 0; i < quantity; i++) {
+          const serialNumber = generateSerialNumber(productCode, nextCorrelative + i)
+
+          // Check if serial already exists
           const { data: existingSerial, error: existingSerialError } = await supabase
             .from("internal_product_serials")
             .select("id")
@@ -72,7 +117,6 @@ export async function POST(request: Request) {
             .single()
 
           if (existingSerialError && existingSerialError.code !== "PGRST116") {
-            // PGRST116 means no rows found, which is expected for new serials
             throw new Error(`Error checking existing serial: ${existingSerialError.message}`)
           }
 
@@ -80,15 +124,18 @@ export async function POST(request: Request) {
             throw new Error(`El número de serie ${serialNumber} ya existe para este producto.`)
           }
 
+          const serialQrCodeHash = crypto.randomBytes(16).toString("hex")
+
           const { data: newSerial, error: serialError } = await supabase
             .from("internal_product_serials")
             .insert({
               product_id: product_id,
               serial_number: serialNumber,
               status: "in_stock",
-              current_location: "Almacén Principal", // Default location
+              current_location: "Almacén Principal",
               company_id: company_id,
               created_by: user.id,
+              qr_code_hash: serialQrCodeHash,
             })
             .select()
             .single()
@@ -99,11 +146,11 @@ export async function POST(request: Request) {
             supabase.from("internal_inventory_movements").insert({
               product_id,
               movement_type,
-              quantity: 1, // Always 1 for serialized
+              quantity: 1,
               cost_price,
-              total_amount: cost_price, // Total amount for one unit
+              total_amount: cost_price,
               reason,
-              notes,
+              notes: `${notes || ""} - Serie generada: ${serialNumber}`,
               requested_by,
               department_requesting,
               supplier,
@@ -114,13 +161,14 @@ export async function POST(request: Request) {
             }),
           )
         }
+
         // Update product stock
         productUpdatePromises.push(
           supabase
             .rpc("increment_internal_product_stock", {
               p_product_id: product_id,
               p_company_id: company_id,
-              p_quantity: serials_to_process.length,
+              p_quantity: quantity,
             })
             .select(),
         )
@@ -232,7 +280,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Movement ID and Company ID are required" }, { status: 400 })
   }
 
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
