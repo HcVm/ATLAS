@@ -456,16 +456,39 @@ export default function LotsAndSerialsPage() {
                             </Button>
                           )}
                           {lot.status === "in_inventory" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateLotStatus(lot.id, "delivered")}
-                              className="flex-1 border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
-                            >
-                              Entregar
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateLotStatus(lot.id, "delivered")}
+                                disabled={!lot.sale_id}
+                                title={!lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""}
+                                className={`flex-1 text-xs ${
+                                  !lot.sale_id
+                                    ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
+                                    : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                }`}
+                              >
+                                Entregar
+                              </Button>
+                            </>
                           )}
                         </div>
+
+                        {lot.sales?.sale_number && (
+                          <div className="pt-2 border-t">
+                            <div className="px-3 py-2 rounded-md bg-blue-50 border-2 border-blue-300">
+                              <div className="text-xs font-semibold text-blue-900">Venta: {lot.sales.sale_number}</div>
+                            </div>
+                          </div>
+                        )}
+                        {!lot.sale_id && (
+                          <div className="pt-2 border-t">
+                            <div className="px-3 py-2 rounded-md bg-gray-50 border-2 border-gray-300">
+                              <div className="text-xs font-semibold text-gray-500 italic">Sin asignar a venta</div>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))
@@ -550,8 +573,10 @@ export default function LotsAndSerialsPage() {
                               )}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
-                              <div className="text-xs sm:text-sm whitespace-nowrap">
-                                {lot.sales?.sale_number || "N/A"}
+                              <div className="px-3 py-2 rounded-md bg-blue-50 border-2 border-blue-300">
+                                <div className="text-xs sm:text-sm font-semibold text-blue-900 whitespace-nowrap">
+                                  {lot.sales?.sale_number || <span className="text-gray-500 italic">Sin asignar</span>}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -566,14 +591,24 @@ export default function LotsAndSerialsPage() {
                                   </Button>
                                 )}
                                 {lot.status === "in_inventory" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => updateLotStatus(lot.id, "delivered")}
-                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs whitespace-nowrap"
-                                  >
-                                    Entregar
-                                  </Button>
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => updateLotStatus(lot.id, "delivered")}
+                                      disabled={!lot.sale_id}
+                                      title={
+                                        !lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""
+                                      }
+                                      className={`text-xs whitespace-nowrap ${
+                                        !lot.sale_id
+                                          ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
+                                          : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                      }`}
+                                    >
+                                      Entregar
+                                    </Button>
+                                  </>
                                 )}
                                 <Button
                                   size="sm"
