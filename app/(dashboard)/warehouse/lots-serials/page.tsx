@@ -37,6 +37,7 @@ interface ProductLot {
   generated_date: string
   ingress_date: string | null
   delivery_date: string | null
+  is_archived?: boolean
   products?: {
     name: string
     code: string
@@ -85,6 +86,7 @@ export default function LotsAndSerialsPage() {
           generated_date,
           ingress_date,
           delivery_date,
+          is_archived,
           products (name, code),
           sales (sale_number),
           product_serials (id, serial_number, status)
@@ -137,6 +139,8 @@ export default function LotsAndSerialsPage() {
   }
 
   const filteredLots = lots.filter((lot) => {
+    if (lot.is_archived) return false
+
     const matchesSearch =
       lot.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lot.products?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -148,7 +152,15 @@ export default function LotsAndSerialsPage() {
     return matchesSearch && matchesStatus
   })
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isArchived?: boolean) => {
+    if (isArchived) {
+      return (
+        <Badge variant="secondary" className="bg-gray-200 text-gray-700 border-gray-300">
+          Archivado
+        </Badge>
+      )
+    }
+
     switch (status) {
       case "pending":
         return (
@@ -354,7 +366,7 @@ export default function LotsAndSerialsPage() {
                               <Barcode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                               <span className="font-mono font-bold text-sm truncate">{lot.lot_number}</span>
                             </div>
-                            {getStatusBadge(lot.status)}
+                            {getStatusBadge(lot.status, lot.is_archived)}
                           </div>
                           <Button
                             variant="ghost"
@@ -526,7 +538,7 @@ export default function LotsAndSerialsPage() {
                                 {lot.quantity} unidades
                               </Badge>
                             </TableCell>
-                            <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                            <TableCell>{getStatusBadge(lot.status, lot.is_archived)}</TableCell>
                             <TableCell className="hidden md:table-cell">
                               <div className="text-xs sm:text-sm whitespace-nowrap">
                                 {formatDate(lot.generated_date)}

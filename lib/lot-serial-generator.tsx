@@ -259,6 +259,8 @@ async function createSerial(params: SerialGenerationParams, sequence: number): P
 
 /**
  * Finds available lots in inventory for a product (FIFO strategy)
+ * Now searches for both 'in_inventory' and 'pending' status lots to properly allocate existing stock
+ * Fixed to properly distribute allocation across multiple lots instead of taking from just one
  */
 export async function findAvailableLotsForProduct(
   productId: string,
@@ -268,7 +270,7 @@ export async function findAvailableLotsForProduct(
   try {
     console.log("[v0] Finding available lots for product:", productId, "quantity:", requestedQuantity)
 
-    // Get lots with status 'in_inventory' ordered by ingress_date (FIFO)
+    // Fetch all available lots with their serials
     const { data: availableLots, error: lotsError } = await supabase
       .from("product_lots")
       .select(`
@@ -276,7 +278,8 @@ export async function findAvailableLotsForProduct(
         lot_number,
         quantity,
         ingress_date,
-        product_serials!inner (
+        status,
+        product_serials (
           id,
           serial_number,
           status
@@ -284,7 +287,7 @@ export async function findAvailableLotsForProduct(
       `)
       .eq("product_id", productId)
       .eq("company_id", companyId)
-      .eq("status", "in_inventory")
+      .in("status", ["in_inventory", "pending"])
       .order("ingress_date", { ascending: true })
 
     if (lotsError) {
@@ -298,18 +301,26 @@ export async function findAvailableLotsForProduct(
     let remainingQuantity = requestedQuantity
 
     if (!availableLots || availableLots.length === 0) {
+      console.log("[v0] No available lots found, will create new lot")
       return { allocatedLots, remainingQuantity }
     }
 
-    // Allocate from oldest lots first (FIFO)
     for (const lot of availableLots) {
-      if (remainingQuantity <= 0) break
+      if (remainingQuantity <= 0) {
+        console.log("[v0] Allocation complete, no more quantity needed")
+        break
+      }
 
-      // Filter available serials (in_inventory status)
-      const availableSerials = lot.product_serials.filter((s: any) => s.status === "in_inventory")
+      // Get serials that are NOT sold
+      const availableSerials = lot.product_serials.filter((s: any) => s.status !== "sold")
       const availableQuantity = availableSerials.length
 
+      console.log(
+        `[v0] Lot ${lot.lot_number}: total serials=${lot.product_serials.length}, available=${availableQuantity}, needed=${remainingQuantity}`,
+      )
+
       if (availableQuantity > 0) {
+        // Take only what we need from this lot
         const quantityToAllocate = Math.min(availableQuantity, remainingQuantity)
         const serialsToAllocate = availableSerials.slice(0, quantityToAllocate)
 
@@ -320,10 +331,16 @@ export async function findAvailableLotsForProduct(
         })
 
         remainingQuantity -= quantityToAllocate
-        console.log("[v0] Allocated", quantityToAllocate, "from lot", lot.lot_number, "remaining:", remainingQuantity)
+
+        console.log(
+          `[v0] Allocated ${quantityToAllocate} from lot ${lot.lot_number}, remaining needed: ${remainingQuantity}`,
+        )
       }
     }
 
+    console.log(
+      `[v0] Allocation complete: ${allocatedLots.length} lots allocated, ${remainingQuantity} units still needed`,
+    )
     return { allocatedLots, remainingQuantity }
   } catch (error) {
     console.error("[v0] Error in findAvailableLotsForProduct:", error)
@@ -333,30 +350,24 @@ export async function findAvailableLotsForProduct(
 
 /**
  * Allocates existing serials to a sale and updates their status
+ * Now implements lot slicing: when a lot is partially allocated, it's split into S1 (sold) and S2 (remaining)
  */
 export async function allocateSerialsToSale(
   saleId: string,
   allocatedLots: Array<{ lotId: string; quantity: number; serials: any[] }>,
 ): Promise<void> {
   try {
-    console.log("[v0] Allocating serials to sale:", saleId)
+    console.log("[v0] Allocating serials to sale:", saleId, "from", allocatedLots.length, "lots")
 
     for (const allocation of allocatedLots) {
       const serialIds = allocation.serials.map((s) => s.id)
+      const quantityToAllocate = allocation.quantity
 
-      const { error: lotUpdateError } = await supabase
-        .from("product_lots")
-        .update({
-          sale_id: saleId,
-        })
-        .eq("id", allocation.lotId)
+      console.log(
+        `[v0] Processing lot ${allocation.lotId}: allocating ${quantityToAllocate} serials out of ${allocation.serials.length}`,
+      )
 
-      if (lotUpdateError) {
-        console.error("[v0] Error updating lot sale_id:", lotUpdateError)
-        throw new Error(`Failed to link lot to sale: ${lotUpdateError.message}`)
-      }
-
-      // Update serials to link them to the sale
+      // Update only the serials being allocated to this sale
       const { error: updateError } = await supabase
         .from("product_serials")
         .update({
@@ -370,8 +381,166 @@ export async function allocateSerialsToSale(
         throw new Error(`Failed to allocate serials: ${updateError.message}`)
       }
 
-      console.log("[v0] Allocated", serialIds.length, "serials from lot", allocation.lotId, "to sale", saleId)
+      console.log(`[v0] Updated ${quantityToAllocate} serials to sold status for sale ${saleId}`)
+
+      // Fetch the lot to check if ALL serials are now sold
+      const { data: lotData, error: lotFetchError } = await supabase
+        .from("product_lots")
+        .select(`
+          id,
+          lot_number,
+          quantity,
+          sale_id,
+          product_id,
+          product_code,
+          product_name,
+          company_id,
+          created_by,
+          status,
+          product_serials (
+            id,
+            status
+          )
+        `)
+        .eq("id", allocation.lotId)
+        .single()
+
+      if (lotFetchError || !lotData) {
+        console.error("[v0] Error fetching lot:", lotFetchError)
+        throw new Error(`Failed to fetch lot: ${lotFetchError?.message}`)
+      }
+
+      // Count serials by status
+      const totalSerials = lotData.product_serials.length
+      const soldSerials = lotData.product_serials.filter((s: any) => s.status === "sold").length
+      const remainingSerials = totalSerials - soldSerials
+
+      console.log(
+        `[v0] Lot ${allocation.lotId}: total=${totalSerials}, sold=${soldSerials}, remaining=${remainingSerials}`,
+      )
+
+      if (remainingSerials > 0 && soldSerials > 0) {
+        console.log(
+          `[v0] Partial allocation detected: ${soldSerials} sold, ${remainingSerials} remaining. Creating sliced lots...`,
+        )
+
+        // Create S1 lot (sold portion)
+        const s1LotNumber = `${lotData.lot_number}S1`
+        const { data: s1LotData, error: s1LotError } = await supabase
+          .from("product_lots")
+          .insert({
+            lot_number: s1LotNumber,
+            product_id: lotData.product_id,
+            product_code: lotData.product_code,
+            product_name: lotData.product_name,
+            sale_id: saleId,
+            quantity: soldSerials,
+            status: lotData.status, // Inherit parent status
+            company_id: lotData.company_id,
+            created_by: lotData.created_by,
+            generated_date: lotData.generated_date,
+          })
+          .select()
+          .single()
+
+        if (s1LotError) {
+          console.error("[v0] Error creating S1 lot:", s1LotError)
+          throw new Error(`Failed to create S1 lot: ${s1LotError.message}`)
+        }
+
+        console.log(`[v0] Created S1 lot ${s1LotNumber} with ${soldSerials} serials for sale ${saleId}`)
+
+        // Update sold serials to reference the new S1 lot
+        const soldSerialIds = lotData.product_serials.filter((s: any) => s.status === "sold").map((s: any) => s.id)
+
+        const { error: updateS1Error } = await supabase
+          .from("product_serials")
+          .update({ lot_id: s1LotData.id })
+          .in("id", soldSerialIds)
+
+        if (updateS1Error) {
+          console.error("[v0] Error updating serials to S1 lot:", updateS1Error)
+          throw new Error(`Failed to update serials to S1 lot: ${updateS1Error.message}`)
+        }
+
+        console.log(`[v0] Updated ${soldSerials} serials to reference S1 lot`)
+
+        // Create S2 lot (remaining portion)
+        const s2LotNumber = `${lotData.lot_number}S2`
+        const { data: s2LotData, error: s2LotError } = await supabase
+          .from("product_lots")
+          .insert({
+            lot_number: s2LotNumber,
+            product_id: lotData.product_id,
+            product_code: lotData.product_code,
+            product_name: lotData.product_name,
+            sale_id: null, // No sale for remaining stock
+            quantity: remainingSerials,
+            status: "in_inventory",
+            company_id: lotData.company_id,
+            created_by: lotData.created_by,
+            generated_date: lotData.generated_date,
+          })
+          .select()
+          .single()
+
+        if (s2LotError) {
+          console.error("[v0] Error creating S2 lot:", s2LotError)
+          throw new Error(`Failed to create S2 lot: ${s2LotError.message}`)
+        }
+
+        console.log(`[v0] Created S2 lot ${s2LotNumber} with ${remainingSerials} serials for inventory`)
+
+        // Update remaining serials to reference the new S2 lot
+        const remainingSerialIds = lotData.product_serials.filter((s: any) => s.status !== "sold").map((s: any) => s.id)
+
+        const { error: updateS2Error } = await supabase
+          .from("product_serials")
+          .update({ lot_id: s2LotData.id })
+          .in("id", remainingSerialIds)
+
+        if (updateS2Error) {
+          console.error("[v0] Error updating serials to S2 lot:", updateS2Error)
+          throw new Error(`Failed to update serials to S2 lot: ${updateS2Error.message}`)
+        }
+
+        console.log(`[v0] Updated ${remainingSerials} serials to reference S2 lot`)
+
+        const { error: archiveError } = await supabase
+          .from("product_lots")
+          .update({ is_archived: true })
+          .eq("id", allocation.lotId)
+
+        if (archiveError) {
+          console.error("[v0] Error archiving original lot:", archiveError)
+          throw new Error(`Failed to archive original lot: ${archiveError.message}`)
+        }
+
+        console.log(`[v0] Archived original lot ${lotData.lot_number}`)
+      } else if (remainingSerials === 0 && soldSerials > 0) {
+        // All serials sold - link entire lot to sale
+        const { error: lotUpdateError } = await supabase
+          .from("product_lots")
+          .update({
+            sale_id: saleId,
+          })
+          .eq("id", allocation.lotId)
+
+        if (lotUpdateError) {
+          console.error("[v0] Error linking lot to sale:", lotUpdateError)
+          throw new Error(`Failed to link lot to sale: ${lotUpdateError.message}`)
+        }
+
+        console.log(`[v0] Linked entire lot ${allocation.lotId} to sale ${saleId}`)
+      } else if (remainingSerials > 0 && soldSerials === 0) {
+        // No serials sold from this lot - keep it as is
+        console.log(
+          `[v0] No serials sold from lot ${allocation.lotId} - keeping lot unassigned to sale for future allocations`,
+        )
+      }
     }
+
+    console.log("[v0] All serials allocated successfully to sale:", saleId)
   } catch (error) {
     console.error("[v0] Error in allocateSerialsToSale:", error)
     throw error
