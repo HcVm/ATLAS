@@ -20,6 +20,10 @@ export async function GET(request: Request) {
           name
         )
       ),
+      product_lots:lot_id (
+        status,
+        delivery_date
+      ),
       sales:sale_id (
         delivery_start_date,
         delivery_end_date,
@@ -38,10 +42,14 @@ export async function GET(request: Request) {
 
   const brandName = (serialData.products as any)?.brands?.name || null
 
+  const lot = serialData.product_lots as any
   const sale = serialData.sales as any
-  const deliveryDate = sale?.delivery_end_date || sale?.delivery_start_date || sale?.sale_date
 
-  if (!deliveryDate) {
+  // Determinar si fue entregado basándose en el estado del lote
+  const isDeliveredByLot = lot?.status === "delivered" || lot?.status === "sold"
+  const deliveryDate = lot?.delivery_date || sale?.delivery_end_date || sale?.delivery_start_date || sale?.sale_date
+
+  if (!isDeliveredByLot || !deliveryDate) {
     return NextResponse.json({
       isValid: true,
       isDelivered: false,

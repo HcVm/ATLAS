@@ -623,14 +623,14 @@ export default function EditProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="current_stock">Stock actual</Label>
-                  <Input
+                  <Input disabled
                     id="current_stock"
                     type="number"
                     min="0"
                     step="0.01"
                     value={formData.current_stock}
                     onChange={(e) =>
-                      setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 })
+                      setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 }) 
                     }
                   />
                 </div>

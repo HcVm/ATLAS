@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ShoppingCart,
   Box,
+  AlertCircle,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -52,6 +53,10 @@ interface ProductLot {
   }>
 }
 
+interface GroupedLots {
+  [key: string]: ProductLot[]
+}
+
 export default function LotsAndSerialsPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -61,6 +66,7 @@ export default function LotsAndSerialsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [expandedLot, setExpandedLot] = useState<string | null>(null)
+  const [collapsedSaleGroups, setCollapsedSaleGroups] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -100,6 +106,14 @@ export default function LotsAndSerialsPage() {
       }
 
       setLots(data || [])
+      if (data && data.length > 0) {
+        const saleKeys = new Set<string>()
+        data.forEach((lot) => {
+          const saleKey = lot.sales?.sale_number || "sin-asignar"
+          saleKeys.add(saleKey)
+        })
+        setCollapsedSaleGroups(saleKeys)
+      }
     } catch (error) {
       console.error("Error fetching lots:", error)
       toast({
@@ -150,6 +164,25 @@ export default function LotsAndSerialsPage() {
     const matchesStatus = statusFilter === "all" || lot.status === statusFilter
 
     return matchesSearch && matchesStatus
+  })
+
+  const groupedLots: GroupedLots = filteredLots.reduce((acc, lot) => {
+    const saleKey = lot.sales?.sale_number || "sin-asignar"
+    if (!acc[saleKey]) {
+      acc[saleKey] = []
+    }
+    acc[saleKey].push(lot)
+    return acc
+  }, {} as GroupedLots)
+
+  const sortedGroupKeys = Object.keys(groupedLots).sort((a, b) => {
+    const aHasDelivered = groupedLots[a].every((lot) => lot.status === "delivered")
+    const bHasDelivered = groupedLots[b].every((lot) => lot.status === "delivered")
+
+    if (aHasDelivered === bHasDelivered) {
+      return a.localeCompare(b)
+    }
+    return aHasDelivered ? 1 : -1
   })
 
   const getStatusBadge = (status: string, isArchived?: boolean) => {
@@ -224,6 +257,20 @@ export default function LotsAndSerialsPage() {
       title: "Exportación exitosa",
       description: `Se exportaron ${dataToExport.length} registros a Excel.`,
     })
+  }
+
+  const isGroupFullyDelivered = (lots: ProductLot[]) => {
+    return lots.every((lot) => lot.status === "delivered")
+  }
+
+  const toggleSaleGroupCollapse = (saleKey: string) => {
+    const newCollapsed = new Set(collapsedSaleGroups)
+    if (newCollapsed.has(saleKey)) {
+      newCollapsed.delete(saleKey)
+    } else {
+      newCollapsed.add(saleKey)
+    }
+    setCollapsedSaleGroups(newCollapsed)
   }
 
   if (loading) {
@@ -315,7 +362,7 @@ export default function LotsAndSerialsPage() {
               Gestión de Lotes y Series
             </CardTitle>
             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-              {filteredLots.length} de {lots.length} lotes
+              {filteredLots.length} de {lots.length} lotes • Agrupados por venta
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -355,143 +402,178 @@ export default function LotsAndSerialsPage() {
                 </Button>
               </div>
 
+              {/* Mobile view - Grouped by sale */}
               <div className="lg:hidden space-y-3">
-                {filteredLots.length > 0 ? (
-                  filteredLots.map((lot) => (
-                    <Card key={lot.id} className="border-2">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Barcode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="font-mono font-bold text-sm truncate">{lot.lot_number}</span>
-                            </div>
-                            {getStatusBadge(lot.status, lot.is_archived)}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
-                            className="h-8 w-8 p-0 flex-shrink-0"
-                          >
-                            {expandedLot === lot.id ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-start gap-2">
-                          <Box className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{lot.products?.name || "N/A"}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{lot.products?.code}</p>
-                          </div>
-                        </div>
+                {sortedGroupKeys.length > 0 ? (
+                  sortedGroupKeys.map((saleKey) => {
+                    const saleLots = groupedLots[saleKey]
+                    const isFullyDelivered = isGroupFullyDelivered(saleLots)
+                    const isCollapsed = collapsedSaleGroups.has(saleKey)
 
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                            <Badge variant="outline" className="text-xs">
-                              {lot.quantity} unidades
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Hash className="h-4 w-4 text-muted-foreground" />
-                            <Badge variant="secondary" className="text-xs">
-                              {lot.product_serials?.length || 0} series
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            <span>Generado: {formatDate(lot.generated_date)}</span>
-                          </div>
-                          {lot.ingress_date && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <TrendingUp className="h-3 w-3" />
-                              <span>Ingreso: {formatDate(lot.ingress_date)}</span>
+                    return (
+                      <div key={saleKey} className="space-y-2">
+                        <div
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            isFullyDelivered
+                              ? "bg-blue-50 border-blue-300 hover:bg-blue-100"
+                              : "bg-amber-50 border-amber-300 hover:bg-amber-100"
+                          }`}
+                          onClick={() => toggleSaleGroupCollapse(saleKey)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <ShoppingCart className="h-4 w-4 text-foreground flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm">
+                                  {saleKey === "sin-asignar" ? "Sin asignar a venta" : `Venta: ${saleKey}`}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} •{" "}
+                                  {saleLots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)} series
+                                </p>
+                              </div>
                             </div>
-                          )}
-                          {lot.sales?.sale_number && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <ShoppingCart className="h-3 w-3" />
-                              <span>Venta: {lot.sales.sale_number}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {expandedLot === lot.id && lot.product_serials && lot.product_serials.length > 0 && (
-                          <div className="pt-3 border-t space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <Hash className="h-4 w-4" />
-                              Números de Serie ({lot.product_serials.length})
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                              {lot.product_serials.map((serial) => (
-                                <div
-                                  key={serial.id}
-                                  className="p-2 bg-muted rounded border font-mono text-xs truncate"
-                                  title={serial.serial_number}
-                                >
-                                  {serial.serial_number}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 pt-2 border-t">
-                          {lot.status === "pending" && (
                             <Button
+                              variant="ghost"
                               size="sm"
-                              onClick={() => updateLotStatus(lot.id, "in_inventory")}
-                              className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
+                              className="h-8 w-8 p-0 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleSaleGroupCollapse(saleKey)
+                              }}
                             >
-                              Ingresar
+                              {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                             </Button>
-                          )}
-                          {lot.status === "in_inventory" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateLotStatus(lot.id, "delivered")}
-                                disabled={!lot.sale_id}
-                                title={!lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""}
-                                className={`flex-1 text-xs ${
-                                  !lot.sale_id
-                                    ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
-                                    : "border-blue-300 text-blue-700 hover:bg-blue-50"
-                                }`}
-                              >
-                                Entregar
-                              </Button>
-                            </>
-                          )}
+                          </div>
                         </div>
 
-                        {lot.sales?.sale_number && (
-                          <div className="pt-2 border-t">
-                            <div className="px-3 py-2 rounded-md bg-blue-50 border-2 border-blue-300">
-                              <div className="text-xs font-semibold text-blue-900">Venta: {lot.sales.sale_number}</div>
-                            </div>
+                        {isCollapsed && isFullyDelivered && (
+                          <div className="px-3 py-2 bg-muted/50 rounded text-xs text-muted-foreground italic">
+                            {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} entregado
+                            {saleLots.length !== 1 ? "s" : ""} • Haz clic para expandir
                           </div>
                         )}
-                        {!lot.sale_id && (
-                          <div className="pt-2 border-t">
-                            <div className="px-3 py-2 rounded-md bg-gray-50 border-2 border-gray-300">
-                              <div className="text-xs font-semibold text-gray-500 italic">Sin asignar a venta</div>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
+
+                        {!isCollapsed &&
+                          saleLots.map((lot) => (
+                            <Card key={lot.id} className="border-2 ml-2">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Barcode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                      <span className="font-mono font-bold text-sm truncate">{lot.lot_number}</span>
+                                    </div>
+                                    {getStatusBadge(lot.status, lot.is_archived)}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
+                                    className="h-8 w-8 p-0 flex-shrink-0"
+                                  >
+                                    {expandedLot === lot.id ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <div className="flex items-start gap-2">
+                                  <Box className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{lot.products?.name || "N/A"}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{lot.products?.code}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                                  <div className="flex items-center gap-2">
+                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                    <Badge variant="outline" className="text-xs">
+                                      {lot.quantity} unidades
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Hash className="h-4 w-4 text-muted-foreground" />
+                                    <Badge variant="secondary" className="text-xs">
+                                      {lot.product_serials?.length || 0} series
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>Generado: {formatDate(lot.generated_date)}</span>
+                                  </div>
+                                  {lot.ingress_date && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <TrendingUp className="h-3 w-3" />
+                                      <span>Ingreso: {formatDate(lot.ingress_date)}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {expandedLot === lot.id && lot.product_serials && lot.product_serials.length > 0 && (
+                                  <div className="pt-3 border-t space-y-2">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                      <Hash className="h-4 w-4" />
+                                      Números de Serie ({lot.product_serials.length})
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {lot.product_serials.map((serial) => (
+                                        <div
+                                          key={serial.id}
+                                          className="p-2 bg-muted rounded border font-mono text-xs truncate"
+                                          title={serial.serial_number}
+                                        >
+                                          {serial.serial_number}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2 pt-2 border-t">
+                                  {lot.status === "pending" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => updateLotStatus(lot.id, "in_inventory")}
+                                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
+                                    >
+                                      Ingresar
+                                    </Button>
+                                  )}
+                                  {lot.status === "in_inventory" && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => updateLotStatus(lot.id, "delivered")}
+                                        disabled={!lot.sale_id}
+                                        title={
+                                          !lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""
+                                        }
+                                        className={`flex-1 text-xs ${
+                                          !lot.sale_id
+                                            ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
+                                            : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                        }`}
+                                      >
+                                        Entregar
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                      </div>
+                    )
+                  })
                 ) : (
                   <Card>
                     <CardContent className="text-center py-8">
@@ -505,160 +587,216 @@ export default function LotsAndSerialsPage() {
                 )}
               </div>
 
-              {/* Desktop table layout */}
-              <div className="hidden lg:block rounded-md border border-border bg-card overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 border-border">
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
-                        Número de Lote
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
-                        Producto
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
-                        Cantidad
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
-                        Estado
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">
-                        Fecha Generación
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap hidden lg:table-cell">
-                        Venta
-                      </TableHead>
-                      <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
-                        Acciones
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLots.length > 0 ? (
-                      filteredLots.map((lot) => (
-                        <>
-                          <TableRow key={lot.id} className="hover:bg-muted/50 border-border">
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Barcode className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                                <span className="font-mono font-medium text-xs sm:text-sm whitespace-nowrap">
-                                  {lot.lot_number}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="min-w-0">
-                                <div className="font-medium text-foreground text-xs sm:text-sm truncate max-w-[150px]">
-                                  {lot.products?.name || "N/A"}
-                                </div>
-                                <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                                  {lot.products?.code}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">
-                                {lot.quantity} unidades
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{getStatusBadge(lot.status, lot.is_archived)}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <div className="text-xs sm:text-sm whitespace-nowrap">
-                                {formatDate(lot.generated_date)}
-                              </div>
-                              {lot.ingress_date && (
-                                <div className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                                  Ingreso: {formatDate(lot.ingress_date)}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              <div className="px-3 py-2 rounded-md bg-blue-50 border-2 border-blue-300">
-                                <div className="text-xs sm:text-sm font-semibold text-blue-900 whitespace-nowrap">
-                                  {lot.sales?.sale_number || <span className="text-gray-500 italic">Sin asignar</span>}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 sm:gap-2 flex-wrap">
-                                {lot.status === "pending" && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => updateLotStatus(lot.id, "in_inventory")}
-                                    className="bg-green-600 hover:bg-green-700 text-white text-xs whitespace-nowrap"
-                                  >
-                                    Ingresar
-                                  </Button>
+              {/* Desktop table layout - Grouped by sale */}
+              <div className="hidden lg:block space-y-4">
+                {sortedGroupKeys.length > 0 ? (
+                  sortedGroupKeys.map((saleKey) => {
+                    const saleLots = groupedLots[saleKey]
+                    const isFullyDelivered = isGroupFullyDelivered(saleLots)
+                    const isCollapsed = collapsedSaleGroups.has(saleKey)
+
+                    return (
+                      <div key={saleKey} className="space-y-2">
+                        <div
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between ${
+                            isFullyDelivered
+                              ? "bg-blue-50 border-blue-300 hover:bg-blue-100"
+                              : "bg-amber-50 border-amber-300 hover:bg-amber-100"
+                          }`}
+                          onClick={() => toggleSaleGroupCollapse(saleKey)}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <ShoppingCart className="h-5 w-5 text-foreground flex-shrink-0" />
+                            <div>
+                              <p className="font-semibold text-base">
+                                {saleKey === "sin-asignar" ? "Sin asignar a venta" : `Venta: ${saleKey}`}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} •{" "}
+                                {saleLots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)} series •{" "}
+                                {isFullyDelivered ? (
+                                  <span className="text-blue-700 font-medium">Todos entregados</span>
+                                ) : (
+                                  <span className="text-amber-700 font-medium">Pendientes o en inventario</span>
                                 )}
-                                {lot.status === "in_inventory" && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => updateLotStatus(lot.id, "delivered")}
-                                      disabled={!lot.sale_id}
-                                      title={
-                                        !lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""
-                                      }
-                                      className={`text-xs whitespace-nowrap ${
-                                        !lot.sale_id
-                                          ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
-                                          : "border-blue-300 text-blue-700 hover:bg-blue-50"
-                                      }`}
-                                    >
-                                      Entregar
-                                    </Button>
-                                  </>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
-                                  className="text-xs whitespace-nowrap"
-                                >
-                                  {expandedLot === lot.id ? "Ocultar" : "Ver"}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {expandedLot === lot.id && lot.product_serials && lot.product_serials.length > 0 && (
-                            <TableRow>
-                              <TableCell colSpan={7} className="bg-muted/30">
-                                <div className="p-3 sm:p-4">
-                                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                                    <Hash className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    Números de Serie ({lot.product_serials.length})
-                                  </h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                    {lot.product_serials.map((serial) => (
-                                      <div
-                                        key={serial.id}
-                                        className="p-2 bg-background rounded border border-border font-mono text-xs sm:text-sm truncate"
-                                        title={serial.serial_number}
-                                      >
-                                        {serial.serial_number}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
-                          <div className="text-muted-foreground text-xs sm:text-sm">
-                            {lots.length === 0
-                              ? "No hay lotes registrados"
-                              : "No se encontraron lotes con los filtros aplicados"}
+                              </p>
+                            </div>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleSaleGroupCollapse(saleKey)
+                            }}
+                          >
+                            {isCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                          </Button>
+                        </div>
+
+                        {isCollapsed && isFullyDelivered && (
+                          <div className="px-4 py-3 bg-muted/50 rounded text-sm text-muted-foreground italic border border-dashed">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4" />
+                              {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} entregado
+                              {saleLots.length !== 1 ? "s" : ""} • Haz clic para expandir
+                            </div>
+                          </div>
+                        )}
+
+                        {!isCollapsed && (
+                          <div className="rounded-md border border-border bg-card overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/50 border-border">
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                    Número de Lote
+                                  </TableHead>
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                    Producto
+                                  </TableHead>
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                    Cantidad
+                                  </TableHead>
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                    Estado
+                                  </TableHead>
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">
+                                    Fecha Generación
+                                  </TableHead>
+                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                    Acciones
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {saleLots.map((lot) => (
+                                  <>
+                                    <TableRow key={lot.id} className="hover:bg-muted/50 border-border">
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                          <Barcode className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                                          <span className="font-mono font-medium text-xs sm:text-sm whitespace-nowrap">
+                                            {lot.lot_number}
+                                          </span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="min-w-0">
+                                          <div className="font-medium text-foreground text-xs sm:text-sm truncate max-w-[150px]">
+                                            {lot.products?.name || "N/A"}
+                                          </div>
+                                          <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                                            {lot.products?.code}
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">
+                                          {lot.quantity} unidades
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>{getStatusBadge(lot.status, lot.is_archived)}</TableCell>
+                                      <TableCell className="hidden md:table-cell">
+                                        <div className="text-xs sm:text-sm whitespace-nowrap">
+                                          {formatDate(lot.generated_date)}
+                                        </div>
+                                        {lot.ingress_date && (
+                                          <div className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                                            Ingreso: {formatDate(lot.ingress_date)}
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex gap-1 sm:gap-2 flex-wrap">
+                                          {lot.status === "pending" && (
+                                            <Button
+                                              size="sm"
+                                              onClick={() => updateLotStatus(lot.id, "in_inventory")}
+                                              className="bg-green-600 hover:bg-green-700 text-white text-xs whitespace-nowrap"
+                                            >
+                                              Ingresar
+                                            </Button>
+                                          )}
+                                          {lot.status === "in_inventory" && (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => updateLotStatus(lot.id, "delivered")}
+                                                disabled={!lot.sale_id}
+                                                title={
+                                                  !lot.sale_id
+                                                    ? "El lote debe estar asignado a una venta para entregarlo"
+                                                    : ""
+                                                }
+                                                className={`text-xs whitespace-nowrap ${
+                                                  !lot.sale_id
+                                                    ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
+                                                    : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                                }`}
+                                              >
+                                                Entregar
+                                              </Button>
+                                            </>
+                                          )}
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
+                                            className="text-xs whitespace-nowrap"
+                                          >
+                                            {expandedLot === lot.id ? "Ocultar" : "Ver"}
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                    {expandedLot === lot.id &&
+                                      lot.product_serials &&
+                                      lot.product_serials.length > 0 && (
+                                        <TableRow>
+                                          <TableCell colSpan={6} className="bg-muted/30">
+                                            <div className="p-3 sm:p-4">
+                                              <h4 className="font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                                                <Hash className="h-3 w-3 sm:h-4 sm:w-4" />
+                                                Números de Serie ({lot.product_serials.length})
+                                              </h4>
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                                {lot.product_serials.map((serial) => (
+                                                  <div
+                                                    key={serial.id}
+                                                    className="p-2 bg-background rounded border border-border font-mono text-xs sm:text-sm truncate"
+                                                    title={serial.serial_number}
+                                                  >
+                                                    {serial.serial_number}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                  </>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <Card>
+                    <CardContent className="text-center py-8">
+                      <div className="text-muted-foreground text-sm">
+                        {lots.length === 0
+                          ? "No hay lotes registrados"
+                          : "No se encontraron lotes con los filtros aplicados"}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </CardContent>
