@@ -63,7 +63,8 @@ export function AttendanceWidget() {
   const LUNCH_WINDOW_2_END = { hours: 14, minutes: 30 } // 2:30 PM - lunch return window ends
   const CHECKOUT_START = { hours: 17, minutes: 25 } // 5:25 PM - checkout window begins
   const CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM
-  const SATURDAY_CHECKOUT_END = { hours: 13, minutes: 0 } // 1:00 PM on Saturday
+  const SATURDAY_CHECKOUT_START = { hours: 12, minutes: 50 } // 12:50 PM - NUEVA CONSTANTE
+  const SATURDAY_CHECKOUT_END = { hours: 23, minutes: 59 } // 11:59 PM on Saturday
 
   const isWorkingDay = () => {
     const dayOfWeek = currentTime.getDay() // 0 = Sunday, 6 = Saturday
@@ -609,7 +610,7 @@ export function AttendanceWidget() {
     const currentTotalMinutes = currentHour * 60 + currentMinute
 
     if (isSaturday()) {
-      const saturdayCheckoutStart = CHECKOUT_START.hours * 60 + CHECKOUT_START.minutes
+      const saturdayCheckoutStart = SATURDAY_CHECKOUT_START.hours * 60 + SATURDAY_CHECKOUT_START.minutes
       const saturdayCheckoutEnd = SATURDAY_CHECKOUT_END.hours * 60 + SATURDAY_CHECKOUT_END.minutes
       return currentTotalMinutes >= saturdayCheckoutStart && currentTotalMinutes <= saturdayCheckoutEnd
     }
@@ -758,7 +759,7 @@ export function AttendanceWidget() {
             {actionLoading ? "Marcando..." : "Marcar Salida"}
           </Button>
           <p className="text-xs text-red-600 dark:text-red-400 text-center">
-            {isSaturday() ? "Disponible hasta las 1:00 PM" : "Disponible de 5:25 PM a 11:59 PM"}
+            {isSaturday() ? "Disponible desde las 12:50 PM" : "Disponible desde las 5:25 PM"}
           </p>
         </div>
       )
