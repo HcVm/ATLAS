@@ -52,8 +52,18 @@ import {
 import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog"
 import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
 import { ConditionalLetterButtons } from "@/components/sales/conditional-letter-buttons"
-import { LotSerialManager } from "@/components/warehouse/lot-serial-manager" // Imported LotSerialManager
-import { generateLotsForSale } from "@/lib/lot-serial-generator" // Imported lot-serial generator function
+import { LotSerialManager } from "@/components/warehouse/lot-serial-manager"
+import { generateLotsForSale } from "@/lib/lot-serial-generator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Sale {
   id: string
@@ -200,6 +210,9 @@ export default function SalesPage() {
   // New states for Lot/Serial Management
   const [showLotsDialog, setShowLotsDialog] = useState(false)
   const [lotsSale, setLotsSale] = useState<Sale | null>(null)
+
+  const [showLotConfirmDialog, setShowLotConfirmDialog] = useState(false)
+  const [pendingLotSale, setPendingLotSale] = useState<Sale | null>(null)
 
   const hasSalesAccess =
     user?.role === "admin" ||
@@ -764,15 +777,23 @@ export default function SalesPage() {
     setShowLotsDialog(true)
   }
 
-  // Handler for generating lots and serial numbers
-  const handleGenerateLots = async (sale: Sale) => {
+  const handleGenerateLots = (sale: Sale) => {
     if (!companyToUse?.id || !user?.id || generatingLots) return
 
+    // Show confirmation dialog
+    setPendingLotSale(sale)
+    setShowLotConfirmDialog(true)
+  }
+
+  const confirmGenerateLots = async () => {
+    if (!pendingLotSale || !companyToUse?.id || !user?.id) return
+
     try {
+      setShowLotConfirmDialog(false)
       setGeneratingLots(true)
       toast.info("Generando lotes y números de serie...")
 
-      await generateLotsForSale(sale.id, companyToUse.id, user.id)
+      await generateLotsForSale(pendingLotSale.id, companyToUse.id, user.id)
 
       toast.success("Lotes y números de serie generados exitosamente")
 
@@ -786,19 +807,24 @@ export default function SalesPage() {
           created_by, profiles!sales_created_by_fkey (full_name),
           payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
         `)
-        .eq("id", sale.id)
+        .eq("id", pendingLotSale.id)
         .eq("company_id", companyToUse.id)
         .single()
 
       if (!error && updatedSale) {
-        // Update the specific sale in the list
         setSales((prevSales) => prevSales.map((s) => (s.id === updatedSale.id ? updatedSale : s)))
       }
     } catch (error: any) {
       toast.error("Error al generar lotes: " + error.message)
     } finally {
       setGeneratingLots(false)
+      setPendingLotSale(null)
     }
+  }
+
+  const cancelGenerateLots = () => {
+    setShowLotConfirmDialog(false)
+    setPendingLotSale(null)
   }
 
   const filteredSales = sales.filter(
@@ -1817,6 +1843,28 @@ export default function SalesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showLotConfirmDialog} onOpenChange={setShowLotConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Generación de Lotes y Series</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="text-base font-medium text-amber-600 dark:text-amber-500">
+                Recuerda verificar que no tienes ingresos pendientes de productos antes de generar lotes y series
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Esta acción generará lotes y números de serie para la venta{" "}
+                <span className="font-semibold">#{pendingLotSale?.sale_number || "N/A"}</span> de{" "}
+                <span className="font-semibold">{pendingLotSale?.entity_name}</span>.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelGenerateLots}>Cancelar generación</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmGenerateLots}>Continuar generación de lotes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

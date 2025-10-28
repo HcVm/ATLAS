@@ -17,6 +17,7 @@ import {
   ChevronUp,
   FileText,
   Building2,
+  AlertCircle,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -24,6 +25,7 @@ import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import JsBarcode from "jsbarcode"
 import QRCode from "qrcode"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SaleWithLots {
   id: string
@@ -183,7 +185,35 @@ export default function EtiquetadoPage() {
     }
   }
 
+  const areAllSeriesDeliveredOrSold = (sale: SaleWithLots): boolean => {
+    let totalSerials = 0
+    let deliveredOrSoldSerials = 0
+
+    for (const item of sale.sale_items) {
+      for (const lot of item.product_lots) {
+        for (const serial of lot.product_serials) {
+          totalSerials++
+          if (serial.status === "delivered" || serial.status === "sold") {
+            deliveredOrSoldSerials++
+          }
+        }
+      }
+    }
+
+    return totalSerials > 0 && totalSerials === deliveredOrSoldSerials
+  }
+
   const generateBarcodesForSale = async (sale: SaleWithLots) => {
+    if (areAllSeriesDeliveredOrSold(sale)) {
+      toast({
+        title: "No se pueden generar stickers",
+        description:
+          "Todas las series de esta venta ya están entregadas o vendidas. No es posible generar stickers duplicados.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setGeneratingBarcodes(true)
       setSelectedSale(sale)
@@ -672,15 +702,35 @@ export default function EtiquetadoPage() {
                           </div>
                         )}
 
-                        <Button
-                          size="sm"
-                          onClick={() => generateBarcodesForSale(sale)}
-                          disabled={generatingBarcodes}
-                          className="w-full"
-                        >
-                          <Barcode className="h-4 w-4 mr-2" />
-                          Generar Códigos
-                        </Button>
+                        {areAllSeriesDeliveredOrSold(sale) ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="w-full">
+                                  <Button size="sm" disabled className="w-full">
+                                    <AlertCircle className="h-4 w-4 mr-2" />
+                                    Todas las series entregadas
+                                  </Button>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs text-xs">
+                                  No se pueden generar stickers porque todas las series ya están entregadas o vendidas
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => generateBarcodesForSale(sale)}
+                            disabled={generatingBarcodes}
+                            className="w-full"
+                          >
+                            <Barcode className="h-4 w-4 mr-2" />
+                            Generar Códigos
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   ))
@@ -764,15 +814,36 @@ export default function EtiquetadoPage() {
                               {new Date(sale.created_at).toLocaleDateString("es-PE")}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                onClick={() => generateBarcodesForSale(sale)}
-                                disabled={generatingBarcodes}
-                                className="text-xs whitespace-nowrap"
-                              >
-                                <Barcode className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Generar Códigos</span>
-                              </Button>
+                              {areAllSeriesDeliveredOrSold(sale) ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <Button size="sm" disabled className="text-xs whitespace-nowrap">
+                                          <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                                          <span className="hidden sm:inline">Series entregadas</span>
+                                        </Button>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="max-w-xs text-xs">
+                                        No se pueden generar stickers porque todas las series ya están entregadas o
+                                        vendidas
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => generateBarcodesForSale(sale)}
+                                  disabled={generatingBarcodes}
+                                  className="text-xs whitespace-nowrap"
+                                >
+                                  <Barcode className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                                  <span className="hidden sm:inline">Generar Códigos</span>
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                           {expandedSale === sale.id && (
