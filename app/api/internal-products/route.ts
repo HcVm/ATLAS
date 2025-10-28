@@ -95,6 +95,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
+    const { data: existingProductByName, error: existingNameError } = await supabase
+      .from("internal_products")
+      .select("id, name")
+      .eq("company_id", company_id)
+      .ilike("name", name.trim())
+      .single()
+
+    if (existingNameError && existingNameError.code !== "PGRST116") {
+      console.error("Error checking existing product by name:", existingNameError)
+      throw existingNameError
+    }
+
+    if (existingProductByName) {
+      return NextResponse.json(
+        { error: "Este producto ya existe. Por favor, usa un nombre diferente." },
+        { status: 409 },
+      )
+    }
+
     const { data: companyData, error: companyError } = await supabase
       .from("companies")
       .select("code")
