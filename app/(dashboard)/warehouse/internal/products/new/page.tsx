@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase"
 import { ChevronLeft, Save, Package } from "lucide-react"
 import Link from "next/link"
 import { useCompany } from "@/lib/company-context"
+import { InternalCategoryCreatorDialog } from "@/components/ui/internal-category-creator-dialog"
 
 interface Category {
   id: string
@@ -33,6 +34,7 @@ export default function NewInternalProductPage() {
   const [generatedCodeDisplay, setGeneratedCodeDisplay] = useState<string>(
     "Formato: EMPRESA-CATEGORÍA-AÑO-CORRELATIVO (ej: ARM-TEC-2024-001)",
   )
+  const [categorySelectOpen, setCategorySelectOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,6 +73,12 @@ export default function NewInternalProductPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCategoryCreated = (newCategory: Category) => {
+    setCategories((prev) => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)))
+    setFormData((prev) => ({ ...prev, category_id: newCategory.id }))
+    setCategorySelectOpen(false)
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -170,6 +178,8 @@ export default function NewInternalProductPage() {
     )
   }
 
+  const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
   return (
     <div className="space-y-6 mt-10">
       <div className="flex items-center justify-between">
@@ -205,9 +215,7 @@ export default function NewInternalProductPage() {
               <div>
                 <Label htmlFor="code">Código del Producto</Label>
                 <Input id="code" value={generatedCodeDisplay} readOnly disabled />
-                <p className="text-sm text-muted-foreground mt-1">
-                  El código se genera automáticamente.
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">El código se genera automáticamente.</p>
               </div>
               <div>
                 <Label htmlFor="description">Descripción</Label>
@@ -224,6 +232,8 @@ export default function NewInternalProductPage() {
                 <Select
                   value={formData.category_id}
                   onValueChange={(value) => handleSelectChange("category_id", value)}
+                  open={categorySelectOpen}
+                  onOpenChange={setCategorySelectOpen}
                   required
                 >
                   <SelectTrigger>
@@ -238,6 +248,14 @@ export default function NewInternalProductPage() {
                         </div>
                       </SelectItem>
                     ))}
+                    {companyId && (
+                      <div className="p-1">
+                        <InternalCategoryCreatorDialog
+                          companyId={companyId}
+                          onCategoryCreated={handleCategoryCreated}
+                        />
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

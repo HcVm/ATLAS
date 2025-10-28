@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -28,6 +27,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { v4 as uuidv4 } from "uuid"
+import { InternalCategoryCreatorDialog } from "@/components/ui/internal-category-creator-dialog"
 
 interface Category {
   id: number
@@ -69,6 +69,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     message: string
     movementCount?: number
   } | null>(null)
+  const [categorySelectOpen, setCategorySelectOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -84,6 +85,10 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     qr_code_hash: "",
     is_serialized: false,
   })
+
+  const handleCategoryCreated = (newCategory: Category) => {
+    setCategories((prevCategories) => [...prevCategories, newCategory])
+  }
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -353,6 +358,8 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     return <Badge variant="default">Stock normal</Badge>
   }
 
+  const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
   if (loading) {
     return (
       <div className="container mx-auto py-6">
@@ -456,6 +463,8 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
                 <Select
                   value={formData.category_id}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, category_id: value }))}
+                  open={categorySelectOpen}
+                  onOpenChange={setCategorySelectOpen}
                   required
                 >
                   <SelectTrigger>
@@ -467,6 +476,14 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
                         {category.name}
                       </SelectItem>
                     ))}
+                    {companyId && (
+                      <div className="p-1">
+                        <InternalCategoryCreatorDialog
+                          companyId={companyId}
+                          onCategoryCreated={handleCategoryCreated}
+                        />
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
