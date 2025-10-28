@@ -135,7 +135,21 @@ export default function InternalProductDetailPage() {
 
       if (productError) throw productError
 
-      setProduct(productData as Product)
+      let calculatedStock = productData.current_stock
+      if (productData?.is_serialized) {
+        const { count, error: serialCountError } = await supabase
+          .from("internal_product_serials")
+          .select("id", { count: "exact", head: true })
+          .eq("product_id", params.id)
+          .eq("status", "in_stock")
+          .eq("company_id", user?.company_id)
+
+        if (!serialCountError) {
+          calculatedStock = count || 0
+        }
+      }
+
+      setProduct({ ...productData, current_stock: calculatedStock } as Product)
 
       // If product is serialized, fetch its individual serials
       if (productData?.is_serialized) {

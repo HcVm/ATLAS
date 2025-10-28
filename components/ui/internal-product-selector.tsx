@@ -30,6 +30,7 @@ interface InternalProduct {
   internal_product_categories?: {
     name: string
   }
+  calculated_stock?: number
 }
 
 interface InternalProductSelectorProps {
@@ -87,6 +88,49 @@ export function InternalProductSelector({
   const [hasSearched, setHasSearched] = useState(false)
   const [popularProducts, setPopularProducts] = useState<InternalProduct[]>([])
 
+  const calculateSerializedStock = async (productIds: string[]) => {
+    if (productIds.length === 0) return {}
+
+    try {
+      const { data, error } = await supabase
+        .from("internal_product_serials")
+        .select("product_id")
+        .in("product_id", productIds)
+        .eq("status", "in_stock")
+
+      if (error) throw error
+
+      // Count serials per product
+      const stockCounts: Record<string, number> = {}
+      data?.forEach((serial) => {
+        stockCounts[serial.product_id] = (stockCounts[serial.product_id] || 0) + 1
+      })
+
+      return stockCounts
+    } catch (error) {
+      console.error("Error calculating serialized stock:", error)
+      return {}
+    }
+  }
+
+  const enrichProductsWithStock = async (productList: InternalProduct[]) => {
+    const serializedProducts = productList.filter((p) => p.is_serialized)
+    if (serializedProducts.length === 0) return productList
+
+    const serializedIds = serializedProducts.map((p) => p.id)
+    const stockCounts = await calculateSerializedStock(serializedIds)
+
+    return productList.map((product) => {
+      if (product.is_serialized) {
+        return {
+          ...product,
+          calculated_stock: stockCounts[product.id] || 0,
+        }
+      }
+      return product
+    })
+  }
+
   // Fetch selected product if not in current results
   const fetchSelectedProduct = useCallback(
     async (productId: string) => {
@@ -118,7 +162,9 @@ export function InternalProductSelector({
             internal_product_categories: data.internal_product_categories,
             company: data.companies,
           }
-          setSelectedProduct(formattedProduct)
+
+          const enrichedProducts = await enrichProductsWithStock([formattedProduct])
+          setSelectedProduct(enrichedProducts[0])
         } else {
           setSelectedProduct(null)
           onSelect(null)
@@ -166,7 +212,9 @@ export function InternalProductSelector({
           internal_product_categories: p.internal_product_categories,
           company: p.companies,
         }))
-        setPopularProducts(formattedProducts)
+
+        const enrichedProducts = await enrichProductsWithStock(formattedProducts)
+        setPopularProducts(enrichedProducts)
       }
     } catch (error) {
       console.error("InternalProductSelector: Error preloading popular products:", error)
@@ -231,7 +279,8 @@ export function InternalProductSelector({
           company: product.companies,
         }))
 
-        setProducts(formattedProducts)
+        const enrichedProducts = await enrichProductsWithStock(formattedProducts)
+        setProducts(enrichedProducts)
       } catch (error: any) {
         console.error("InternalProductSelector: Search error:", error)
         toast.error("Error al buscar productos: " + error.message)
@@ -274,15 +323,17 @@ export function InternalProductSelector({
     setSearchValue("")
   }
 
-  const getStockBadgeVariant = (stock: number) => {
+  const getStockBadgeVariant = (product: InternalProduct) => {
+    const stock = product.is_serialized ? (product.calculated_stock ?? 0) : product.current_stock
     if (stock <= 0) return "destructive"
     if (stock <= 10) return "secondary"
     return "outline"
   }
 
-  const getStockText = (stock: number, unit: string) => {
+  const getStockText = (product: InternalProduct) => {
+    const stock = product.is_serialized ? (product.calculated_stock ?? 0) : product.current_stock
     if (stock <= 0) return "Sin stock"
-    return `${stock} ${unit}`
+    return `${stock} ${product.unit_of_measure}`
   }
 
   const displayProducts = useMemo(() => {
@@ -324,8 +375,8 @@ export function InternalProductSelector({
                       </Badge>
                     )}
                     {showStock && (
-                      <Badge variant={getStockBadgeVariant(selectedProduct.current_stock)} className="text-xs">
-                        {getStockText(selectedProduct.current_stock, selectedProduct.unit_of_measure)}
+                      <Badge variant={getStockBadgeVariant(selectedProduct)} className="text-xs">
+                        {getStockText(selectedProduct)}
                       </Badge>
                     )}
                     {showPrice && (
@@ -380,52 +431,58 @@ export function InternalProductSelector({
                         <div className="px-2 py-1 text-xs text-muted-foreground border-b">Productos populares</div>
                       )}
 
-                      {displayProducts.map((product) => (
-                        <CommandItem
-                          key={product.id}
-                          value={`${product.id}-${product.code}-${product.name}`}
-                          onSelect={() => handleSelectProduct(product)}
-                          className="flex items-center justify-between p-3 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <Check
-                              className={cn(
-                                "h-4 w-4",
-                                selectedProduct?.id === product.id ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            <div className="flex flex-col flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{product.name}</span>
-                                {product.current_stock <= 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <Badge variant="outline" className="text-xs">
-                                  {product.code}
-                                </Badge>
-                                {product.internal_product_categories && (
+                      {displayProducts.map((product) => {
+                        const displayStock = product.is_serialized
+                          ? (product.calculated_stock ?? 0)
+                          : product.current_stock
+
+                        return (
+                          <CommandItem
+                            key={product.id}
+                            value={`${product.id}-${product.code}-${product.name}`}
+                            onSelect={() => handleSelectProduct(product)}
+                            className="flex items-center justify-between p-3 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <Check
+                                className={cn(
+                                  "h-4 w-4",
+                                  selectedProduct?.id === product.id ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              <div className="flex flex-col flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{product.name}</span>
+                                  {displayStock <= 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
                                   <Badge variant="outline" className="text-xs">
-                                    {product.internal_product_categories.name}
+                                    {product.code}
                                   </Badge>
-                                )}
-                                {selectedCompany && product.company_id !== selectedCompany.id && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {product.company.name}
+                                  {product.internal_product_categories && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {product.internal_product_categories.name}
+                                    </Badge>
+                                  )}
+                                  {selectedCompany && product.company_id !== selectedCompany.id && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      {product.company.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {showPrice && <p className="text-sm font-medium">S/ {product.cost_price.toFixed(2)}</p>}
+                                {showStock && (
+                                  <Badge variant={getStockBadgeVariant(product)} className="text-xs">
+                                    {getStockText(product)}
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                            <div className="text-right">
-                              {showPrice && <p className="text-sm font-medium">S/ {product.cost_price.toFixed(2)}</p>}
-                              {showStock && (
-                                <Badge variant={getStockBadgeVariant(product.current_stock)} className="text-xs">
-                                  {getStockText(product.current_stock, product.unit_of_measure)}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </CommandItem>
-                      ))}
+                          </CommandItem>
+                        )
+                      })}
 
                       {/* Info footer */}
                       {displayProducts.length > 0 && (

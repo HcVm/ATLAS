@@ -103,6 +103,9 @@ export async function POST(request: Request) {
 
         const productCode = productData.code
 
+        const createdSerialIds: string[] = []
+        const generatedSerialNumbers: string[] = []
+
         // Generate serial numbers for the quantity specified
         for (let i = 0; i < quantity; i++) {
           const serialNumber = generateSerialNumber(productCode, nextCorrelative + i)
@@ -142,25 +145,30 @@ export async function POST(request: Request) {
 
           if (serialError) throw serialError
 
-          movementInsertPromises.push(
-            supabase.from("internal_inventory_movements").insert({
-              product_id,
-              movement_type,
-              quantity: 1,
-              cost_price,
-              total_amount: cost_price,
-              reason,
-              notes: `${notes || ""} - Serie generada: ${serialNumber}`,
-              requested_by,
-              department_requesting,
-              supplier,
-              movement_date,
-              company_id,
-              serial_id: newSerial.id,
-              created_by: user.id,
-            }),
-          )
+          createdSerialIds.push(newSerial.id)
+          generatedSerialNumbers.push(serialNumber)
         }
+
+        const notesWithSerials = `${notes || ""} - Series generadas: ${generatedSerialNumbers.join(", ")}`
+
+        movementInsertPromises.push(
+          supabase.from("internal_inventory_movements").insert({
+            product_id,
+            movement_type,
+            quantity: quantity, // Use the actual quantity instead of 1
+            cost_price,
+            total_amount: quantity * cost_price, // Calculate total for all units
+            reason,
+            notes: notesWithSerials,
+            requested_by,
+            department_requesting,
+            supplier,
+            movement_date,
+            company_id,
+            serial_id: null, // Set to null for grouped movements
+            created_by: user.id,
+          }),
+        )
 
         // Update product stock
         productUpdatePromises.push(
@@ -215,7 +223,6 @@ export async function POST(request: Request) {
         )
       }
     } else {
-      // For non-serialized products
       const { data: movement, error: movementError } = await supabase
         .from("internal_inventory_movements")
         .insert({
