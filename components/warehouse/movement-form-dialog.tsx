@@ -66,7 +66,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
   const [entitySuggestions, setEntitySuggestions] = useState<string[]>([])
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null)
   const [showEntitySuggestions, setShowEntitySuggestions] = useState(false)
-  const [attachments, setAttachments] = useState<File[]>([])
+  const [attachments, setAttachments] = useState<Array<{ file: File; type: "factura" | "adjunto" }>>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [productComboOpen, setProductComboOpen] = useState(false)
@@ -172,7 +172,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     setShowEntitySuggestions(false)
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, attachmentType: "factura" | "adjunto") => {
     const files = Array.from(event.target.files || [])
 
     const validFiles = files.filter((file) => {
@@ -187,7 +187,8 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
       return true
     })
 
-    setAttachments((prev) => [...prev, ...validFiles])
+    const filesWithType = validFiles.map((file) => ({ file, type: attachmentType }))
+    setAttachments((prev) => [...prev, ...filesWithType])
   }
 
   const removeAttachment = (index: number) => {
@@ -200,7 +201,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
     setUploadingAttachments(true)
 
     try {
-      for (const file of attachments) {
+      for (const { file, type } of attachments) {
         const fileExt = file.name.split(".").pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${user?.id}/${fileName}`
@@ -222,6 +223,7 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
           file_url: publicUrl,
           file_size: file.size,
           file_type: file.type,
+          attachment_type: type,
           uploaded_by: user?.id,
         })
 
@@ -705,6 +707,139 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
               </div>
 
               {formData.movement_type === "entrada" && (
+                <div className="space-y-6">
+                  <h4 className="font-medium">Documentos de Entrada</h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="invoices">Subir Factura(s)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="invoices"
+                          type="file"
+                          multiple
+                          onChange={(e) => handleFileSelect(e, "factura")}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="cursor-pointer"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.getElementById("invoices") as HTMLInputElement
+                            if (input) input.click()
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          <Paperclip className="h-4 w-4 mr-2" />
+                          Seleccionar
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Máximo 10MB por archivo. Formatos: PDF, JPG, PNG</p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="attachments">Subir Adjuntos</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="attachments"
+                          type="file"
+                          multiple
+                          onChange={(e) => handleFileSelect(e, "adjunto")}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                          className="cursor-pointer"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const input = document.getElementById("attachments") as HTMLInputElement
+                            if (input) input.click()
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          <Paperclip className="h-4 w-4 mr-2" />
+                          Seleccionar
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Máximo 10MB por archivo. Formatos: PDF, Word, Excel, Imágenes
+                      </p>
+                    </div>
+                  </div>
+
+                  {attachments.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Archivos seleccionados ({attachments.length}):</Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                        {attachments.map(({ file, type }, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm truncate font-medium">{file.name}</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={type === "factura" ? "default" : "secondary"} className="text-xs">
+                                    {type === "factura" ? "Factura" : "Adjunto"}
+                                  </Badge>
+                                  <p className="text-xs text-muted-foreground">
+                                    {(file.size / 1024 / 1024).toFixed(1)} MB
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAttachment(index)}
+                              className="flex-shrink-0 h-8 w-8 p-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.movement_type !== "entrada" && (
+                <div className="space-y-2">
+                  <Label htmlFor="attachments-other">Adjuntar Documentos</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="attachments-other"
+                      type="file"
+                      multiple
+                      onChange={(e) => handleFileSelect(e, "adjunto")}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                      className="cursor-pointer"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.getElementById("attachments-other") as HTMLInputElement
+                        if (input) input.click()
+                      }}
+                      className="flex-shrink-0"
+                    >
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Seleccionar
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Máximo 10MB por archivo. Formatos: PDF, Word, Excel, Imágenes
+                  </p>
+                </div>
+              )}
+
+              {formData.movement_type === "entrada" && (
                 <div>
                   <Label htmlFor="supplier">Proveedor</Label>
                   <Input
@@ -848,64 +983,6 @@ export function MovementFormDialog({ open, onClose, onSubmit, selectedProduct }:
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="attachments">Adjuntar Documentos</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="attachments"
-                    type="file"
-                    multiple
-                    onChange={handleFileSelect}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                    className="cursor-pointer"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const input = document.getElementById("attachments") as HTMLInputElement
-                      if (input) input.click()
-                    }}
-                    className="flex-shrink-0"
-                  >
-                    <Paperclip className="h-4 w-4 mr-2" />
-                    Seleccionar
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Máximo 10MB por archivo. Formatos: PDF, Word, Excel, Imágenes
-                </p>
-              </div>
-
-              {attachments.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Archivos seleccionados ({attachments.length}):</Label>
-                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                    {attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm truncate font-medium">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                          className="flex-shrink-0 h-8 w-8 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}

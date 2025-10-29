@@ -32,6 +32,7 @@ import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
 import { createLotsForInventoryEntry } from "@/lib/lot-serial-generator"
+import InboundNotePDFGenerator from "@/components/warehouse/inbound-note-pdf-generator"
 
 interface InventoryMovement {
   id: string
@@ -56,6 +57,7 @@ interface InventoryMovement {
     name: string
     code: string
     unit_of_measure: string
+    description: string
   } | null
   profiles?: {
     full_name: string
@@ -72,6 +74,7 @@ interface MovementAttachment {
   file_url: string
   file_size: number
   file_type: string
+  attachment_type: "factura" | "adjunto"
   created_at: string
   profiles?: {
     full_name: string
@@ -81,37 +84,77 @@ interface MovementAttachment {
 const AttachmentsList = ({ movementId }: { movementId: string }) => {
   const { attachments } = useAttachments(movementId)
 
+  const invoices = attachments.filter((a) => a.attachment_type === "factura")
+  const otherAttachments = attachments.filter((a) => a.attachment_type === "adjunto")
+
   if (attachments.length === 0) return null
 
   return (
-    <div className="mt-2 space-y-1">
-      <p className="text-xs text-muted-foreground font-medium">Documentos adjuntos ({attachments.length}):</p>
-      {attachments.slice(0, 2).map((attachment) => (
-        <div key={attachment.id} className="flex items-center gap-2 p-1">
-          <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-          <a
-            href={attachment.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-600 hover:underline truncate flex-1"
-            title={attachment.file_name}
-          >
-            {attachment.file_name}
-          </a>
-          <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 hover:bg-accent"
-            onClick={() => window.open(attachment.file_url, "_blank")}
-            title="Descargar archivo"
-          >
-            <Download className="h-3 w-3" />
-          </Button>
+    <div className="mt-2 space-y-2">
+      {invoices.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Facturas ({invoices.length}):</p>
+          {invoices.slice(0, 1).map((attachment) => (
+            <div key={attachment.id} className="flex items-center gap-2 p-1">
+              <FileText className="h-3 w-3 text-orange-600 flex-shrink-0" />
+              <a
+                href={attachment.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-orange-600 hover:underline truncate flex-1"
+                title={attachment.file_name}
+              >
+                {attachment.file_name}
+              </a>
+              <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-accent"
+                onClick={() => window.open(attachment.file_url, "_blank")}
+                title="Descargar archivo"
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+          {invoices.length > 1 && (
+            <p className="text-xs text-muted-foreground">y {invoices.length - 1} factura(s) más...</p>
+          )}
         </div>
-      ))}
-      {attachments.length > 2 && (
-        <p className="text-xs text-muted-foreground">y {attachments.length - 2} archivo(s) más...</p>
+      )}
+
+      {otherAttachments.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground font-medium">Adjuntos ({otherAttachments.length}):</p>
+          {otherAttachments.slice(0, 1).map((attachment) => (
+            <div key={attachment.id} className="flex items-center gap-2 p-1">
+              <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <a
+                href={attachment.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline truncate flex-1"
+                title={attachment.file_name}
+              >
+                {attachment.file_name}
+              </a>
+              <span className="text-xs text-muted-foreground">({formatFileSize(attachment.file_size)})</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-accent"
+                onClick={() => window.open(attachment.file_url, "_blank")}
+                title="Descargar archivo"
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+          {otherAttachments.length > 1 && (
+            <p className="text-xs text-muted-foreground">y {otherAttachments.length - 1} adjunto(s) más...</p>
+          )}
+        </div>
       )}
     </div>
   )
@@ -201,7 +244,8 @@ export default function InventoryPage() {
             id,
             name,
             code,
-            unit_of_measure
+            unit_of_measure,
+            description
           ),
           profiles!inventory_movements_created_by_fkey (
             full_name
@@ -845,27 +889,37 @@ export default function InventoryPage() {
                           <AttachmentsList movementId={movement.id} />
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-border text-foreground hover:bg-accent bg-transparent"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditDialog(movement)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Editar Movimiento
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openAttachmentsDialog(movement)}>
-                                <Paperclip className="h-4 w-4 mr-2" />
-                                Gestionar Archivos
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center gap-2">
+                            {movement.movement_type === "entrada" && (
+                              <InboundNotePDFGenerator
+                                movement={movement}
+                                companyCode={selectedCompany?.code || ""}
+                                companyName={selectedCompany?.name || ""}
+                                companyLogo={selectedCompany?.logo_url}
+                              />
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-border text-foreground hover:bg-accent bg-transparent"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditDialog(movement)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Editar Movimiento
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAttachmentsDialog(movement)}>
+                                  <Paperclip className="h-4 w-4 mr-2" />
+                                  Gestionar Archivos
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

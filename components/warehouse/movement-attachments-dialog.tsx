@@ -32,6 +32,7 @@ interface MovementAttachment {
   file_url: string
   file_size: number
   file_type: string
+  attachment_type: "factura" | "adjunto"
   created_at: string
   profiles?: {
     full_name: string
@@ -72,7 +73,7 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
   const { user } = useAuth()
   const { toast } = useToast()
   const [attachments, setAttachments] = useState<MovementAttachment[]>([])
-  const [newFiles, setNewFiles] = useState<File[]>([])
+  const [newFiles, setNewFiles] = useState<Array<{ file: File; type: "factura" | "adjunto" }>>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -94,6 +95,7 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           file_url,
           file_size,
           file_type,
+          attachment_type,
           created_at,
           profiles:uploaded_by (
             full_name
@@ -117,10 +119,9 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, attachmentType: "factura" | "adjunto") => {
     const files = Array.from(event.target.files || [])
 
-    // Validar tamaño de archivos (10MB máximo)
     const validFiles = files.filter((file) => {
       if (file.size > 10 * 1024 * 1024) {
         toast({
@@ -133,7 +134,8 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
       return true
     })
 
-    setNewFiles((prev) => [...prev, ...validFiles])
+    const filesWithType = validFiles.map((file) => ({ file, type: attachmentType }))
+    setNewFiles((prev) => [...prev, ...filesWithType])
   }
 
   const removeNewFile = (index: number) => {
@@ -146,13 +148,11 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
     setUploading(true)
 
     try {
-      for (const file of newFiles) {
-        // Generar nombre único para el archivo
+      for (const { file, type } of newFiles) {
         const fileExt = file.name.split(".").pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${user?.id}/${fileName}`
 
-        // Subir archivo a Supabase Storage
         const { error: uploadError } = await supabase.storage.from("inventory-attachments").upload(filePath, file)
 
         if (uploadError) {
@@ -160,18 +160,17 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           throw uploadError
         }
 
-        // Obtener URL pública del archivo
         const {
           data: { publicUrl },
         } = supabase.storage.from("inventory-attachments").getPublicUrl(filePath)
 
-        // Crear registro en la base de datos
         const { error: dbError } = await supabase.from("inventory_movement_attachments").insert({
           movement_id: movementId,
           file_name: file.name,
           file_url: publicUrl,
           file_size: file.size,
           file_type: file.type,
+          attachment_type: type,
           uploaded_by: user?.id,
         })
 
@@ -186,7 +185,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
         description: `Se subieron ${newFiles.length} archivo(s) correctamente.`,
       })
 
-      // Limpiar archivos nuevos y recargar la lista
       setNewFiles([])
       await fetchAttachments()
     } catch (error: any) {
@@ -201,54 +199,19 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
     }
   }
 
-  const deleteAttachment = async (attachmentId: string, fileUrl: string) => {
-    try {
-      // Extraer el path del archivo de la URL
-      const urlParts = fileUrl.split("/")
-      const fileName = urlParts[urlParts.length - 1]
-      const userId = urlParts[urlParts.length - 2]
-      const filePath = `${userId}/${fileName}`
-
-      // Eliminar archivo del storage
-      const { error: storageError } = await supabase.storage.from("inventory-attachments").remove([filePath])
-
-      if (storageError) {
-        console.warn("Error deleting file from storage:", storageError)
-        // Continuar aunque falle el borrado del storage
-      }
-
-      // Eliminar registro de la base de datos
-      const { error: dbError } = await supabase.from("inventory_movement_attachments").delete().eq("id", attachmentId)
-
-      if (dbError) throw dbError
-
-      toast({
-        title: "Archivo eliminado",
-        description: "El archivo se eliminó correctamente.",
-      })
-
-      // Recargar la lista
-      await fetchAttachments()
-    } catch (error: any) {
-      console.error("Error deleting attachment:", error)
-      toast({
-        title: "Error",
-        description: "Error al eliminar el archivo adjunto.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const replaceAttachment = async (attachmentId: string, oldFileUrl: string, newFile: File) => {
+  const replaceAttachment = async (
+    attachmentId: string,
+    oldFileUrl: string,
+    newFile: File,
+    attachmentType: "factura" | "adjunto",
+  ) => {
     try {
       setUploading(true)
 
-      // Generar nombre único para el nuevo archivo
       const fileExt = newFile.name.split(".").pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `${user?.id}/${fileName}`
 
-      // Subir nuevo archivo a Supabase Storage
       const { error: uploadError } = await supabase.storage.from("inventory-attachments").upload(filePath, newFile)
 
       if (uploadError) {
@@ -256,12 +219,10 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
         throw uploadError
       }
 
-      // Obtener URL pública del nuevo archivo
       const {
         data: { publicUrl },
       } = supabase.storage.from("inventory-attachments").getPublicUrl(filePath)
 
-      // Actualizar registro en la base de datos
       const { error: dbError } = await supabase
         .from("inventory_movement_attachments")
         .update({
@@ -269,6 +230,7 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           file_url: publicUrl,
           file_size: newFile.size,
           file_type: newFile.type,
+          attachment_type: attachmentType,
           uploaded_by: user?.id,
           created_at: new Date().toISOString(),
         })
@@ -276,7 +238,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
 
       if (dbError) throw dbError
 
-      // Eliminar archivo anterior del storage
       const oldUrlParts = oldFileUrl.split("/")
       const oldFileName = oldUrlParts[oldUrlParts.length - 1]
       const oldUserId = oldUrlParts[oldUrlParts.length - 2]
@@ -286,7 +247,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
 
       if (deleteError) {
         console.warn("Error deleting old file from storage:", deleteError)
-        // No fallar si no se puede eliminar el archivo anterior
       }
 
       toast({
@@ -294,7 +254,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
         description: "El archivo se reemplazó correctamente.",
       })
 
-      // Recargar la lista
       await fetchAttachments()
     } catch (error: any) {
       console.error("Error replacing attachment:", error)
@@ -305,6 +264,39 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
       })
     } finally {
       setUploading(false)
+    }
+  }
+
+  const deleteAttachment = async (attachmentId: string, fileUrl: string) => {
+    try {
+      const urlParts = fileUrl.split("/")
+      const fileName = urlParts[urlParts.length - 1]
+      const userId = urlParts[urlParts.length - 2]
+      const filePath = `${userId}/${fileName}`
+
+      const { error: storageError } = await supabase.storage.from("inventory-attachments").remove([filePath])
+
+      if (storageError) {
+        console.warn("Error deleting file from storage:", storageError)
+      }
+
+      const { error: dbError } = await supabase.from("inventory_movement_attachments").delete().eq("id", attachmentId)
+
+      if (dbError) throw dbError
+
+      toast({
+        title: "Archivo eliminado",
+        description: "El archivo se eliminó correctamente.",
+      })
+
+      await fetchAttachments()
+    } catch (error: any) {
+      console.error("Error deleting attachment:", error)
+      toast({
+        title: "Error",
+        description: "Error al eliminar el archivo adjunto.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -353,7 +345,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           </DialogTitle>
         </DialogHeader>
 
-        {/* Información completa del movimiento */}
         <Card className="bg-muted/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -363,7 +354,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {/* Información básica */}
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground">TIPO DE MOVIMIENTO</Label>
@@ -411,9 +401,7 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                 </div>
               </div>
 
-              {/* Información específica del tipo de movimiento */}
               <div className="space-y-3">
-                {/* Información de precios (para salidas) */}
                 {movementInfo.movement_type === "salida" && (movementInfo.sale_price || movementInfo.total_amount) && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">INFORMACIÓN DE VENTA</Label>
@@ -436,7 +424,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   </div>
                 )}
 
-                {/* Orden de compra */}
                 {movementInfo.purchase_order_number && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">ORDEN DE COMPRA</Label>
@@ -444,7 +431,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   </div>
                 )}
 
-                {/* Información del cliente/destino */}
                 {movementInfo.destination_entity_name && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">CLIENTE/ENTIDAD DESTINO</Label>
@@ -459,7 +445,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   </div>
                 )}
 
-                {/* Departamento de destino */}
                 {movementInfo.peru_departments?.name && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">DEPARTAMENTO DESTINO</Label>
@@ -467,7 +452,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   </div>
                 )}
 
-                {/* Proveedor */}
                 {movementInfo.supplier && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">PROVEEDOR</Label>
@@ -475,7 +459,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   </div>
                 )}
 
-                {/* Motivo del ajuste */}
                 {movementInfo.reason && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">MOTIVO</Label>
@@ -485,7 +468,6 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
               </div>
             </div>
 
-            {/* Notas adicionales */}
             {movementInfo.notes && (
               <div className="mt-4 pt-4 border-t">
                 <Label className="text-xs font-medium text-muted-foreground">NOTAS ADICIONALES</Label>
@@ -496,122 +478,247 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
         </Card>
 
         <div className="space-y-6">
-          {/* Archivos existentes */}
           <div>
-            <h3 className="text-lg font-medium mb-4">Archivos Adjuntos ({attachments.length})</h3>
+            <h3 className="text-lg font-medium mb-4">
+              Facturas ({attachments.filter((a) => a.attachment_type === "factura").length})
+            </h3>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Cargando archivos...</div>
-            ) : attachments.length > 0 ? (
+            ) : attachments.filter((a) => a.attachment_type === "factura").length > 0 ? (
               <div className="space-y-3">
-                {attachments.map((attachment) => (
-                  <Card key={attachment.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{attachment.file_name}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{attachment.file_type}</span>
-                            <span>{formatFileSize(attachment.file_size)}</span>
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              <span>{attachment.profiles?.full_name || "Usuario eliminado"}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatDate(attachment.created_at)}</span>
+                {attachments
+                  .filter((a) => a.attachment_type === "factura")
+                  .map((attachment) => (
+                    <Card key={attachment.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{attachment.file_name}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>{attachment.file_type}</span>
+                              <span>{formatFileSize(attachment.file_size)}</span>
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>{attachment.profiles?.full_name || "Usuario eliminado"}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(attachment.created_at)}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(attachment.file_url, "_blank")}
-                          title="Descargar archivo"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Label htmlFor={`replace-${attachment.id}`} className="cursor-pointer">
-                          <Button variant="outline" size="sm" asChild>
-                            <span title="Reemplazar archivo">
-                              <Upload className="h-4 w-4" />
-                            </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(attachment.file_url, "_blank")}
+                            title="Descargar archivo"
+                          >
+                            <Download className="h-4 w-4" />
                           </Button>
-                        </Label>
-                        <Input
-                          id={`replace-${attachment.id}`}
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              if (file.size > 10 * 1024 * 1024) {
-                                toast({
-                                  title: "Archivo muy grande",
-                                  description: "El archivo excede el límite de 10MB.",
-                                  variant: "destructive",
-                                })
-                                return
-                              }
-                              replaceAttachment(attachment.id, attachment.file_url, file)
-                            }
-                            e.target.value = ""
-                          }}
-                        />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" title="Eliminar archivo">
-                              <Trash2 className="h-4 w-4 text-red-600" />
+                          <Label htmlFor={`replace-invoice-${attachment.id}`} className="cursor-pointer">
+                            <Button variant="outline" size="sm" asChild>
+                              <span title="Reemplazar archivo">
+                                <Upload className="h-4 w-4" />
+                              </span>
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar archivo?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer. El archivo "{attachment.file_name}" será eliminado
-                                permanentemente.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteAttachment(attachment.id, attachment.file_url)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                          </Label>
+                          <Input
+                            id={`replace-invoice-${attachment.id}`}
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  toast({
+                                    title: "Archivo muy grande",
+                                    description: "El archivo excede el límite de 10MB.",
+                                    variant: "destructive",
+                                  })
+                                  return
+                                }
+                                replaceAttachment(attachment.id, attachment.file_url, file, "factura")
+                              }
+                              e.target.value = ""
+                            }}
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" title="Eliminar archivo">
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar factura?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción no se puede deshacer. La factura "{attachment.file_name}" será eliminada
+                                  permanentemente.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteAttachment(attachment.id, attachment.file_url)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay archivos adjuntos para este movimiento
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No hay facturas para este movimiento</div>
             )}
           </div>
 
-          {/* Agregar nuevos archivos */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">
+              Adjuntos ({attachments.filter((a) => a.attachment_type === "adjunto").length})
+            </h3>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Cargando archivos...</div>
+            ) : attachments.filter((a) => a.attachment_type === "adjunto").length > 0 ? (
+              <div className="space-y-3">
+                {attachments
+                  .filter((a) => a.attachment_type === "adjunto")
+                  .map((attachment) => (
+                    <Card key={attachment.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{attachment.file_name}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>{attachment.file_type}</span>
+                              <span>{formatFileSize(attachment.file_size)}</span>
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>{attachment.profiles?.full_name || "Usuario eliminado"}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(attachment.created_at)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(attachment.file_url, "_blank")}
+                            title="Descargar archivo"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Label htmlFor={`replace-attachment-${attachment.id}`} className="cursor-pointer">
+                            <Button variant="outline" size="sm" asChild>
+                              <span title="Reemplazar archivo">
+                                <Upload className="h-4 w-4" />
+                              </span>
+                            </Button>
+                          </Label>
+                          <Input
+                            id={`replace-attachment-${attachment.id}`}
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  toast({
+                                    title: "Archivo muy grande",
+                                    description: "El archivo excede el límite de 10MB.",
+                                    variant: "destructive",
+                                  })
+                                  return
+                                }
+                                replaceAttachment(attachment.id, attachment.file_url, file, "adjunto")
+                              }
+                              e.target.value = ""
+                            }}
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" title="Eliminar archivo">
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar adjunto?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción no se puede deshacer. El adjunto "{attachment.file_name}" será eliminado
+                                  permanentemente.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteAttachment(attachment.id, attachment.file_url)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">No hay adjuntos para este movimiento</div>
+            )}
+          </div>
+
           <div className="border-t pt-6">
             <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
               <Plus className="h-5 w-5" />
               Agregar Nuevos Archivos
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <div>
+                <Label htmlFor="new-invoices" className="cursor-pointer">
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium text-foreground">Subir Factura(s)</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Haz clic para seleccionar o arrastra y suelta aquí
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG (máx. 10MB cada uno)</p>
+                  </div>
+                </Label>
+                <Input
+                  id="new-invoices"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileSelect(e, "factura")}
+                />
+              </div>
+
               <div>
                 <Label htmlFor="new-attachments" className="cursor-pointer">
                   <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
                     <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Haz clic para seleccionar archivos o arrastra y suelta aquí
+                    <p className="text-sm font-medium text-foreground">Subir Adjuntos</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Haz clic para seleccionar o arrastra y suelta aquí
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. 10MB cada uno)
@@ -624,24 +731,28 @@ export function MovementAttachmentsDialog({ open, onClose, movementId, movementI
                   multiple
                   className="hidden"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                  onChange={handleFileSelect}
+                  onChange={(e) => handleFileSelect(e, "adjunto")}
                 />
               </div>
 
-              {/* Lista de archivos nuevos seleccionados */}
               {newFiles.length > 0 && (
                 <div className="space-y-2">
                   <Label>Archivos seleccionados ({newFiles.length}):</Label>
                   <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                    {newFiles.map((file, index) => (
+                    {newFiles.map(({ file, type }, index) => (
                       <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm truncate font-medium">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {file.type} • {formatFileSize(file.size)}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={type === "factura" ? "default" : "secondary"} className="text-xs">
+                                {type === "factura" ? "Factura" : "Adjunto"}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground">
+                                {file.type} • {formatFileSize(file.size)}
+                              </p>
+                            </div>
                           </div>
                         </div>
                         <Button
