@@ -36,6 +36,7 @@ import {
   FileCheck,
   UserCheck,
   Barcode,
+  Wrench,
 } from "lucide-react"
 
 import {
@@ -174,6 +175,22 @@ const menuSections = {
         roles: ["admin", "supervisor", "user"],
         departments: ["ventas", "administración", "administracion", "operaciones", "jefatura de ventas"],
       },
+      {
+        title: "Operaciones Manuales",
+        url: "/manual-operations",
+        icon: Wrench,
+        roles: ["admin", "supervisor", "user"],
+        departments: [
+          "ventas",
+          "administración",
+          "administracion",
+          "operaciones",
+          "jefatura de ventas",
+          "contabilidad",
+          "acuerdos marco",
+          "acuerdos",
+        ],
+      },
     ],
   },
   warehouse: {
@@ -242,6 +259,7 @@ const menuSections = {
         departments: [
           "almacén",
           "almacen",
+          "contabilidad",
           "administración",
           "administracion",
           "operaciones",

@@ -23,9 +23,10 @@ export interface CCILetterData {
   clientFiscalAddress?: string // Nueva dirección fiscal
 
   // Información adicional
-  ocam: string
-  siaf: string
-  physical_order: string
+  ocam?: string | null
+  oc?: string | null
+  siaf?: string | null
+  physical_order?: string | null
 
   // Creado por
   createdBy: string
@@ -353,8 +354,214 @@ const createCCILetterHTML = (
   return createStandardHTML(data, currentDate)
 }
 
+const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+
+  let bankingInfoRows = `
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">RUC:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">
+        ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.cci || "N/A"}
+      </td>
+    </tr>
+  `
+
+  if (data.ocam) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
+    </tr>
+    `
+  }
+
+  if (data.oc) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">OC:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.oc}</td>
+    </tr>
+    `
+  }
+
+  if (data.physical_order) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+    </tr>
+    `
+  }
+
+  if (data.siaf) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
+      <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
+    </tr>
+    `
+  }
+
+  return `
+    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
+
+      <!-- Hoja membretada como fondo -->
+      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+        <img src="${letterheadBase64}" alt="Hoja Membretada" style="width: 100%; height: 100%; object-fit: cover;" />
+      </div>
+
+      <!-- Contenido sobre la hoja membretada - Ajustado exactamente a las áreas de la plantilla -->
+      <div style="position: relative; z-index: 2; padding: 0; margin: 0; width: 100%; height: 100%;">
+
+        <!-- Área de fecha - Posicionada en la esquina superior derecha -->
+        <div style="position: absolute; top: 40mm; right: 20mm; text-align: right;">
+          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
+        </div>
+
+        <!-- Título de la carta -->
+        <div style="position: absolute; top: 50mm; left: 0; right: 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px;">CARTA DE AUTORIZACIÓN</h1>
+        </div>
+
+        <!-- Área del destinatario - Posicionada exactamente donde está en la plantilla -->
+        <div style="position: absolute; top: 60mm; left: 20mm; right: 20mm;">
+          <div style="margin-bottom: 8mm;">
+            <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
+            <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
+            <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
+            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
+          </div>
+          
+          <p style="margin: 8mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
+        </div>
+
+        <!-- Contenido principal - Posicionado después del área del destinatario -->
+        <div style="position: absolute; top: 100mm; left: 20mm; right: 20mm; line-height: 1.4;">
+          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Por medio de la presente, comunico a usted, que la entidad bancaria, número de cuenta y el 
+            respectivo Código de Cuenta Interbancario (CCI) de la empresa que represento es la siguiente:
+          </p>
+
+          <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
+          <div style="margin: 8mm 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+              ${bankingInfoRows}
+            </table>
+          </div>
+
+          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Se certifica que el número de cuenta bancaria informado se encuentra vinculado al RUC 
+            indicado, conforme a los datos registrados en el sistema financiero nacional al momento de su 
+            apertura.
+          </p>
+
+          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Asimismo, dejo constancia que la factura a ser emitida por mi representada, una vez cumplida o 
+            atendida la correspondiente Orden de Compra y/o de Servicio o las prestaciones en bienes y/o 
+            servicios materia del contrato quedará cancelada para todos sus efectos mediante la sola 
+            acreditación del importe de la referida factura a favor de la cuenta en la entidad bancaria a que 
+            se refiere el primer párrafo de la presente.
+          </p>
+        </div>
+
+        <!-- Área de despedida y firma - Posicionada en la parte inferior -->
+        <div style="position: absolute; bottom: 30mm; left: 20mm; right: 20mm;">
+          <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
+          
+        </div>
+      </div>
+    </div>
+  `
+}
+
 const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
   const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+
+  let bankingInfoRows = `
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">RUC:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">
+        ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.cci || "N/A"}
+      </td>
+    </tr>
+  `
+
+  if (data.ocam) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
+    </tr>
+    `
+  }
+
+  if (data.oc) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">OC:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.oc}</td>
+    </tr>
+    `
+  }
+
+  if (data.physical_order) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
+    </tr>
+    `
+  }
+
+  if (data.siaf) {
+    bankingInfoRows += `
+    <tr>
+      <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
+      <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
+    </tr>
+    `
+  }
+
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
@@ -402,44 +609,7 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
           <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
           <div style="margin: 8mm 0;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">RUC:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">
-                  ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                  ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                  ${data.bankingInfo?.bankAccount?.cci || "N/A"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
-                <td style="padding: 3mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
-              </tr>
-              <tr>
-                <td style="padding: 2mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
-                <td style="padding: 3mm 6mm;olor: #1a1a1a; font-weight: 700;">${data.siaf}</td>
-              </tr>
+              ${bankingInfoRows}
             </table>
           </div>
 
@@ -468,120 +638,82 @@ const createAGLELetterheadHTML = (data: CCILetterData, letterheadBase64: string,
   `
 }
 
-// Plantilla específica para ARM
-const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
-  return `
-    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
-
-      <!-- Hoja membretada como fondo -->
-      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
-        <img src="${letterheadBase64}" alt="Hoja Membretada" style="width: 100%; height: 100%; object-fit: cover;" />
-      </div>
-
-      <!-- Contenido sobre la hoja membretada - Ajustado exactamente a las áreas de la plantilla -->
-      <div style="position: relative; z-index: 2; padding: 0; margin: 0; width: 100%; height: 100%;">
-
-        <!-- Área de fecha - Posicionada en la esquina superior derecha -->
-        <div style="position: absolute; top: 40mm; right: 20mm; text-align: right;">
-          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
-        </div>
-
-        <!-- Título de la carta -->
-        <div style="position: absolute; top: 50mm; left: 0; right: 0; text-align: center;">
-          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px;">CARTA DE AUTORIZACIÓN</h1>
-        </div>
-
-        <!-- Área del destinatario - Posicionada exactamente donde está en la plantilla -->
-        <div style="position: absolute; top: 60mm; left: 20mm; right: 20mm;">
-          <div style="margin-bottom: 8mm;">
-            <p style="margin: 0 0 4mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
-            <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
-            <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
-            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
-          </div>
-          
-          <p style="margin: 8mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
-        </div>
-
-        <!-- Contenido principal - Posicionado después del área del destinatario -->
-        <div style="position: absolute; top: 100mm; left: 20mm; right: 20mm; line-height: 1.4;">
-          <p style="margin: 0 0 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
-            Por medio de la presente, comunico a usted, que la entidad bancaria, número de cuenta y el 
-            respectivo Código de Cuenta Interbancario (CCI) de la empresa que represento es la siguiente:
-          </p>
-
-          <!-- Información bancaria en tabla simple sin fondos que compitan con la plantilla -->
-          <div style="margin: 8mm 0;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666; width: 30%;">EMPRESA:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">RUC:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ENTIDAD BANCARIA:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">
-                  ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">NÚMERO DE CUENTA:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                  ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">CÓDIGO CCI:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                  ${data.bankingInfo?.bankAccount?.cci || "N/A"}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">OCAM:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.ocam}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">ORDEN FÍSICA:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.physical_order}</td>
-              </tr>
-              <tr>
-                <td style="padding: 4mm 6mm; font-weight: 600; color: #666;">SIAF:</td>
-                <td style="padding: 4mm 6mm; color: #1a1a1a; font-weight: 700;">${data.siaf}</td>
-              </tr>
-            </table>
-          </div>
-
-          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
-            Se certifica que el número de cuenta bancaria informado se encuentra vinculado al RUC 
-            indicado, conforme a los datos registrados en el sistema financiero nacional al momento de su 
-            apertura.
-          </p>
-
-          <p style="margin: 6mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
-            Asimismo, dejo constancia que la factura a ser emitida por mi representada, una vez cumplida o 
-            atendida la correspondiente Orden de Compra y/o de Servicio o las prestaciones en bienes y/o 
-            servicios materia del contrato quedará cancelada para todos sus efectos mediante la sola 
-            acreditación del importe de la referida factura a favor de la cuenta en la entidad bancaria a que 
-            se refiere el primer párrafo de la presente.
-          </p>
-        </div>
-
-        <!-- Área de despedida y firma - Posicionada en la parte inferior -->
-        <div style="position: absolute; bottom: 30mm; left: 20mm; right: 20mm;">
-          <p style="margin: 0 0 15mm 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
-          
-        </div>
-      </div>
-    </div>
-  `
-}
-
 const createStandardHTML = (data: CCILetterData, currentDate: string): string => {
   const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+
+  const bankingInfoRows = `
+    <div>
+      <div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">EMPRESA:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</p>
+      </div>
+      
+      <div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">RUC:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</p>
+      </div>
+      
+      <div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">ENTIDAD BANCARIA:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">
+          ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
+        </p>
+      </div>
+    </div>
+    
+    <div>
+      <div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">NÚMERO DE CUENTA:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+          ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">CÓDIGO CCI:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700; font-family: monospace;">
+          ${data.bankingInfo?.bankAccount?.cci || "N/A"}
+        </p>
+      </div>
+      
+      ${
+        data.ocam
+          ? `<div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">OCAM:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.ocam}</p>
+      </div>`
+          : ""
+      }
+      
+      ${
+        data.oc
+          ? `<div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">OC:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.oc}</p>
+      </div>`
+          : ""
+      }
+      
+      ${
+        data.physical_order
+          ? `<div style="margin-bottom: 4mm;">
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">ORDEN FÍSICA:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.physical_order}</p>
+      </div>`
+          : ""
+      }
+      
+      ${
+        data.siaf
+          ? `<div>
+        <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">SIAF:</p>
+        <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.siaf}</p>
+      </div>`
+          : ""
+      }
+    </div>
+  `
+
   return `
     <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 15mm; margin: 0;">
 
@@ -687,50 +819,7 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
           
           <div style="padding: 10mm;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6mm;">
-              <div>
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">EMPRESA:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.companyName || "N/A"}</p>
-                </div>
-                
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">RUC:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.companyRuc || "N/A"}</p>
-                </div>
-                
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">ENTIDAD BANCARIA:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">
-                    ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
-                  </p>
-                </div>
-              </div>
-              
-              <div>
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">NÚMERO DE CUENTA:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                    ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
-                  </p>
-                </div>
-                
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">CÓDIGO CCI:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700; font-family: monospace;">
-                    ${data.bankingInfo?.bankAccount?.cci || "N/A"}
-                  </p>
-                </div>
-                
-                <div style="margin-bottom: 4mm;">
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">OCAM:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.ocam}</p>
-                </div>
-                
-                <div>
-                  <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">SIAF:</p>
-                  <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.siaf}</p>
-                </div>
-              </div>
+              ${bankingInfoRows}
             </div>
           </div>
         </div>
