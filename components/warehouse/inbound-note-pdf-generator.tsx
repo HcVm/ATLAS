@@ -109,6 +109,7 @@ export default function InboundNotePDFGenerator({
                 height: 297mm;
                 padding: 10mm;
                 background: white;
+                
               }
               
               .header {
@@ -184,7 +185,9 @@ export default function InboundNotePDFGenerator({
                 color: white;
                 background: linear-gradient(90deg, #8B3A1F 0%, #A0451F 100%);
                 padding: 8px 12px;
-                border-left: 5px solid #D4AF37;
+                border-left: 6px solid #D4AF37;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
                 margin-bottom: 15px;
                 letter-spacing: 0.5px;
               }
@@ -227,6 +230,9 @@ export default function InboundNotePDFGenerator({
               .product-table thead {
                 background: linear-gradient(90deg, #8B3A1F 0%, #A0451F 100%);
                 color: white;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                
               }
               
               .product-table th {
