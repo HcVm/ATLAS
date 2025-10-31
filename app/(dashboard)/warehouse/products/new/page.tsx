@@ -52,6 +52,9 @@ interface ProductForm {
   notes: string
   is_active: boolean
   image_url: string | null
+  total_height: number
+  total_width: number
+  depth: number
 }
 
 export default function NewProductPage() {
@@ -81,6 +84,9 @@ export default function NewProductPage() {
     notes: "",
     is_active: true,
     image_url: null,
+    total_height: 0,
+    total_width: 0,
+    depth: 0,
   })
 
   useEffect(() => {
@@ -228,6 +234,12 @@ export default function NewProductPage() {
       return
     }
 
+    // Validar que las dimensiones no sean negativas
+    if (form.total_height < 0 || form.total_width < 0 || form.depth < 0) {
+      toast.error("Las dimensiones no pueden ser negativas")
+      return
+    }
+
     // Validar URL de ficha técnica si se proporciona
     if (form.ficha_tecnica.trim() && !isValidUrl(form.ficha_tecnica.trim())) {
       toast.error("La URL de la ficha técnica no es válida")
@@ -269,6 +281,9 @@ export default function NewProductPage() {
         image_url: form.image_url,
         company_id: user.company_id,
         created_by: user.id,
+        total_height: form.total_height || null,
+        total_width: form.total_width || null,
+        depth: form.depth || null,
       }
 
       console.log("Inserting product data:", productData)
@@ -583,6 +598,57 @@ export default function NewProductPage() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Dimensiones del Producto */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Dimensiones del Producto</CardTitle>
+                <CardDescription>Especificaciones de tamaño (opcional)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="total_height">Alto Total (cm)</Label>
+                    <Input
+                      id="total_height"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.total_height}
+                      onChange={(e) => updateForm("total_height", Number.parseFloat(e.target.value) || 0)}
+                      placeholder="Altura en centímetros"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="total_width">Ancho Total (cm)</Label>
+                    <Input
+                      id="total_width"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.total_width}
+                      onChange={(e) => updateForm("total_width", Number.parseFloat(e.target.value) || 0)}
+                      placeholder="Ancho en centímetros"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depth">Profundidad (cm)</Label>
+                    <Input
+                      id="depth"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.depth}
+                      onChange={(e) => updateForm("depth", Number.parseFloat(e.target.value) || 0)}
+                      placeholder="Profundidad en centímetros"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Estos campos son opcionales. Ingresa las medidas en centímetros.
+                </p>
               </CardContent>
             </Card>
 

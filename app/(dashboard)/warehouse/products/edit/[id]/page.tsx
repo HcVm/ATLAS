@@ -38,6 +38,9 @@ interface Product {
   brand_id: string | null
   category_id: string | null
   image_url: string | null
+  total_height: number | null
+  total_width: number | null
+  depth: number | null
 }
 
 interface Brand {
@@ -84,6 +87,9 @@ export default function EditProductPage() {
     brand_id: "",
     category_id: "",
     image_url: "",
+    total_height: 0,
+    total_width: 0,
+    depth: 0,
   })
 
   useEffect(() => {
@@ -210,6 +216,9 @@ export default function EditProductPage() {
         brand_id: productData.brand_id || "",
         category_id: productData.category_id || "",
         image_url: productData.image_url || "",
+        total_height: productData.total_height || 0,
+        total_width: productData.total_width || 0,
+        depth: productData.depth || 0,
       })
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -310,6 +319,9 @@ export default function EditProductPage() {
         category_id: formData.category_id || null,
         image_url: formData.image_url || null,
         updated_at: new Date().toISOString(),
+        total_height: formData.total_height || null,
+        total_width: formData.total_width || null,
+        depth: formData.depth || null,
       }
 
       const { error } = await supabase
@@ -616,6 +628,56 @@ export default function EditProductPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Dimensiones del Producto</CardTitle>
+              <CardDescription>Especificaciones de tamaño (opcional)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="total_height">Alto Total (cm)</Label>
+                  <Input
+                    id="total_height"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.total_height}
+                    onChange={(e) => setFormData({ ...formData, total_height: Number.parseFloat(e.target.value) || 0 })}
+                    placeholder="Altura en centímetros"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="total_width">Ancho Total (cm)</Label>
+                  <Input
+                    id="total_width"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.total_width}
+                    onChange={(e) => setFormData({ ...formData, total_width: Number.parseFloat(e.target.value) || 0 })}
+                    placeholder="Ancho en centímetros"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="depth">Profundidad (cm)</Label>
+                  <Input
+                    id="depth"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.depth}
+                    onChange={(e) => setFormData({ ...formData, depth: Number.parseFloat(e.target.value) || 0 })}
+                    placeholder="Profundidad en centímetros"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Estos campos son opcionales. Ingresa las medidas en centímetros.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Stock y Precios</CardTitle>
               <CardDescription>Información de inventario y precios</CardDescription>
             </CardHeader>
@@ -623,14 +685,15 @@ export default function EditProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="current_stock">Stock actual</Label>
-                  <Input disabled
+                  <Input
+                    disabled
                     id="current_stock"
                     type="number"
                     min="0"
                     step="0.01"
                     value={formData.current_stock}
                     onChange={(e) =>
-                      setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 }) 
+                      setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 })
                     }
                   />
                 </div>
