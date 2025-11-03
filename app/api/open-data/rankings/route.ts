@@ -3,39 +3,60 @@ import { createServerClient } from "@/lib/supabase-server"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
-  const type = searchParams.get("type") || "products"
+  const type = searchParams.get("type") || "productos"
   const acuerdo = searchParams.get("acuerdo")
   const categoria = searchParams.get("categoria")
   const catalogo = searchParams.get("catalogo")
   const fechaInicio = searchParams.get("fechaInicio")
   const fechaFin = searchParams.get("fechaFin")
+  const period = searchParams.get("period") || "6months"
   const limit = Number.parseInt(searchParams.get("limit") || "50")
 
   const supabase = createServerClient()
 
+  console.log(`[Rankings API] Fetching: type=${type}, acuerdo=${acuerdo}, catalogo=${catalogo}, period=${period}`)
+
   try {
-    console.log(`Fetching rankings: type=${type}, acuerdo=${acuerdo}, limit=${limit}`)
+    const now = new Date()
+    const startDate = new Date()
+
+    switch (period) {
+      case "3months":
+        startDate.setMonth(now.getMonth() - 3)
+        break
+      case "1year":
+        startDate.setFullYear(now.getFullYear() - 1)
+        break
+      default: // 6months
+        startDate.setMonth(now.getMonth() - 6)
+        break
+    }
 
     let query = supabase.from("open_data_entries").select("*")
 
-    // Aplicar filtros
-    if (acuerdo && acuerdo !== "all") {
-      query = query.eq("codigo_acuerdo_marco", acuerdo)
-    }
-    if (categoria && categoria !== "all") {
-      query = query.eq("categoria", categoria)
-    }
-    if (catalogo && catalogo !== "all") {
-      query = query.eq("catalogo", catalogo)
-    }
-    if (fechaInicio) {
-      query = query.gte("fecha_publicacion", fechaInicio)
-    }
+    const dateFilter = fechaInicio || startDate.toISOString().split("T")[0]
+    query = query.gte("fecha_publicacion", dateFilter)
+
     if (fechaFin) {
       query = query.lte("fecha_publicacion", fechaFin)
     }
 
-    // Solo órdenes aceptadas
+    if (acuerdo && acuerdo !== "all" && acuerdo.trim() !== "") {
+      console.log(`[Rankings API] Applying acuerdo filter: ${acuerdo}`)
+      query = query.eq("codigo_acuerdo_marco", acuerdo)
+    }
+
+    if (categoria && categoria !== "all" && categoria.trim() !== "") {
+      console.log(`[Rankings API] Applying categoria filter: ${categoria}`)
+      query = query.eq("categoria", categoria)
+    }
+
+    if (catalogo && catalogo !== "all" && catalogo.trim() !== "") {
+      console.log(`[Rankings API] Applying catalogo filter: ${catalogo}`)
+      query = query.eq("catalogo", catalogo)
+    }
+
+    // Only accepted orders
     query = query.eq("estado_orden_electronica", "ACEPTADA")
 
     const { data, error } = await query
@@ -45,45 +66,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Error fetching data", details: error.message }, { status: 500 })
     }
 
-    console.log(`Found ${data?.length || 0} records`)
+    console.log(`[Rankings API] Found ${data?.length || 0} records after filtering`)
 
     if (!data || data.length === 0) {
       return NextResponse.json({
-        rankings: [],
+        success: false,
+        data: [],
         total: 0,
         message: "No se encontraron datos para los filtros aplicados",
+        appliedFilters: { acuerdo, categoria, catalogo, period },
       })
     }
 
     let rankings: any[] = []
 
     switch (type) {
-      case "products":
+      case "productos":
         rankings = generateProductRankings(data, limit)
         break
-      case "categories":
+      case "categorias":
         rankings = generateCategoryRankings(data, limit)
         break
-      case "catalogs":
+      case "catalogos":
         rankings = generateCatalogRankings(data, limit)
         break
-      case "brands":
+      case "marcas":
         rankings = generateBrandRankings(data, limit)
         break
-      case "suppliers":
+      case "proveedores":
         rankings = generateSupplierRankings(data, limit)
         break
-      case "entities":
+      case "entidades":
         rankings = generateEntityRankings(data, limit)
         break
       default:
         rankings = generateProductRankings(data, limit)
     }
 
-    console.log(`Generated ${rankings.length} rankings`)
+    rankings = rankings.map((item, index) => ({
+      ...item,
+      ranking: index + 1,
+    }))
 
     return NextResponse.json({
-      rankings,
+      success: true,
+      data: rankings,
       total: data.length,
       type,
       filters: {
@@ -93,12 +120,14 @@ export async function GET(request: NextRequest) {
         fechaInicio,
         fechaFin,
         limit,
+        period,
       },
     })
   } catch (error) {
     console.error("Error in rankings API:", error)
     return NextResponse.json(
       {
+        success: false,
         error: "Internal server error",
         details: error instanceof Error ? error.message : "Unknown error",
       },
@@ -119,11 +148,11 @@ function generateProductRankings(data: any[], limit: number) {
         marca: item.marca_ficha_producto || "Sin marca",
         categoria: item.categoria || "Sin categoría",
         catalogo: item.catalogo || "Sin catálogo",
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        entidades: new Set(),
-        proveedores: new Set(),
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        entidades_compradoras: new Set(),
+        proveedores_vendedores: new Set(),
         precios: [],
       })
     }
@@ -131,13 +160,13 @@ function generateProductRankings(data: any[], limit: number) {
     const product = productMap.get(key)
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
-    const precioUnitario = Number.parseFloat(item.precio_unitario_ficha_producto) || 0
+    const precioUnitario = Number.parseFloat(item.precio_unitario) || 0
 
-    product.montoTotal += monto
-    product.cantidadTotal += cantidad
-    product.numeroOrdenes += 1
-    product.entidades.add(item.razon_social_entidad)
-    product.proveedores.add(item.razon_social_proveedor)
+    product.monto_total += monto
+    product.cantidad_total += cantidad
+    product.numero_ordenes += 1
+    product.entidades_compradoras.add(item.razon_social_entidad)
+    product.proveedores_vendedores.add(item.razon_social_proveedor)
     if (precioUnitario > 0) {
       product.precios.push(precioUnitario)
     }
@@ -145,13 +174,19 @@ function generateProductRankings(data: any[], limit: number) {
 
   return Array.from(productMap.values())
     .map((product) => ({
-      ...product,
-      entidades: product.entidades.size,
-      proveedores: product.proveedores.size,
-      precioPromedio:
+      descripcion: product.descripcion,
+      marca: product.marca,
+      categoria: product.categoria,
+      catalogo: product.catalogo,
+      cantidad_total: Math.round(product.cantidad_total),
+      monto_total: Math.round(product.monto_total),
+      numero_ordenes: product.numero_ordenes,
+      entidades_compradoras: product.entidades_compradoras.size,
+      proveedores_vendedores: product.proveedores_vendedores.size,
+      precio_promedio:
         product.precios.length > 0 ? product.precios.reduce((a, b) => a + b, 0) / product.precios.length : 0,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }
 
@@ -164,12 +199,12 @@ function generateCategoryRankings(data: any[], limit: number) {
     if (!categoryMap.has(key)) {
       categoryMap.set(key, {
         categoria: key,
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        productos: new Set(),
-        entidades: new Set(),
-        proveedores: new Set(),
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        productos_unicos: new Set(),
+        entidades_compradoras: new Set(),
+        proveedores_vendedores: new Set(),
       })
     }
 
@@ -177,22 +212,25 @@ function generateCategoryRankings(data: any[], limit: number) {
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
 
-    category.montoTotal += monto
-    category.cantidadTotal += cantidad
-    category.numeroOrdenes += 1
-    category.productos.add(item.descripcion_ficha_producto)
-    category.entidades.add(item.razon_social_entidad)
-    category.proveedores.add(item.razon_social_proveedor)
+    category.monto_total += monto
+    category.cantidad_total += cantidad
+    category.numero_ordenes += 1
+    category.productos_unicos.add(item.descripcion_ficha_producto)
+    category.entidades_compradoras.add(item.razon_social_entidad)
+    category.proveedores_vendedores.add(item.razon_social_proveedor)
   })
 
   return Array.from(categoryMap.values())
     .map((category) => ({
-      ...category,
-      productos: category.productos.size,
-      entidades: category.entidades.size,
-      proveedores: category.proveedores.size,
+      categoria: category.categoria,
+      monto_total: Math.round(category.monto_total),
+      cantidad_total: Math.round(category.cantidad_total),
+      numero_ordenes: category.numero_ordenes,
+      productos_unicos: category.productos_unicos.size,
+      entidades_compradoras: category.entidades_compradoras.size,
+      proveedores_vendedores: category.proveedores_vendedores.size,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }
 
@@ -205,12 +243,12 @@ function generateCatalogRankings(data: any[], limit: number) {
     if (!catalogMap.has(key)) {
       catalogMap.set(key, {
         catalogo: key,
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        productos: new Set(),
-        entidades: new Set(),
-        proveedores: new Set(),
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        productos_unicos: new Set(),
+        entidades_compradoras: new Set(),
+        proveedores_vendedores: new Set(),
       })
     }
 
@@ -218,22 +256,25 @@ function generateCatalogRankings(data: any[], limit: number) {
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
 
-    catalog.montoTotal += monto
-    catalog.cantidadTotal += cantidad
-    catalog.numeroOrdenes += 1
-    catalog.productos.add(item.descripcion_ficha_producto)
-    catalog.entidades.add(item.razon_social_entidad)
-    catalog.proveedores.add(item.razon_social_proveedor)
+    catalog.monto_total += monto
+    catalog.cantidad_total += cantidad
+    catalog.numero_ordenes += 1
+    catalog.productos_unicos.add(item.descripcion_ficha_producto)
+    catalog.entidades_compradoras.add(item.razon_social_entidad)
+    catalog.proveedores_vendedores.add(item.razon_social_proveedor)
   })
 
   return Array.from(catalogMap.values())
     .map((catalog) => ({
-      ...catalog,
-      productos: catalog.productos.size,
-      entidades: catalog.entidades.size,
-      proveedores: catalog.proveedores.size,
+      catalogo: catalog.catalogo,
+      monto_total: Math.round(catalog.monto_total),
+      cantidad_total: Math.round(catalog.cantidad_total),
+      numero_ordenes: catalog.numero_ordenes,
+      productos_unicos: catalog.productos_unicos.size,
+      entidades_compradoras: catalog.entidades_compradoras.size,
+      proveedores_vendedores: catalog.proveedores_vendedores.size,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }
 
@@ -246,12 +287,12 @@ function generateBrandRankings(data: any[], limit: number) {
     if (!brandMap.has(key)) {
       brandMap.set(key, {
         marca: key,
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        productos: new Set(),
-        entidades: new Set(),
-        proveedores: new Set(),
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        productos_unicos: new Set(),
+        entidades_compradoras: new Set(),
+        proveedores_vendedores: new Set(),
       })
     }
 
@@ -259,22 +300,25 @@ function generateBrandRankings(data: any[], limit: number) {
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
 
-    brand.montoTotal += monto
-    brand.cantidadTotal += cantidad
-    brand.numeroOrdenes += 1
-    brand.productos.add(item.descripcion_ficha_producto)
-    brand.entidades.add(item.razon_social_entidad)
-    brand.proveedores.add(item.razon_social_proveedor)
+    brand.monto_total += monto
+    brand.cantidad_total += cantidad
+    brand.numero_ordenes += 1
+    brand.productos_unicos.add(item.descripcion_ficha_producto)
+    brand.entidades_compradoras.add(item.razon_social_entidad)
+    brand.proveedores_vendedores.add(item.razon_social_proveedor)
   })
 
   return Array.from(brandMap.values())
     .map((brand) => ({
-      ...brand,
-      productos: brand.productos.size,
-      entidades: brand.entidades.size,
-      proveedores: brand.proveedores.size,
+      marca: brand.marca,
+      monto_total: Math.round(brand.monto_total),
+      cantidad_total: Math.round(brand.cantidad_total),
+      numero_ordenes: brand.numero_ordenes,
+      productos_unicos: brand.productos_unicos.size,
+      entidades_compradoras: brand.entidades_compradoras.size,
+      proveedores_vendedores: brand.proveedores_vendedores.size,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }
 
@@ -286,13 +330,13 @@ function generateSupplierRankings(data: any[], limit: number) {
 
     if (!supplierMap.has(key)) {
       supplierMap.set(key, {
-        proveedor: key,
+        razon_social: key,
         ruc: item.ruc_proveedor || "Sin RUC",
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        productos: new Set(),
-        entidades: new Set(),
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        productos_unicos: new Set(),
+        entidades_clientes: new Set(),
         marcas: new Set(),
       })
     }
@@ -301,22 +345,26 @@ function generateSupplierRankings(data: any[], limit: number) {
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
 
-    supplier.montoTotal += monto
-    supplier.cantidadTotal += cantidad
-    supplier.numeroOrdenes += 1
-    supplier.productos.add(item.descripcion_ficha_producto)
-    supplier.entidades.add(item.razon_social_entidad)
+    supplier.monto_total += monto
+    supplier.cantidad_total += cantidad
+    supplier.numero_ordenes += 1
+    supplier.productos_unicos.add(item.descripcion_ficha_producto)
+    supplier.entidades_clientes.add(item.razon_social_entidad)
     supplier.marcas.add(item.marca_ficha_producto)
   })
 
   return Array.from(supplierMap.values())
     .map((supplier) => ({
-      ...supplier,
-      productos: supplier.productos.size,
-      entidades: supplier.entidades.size,
+      razon_social: supplier.razon_social,
+      ruc: supplier.ruc,
+      monto_total: Math.round(supplier.monto_total),
+      cantidad_total: Math.round(supplier.cantidad_total),
+      numero_ordenes: supplier.numero_ordenes,
+      productos_unicos: supplier.productos_unicos.size,
+      entidades_clientes: supplier.entidades_clientes.size,
       marcas: supplier.marcas.size,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }
 
@@ -328,14 +376,14 @@ function generateEntityRankings(data: any[], limit: number) {
 
     if (!entityMap.has(key)) {
       entityMap.set(key, {
-        entidad: key,
+        razon_social: key,
         ruc: item.ruc_entidad || "Sin RUC",
-        unidadEjecutora: item.unidad_ejecutora || "Sin unidad",
-        montoTotal: 0,
-        cantidadTotal: 0,
-        numeroOrdenes: 0,
-        productos: new Set(),
-        proveedores: new Set(),
+        unidad_ejecutora: item.unidad_ejecutora || "Sin unidad",
+        monto_total: 0,
+        cantidad_total: 0,
+        numero_ordenes: 0,
+        productos_unicos: new Set(),
+        proveedores_vendedores: new Set(),
         marcas: new Set(),
       })
     }
@@ -344,21 +392,26 @@ function generateEntityRankings(data: any[], limit: number) {
     const monto = Number.parseFloat(item.monto_total_entrega) || 0
     const cantidad = Number.parseFloat(item.cantidad_entrega) || 0
 
-    entity.montoTotal += monto
-    entity.cantidadTotal += cantidad
-    entity.numeroOrdenes += 1
-    entity.productos.add(item.descripcion_ficha_producto)
-    entity.proveedores.add(item.razon_social_proveedor)
+    entity.monto_total += monto
+    entity.cantidad_total += cantidad
+    entity.numero_ordenes += 1
+    entity.productos_unicos.add(item.descripcion_ficha_producto)
+    entity.proveedores_vendedores.add(item.razon_social_proveedor)
     entity.marcas.add(item.marca_ficha_producto)
   })
 
   return Array.from(entityMap.values())
     .map((entity) => ({
-      ...entity,
-      productos: entity.productos.size,
-      proveedores: entity.proveedores.size,
+      razon_social: entity.razon_social,
+      ruc: entity.ruc,
+      unidad_ejecutora: entity.unidad_ejecutora,
+      monto_total: Math.round(entity.monto_total),
+      cantidad_total: Math.round(entity.cantidad_total),
+      numero_ordenes: entity.numero_ordenes,
+      productos_unicos: entity.productos_unicos.size,
+      proveedores_vendedores: entity.proveedores_vendedores.size,
       marcas: entity.marcas.size,
     }))
-    .sort((a, b) => b.montoTotal - a.montoTotal)
+    .sort((a, b) => b.monto_total - a.monto_total)
     .slice(0, limit)
 }

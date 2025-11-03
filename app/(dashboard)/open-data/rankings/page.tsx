@@ -1,168 +1,203 @@
 import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Package, Award, BarChart3, TrendingUp, Target } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Package, Award, BarChart3, FolderOpen, Filter } from "lucide-react"
 import Link from "next/link"
 import { RankingsByCatalog } from "@/components/open-data/rankings-by-catalog"
-import { BrandRankings } from "@/components/open-data/brand-rankings"
-import { CatalogPerformance } from "@/components/open-data/catalog-performance"
+import { RankingsByAgreement } from "@/components/open-data/rankings-by-agreement"
+import { RankingsByCategory } from "@/components/open-data/rankings-by-category"
+import BrandRankings from "@/components/open-data/brand-rankings" // <-- IMPORT CORRECTO
 
 interface PageProps {
   searchParams: Promise<{
     period?: string
+    tab?: string
   }>
 }
 
 export default async function RankingsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
   const period = resolvedSearchParams.period || "6months"
+  const tab = resolvedSearchParams.tab || "catalogs"
+
+  // === FETCH DE MARCAS (solo cuando sea necesario) ===
+  let brandData = null
+  if (tab === "brands") {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/open-data/brand-rankings?period=${period}`,
+      { cache: "no-store" }
+    )
+    if (res.ok) {
+      const json = await res.json()
+      brandData = json.data // <-- EXTRAER data
+    }
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto p-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Rankings de Productos y Marcas</h1>
-          <p className="text-slate-600 dark:text-slate-400 text-lg">
-            Rankings organizados por catálogo, número de parte y performance de marcas
-          </p>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-200 mb-2">Rankings de Mercado</h1>
+        <p className="text-slate-600 dark:text-slate-400 text-lg">
+          Análisis detallado de 6,918+ registros: tendencias de compra, proveedores líderes, productos más demandados y
+          categorías principales en contrataciones públicas.
+        </p>
+      </div>
+
+      {/* Period Filter */}
+      <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+          <h2 className="font-semibold text-slate-800 dark:text-slate-200">Filtros de Período</h2>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/dashboard/open-data/rankings?period=3months`}>
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <Link href={`/open-data/rankings?period=3months`}>
             <Button variant={period === "3months" ? "default" : "outline"} size="sm">
               3 Meses
             </Button>
           </Link>
-          <Link href={`/dashboard/open-data/rankings?period=6months`}>
+          <Link href={`/open-data/rankings?period=6months`}>
             <Button variant={period === "6months" ? "default" : "outline"} size="sm">
               6 Meses
             </Button>
           </Link>
-          <Link href={`/dashboard/open-data/rankings?period=1year`}>
+          <Link href={`/open-data/rankings?period=1year`}>
             <Button variant={period === "1year" ? "default" : "outline"} size="sm">
               1 Año
             </Button>
           </Link>
-          <Link href="/dashboard/open-data">
-            <Button variant="outline">Volver a Datos Abiertos</Button>
+          <Link href="/open-data">
+            <Button variant="outline" className="ml-auto bg-transparent">
+              Volver a Datos Abiertos
+            </Button>
           </Link>
         </div>
       </div>
 
-      {/* Rankings por Catálogo - Sección Principal */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-6 w-6 text-blue-500" />
-            Rankings por Número de Parte - Organizados por Catálogo
-          </CardTitle>
-          <CardDescription>
-            Productos más vendidos por unidades, organizados por código de catálogo y vinculados a acuerdos marco
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<div>Cargando rankings por catálogo...</div>}>
-            <RankingsByCatalog period={period} />
-          </Suspense>
-        </CardContent>
-      </Card>
+      {/* Tabs for Different Analysis Views */}
+      <Tabs value={tab} className="w-full" defaultValue="catalogs">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
+          <Link href={`/open-data/rankings?period=${period}&tab=catalogs`}>
+            <TabsTrigger value="catalogs" asChild className="cursor-pointer flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Catálogos</span>
+              </div>
+            </TabsTrigger>
+          </Link>
+          <Link href={`/open-data/rankings?period=${period}&tab=agreements`}>
+            <TabsTrigger value="agreements" asChild className="cursor-pointer flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Acuerdos</span>
+              </div>
+            </TabsTrigger>
+          </Link>
+          <Link href={`/open-data/rankings?period=${period}&tab=categories`}>
+            <TabsTrigger value="categories" asChild className="cursor-pointer flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Categorías</span>
+              </div>
+            </TabsTrigger>
+          </Link>
+          <Link href={`/open-data/rankings?period=${period}&tab=brands`}>
+            <TabsTrigger value="brands" asChild className="cursor-pointer flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                <span className="hidden sm:inline">Marcas</span>
+              </div>
+            </TabsTrigger>
+          </Link>
+        </TabsList>
 
-      {/* Grid de Análisis Secundarios */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Rankings de Marcas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-green-500" />
-              Rankings de Marcas
-            </CardTitle>
-            <CardDescription>Cuáles marcas venden más y qué productos específicos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<div>Cargando rankings de marcas...</div>}>
-              <BrandRankings period={period} />
-            </Suspense>
-          </CardContent>
-        </Card>
+        {/* Catalogs Tab */}
+        <TabsContent value="catalogs" className="space-y-6">
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-6 w-6 text-blue-500" />
+                Rankings por Catálogo
+              </CardTitle>
+              <CardDescription>
+                Análisis detallado de productos por catálogo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div className="text-center py-8 text-slate-500">Cargando...</div>}>
+                <RankingsByCatalog period={period} />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Performance de Catálogos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-purple-500" />
-              Performance de Catálogos
-            </CardTitle>
-            <CardDescription>Eficiencia y métricas de cada catálogo por acuerdo marco</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<div>Cargando performance de catálogos...</div>}>
-              <CatalogPerformance period={period} />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Agreements Tab */}
+        <TabsContent value="agreements" className="space-y-6">
+          <Card className="border-l-4 border-l-green-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="h-6 w-6 text-green-500" />
+                Rankings por Acuerdo Marco
+              </CardTitle>
+              <CardDescription>
+                Distribución y análisis de compras por cada acuerdo marco.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div className="text-center py-8 text-slate-500">Cargando...</div>}>
+                <RankingsByAgreement period={period} />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Métricas Clave */}
-      <Card className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-blue-600" />
-            Métricas Clave del Período
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-blue-600 mb-1">Top 1</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400">Producto más vendido</div>
-            </div>
-            <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-green-600 mb-1">Top 1</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400">Marca líder</div>
-            </div>
-            <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-purple-600 mb-1">Top 1</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400">Catálogo más activo</div>
-            </div>
-            <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-orange-600 mb-1">Top 1</div>
-              <div className="text-sm text-slate-600 dark:text-slate-400">Acuerdo marco líder</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="space-y-6">
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-purple-500" />
+                Rankings por Categoría
+              </CardTitle>
+              <CardDescription>
+                Análisis de demanda y gasto por categoría de producto.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<div className="text-center py-8 text-slate-500">Cargando...</div>}>
+                <RankingsByCategory period={period} />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Insights y Recomendaciones */}
-      <Card className="border-l-4 border-l-green-500">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            Insights de Rankings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Productos Estrella</h4>
-              <p className="text-sm text-blue-600 dark:text-blue-300">
-                Identifica los números de parte con mayor demanda por catálogo
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-              <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Marcas Dominantes</h4>
-              <p className="text-sm text-green-600 dark:text-green-300">
-                Descubre qué marcas lideran cada categoría de productos
-              </p>
-            </div>
-            <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-              <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">Catálogos Eficientes</h4>
-              <p className="text-sm text-purple-600 dark:text-purple-300">
-                Evalúa qué catálogos generan más ventas por acuerdo marco
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Brands Tab - CON FETCH Y DATA */}
+        <TabsContent value="brands" className="space-y-6">
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-6 w-6 text-orange-500" />
+                Rankings de Marcas
+              </CardTitle>
+              <CardDescription>
+                Cuáles marcas venden más en contrataciones públicas y qué productos específicos lideran.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {brandData ? (
+                <Suspense fallback={<div className="text-center py-8 text-slate-500">Cargando...</div>}>
+                  <BrandRankings data={brandData} />
+                </Suspense>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-lg">Cargando datos de marcas...</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
