@@ -59,6 +59,7 @@
     "jimp": "^1.6.0",
     "jsbarcode": "^3.12.1",
     "jspdf": "latest",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.454.0",
     "merge-images": "^2.0.0",
     "next": "15.2.4",

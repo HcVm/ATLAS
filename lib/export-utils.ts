@@ -122,9 +122,9 @@ export const exportToExcel = (data: ExportData[], options: ExportOptions) => {
       if (!ws[cellAddress]) continue
 
       ws[cellAddress].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "366092" } },
-        alignment: { horizontal: "center", vertical: "center" },
+        font: { bold: true, color: { rgb: "FFFFFF" }, size: 12 },
+        fill: { fgColor: { rgb: "1F4E78" } }, // Professional dark blue instead of 366092
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
         border: {
           top: { style: "thin", color: { rgb: "000000" } },
           bottom: { style: "thin", color: { rgb: "000000" } },
@@ -134,9 +134,31 @@ export const exportToExcel = (data: ExportData[], options: ExportOptions) => {
       }
     }
 
+    for (let row = 1; row <= range.e.r; row++) {
+      const bgColor = row % 2 === 0 ? "F2F2F2" : "FFFFFF"
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+        if (!ws[cellAddress]) continue
+
+        ws[cellAddress].s = {
+          fill: { fgColor: { rgb: bgColor } },
+          alignment: { horizontal: "left", vertical: "center" },
+          border: {
+            top: { style: "hair", color: { rgb: "CCCCCC" } },
+            bottom: { style: "hair", color: { rgb: "CCCCCC" } },
+            left: { style: "hair", color: { rgb: "CCCCCC" } },
+            right: { style: "hair", color: { rgb: "CCCCCC" } },
+          },
+        }
+      }
+    }
+
+    ws["!freeze"] = { xSplit: 0, ySplit: 1 }
+    ws["!autofilter"] = { ref: XLSX.utils.encode_range(range) }
+
     // Ajustar ancho de columnas
     const colWidths = Object.keys(processedData[0] || {}).map((key) => ({
-      wch: Math.max(key.length, 15),
+      wch: Math.max(key.length + 2, 15),
     }))
     ws["!cols"] = colWidths
 
