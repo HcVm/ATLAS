@@ -35,8 +35,12 @@ import {
   MapPin,
   Package2,
   Maximize2,
+  FileCheck,
+  History,
 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
+import { DeliveryAttachments } from "@/components/deliveries/delivery-attachments"
+import { DeliveryDocumentsLink } from "@/components/deliveries/delivery-documents-link"
 
 interface Delivery {
   id: string
@@ -71,7 +75,7 @@ interface Delivery {
     sale_items?: {
       product_name: string
       product_brand?: string | null
-      product_code?: string | null // agregando product_code al tipo
+      product_code?: string | null
       product_description?: string | null
       quantity: number
     }[]
@@ -79,6 +83,35 @@ interface Delivery {
   assigned_user?: {
     full_name: string
   }
+  delivery_attachments?: {
+    id: string
+    file_name: string
+    file_url: string
+    file_size?: number
+    file_type?: string
+    created_at: string
+  }[]
+  delivery_documents?: {
+    id: string
+    document_id: string
+    document: {
+      id: string
+      title: string
+      document_number: string
+      status: string
+    }
+  }[]
+  delivery_status_history?: {
+    id: string
+    delivery_id: string
+    previous_status: string | null
+    new_status: string
+    changed_at: string
+    changed_by?: string | null
+    changed_by_user?: {
+      full_name: string
+    }
+  }[]
 }
 
 interface KanbanColumn {
@@ -119,6 +152,13 @@ const KANBAN_COLUMNS: Omit<KanbanColumn, "deliveries">[] = [
     color: "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800",
     icon: CheckCircle,
   },
+  {
+    id: "guia-firmada",
+    title: "Guía Firmada",
+    deliveryStatus: "signed_guide",
+    color: "bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700",
+    icon: FileCheck,
+  },
 ]
 
 const DeliveryDetailsDialog = memo(
@@ -134,12 +174,33 @@ const DeliveryDetailsDialog = memo(
     if (!delivery) return null
 
     const parseDate = (dateString: string) => {
-      // If it's just a date (YYYY-MM-DD), treat it as local date
       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = dateString.split("-").map(Number)
-        return new Date(year, month - 1, day) // month is 0-indexed
+        return new Date(year, month - 1, day)
       }
       return new Date(dateString)
+    }
+
+    const statusToLabel = (status: string) => {
+      const map: Record<string, string> = {
+        pending: "Entrega Pendiente",
+        preparing: "En Preparación",
+        shipped: "Enviado",
+        delivered: "Entregado",
+        signed_guide: "Guía Firmada",
+      }
+      return map[status] || status
+    }
+
+    const statusToColor = (status: string) => {
+      const map: Record<string, string> = {
+        pending: "bg-yellow-100 text-yellow-800",
+        preparing: "bg-blue-100 text-blue-800",
+        shipped: "bg-purple-100 text-purple-800",
+        delivered: "bg-green-100 text-green-800",
+        signed_guide: "bg-emerald-100 text-emerald-800",
+      }
+      return map[status] || "bg-gray-100 text-gray-800"
     }
 
     return (
@@ -149,7 +210,6 @@ const DeliveryDetailsDialog = memo(
             <DialogTitle>Detalles Completos de Entrega</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
-            {/* Información de la venta */}
             <div className="space-y-3">
               <h3 className="font-semibold text-lg">Información de la Venta</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -246,7 +306,6 @@ const DeliveryDetailsDialog = memo(
               </div>
             )}
 
-            {/* Productos */}
             <div className="space-y-3">
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <Package2 className="h-4 w-4" />
@@ -277,13 +336,21 @@ const DeliveryDetailsDialog = memo(
               </div>
             </div>
 
-            {/* Información de entrega */}
             <div className="space-y-3">
               <h3 className="font-semibold text-lg">Información de Entrega</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Estado</p>
-                  <Badge variant="secondary">{delivery.delivery_status}</Badge>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      delivery.delivery_status === "signed_guide"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                        : ""
+                    }
+                  >
+                    {delivery.delivery_status}
+                  </Badge>
                 </div>
                 {delivery.tracking_number && (
                   <div>
@@ -313,6 +380,43 @@ const DeliveryDetailsDialog = memo(
                 </div>
               )}
             </div>
+
+            {/* === HISTORIAL DE ESTADOS === */}
+            {delivery.delivery_status_history && delivery.delivery_status_history.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Historial de Estados
+                </h3>
+                <div className="relative border-l-2 border-muted-foreground/20 ml-3">
+                  {delivery.delivery_status_history
+                    .sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime())
+                    .map((entry, index) => (
+                      <div key={entry.id} className="mb-4 ml-6 relative">
+                        <div
+                          className={`absolute -left-7 top-1 w-3 h-3 rounded-full ${statusToColor(entry.new_status)}`}
+                        />
+                        <div className="flex flex-col">
+                          <p className="text-sm font-medium">
+                            {entry.previous_status ? (
+                              <>
+                                {statusToLabel(entry.previous_status)} →{" "}
+                                <span className="font-bold">{statusToLabel(entry.new_status)}</span>
+                              </>
+                            ) : (
+                              <span className="font-bold">Inicio: {statusToLabel(entry.new_status)}</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(parseDate(entry.changed_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                            {entry.changed_by_user?.full_name && ` • ${entry.changed_by_user.full_name}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -343,12 +447,12 @@ const DeliveryCard = memo(
     onMoveCard?: (deliveryId: string, newStatus: string) => Promise<void>
   }) => {
     const isDelivered = delivery.delivery_status === "delivered"
+    const isSignedGuide = delivery.delivery_status === "signed_guide"
 
     const parseDate = (dateString: string) => {
-      // If it's just a date (YYYY-MM-DD), treat it as local date
       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = dateString.split("-").map(Number)
-        return new Date(year, month - 1, day) // month is 0-indexed
+        return new Date(year, month - 1, day)
       }
       return new Date(dateString)
     }
@@ -363,11 +467,11 @@ const DeliveryCard = memo(
             ? "shadow-2xl scale-105 z-50 bg-background/95 backdrop-blur-sm border-primary/50"
             : "hover:shadow-lg hover:scale-[1.02]"
         } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${
-          isDelivered ? "p-2 sm:p-3" : "p-3 sm:p-4"
-        }`}
+          isSignedGuide ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : ""
+        } ${isDelivered && !isSignedGuide ? "p-2 sm:p-3" : "p-3 sm:p-4"}`}
         style={provided?.draggableProps?.style}
       >
-        {isDelivered ? (
+        {isDelivered || isSignedGuide ? (
           <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
@@ -377,9 +481,26 @@ const DeliveryCard = memo(
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{delivery.sales.entity_name}</p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0">
+                <Badge
+                  variant="secondary"
+                  className={
+                    isSignedGuide ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200" : ""
+                  }
+                >
                   {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
                 </Badge>
+
+                {/* Botón de edición (i) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
+                  onClick={() => onEditDelivery(delivery)}
+                >
+                  <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                </Button>
+
+                {/* Botón de vista completa */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -390,6 +511,7 @@ const DeliveryCard = memo(
                 </Button>
               </div>
             </div>
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
@@ -398,11 +520,14 @@ const DeliveryCard = memo(
                 </span>
               </div>
               {delivery.actual_delivery_date && (
-                <div className="text-[10px] sm:text-xs text-green-600 font-medium">
+                <div
+                  className={`text-[10px] sm:text-xs font-medium ${isSignedGuide ? "text-emerald-600" : "text-green-600"}`}
+                >
                   {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
                 </div>
               )}
             </div>
+
             {delivery.sales.warehouse_manager && (
               <div className="flex items-center gap-1">
                 <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
@@ -435,16 +560,14 @@ const DeliveryCard = memo(
                 <Badge variant="outline" className="text-[10px] sm:text-xs px-1 py-0">
                   {delivery.sales.sale_status}
                 </Badge>
-                {canEditDeliveryStatus && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
-                    onClick={() => onEditDelivery(delivery)}
-                  >
-                    <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
+                  onClick={() => onEditDelivery(delivery)}
+                >
+                  <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                </Button>
               </div>
             </div>
 
@@ -670,56 +793,116 @@ export default function SalesKanbanPage() {
 
   const canEditDeliveryStatus = canSupervise
 
-  const fetchDeliveries = useCallback(async () => {
-    if (!companyToUse) return
-    try {
-      setLoading(true)
-      let query = supabase
-        .from("deliveries")
-        .select(`
-          id, sale_id, delivery_status, tracking_number, estimated_delivery_date,
-          actual_delivery_date, notes, assigned_to, created_at, updated_at,
-          sales!inner (
-            id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
-            total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
-            final_destination, delivery_start_date, delivery_end_date, warehouse_manager,
-            profiles!sales_created_by_fkey (full_name),
-            sale_items (product_name, product_brand, product_code, product_description, quantity)
-          ),
-          assigned_user:profiles!deliveries_assigned_to_fkey (full_name)
-        `)
-        .eq("sales.company_id", companyToUse.id)
+const fetchDeliveries = useCallback(async () => {
+  if (!companyToUse) return
+  try {
+    setLoading(true)
 
-      if (!canViewAllSales && user?.id) {
-        query = query.eq("sales.created_by", user.id)
-      }
+    // Paso 1: Obtener entregas SIN join con auth.users
+    const { data: deliveries, error: deliveriesError } = await supabase
+      .from("deliveries")
+      .select(`
+        id, sale_id, delivery_status, tracking_number, estimated_delivery_date,
+        actual_delivery_date, notes, assigned_to, created_at, updated_at,
+        assigned_user:profiles!deliveries_assigned_to_fkey (full_name),
+        delivery_attachments (
+          id, file_name, file_url, file_size, file_type, created_at
+        ),
+        delivery_documents (
+          id, document_id,
+          document:document_id (id, title, document_number, status)
+        ),
+        delivery_status_history (
+          id, delivery_id, previous_status, new_status, changed_at, changed_by
+        )
+      `)
+      .order("created_at", { ascending: false })
 
-      const { data, error } = await query.order("created_at", { ascending: false })
-      if (error) throw error
+    if (deliveriesError) throw deliveriesError
 
-      const organizedColumns = KANBAN_COLUMNS.map((col) => ({
-        ...col,
-        deliveries: (data || []).filter((delivery) => delivery.delivery_status === col.deliveryStatus),
-      }))
+    // Paso 2: Obtener ventas
+    let salesQuery = supabase
+      .from("sales")
+      .select(`
+        id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
+        total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
+        final_destination, delivery_start_date, delivery_end_date, warehouse_manager,
+        created_by,
+        profiles!sales_created_by_fkey (full_name),
+        sale_items (product_name, product_brand, product_code, product_description, quantity)
+      `)
+      .eq("company_id", companyToUse.id)
 
-      setColumns(organizedColumns)
-      // Update active tab if the first column has no deliveries after fetch
-      if (organizedColumns.length > 0 && organizedColumns[0].deliveries.length === 0) {
-        const firstColumnWithDeliveries = organizedColumns.find((c) => c.deliveries.length > 0)
-        if (firstColumnWithDeliveries) {
-          setActiveTab(firstColumnWithDeliveries.id)
-        } else {
-          setActiveTab(organizedColumns[0].id) // Default to the first tab if all are empty
-        }
-      } else if (organizedColumns.length > 0) {
-        setActiveTab(organizedColumns[0].id)
-      }
-    } catch (error: any) {
-      toast.error("Error al cargar las entregas: " + error.message)
-    } finally {
-      setLoading(false)
+    if (!canViewAllSales && user?.id) {
+      salesQuery = salesQuery.eq("created_by", user.id)
     }
-  }, [companyToUse, canViewAllSales, user?.id])
+
+    const { data: sales, error: salesError } = await salesQuery
+    if (salesError) throw salesError
+
+    const salesMap = new Map(sales.map(s => [s.id, s]))
+
+    // Paso 3: Extraer todos los changed_by UUIDs
+    const changedByIds = new Set<string>()
+    deliveries.forEach(delivery => {
+      delivery.delivery_status_history?.forEach(entry => {
+        if (entry.changed_by) changedByIds.add(entry.changed_by)
+      })
+    })
+
+    // Paso 4: Consultar usuarios solo si hay IDs
+    let userMap = new Map<string, { full_name: string }>()
+    if (changedByIds.size > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from("auth.users")
+        .select("id, raw_user_meta_data")
+        .in("id", Array.from(changedByIds))
+
+      if (usersError) {
+        console.warn("No se pudieron cargar nombres de usuarios:", usersError)
+      } else {
+        users.forEach(u => {
+          const full_name = u.raw_user_meta_data?.full_name || "Usuario desconocido"
+          userMap.set(u.id, { full_name })
+        })
+      }
+    }
+
+    // Paso 5: Unir todo
+    const enrichedDeliveries = deliveries
+      .map(delivery => {
+        const sale = salesMap.get(delivery.sale_id)
+        if (!sale) return null
+
+        const historyWithUser = (delivery.delivery_status_history || []).map(entry => ({
+          ...entry,
+          changed_by_user: entry.changed_by ? userMap.get(entry.changed_by) || null : null
+        }))
+
+        return {
+          ...delivery,
+          sales: sale,
+          delivery_status_history: historyWithUser,
+          delivery_attachments: delivery.delivery_attachments || [],
+          delivery_documents: delivery.delivery_documents || [],
+        } as Delivery
+      })
+      .filter((d): d is Delivery => d !== null)
+
+    const organizedColumns = KANBAN_COLUMNS.map(col => ({
+      ...col,
+      deliveries: enrichedDeliveries.filter(d => d.delivery_status === col.deliveryStatus),
+    }))
+
+    setColumns(organizedColumns)
+    const firstWithData = organizedColumns.find(c => c.deliveries.length > 0)
+    setActiveTab(firstWithData?.id || organizedColumns[0].id)
+  } catch (error: any) {
+    toast.error("Error al cargar las entregas: " + error.message)
+  } finally {
+    setLoading(false)
+  }
+}, [companyToUse, canViewAllSales, user?.id])
 
   useEffect(() => {
     if (companyToUse && hasSalesAccess) {
@@ -744,6 +927,8 @@ export default function SalesKanbanPage() {
       if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
       const originalColumns = columns
+      const delivery = columns.flatMap((c) => c.deliveries).find((d) => d.id === draggableId)
+      if (!delivery) return
 
       setColumns((prevColumns) => {
         const sourceCol = prevColumns.find((c) => c.id === source.droppableId)
@@ -760,7 +945,6 @@ export default function SalesKanbanPage() {
           delivery_status: destCol.deliveryStatus,
         })
 
-        // Update the active tab if the dragged item moves to a new column
         if (source.droppableId !== destination.droppableId) {
           setActiveTab(destination.droppableId)
         }
@@ -778,14 +962,13 @@ export default function SalesKanbanPage() {
       try {
         const getPeruDate = () => {
           const now = new Date()
-          // Use Intl.DateTimeFormat to get the date in Peru timezone (America/Lima)
           const peruDate = new Intl.DateTimeFormat("en-CA", {
             timeZone: "America/Lima",
             year: "numeric",
             month: "2-digit",
             day: "2-digit",
           }).format(now)
-          return peruDate // Returns YYYY-MM-DD format
+          return peruDate
         }
 
         const updateData: any = {
@@ -793,19 +976,33 @@ export default function SalesKanbanPage() {
           updated_at: new Date().toISOString(),
         }
 
-        if (destColumnInfo.deliveryStatus === "delivered") {
+        if (destColumnInfo.deliveryStatus === "delivered" || destColumnInfo.deliveryStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
         }
 
-        const { error } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
-        if (error) throw error
+        const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
+        if (updateError) throw updateError
+
+        // Registrar en historial
+        const { error: historyError } = await supabase.from("delivery_status_history").insert({
+          delivery_id: draggableId,
+          previous_status: delivery.delivery_status,
+          new_status: destColumnInfo.deliveryStatus,
+          changed_at: new Date().toISOString(),
+          changed_by: user?.id || null,
+        })
+
+        if (historyError) {
+          console.warn("No se pudo registrar el historial:", historyError)
+        }
+
         toast.success(`Entrega movida a ${destColumnInfo.title}`)
       } catch (error: any) {
         setColumns(originalColumns)
         toast.error("Error al actualizar el estado: " + error.message)
       }
     },
-    [canEditDeliveryStatus, columns],
+    [canEditDeliveryStatus, columns, user?.id],
   )
 
   const handleDragStart = useCallback(() => {
@@ -819,7 +1016,6 @@ export default function SalesKanbanPage() {
         .from("deliveries")
         .update({
           tracking_number: editingDelivery.tracking_number,
-          // estimated_delivery_date: editingDelivery.estimated_delivery_date, // Removed as it's now in sales table
           notes: editingDelivery.notes,
           assigned_to: editingDelivery.assigned_to,
           updated_at: new Date().toISOString(),
@@ -831,7 +1027,6 @@ export default function SalesKanbanPage() {
       toast.success("Entrega actualizada correctamente")
       setSelectedDelivery(null)
       setEditingDelivery({})
-
       fetchDeliveries()
     } catch (error: any) {
       toast.error("Error al actualizar la entrega: " + error.message)
@@ -855,7 +1050,6 @@ export default function SalesKanbanPage() {
     setSelectedDelivery(delivery)
     setEditingDelivery({
       tracking_number: delivery.tracking_number || "",
-      // estimated_delivery_date: delivery.estimated_delivery_date || "", // Removed as it's now in sales table
       notes: delivery.notes || "",
       assigned_to: delivery.assigned_to || "",
     })
@@ -880,19 +1074,17 @@ export default function SalesKanbanPage() {
 
       const originalColumns = columns
 
-      // Optimistically update UI
       setColumns((prevColumns) => {
         const sourceCol = prevColumns.find((c) => c.deliveryStatus === oldStatus)
         const destCol = prevColumns.find((c) => c.deliveryStatus === newStatus)
         if (!sourceCol || !destCol) return prevColumns
 
-        const movedItem = sourceCol.deliveries.find((d) => d.id !== deliveryId)
+        const movedItem = sourceCol.deliveries.find((d) => d.id === deliveryId)
         if (!movedItem) return prevColumns
 
         const newSourceDeliveries = sourceCol.deliveries.filter((d) => d.id !== deliveryId)
         const newDestDeliveries = [...destCol.deliveries, { ...movedItem, delivery_status: newStatus }]
 
-        // Update active tab to the destination column
         const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
         if (destColumnInfo) {
           setActiveTab(destColumnInfo.id)
@@ -922,12 +1114,24 @@ export default function SalesKanbanPage() {
           updated_at: new Date().toISOString(),
         }
 
-        if (newStatus === "delivered") {
+        if (newStatus === "delivered" || newStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
         }
 
-        const { error } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
-        if (error) throw error
+        const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
+        if (updateError) throw updateError
+
+        const { error: historyError } = await supabase.from("delivery_status_history").insert({
+          delivery_id: deliveryId,
+          previous_status: oldStatus,
+          new_status: newStatus,
+          changed_at: new Date().toISOString(),
+          changed_by: user?.id || null,
+        })
+
+        if (historyError) {
+          console.warn("No se pudo registrar el historial:", historyError)
+        }
 
         const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
         toast.success(`Entrega movida a ${destColumnInfo?.title}`)
@@ -936,7 +1140,7 @@ export default function SalesKanbanPage() {
         toast.error("Error al actualizar el estado: " + error.message)
       }
     },
-    [canEditDeliveryStatus, columns],
+    [canEditDeliveryStatus, columns, user?.id],
   )
 
   const memoizedColumns = useMemo(() => columns, [columns])
@@ -965,8 +1169,8 @@ export default function SalesKanbanPage() {
     return (
       <div className="p-4 md:p-6 animate-pulse">
         <div className="h-10 bg-gray-200 rounded w-1/3 mb-6"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="h-96 bg-gray-200 rounded-lg"></div>
           ))}
         </div>
@@ -1008,7 +1212,7 @@ export default function SalesKanbanPage() {
 
       <div className="lg:hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted/50">
+          <TabsList className="grid w-full gap-1 h-auto p-1 bg-muted/50 overflow-x-auto">
             {memoizedColumns.map((column) => {
               const Icon = column.icon
               const isActive = activeTab === column.id
@@ -1016,21 +1220,21 @@ export default function SalesKanbanPage() {
                 <TabsTrigger
                   key={column.id}
                   value={column.id}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all ${
+                  className={`flex flex-col items-center gap-1 py-2 px-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all ${
                     isActive ? "border-b-2 border-primary" : ""
                   }`}
                 >
-                  <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                  <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                   <span
-                    className={`text-[10px] sm:text-xs font-medium leading-tight text-center ${
+                    className={`text-[8px] sm:text-xs font-medium leading-tight text-center truncate ${
                       isActive ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    {column.title}
+                    {column.title.split(" ")[0]}
                   </span>
                   <Badge
                     variant={isActive ? "default" : "secondary"}
-                    className="text-[10px] px-1.5 py-0 min-w-[20px] justify-center"
+                    className="text-[8px] px-1 py-0 min-w-[18px] justify-center"
                   >
                     {column.deliveries.length}
                   </Badge>
@@ -1076,9 +1280,8 @@ export default function SalesKanbanPage() {
         </Tabs>
       </div>
 
-      {/* Desktop Kanban with drag and drop */}
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
+        <div className="hidden lg:grid lg:grid-cols-5 lg:gap-6">
           {memoizedColumns.map((column) => (
             <div key={column.id} className="space-y-4">
               <div className={`rounded-lg border-2 ${column.color} p-4 transition-all duration-200`}>
@@ -1146,39 +1349,85 @@ export default function SalesKanbanPage() {
 
       {selectedDelivery && (
         <Dialog open={!!selectedDelivery} onOpenChange={() => setSelectedDelivery(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Detalles de Entrega</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="tracking">Número de Seguimiento</Label>
-                <Input
-                  id="tracking"
-                  value={editingDelivery.tracking_number || ""}
-                  onChange={(e) => setEditingDelivery((prev) => ({ ...prev, tracking_number: e.target.value }))}
-                  placeholder="Ej: TRK123456789"
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Notas de Entrega</Label>
-                <Textarea
-                  id="notes"
-                  value={editingDelivery.notes || ""}
-                  onChange={(e) => setEditingDelivery((prev) => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Instrucciones especiales, dirección, etc."
-                  rows={3}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleUpdateDelivery} className="flex-1">
-                  Guardar
-                </Button>
-                <Button variant="outline" onClick={() => setSelectedDelivery(null)} className="flex-1">
-                  Cancelar
-                </Button>
-              </div>
+          <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+            <div className="p-6 pb-0">
+              <DialogHeader>
+                <DialogTitle>Detalles de Entrega - Venta #{selectedDelivery.sales.sale_number}</DialogTitle>
+              </DialogHeader>
             </div>
+
+            <Tabs defaultValue="info" className="w-full">
+              <div className="px-6">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="info">Información</TabsTrigger>
+                  <TabsTrigger value="archivos">Archivos</TabsTrigger>
+                  <TabsTrigger value="documentos">Documentos</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto px-6 pb-6">
+                {/* === PESTAÑA INFORMACIÓN === */}
+                <TabsContent value="info" className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="tracking">Número de Seguimiento</Label>
+                    <Input
+                      id="tracking"
+                      value={editingDelivery.tracking_number || ""}
+                      onChange={(e) => setEditingDelivery((prev) => ({ ...prev, tracking_number: e.target.value }))}
+                      placeholder="Ej: TRK123456789"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notas de Entrega</Label>
+                    <Textarea
+                      id="notes"
+                      value={editingDelivery.notes || ""}
+                      onChange={(e) => setEditingDelivery((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Instrucciones especiales, dirección, etc."
+                      rows={4}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleUpdateDelivery} className="flex-1">
+                      Guardar
+                    </Button>
+                    <Button variant="outline" onClick={() => setSelectedDelivery(null)} className="flex-1">
+                      Cancelar
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                {/* === PESTAÑA ARCHIVOS === */}
+                <TabsContent value="archivos" className="space-y-4 mt-4">
+                  <DeliveryAttachments
+                    deliveryId={selectedDelivery.id}
+                    attachments={selectedDelivery.delivery_attachments || []}
+                    onAttachmentsChange={(attachments) => {
+                      setSelectedDelivery((prev) =>
+                        prev ? { ...prev, delivery_attachments: attachments } : null
+                      )
+                    }}
+                    canEdit={true}
+                  />
+                </TabsContent>
+
+                {/* === PESTAÑA DOCUMENTOS === */}
+                <TabsContent value="documentos" className="space-y-4 mt-4">
+                  <div className="max-w-full overflow-hidden">
+                    <DeliveryDocumentsLink
+                      deliveryId={selectedDelivery.id}
+                      linkedDocuments={selectedDelivery.delivery_documents || []}
+                      onDocumentsChange={(documents) => {
+                        setSelectedDelivery((prev) =>
+                          prev ? { ...prev, delivery_documents: documents } : null
+                        )
+                      }}
+                      canEdit={true}
+                    />
+                  </div>
+                </TabsContent>
+              </div>
+            </Tabs>
           </DialogContent>
         </Dialog>
       )}
@@ -1195,7 +1444,10 @@ export default function SalesKanbanPage() {
             • <strong>Permisos:</strong> Solo supervisores y administradores pueden mover las tarjetas entre estados
           </p>
           <p>
-            • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking y notas
+            • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking, notas, subir archivos o vincular documentos
+          </p>
+          <p>
+            • <strong>Historial:</strong> Se registra automáticamente cada cambio de estado con fecha, hora y usuario
           </p>
           <p>
             • <strong>Entrega Pendiente:</strong> Entregas que aún no han iniciado el proceso
@@ -1208,6 +1460,9 @@ export default function SalesKanbanPage() {
           </p>
           <p>
             • <strong>Entregado:</strong> Entregas completadas exitosamente
+          </p>
+          <p>
+            • <strong>Guía Firmada:</strong> Entregas con guía firmada (venta exitosa con fondo verde tenuo)
           </p>
         </CardContent>
       </Card>

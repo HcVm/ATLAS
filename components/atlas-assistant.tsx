@@ -63,7 +63,7 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
 
   const getMessages = useCallback(() => {
     const messages = [
-      `¡Hola! Soy Atlix, tu asistente personal del sistema ATLAS. 🤖`,
+      `¡Hola! Soy AtlasX, tu asistente personal del sistema ATLAS. 🤖`,
       `Tienes ${unreadCount} notificación${unreadCount !== 1 ? "es" : ""} sin leer. ¿Las marco como leídas?`,
       `Hay ${pendingDocs} documento${pendingDocs !== 1 ? "s" : ""} pendiente${pendingDocs !== 1 ? "s" : ""} en ${userDepartment || "tu área"}.`,
       `¿Necesitas crear un evento rápido en tu calendario?`,
@@ -347,7 +347,7 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">Ax</span>
                 </div>
-                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Atlix</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">AtlasX</span>
                 <Badge
                   variant="outline"
                   className="text-xs flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 border-purple-300 dark:border-purple-600"
