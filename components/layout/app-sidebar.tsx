@@ -37,6 +37,7 @@ import {
   UserCheck,
   Barcode,
   Wrench,
+  DollarSign,
 } from "lucide-react"
 
 import {
@@ -190,6 +191,13 @@ const menuSections = {
           "acuerdos marco",
           "acuerdos",
         ],
+      },
+      {
+        title: "Cobranzas",
+        url: "/collections",
+        icon: DollarSign,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["cobranzas", "contabilidad", "administración", "administracion", "ventas", "operaciones"],
       },
     ],
   },

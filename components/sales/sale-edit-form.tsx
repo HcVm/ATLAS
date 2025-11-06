@@ -453,9 +453,10 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="conformidad">Conformidad</SelectItem>
+                <SelectItem value="comprometido">Comprometido</SelectItem>
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>
+                <SelectItem value="firmado">Firmado</SelectItem>
               </SelectContent>
             </Select>
           </div>

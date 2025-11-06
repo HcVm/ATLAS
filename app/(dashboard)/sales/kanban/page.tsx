@@ -793,15 +793,15 @@ export default function SalesKanbanPage() {
 
   const canEditDeliveryStatus = canSupervise
 
-const fetchDeliveries = useCallback(async () => {
-  if (!companyToUse) return
-  try {
-    setLoading(true)
+  const fetchDeliveries = useCallback(async () => {
+    if (!companyToUse) return
+    try {
+      setLoading(true)
 
-    // Paso 1: Obtener entregas SIN join con auth.users
-    const { data: deliveries, error: deliveriesError } = await supabase
-      .from("deliveries")
-      .select(`
+      // Paso 1: Obtener entregas SIN join con auth.users
+      const { data: deliveries, error: deliveriesError } = await supabase
+        .from("deliveries")
+        .select(`
         id, sale_id, delivery_status, tracking_number, estimated_delivery_date,
         actual_delivery_date, notes, assigned_to, created_at, updated_at,
         assigned_user:profiles!deliveries_assigned_to_fkey (full_name),
@@ -816,14 +816,14 @@ const fetchDeliveries = useCallback(async () => {
           id, delivery_id, previous_status, new_status, changed_at, changed_by
         )
       `)
-      .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false })
 
-    if (deliveriesError) throw deliveriesError
+      if (deliveriesError) throw deliveriesError
 
-    // Paso 2: Obtener ventas
-    let salesQuery = supabase
-      .from("sales")
-      .select(`
+      // Paso 2: Obtener ventas
+      let salesQuery = supabase
+        .from("sales")
+        .select(`
         id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
         total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
         final_destination, delivery_start_date, delivery_end_date, warehouse_manager,
@@ -831,78 +831,78 @@ const fetchDeliveries = useCallback(async () => {
         profiles!sales_created_by_fkey (full_name),
         sale_items (product_name, product_brand, product_code, product_description, quantity)
       `)
-      .eq("company_id", companyToUse.id)
+        .eq("company_id", companyToUse.id)
 
-    if (!canViewAllSales && user?.id) {
-      salesQuery = salesQuery.eq("created_by", user.id)
-    }
-
-    const { data: sales, error: salesError } = await salesQuery
-    if (salesError) throw salesError
-
-    const salesMap = new Map(sales.map(s => [s.id, s]))
-
-    // Paso 3: Extraer todos los changed_by UUIDs
-    const changedByIds = new Set<string>()
-    deliveries.forEach(delivery => {
-      delivery.delivery_status_history?.forEach(entry => {
-        if (entry.changed_by) changedByIds.add(entry.changed_by)
-      })
-    })
-
-    // Paso 4: Consultar usuarios solo si hay IDs
-    let userMap = new Map<string, { full_name: string }>()
-    if (changedByIds.size > 0) {
-      const { data: users, error: usersError } = await supabase
-        .from("auth.users")
-        .select("id, raw_user_meta_data")
-        .in("id", Array.from(changedByIds))
-
-      if (usersError) {
-        console.warn("No se pudieron cargar nombres de usuarios:", usersError)
-      } else {
-        users.forEach(u => {
-          const full_name = u.raw_user_meta_data?.full_name || "Usuario desconocido"
-          userMap.set(u.id, { full_name })
-        })
+      if (!canViewAllSales && user?.id) {
+        salesQuery = salesQuery.eq("created_by", user.id)
       }
-    }
 
-    // Paso 5: Unir todo
-    const enrichedDeliveries = deliveries
-      .map(delivery => {
-        const sale = salesMap.get(delivery.sale_id)
-        if (!sale) return null
+      const { data: sales, error: salesError } = await salesQuery
+      if (salesError) throw salesError
 
-        const historyWithUser = (delivery.delivery_status_history || []).map(entry => ({
-          ...entry,
-          changed_by_user: entry.changed_by ? userMap.get(entry.changed_by) || null : null
-        }))
+      const salesMap = new Map(sales.map((s) => [s.id, s]))
 
-        return {
-          ...delivery,
-          sales: sale,
-          delivery_status_history: historyWithUser,
-          delivery_attachments: delivery.delivery_attachments || [],
-          delivery_documents: delivery.delivery_documents || [],
-        } as Delivery
+      // Paso 3: Extraer todos los changed_by UUIDs
+      const changedByIds = new Set<string>()
+      deliveries.forEach((delivery) => {
+        delivery.delivery_status_history?.forEach((entry) => {
+          if (entry.changed_by) changedByIds.add(entry.changed_by)
+        })
       })
-      .filter((d): d is Delivery => d !== null)
 
-    const organizedColumns = KANBAN_COLUMNS.map(col => ({
-      ...col,
-      deliveries: enrichedDeliveries.filter(d => d.delivery_status === col.deliveryStatus),
-    }))
+      // Paso 4: Consultar usuarios solo si hay IDs
+      const userMap = new Map<string, { full_name: string }>()
+      if (changedByIds.size > 0) {
+        const { data: users, error: usersError } = await supabase
+          .from("auth.users")
+          .select("id, raw_user_meta_data")
+          .in("id", Array.from(changedByIds))
 
-    setColumns(organizedColumns)
-    const firstWithData = organizedColumns.find(c => c.deliveries.length > 0)
-    setActiveTab(firstWithData?.id || organizedColumns[0].id)
-  } catch (error: any) {
-    toast.error("Error al cargar las entregas: " + error.message)
-  } finally {
-    setLoading(false)
-  }
-}, [companyToUse, canViewAllSales, user?.id])
+        if (usersError) {
+          console.warn("No se pudieron cargar nombres de usuarios:", usersError)
+        } else {
+          users.forEach((u) => {
+            const full_name = u.raw_user_meta_data?.full_name || "Usuario desconocido"
+            userMap.set(u.id, { full_name })
+          })
+        }
+      }
+
+      // Paso 5: Unir todo
+      const enrichedDeliveries = deliveries
+        .map((delivery) => {
+          const sale = salesMap.get(delivery.sale_id)
+          if (!sale) return null
+
+          const historyWithUser = (delivery.delivery_status_history || []).map((entry) => ({
+            ...entry,
+            changed_by_user: entry.changed_by ? userMap.get(entry.changed_by) || null : null,
+          }))
+
+          return {
+            ...delivery,
+            sales: sale,
+            delivery_status_history: historyWithUser,
+            delivery_attachments: delivery.delivery_attachments || [],
+            delivery_documents: delivery.delivery_documents || [],
+          } as Delivery
+        })
+        .filter((d): d is Delivery => d !== null)
+
+      const organizedColumns = KANBAN_COLUMNS.map((col) => ({
+        ...col,
+        deliveries: enrichedDeliveries.filter((d) => d.delivery_status === col.deliveryStatus),
+      }))
+
+      setColumns(organizedColumns)
+      const firstWithData = organizedColumns.find((c) => c.deliveries.length > 0)
+      setActiveTab(firstWithData?.id || organizedColumns[0].id)
+    } catch (error: any) {
+      toast.error("Error al cargar las entregas: " + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [companyToUse, canViewAllSales, user?.id])
 
   useEffect(() => {
     if (companyToUse && hasSalesAccess) {
@@ -982,6 +982,26 @@ const fetchDeliveries = useCallback(async () => {
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
         if (updateError) throw updateError
+
+        if (destColumnInfo.deliveryStatus === "signed_guide") {
+          const { error: collectionError } = await supabase
+            .from("collection_tracking")
+            .insert({
+              delivery_id: draggableId,
+              sale_id: delivery.sale_id,
+              collection_status: "verde",
+              days_in_current_status: 0,
+              status_start_date: new Date().toISOString(),
+              green_days: 10,
+              yellow_days: 5,
+            })
+            .select()
+            .single()
+
+          if (collectionError) {
+            console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+          }
+        }
 
         // Registrar en historial
         const { error: historyError } = await supabase.from("delivery_status_history").insert({
@@ -1120,6 +1140,27 @@ const fetchDeliveries = useCallback(async () => {
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
         if (updateError) throw updateError
+
+        if (newStatus === "signed_guide") {
+          const { error: collectionError } = await supabase
+            .from("collection_tracking")
+            .insert({
+              delivery_id: deliveryId,
+              sale_id: delivery.sale_id,
+              collection_status: "verde",
+              days_in_current_status: 0,
+              status_start_date: new Date().toISOString(),
+              green_days: 10,
+              yellow_days: 5,
+            })
+            .select()
+            .single()
+
+          if (collectionError) {
+            // Si el registro ya existe, no es un error crítico
+            console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+          }
+        }
 
         const { error: historyError } = await supabase.from("delivery_status_history").insert({
           delivery_id: deliveryId,
@@ -1403,9 +1444,7 @@ const fetchDeliveries = useCallback(async () => {
                     deliveryId={selectedDelivery.id}
                     attachments={selectedDelivery.delivery_attachments || []}
                     onAttachmentsChange={(attachments) => {
-                      setSelectedDelivery((prev) =>
-                        prev ? { ...prev, delivery_attachments: attachments } : null
-                      )
+                      setSelectedDelivery((prev) => (prev ? { ...prev, delivery_attachments: attachments } : null))
                     }}
                     canEdit={true}
                   />
@@ -1418,9 +1457,7 @@ const fetchDeliveries = useCallback(async () => {
                       deliveryId={selectedDelivery.id}
                       linkedDocuments={selectedDelivery.delivery_documents || []}
                       onDocumentsChange={(documents) => {
-                        setSelectedDelivery((prev) =>
-                          prev ? { ...prev, delivery_documents: documents } : null
-                        )
+                        setSelectedDelivery((prev) => (prev ? { ...prev, delivery_documents: documents } : null))
                       }}
                       canEdit={true}
                     />
@@ -1444,7 +1481,8 @@ const fetchDeliveries = useCallback(async () => {
             • <strong>Permisos:</strong> Solo supervisores y administradores pueden mover las tarjetas entre estados
           </p>
           <p>
-            • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking, notas, subir archivos o vincular documentos
+            • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking, notas, subir
+            archivos o vincular documentos
           </p>
           <p>
             • <strong>Historial:</strong> Se registra automáticamente cada cambio de estado con fecha, hora y usuario

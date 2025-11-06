@@ -839,13 +839,15 @@ export default function SalesPage() {
   const renderStatusBadge = (status: string) => (
     <Badge
       variant={
-        status === "compromiso"
+        status === "comprometido"
           ? "default"
           : status === "devengado"
             ? "secondary"
             : status === "girado"
               ? "destructive"
-              : "outline"
+              : status === "firmado"
+                ? "outline"
+                : "outline"
       }
     >
       {status?.toUpperCase() || "PENDIENTE"}
@@ -1716,15 +1718,16 @@ export default function SalesPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Nuevo estado:</p>
                 <div className="grid grid-cols-1 gap-2">
+                  {/* Updated status update button options in the status change dialog */}
                   <Button
-                    variant={statusSale.sale_status === "compromiso" ? "default" : "outline"}
-                    onClick={() => handleStatusUpdate("compromiso")}
+                    variant={statusSale.sale_status === "comprometido" ? "default" : "outline"}
+                    onClick={() => handleStatusUpdate("comprometido")}
                     className="justify-start"
                   >
                     <Badge variant="default" className="mr-2">
-                      COMPROMISO
+                      COMPROMETIDO
                     </Badge>
-                    Compromiso
+                    Comprometido
                   </Button>
                   <Button
                     variant={statusSale.sale_status === "devengado" ? "default" : "outline"}
@@ -1746,6 +1749,17 @@ export default function SalesPage() {
                     </Badge>
                     Girado
                   </Button>
+                  <Button
+                    variant={statusSale.sale_status === "firmado" ? "default" : "outline"}
+                    onClick={() => handleStatusUpdate("firmado")}
+                    className="justify-start"
+                  >
+                    <Badge variant="outline" className="mr-2">
+                      FIRMADO
+                    </Badge>
+                    Firmado
+                  </Button>
+                  {/* End of CHANGE */}
                 </div>
               </div>
 
