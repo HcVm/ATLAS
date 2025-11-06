@@ -1,3 +1,5 @@
+// and improve the layout to prevent text overflow
+
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -43,7 +45,7 @@ export function DocumentStickerGenerator({
       const qrDataUrl = await QRCodeLib.toDataURL(trackingUrl, {
         errorCorrectionLevel: "H",
         type: "image/png",
-        width: 200,
+        width: 150,
         margin: 0,
         color: {
           dark: "#000000",
@@ -109,7 +111,7 @@ export function DocumentStickerGenerator({
                 width: 62mm;
                 height: 37mm;
                 display: flex;
-                gap: 3mm;
+                gap: 2mm;
                 padding: 2mm;
                 background: white;
                 page-break-after: always;
@@ -119,12 +121,12 @@ export function DocumentStickerGenerator({
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: space-between;
+                justify-content: flex-start;
                 flex-shrink: 0;
               }
               .qr-code {
-                width: 28mm;
-                height: 28mm;
+                width: 20mm;
+                height: 20mm;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -136,44 +138,44 @@ export function DocumentStickerGenerator({
                 image-rendering: pixelated;
               }
               .scan-text {
-                font-size: 5pt;
+                font-size: 4pt;
                 font-weight: bold;
                 text-align: center;
                 color: #000000;
-                margin-top: 1mm;
+                margin-top: 0.5mm;
               }
               .info-section {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
+                min-width: 0;
               }
               .info-top {
                 display: flex;
                 flex-direction: column;
-                gap: 1mm;
+                gap: 0.5mm;
               }
               .doc-number {
-                font-size: 8pt;
+                font-size: 7pt;
                 font-weight: bold;
                 color: #000000;
-                line-height: 1;
+                line-height: 1.1;
+                word-break: break-word;
               }
               .doc-date {
-                font-size: 7pt;
+                font-size: 6pt;
                 color: #333333;
-                line-height: 1;
+                line-height: 1.1;
               }
               .doc-creator {
-                font-size: 6pt;
+                font-size: 5pt;
                 color: #555555;
-                line-height: 1;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                line-height: 1.1;
+                word-break: break-word;
               }
               .info-bottom {
-                font-size: 5pt;
+                font-size: 4pt;
                 color: #666666;
                 text-align: right;
                 font-weight: 600;
@@ -229,8 +231,7 @@ export function DocumentStickerGenerator({
             <DialogDescription>Imprime directamente o descarga como PNG</DialogDescription>
           </DialogHeader>
 
-          {/* Sticker Preview */}
-          <div className="flex justify-center bg-gray-50 p-4 rounded-lg overflow-auto border border-gray-200">
+          <div className="flex justify-center bg-gray-50 p-6 rounded-lg overflow-auto border border-gray-200">
             <div
               ref={stickerRef}
               style={{
@@ -240,30 +241,32 @@ export function DocumentStickerGenerator({
               className="bg-white border-2 border-gray-300 rounded flex gap-2 p-2 shadow-sm"
             >
               {/* QR Code Section */}
-              <div className="flex flex-col items-center justify-between flex-shrink-0">
+              <div className="flex flex-col items-center justify-start flex-shrink-0 pt-1">
                 {qrCode && (
                   <img
                     src={qrCode || "/placeholder.svg"}
                     alt="QR Code de Seguimiento"
                     style={{
-                      width: "105px",
-                      height: "105px",
+                      width: "70px",
+                      height: "70px",
                       imageRendering: "pixelated",
                     }}
                     className="border border-gray-200 bg-white"
                   />
                 )}
-                <div className="text-[6pt] text-center text-gray-700 font-bold leading-none">ESCANEAR</div>
+                <div className="text-[5pt] text-center text-gray-700 font-bold leading-tight mt-0.5">ESCANEAR</div>
               </div>
 
               {/* Document Info Section */}
-              <div className="flex-1 flex flex-col justify-between text-[7pt]">
+              <div className="flex-1 flex flex-col justify-between min-w-0">
                 <div className="space-y-0.5">
-                  <div className="font-bold text-gray-900 truncate text-[8pt]">No. {documentNumber}</div>
-                  <div className="text-gray-700 text-[7pt]">{formattedDate}</div>
-                  <div className="text-gray-600 text-[6pt] truncate">{creatorName}</div>
+                  <div className="font-bold text-gray-900 text-[7pt] leading-tight break-words">
+                    No. {documentNumber}
+                  </div>
+                  <div className="text-gray-700 text-[6pt] leading-tight">{formattedDate}</div>
+                  <div className="text-gray-600 text-[5pt] leading-tight break-words">{creatorName}</div>
                 </div>
-                <div className="text-[5pt] text-gray-500 text-right font-semibold">
+                <div className="text-[4pt] text-gray-500 text-right font-semibold leading-tight">
                   {trackingHash.substring(0, 8).toUpperCase()}
                 </div>
               </div>
