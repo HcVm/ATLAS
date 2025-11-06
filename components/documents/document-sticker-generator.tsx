@@ -1,5 +1,3 @@
-// and improve the layout to prevent text overflow
-
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -15,6 +13,8 @@ interface DocumentStickerGeneratorProps {
   createdAt: string
   creatorName: string
   trackingHash: string
+  companyName?: string
+  departmentName?: string
 }
 
 export function DocumentStickerGenerator({
@@ -23,6 +23,8 @@ export function DocumentStickerGenerator({
   createdAt,
   creatorName,
   trackingHash,
+  companyName,
+  departmentName,
 }: DocumentStickerGeneratorProps) {
   const [showPreview, setShowPreview] = useState(false)
   const [qrCode, setQrCode] = useState<string>("")
@@ -174,6 +176,18 @@ export function DocumentStickerGenerator({
                 line-height: 1.1;
                 word-break: break-word;
               }
+              .doc-company {
+                font-size: 4pt;
+                color: #666666;
+                line-height: 1.1;
+                word-break: break-word;
+              }
+              .doc-department {
+                font-size: 4pt;
+                color: #666666;
+                line-height: 1.1;
+                word-break: break-word;
+              }
               .info-bottom {
                 font-size: 4pt;
                 color: #666666;
@@ -199,6 +213,8 @@ export function DocumentStickerGenerator({
                     day: "2-digit",
                   })}</div>
                   <div class="doc-creator">${creatorName}</div>
+                  ${companyName ? `<div class="doc-company">Emp: ${companyName}</div>` : ""}
+                  ${departmentName ? `<div class="doc-department">Dep: ${departmentName}</div>` : ""}
                 </div>
                 <div class="info-bottom">${trackingHash.substring(0, 8).toUpperCase()}</div>
               </div>
@@ -265,6 +281,12 @@ export function DocumentStickerGenerator({
                   </div>
                   <div className="text-gray-700 text-[6pt] leading-tight">{formattedDate}</div>
                   <div className="text-gray-600 text-[5pt] leading-tight break-words">{creatorName}</div>
+                  {companyName && (
+                    <div className="text-gray-600 text-[4pt] leading-tight break-words">Emp: {companyName}</div>
+                  )}
+                  {departmentName && (
+                    <div className="text-gray-600 text-[4pt] leading-tight break-words">Dep: {departmentName}</div>
+                  )}
                 </div>
                 <div className="text-[4pt] text-gray-500 text-right font-semibold leading-tight">
                   {trackingHash.substring(0, 8).toUpperCase()}

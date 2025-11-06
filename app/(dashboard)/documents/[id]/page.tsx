@@ -157,8 +157,9 @@ export default function DocumentDetailsPage() {
         .from("documents")
         .select(`
           *,
-          profiles!documents_created_by_fkey (id, full_name, email),
+          profiles!documents_created_by_fkey (id, full_name, email, company_id, current_department_id),
           departments!documents_current_department_id_fkey (id, name, color),
+          companies (id, name, code),
           document_movements!document_movements_document_id_fkey (
             id,
             from_department_id,
@@ -178,7 +179,7 @@ export default function DocumentDetailsPage() {
           .from("documents")
           .select(`
             *,
-            profiles!documents_created_by_fkey (id, full_name, email)
+            profiles!documents_created_by_fkey (id, full_name, email, company_id, current_department_id)
           `)
           .eq("id", id)
           .single()
@@ -206,6 +207,47 @@ export default function DocumentDetailsPage() {
           }
         }
 
+        // Obtener compañía por separado si existe company_id
+        let companyData = null
+        if (docData.company_id) {
+          const { data: compData, error: compError } = await supabase
+            .from("companies")
+            .select("id, name, code")
+            .eq("id", docData.company_id)
+            .single()
+
+          if (!compError) {
+            companyData = compData
+          }
+        }
+
+        let creatorCompanyData = null
+        let creatorDepartmentData = null
+
+        if (docData.profiles?.company_id) {
+          const { data: creatorCompData, error: creatorCompError } = await supabase
+            .from("companies")
+            .select("id, name, code")
+            .eq("id", docData.profiles.company_id)
+            .single()
+
+          if (!creatorCompError) {
+            creatorCompanyData = creatorCompData
+          }
+        }
+
+        if (docData.profiles?.current_department_id) {
+          const { data: creatorDeptData, error: creatorDeptError } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", docData.profiles.current_department_id)
+            .single()
+
+          if (!creatorDeptError) {
+            creatorDepartmentData = creatorDeptData
+          }
+        }
+
         const { data: movementsData } = await supabase
           .from("document_movements")
           .select("id, from_department_id, to_department_id, created_at")
@@ -215,6 +257,9 @@ export default function DocumentDetailsPage() {
         data = {
           ...docData,
           departments: departmentData,
+          companies: companyData,
+          creator_company: creatorCompanyData,
+          creator_department: creatorDepartmentData,
           document_movements: movementsData || [],
         }
       } else if (error) {
@@ -224,6 +269,24 @@ export default function DocumentDetailsPage() {
           throw error
         }
         return
+      } else if (data) {
+        if (data.profiles?.company_id) {
+          const { data: creatorCompData } = await supabase
+            .from("companies")
+            .select("id, name, code")
+            .eq("id", data.profiles.company_id)
+            .single()
+          data.creator_company = creatorCompData
+        }
+
+        if (data.profiles?.current_department_id) {
+          const { data: creatorDeptData } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", data.profiles.current_department_id)
+            .single()
+          data.creator_department = creatorDeptData
+        }
       }
 
       const hasHistoricalAccess = data.document_movements?.some(
@@ -801,7 +864,7 @@ export default function DocumentDetailsPage() {
               <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Solo lectura</h3>
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="text-sm text-blue-800 dark:text-amber-200">
                   Este documento pasó por tu área pero actualmente está en otro departamento. Puedes ver toda la
                   información pero no puedes editarlo ni moverlo.
                 </p>
@@ -977,6 +1040,33 @@ export default function DocumentDetailsPage() {
                     </div>
                   </>
                 )}
+
+                {/* Información Adicional del Creador (Compañía y Departamento) */}
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-3">
+                    Información del Creador
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {document.creator_profile?.company_id && document.creator_company && (
+                      <div>
+                        <span className="text-muted-foreground dark:text-slate-400">Compañía:</span>
+                        <p className="font-medium text-slate-700 dark:text-slate-200">
+                          {document.creator_company.name} ({document.creator_company.code})
+                        </p>
+                      </div>
+                    )}
+
+                    {document.creator_profile?.department_id && document.creator_department && (
+                      <div>
+                        <span className="text-muted-foreground dark:text-slate-400">Departamento del Creador:</span>
+                        <p className="font-medium text-slate-700 dark:text-slate-200">
+                          {document.creator_department.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1308,6 +1398,10 @@ export default function DocumentDetailsPage() {
                   createdAt={document.created_at}
                   creatorName={document.profiles.full_name}
                   trackingHash={document.tracking_hash || ""}
+                  companyName={document.companies?.name}
+                  departmentName={document.departments?.name}
+                  creatorCompanyName={document.creator_company?.name}
+                  creatorDepartmentName={document.creator_department?.name}
                 />
               )}
             </CardContent>
