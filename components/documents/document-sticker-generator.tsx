@@ -166,30 +166,30 @@ export function DocumentStickerGenerator({
                 word-break: break-word;
               }
               .doc-date {
-                font-size: 6pt;
+                font-size: 7pt;
                 color: #333333;
                 line-height: 1.1;
               }
               .doc-creator {
-                font-size: 5pt;
+                font-size: 8.5pt;
                 color: #555555;
                 line-height: 1.1;
                 word-break: break-word;
               }
               .doc-company {
-                font-size: 4pt;
+                font-size: 7pt;
                 color: #666666;
                 line-height: 1.1;
                 word-break: break-word;
               }
               .doc-department {
-                font-size: 4pt;
+                font-size: 7pt;
                 color: #666666;
                 line-height: 1.1;
                 word-break: break-word;
               }
               .info-bottom {
-                font-size: 4pt;
+                font-size: 5pt;
                 color: #666666;
                 text-align: right;
                 font-weight: 600;
@@ -279,16 +279,16 @@ export function DocumentStickerGenerator({
                   <div className="font-bold text-gray-900 text-[7pt] leading-tight break-words">
                     No. {documentNumber}
                   </div>
-                  <div className="text-gray-700 text-[6pt] leading-tight">{formattedDate}</div>
-                  <div className="text-gray-600 text-[5pt] leading-tight break-words">{creatorName}</div>
+                  <div className="text-gray-700 text-[7pt] leading-tight">{formattedDate}</div>
+                  <div className="text-gray-600 text-[8pt] leading-tight break-words">{creatorName}</div>
                   {companyName && (
-                    <div className="text-gray-600 text-[4pt] leading-tight break-words">Emp: {companyName}</div>
+                    <div className="text-gray-600 text-[6pt] leading-tight break-words">Emp: {companyName}</div>
                   )}
                   {departmentName && (
-                    <div className="text-gray-600 text-[4pt] leading-tight break-words">Dep: {departmentName}</div>
+                    <div className="text-gray-600 text-[6pt] leading-tight break-words">Dep: {departmentName}</div>
                   )}
                 </div>
-                <div className="text-[4pt] text-gray-500 text-right font-semibold leading-tight">
+                <div className="text-[5pt] text-gray-500 text-right font-semibold leading-tight">
                   {trackingHash.substring(0, 8).toUpperCase()}
                 </div>
               </div>
