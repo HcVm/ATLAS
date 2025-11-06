@@ -220,6 +220,8 @@ export default function NewDocumentPage() {
 
       console.log("Generated document number:", documentNumber)
 
+      const trackingHash = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+
       console.log("Creating document with data:", {
         title: values.title,
         description: values.description || null,
@@ -229,6 +231,7 @@ export default function NewDocumentPage() {
         current_department_id: values.department_id,
         file_url: fileUrl,
         is_public: values.is_public,
+        tracking_hash: trackingHash, // Add tracking hash for public tracking
         company_id: companyToUse,
       })
 
@@ -238,13 +241,14 @@ export default function NewDocumentPage() {
         .insert({
           title: values.title,
           description: values.description || null,
-          document_number: documentNumber, // Pass the generated document number
+          document_number: documentNumber,
           status: "pending",
           created_by: user.id,
-          company_id: companyToUse, // Use determined company
+          company_id: companyToUse,
           current_department_id: values.department_id,
           file_url: fileUrl,
           is_public: values.is_public,
+          tracking_hash: trackingHash,
         })
         .select()
         .single()
@@ -255,6 +259,19 @@ export default function NewDocumentPage() {
       }
 
       console.log("Document created successfully:", document)
+
+      try {
+        await supabase.from("document_movements").insert({
+          document_id: document.id,
+          from_department_id: values.department_id,
+          to_department_id: values.department_id,
+          moved_by: user.id,
+          notes: "Documento creado",
+        })
+      } catch (movementError) {
+        console.error("Error creating initial movement:", movementError)
+        // No fallar la creación del documento si hay error en el movimiento
+      }
 
       // Upload attachments if any
       if (attachments.length > 0) {

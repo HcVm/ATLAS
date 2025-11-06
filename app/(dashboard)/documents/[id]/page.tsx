@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
+import { DocumentStickerGenerator } from "@/components/documents/document-sticker-generator"
 import { trackDownload } from "@/lib/download-tracker"
 
 // Helper function to validate UUID
@@ -94,36 +95,37 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
 }
 
 export default function DocumentDetailsPage() {
-  const params = useParams()
+  const { id } = useParams() as { id: string }
   const router = useRouter()
   const { user } = useAuth()
   const { toast } = useToast()
   const [document, setDocument] = useState<any>(null)
   const [movements, setMovements] = useState<any[]>([])
+  const [attachments, setAttachments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [movementDialogOpen, setMovementDialogOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [downloadStatsOpen, setDownloadStatsOpen] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [statusLoading, setStatusLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [attachments, setAttachments] = useState<any[]>([])
-  const [downloadStats, setDownloadStats] = useState<any[]>([])
-  const [viewerOpen, setViewerOpen] = useState(false)
-  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
   const [statsLoading, setStatsLoading] = useState(false)
+  const [canViewAttachments, setCanViewAttachments] = useState(true)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
+  const [downloadStats, setDownloadStats] = useState<any[]>([])
 
   useEffect(() => {
     // Validate UUID before making requests
-    if (!params.id || typeof params.id !== "string") {
+    if (!id || typeof id !== "string") {
       setError("ID de documento inválido")
       setLoading(false)
       return
     }
 
-    if (!isValidUUID(params.id)) {
+    if (!isValidUUID(id)) {
       setError("Formato de ID de documento inválido")
       setLoading(false)
       return
@@ -134,7 +136,20 @@ export default function DocumentDetailsPage() {
       fetchMovements()
       fetchAttachments()
     }
-  }, [params.id, user])
+  }, [id, user])
+
+  const canUserViewAttachments = (doc: any) => {
+    if (user?.role === "admin" || user?.role === "supervisor" || user?.id === doc?.created_by) {
+      return true
+    }
+
+    // Normal users can view attachments only if the document is still in their department
+    if (user?.department_id === doc?.current_department_id) {
+      return true
+    }
+
+    return false
+  }
 
   const fetchDocument = async () => {
     try {
@@ -151,7 +166,7 @@ export default function DocumentDetailsPage() {
             created_at
           )
         `)
-        .eq("id", params.id)
+        .eq("id", id)
         .single()
 
       // Si falla, intentar sin la relación específica y hacer JOIN manual
@@ -165,7 +180,7 @@ export default function DocumentDetailsPage() {
             *,
             profiles!documents_created_by_fkey (id, full_name, email)
           `)
-          .eq("id", params.id)
+          .eq("id", id)
           .single()
 
         if (docError) {
@@ -194,7 +209,7 @@ export default function DocumentDetailsPage() {
         const { data: movementsData } = await supabase
           .from("document_movements")
           .select("id, from_department_id, to_department_id, created_at")
-          .eq("document_id", params.id)
+          .eq("document_id", id)
 
         // Combinar los datos
         data = {
@@ -228,6 +243,7 @@ export default function DocumentDetailsPage() {
       }
 
       setDocument(data)
+      setCanViewAttachments(canUserViewAttachments(data))
     } catch (error: any) {
       console.error("Error fetching document:", error)
       setError("Error al cargar el documento")
@@ -246,7 +262,7 @@ export default function DocumentDetailsPage() {
           to_departments:to_department_id(id, name, color),
           profiles!document_movements_moved_by_fkey(id, full_name, email)
         `)
-        .eq("document_id", params.id)
+        .eq("document_id", id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -264,7 +280,7 @@ export default function DocumentDetailsPage() {
         *,
         profiles!document_attachments_uploaded_by_fkey (id, full_name)
       `)
-        .eq("document_id", params.id)
+        .eq("document_id", id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -282,14 +298,14 @@ export default function DocumentDetailsPage() {
 
     try {
       setStatsLoading(true)
-      console.log("Fetching download stats for document:", params.id)
+      console.log("Fetching download stats for document:", id)
       console.log("Current user:", user)
 
       // Primero, verificar si el documento existe
       const { data: docCheck, error: docError } = await supabase
         .from("documents")
         .select("id, title")
-        .eq("id", params.id)
+        .eq("id", id)
         .single()
 
       if (docError) {
@@ -303,7 +319,7 @@ export default function DocumentDetailsPage() {
       const { data, error } = await supabase
         .from("document_downloads")
         .select("*")
-        .eq("document_id", params.id)
+        .eq("document_id", id)
         .order("downloaded_at", { ascending: false })
 
       if (error) {
@@ -794,8 +810,69 @@ export default function DocumentDetailsPage() {
           </div>
         )}
 
+      {!canViewAttachments && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Eye className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Archivos no disponibles</h3>
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Este documento abandonó tu área. Los archivos adjuntos no están disponibles para usuarios normales.
+                Contacta a un supervisor o administrador si necesitas acceso.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {document.file_url && (
+            <Card className="bg-card dark:bg-slate-800 border-2 border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Documento Principal
+                </CardTitle>
+                <CardDescription className="text-muted-foreground dark:text-slate-400">
+                  Archivo principal del documento
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-4 border border-slate-200 dark:border-slate-600">
+                  <div className="flex items-center gap-3 mb-3">
+                    <FileText className="h-8 w-8 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                        {document.file_name || "documento"}
+                      </p>
+                      <p className="text-sm text-muted-foreground dark:text-slate-400">
+                        Creado por {document.profiles?.full_name} •{" "}
+                        {format(new Date(document.created_at), "dd/MM/yyyy", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => viewFile(document.file_url)} className="flex-1">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Previa
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => downloadFile(document.file_url)}
+                      disabled={downloadLoading}
+                      className="flex-1"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {downloadLoading ? "..." : "Descargar"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Información del Documento</CardTitle>
@@ -998,41 +1075,41 @@ export default function DocumentDetailsPage() {
                               </div>
                             )}
 
-                            {/* Archivos adjuntos del movimiento */}
-                            {attachments.filter((att) => att.movement_id === movement.id).length > 0 && (
-                              <div className="border-t pt-3 border-slate-100 dark:border-slate-600">
-                                <p className="text-sm font-medium mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                  <Paperclip className="h-4 w-4" />
-                                  Archivos adjuntos
-                                </p>
-                                <div className="space-y-2">
-                                  {attachments
-                                    .filter((att) => att.movement_id === movement.id)
-                                    .map((attachment) => (
-                                      <div
-                                        key={attachment.id}
-                                        className="flex items-center justify-between p-2 bg-muted/30 dark:bg-slate-600/30 rounded hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors duration-200"
-                                      >
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">
-                                            {attachment.file_name}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground dark:text-slate-400">
-                                            Subido por {attachment.profiles?.full_name}
-                                          </div>
-                                        </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => downloadAttachment(attachment)}
+                            {canViewAttachments &&
+                              attachments.filter((att) => att.movement_id === movement.id).length > 0 && (
+                                <div className="border-t pt-3 border-slate-100 dark:border-slate-600">
+                                  <p className="text-sm font-medium mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                    <Paperclip className="h-4 w-4" />
+                                    Archivos adjuntos
+                                  </p>
+                                  <div className="space-y-2">
+                                    {attachments
+                                      .filter((att) => att.movement_id === movement.id)
+                                      .map((attachment) => (
+                                        <div
+                                          key={attachment.id}
+                                          className="flex items-center justify-between p-2 bg-muted/30 dark:bg-slate-600/30 rounded hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors duration-200"
                                         >
-                                          <Download className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    ))}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">
+                                              {attachment.file_name}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground dark:text-slate-400">
+                                              Subido por {attachment.profiles?.full_name}
+                                            </div>
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => downloadAttachment(attachment)}
+                                          >
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         </div>
                       </div>
@@ -1047,11 +1124,24 @@ export default function DocumentDetailsPage() {
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Archivos Adjuntos Generales</CardTitle>
               <CardDescription className="text-muted-foreground dark:text-slate-400">
-                Archivos secundarios del documento
+                {canViewAttachments
+                  ? "Archivos secundarios del documento"
+                  : "No tienes permisos para ver estos archivos"}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {attachments.filter((att) => !att.movement_id).length === 0 ? (
+              {!canViewAttachments ? (
+                <div className="text-center py-6">
+                  <Paperclip className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto opacity-50" />
+                  <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">
+                    Archivos no disponibles
+                  </h3>
+                  <p className="text-muted-foreground dark:text-slate-400 mt-2">
+                    Este documento abandonó tu área. Los archivos adjuntos solo están disponibles para supervisores y
+                    administradores.
+                  </p>
+                </div>
+              ) : attachments.filter((att) => !att.movement_id).length === 0 ? (
                 <div className="text-center py-6">
                   <FileText className="h-12 w-12 text-muted-foreground dark:text-slate-400 mx-auto" />
                   <h3 className="mt-4 text-lg font-medium text-slate-800 dark:text-slate-100">Sin archivos adjuntos</h3>
@@ -1110,7 +1200,7 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card dark:bg-slate-800">
+          <Card className="bg-card dark:bg-slate-800 border-slate-200 dark:border-slate-700">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Acciones Rápidas</CardTitle>
             </CardHeader>
@@ -1208,6 +1298,17 @@ export default function DocumentDetailsPage() {
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Ver Estadísticas
                 </Button>
+              )}
+
+              {/* Sticker Generator for Tracking */}
+              {document && document.profiles?.full_name && (
+                <DocumentStickerGenerator
+                  documentId={document.id}
+                  documentNumber={document.document_number}
+                  createdAt={document.created_at}
+                  creatorName={document.profiles.full_name}
+                  trackingHash={document.tracking_hash || ""}
+                />
               )}
             </CardContent>
           </Card>
