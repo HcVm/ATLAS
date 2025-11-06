@@ -37,10 +37,7 @@ export function useAuth() {
 
 async function fetchUserProfile(authUser: User): Promise<Profile | null> {
   try {
-    // Usamos el cliente de servicio para evitar problemas de RLS
     const adminClient = supabase.auth.admin
-
-    // Primero intentamos obtener el perfil directamente con el ID
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select(`
@@ -56,7 +53,6 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
     if (profileError) {
       console.error("Error fetching profile:", profileError)
 
-      // Si hay un error de RLS, intentamos una consulta más simple
       const { data: simpleProfile, error: simpleError } = await supabase
         .from("profiles")
         .select("*")
@@ -76,16 +72,12 @@ async function fetchUserProfile(authUser: User): Promise<Profile | null> {
     }
 
     if (profileData) {
-      // Para admins, cargar la empresa seleccionada desde localStorage
       if (profileData.role === "admin") {
         const savedCompanyId = localStorage.getItem("selectedCompanyId")
         return { ...profileData, selectedCompanyId: savedCompanyId || undefined }
       }
       return profileData
     }
-
-    // Si no existe el perfil, crearlo
-    console.log("Profile not found, creating one...")
     const { data: defaultDept } = await supabase.from("departments").select("id").limit(1).maybeSingle()
 
     const { data: newProfile, error: createError } = await supabase
@@ -190,9 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { data, error }
       }
 
-      // Si el login es exitoso, cargar el perfil inmediatamente
       if (data.user && mounted.current) {
-        console.log("AUTH CONTEXT: Login successful, loading profile...")
         const profile = await fetchUserProfile(data.user)
         if (mounted.current) {
           setUser(profile)
@@ -260,7 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (initialized.current) return
 
       try {
-        console.log("AUTH CONTEXT: Initializing...")
         setLoading(true)
         setError(null)
 
@@ -269,7 +258,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (session?.user && mounted.current) {
-          console.log("AUTH CONTEXT: Found session for:", session.user.email)
           const profile = await fetchUserProfile(session.user)
           if (mounted.current) {
             setUser(profile)
@@ -278,7 +266,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          console.log("AUTH CONTEXT: No session found")
           if (mounted.current) {
             setUser(null)
           }
@@ -300,30 +287,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth()
 
-    // Limpiar suscripción anterior si existe
     if (authSubscription.current) {
       authSubscription.current.unsubscribe()
     }
 
-    // Escuchar cambios de autenticación - SOLO LOGOUT
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted.current || !initialized.current) return
-
-      console.log("AUTH CONTEXT: Event:", event)
-
-      // SOLO procesar logout
       if (event === "SIGNED_OUT" || !session) {
-        console.log("AUTH CONTEXT: User signed out")
         if (mounted.current) {
           setUser(null)
           setError(null)
           setLoading(false)
         }
       } else {
-        // IGNORAR todos los demás eventos para evitar bucles
-        console.log("AUTH CONTEXT: Ignoring event:", event)
+        // Manejar otros eventos de autenticación
       }
     })
 

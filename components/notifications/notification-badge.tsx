@@ -34,16 +34,10 @@ export function NotificationBadge() {
   useEffect(() => {
     if (!user) return
 
-    // Fetch initial count
     fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 10000) 
 
-    // Set up more frequent polling for better responsiveness
-    const interval = setInterval(fetchUnreadCount, 10000) // Every 10 seconds
-
-    // Set up realtime subscription as backup
     const companyId = user.role === "admin" && selectedCompany ? selectedCompany.id : undefined
-
-    console.log("🔔 Setting up realtime notifications for user:", user.id, "company:", companyId)
 
     const channel = supabase
       .channel("notifications-changes")
@@ -56,39 +50,30 @@ export function NotificationBadge() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log("🔔 Notification change detected:", payload)
-
           const notification = payload.new || payload.old
 
-          // For admins, filter by company if one is selected
           if (user.role === "admin" && selectedCompany) {
             if (notification?.company_id !== selectedCompany.id) {
-              console.log("🔔 Notification filtered out - different company")
               return
             }
           }
 
-          // Refresh the count immediately
           fetchUnreadCount()
         },
       )
       .subscribe((status) => {
-        console.log("🔔 Realtime subscription status:", status)
       })
 
-    // Cleanup
     return () => {
       clearInterval(interval)
-      console.log("🔔 Cleaning up realtime subscription")
       supabase.removeChannel(channel)
     }
   }, [user, selectedCompany, fetchUnreadCount])
 
-  // More frequent polling when dropdown is open
   useEffect(() => {
     if (!isDropdownOpen || !user) return
 
-    const activeInterval = setInterval(fetchUnreadCount, 3000) // Every 3 seconds when active
+    const activeInterval = setInterval(fetchUnreadCount, 3000)
 
     return () => clearInterval(activeInterval)
   }, [isDropdownOpen, fetchUnreadCount, user])

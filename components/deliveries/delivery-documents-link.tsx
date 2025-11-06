@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,7 @@ export function DeliveryDocumentsLink({
   const [availableDocuments, setAvailableDocuments] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
   const [localLinked, setLocalLinked] = useState<LinkedDocument[]>(linkedDocuments)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   // Sincroniza con el prop del Kanban
   useEffect(() => {
@@ -97,6 +98,20 @@ export function DeliveryDocumentsLink({
     },
     [localLinked],
   )
+
+  const handleInputChange = (value: string) => {
+    setSearchQuery(value)
+
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+
+    // Set new timer for search after 500ms of no typing
+    debounceTimer.current = setTimeout(() => {
+      searchDocuments(value)
+    }, 500)
+  }
 
   const handleLink = useCallback(
     async (docId: string) => {
@@ -178,10 +193,7 @@ export function DeliveryDocumentsLink({
                 <Input
                   placeholder="Título o número..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    searchDocuments(e.target.value)
-                  }}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   disabled={searching}
                 />
                 <Button size="icon" variant="outline" disabled={searching || !searchQuery.trim()}>
@@ -220,9 +232,7 @@ export function DeliveryDocumentsLink({
 
       <div className="space-y-2 max-w-xl">
         {localLinked.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No hay documentos relacionados
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-4">No hay documentos relacionados</p>
         ) : (
           localLinked.map((link) => (
             <div

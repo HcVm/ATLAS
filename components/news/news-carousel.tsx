@@ -41,7 +41,6 @@ export function NewsCarousel() {
   const fetchNews = async () => {
     try {
       setLoading(true)
-      console.log("Fetching news for company:", selectedCompany?.id || "all")
 
       let query = supabase
         .from("news")
@@ -65,7 +64,6 @@ export function NewsCarousel() {
         throw error
       }
 
-      console.log(`Loaded ${data?.length || 0} news items`)
       setNews(data || [])
 
       setCurrentIndex(0)
