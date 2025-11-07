@@ -113,8 +113,8 @@ export function DocumentStickerGenerator({
                 width: 62mm;
                 height: 37mm;
                 display: flex;
-                gap: 2mm;
-                padding: 2mm;
+                gap: 4mm;
+                padding: 4mm;
                 background: white;
                 page-break-after: always;
                 page-break-inside: avoid;
