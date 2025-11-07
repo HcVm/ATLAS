@@ -1,12 +1,10 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Download, Edit, FileText, MoveRight, Eye, Paperclip, CheckCircle, BarChart3 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,13 +20,11 @@ import { useAuth } from "@/lib/auth-context"
 import { MovementForm } from "@/components/documents/movement-form"
 import { DocumentStickerGenerator } from "@/components/documents/document-sticker-generator"
 import { trackDownload } from "@/lib/download-tracker"
-
 // Helper function to validate UUID
 const isValidUUID = (str: string) => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
   return uuidRegex.test(str)
 }
-
 // Status options con colores modernos
 const statusOptions = [
   {
@@ -52,7 +48,6 @@ const statusOptions = [
     color: "bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border-rose-200",
   },
 ]
-
 // Función para obtener el color de texto basado en el color de fondo
 const getTextColor = (backgroundColor: string) => {
   if (!backgroundColor) return "#000000"
@@ -63,7 +58,6 @@ const getTextColor = (backgroundColor: string) => {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
   return luminance > 0.5 ? "#000000" : "#FFFFFF"
 }
-
 // Añadir el componente DepartmentBadge moderno
 const DepartmentBadge = ({ department, isDestination = false }: { department: any; isDestination?: boolean }) => {
   if (!department) {
@@ -73,10 +67,8 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
       </span>
     )
   }
-
   const backgroundColor = department.color || "#6B7280"
   const textColor = getTextColor(backgroundColor)
-
   return (
     <span
       className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
@@ -93,7 +85,6 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
     </span>
   )
 }
-
 export default function DocumentDetailsPage() {
   const { id } = useParams() as { id: string }
   const router = useRouter()
@@ -116,7 +107,6 @@ export default function DocumentDetailsPage() {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const [downloadStats, setDownloadStats] = useState<any[]>([])
-
   useEffect(() => {
     // Validate UUID before making requests
     if (!id || typeof id !== "string") {
@@ -124,42 +114,36 @@ export default function DocumentDetailsPage() {
       setLoading(false)
       return
     }
-
     if (!isValidUUID(id)) {
       setError("Formato de ID de documento inválido")
       setLoading(false)
       return
     }
-
     if (user) {
       fetchDocument()
       fetchMovements()
       fetchAttachments()
     }
   }, [id, user])
-
   const canUserViewAttachments = (doc: any) => {
     if (user?.role === "admin" || user?.role === "supervisor" || user?.id === doc?.created_by) {
       return true
     }
-
     // Normal users can view attachments only if the document is still in their department
     if (user?.department_id === doc?.current_department_id) {
       return true
     }
-
     return false
   }
-
   const fetchDocument = async () => {
     try {
       let { data, error } = await supabase
         .from("documents")
         .select(`
           *,
-          profiles!documents_created_by_fkey (id, full_name, email, company_id, current_department_id),
+          profiles!documents_created_by_fkey (id, full_name, email, company_id, department_id, current_department_id),
           departments!documents_current_department_id_fkey (id, name, color),
-          companies (id, name, code),
+          companies!documents_company_id_fkey (id, name, code),
           document_movements!document_movements_document_id_fkey (
             id,
             from_department_id,
@@ -170,107 +154,16 @@ export default function DocumentDetailsPage() {
         .eq("id", id)
         .single()
 
-      // Si falla, intentar sin la relación específica y hacer JOIN manual
-      if (error && error.code === "PGRST201") {
-        console.log("Fallback: Obteniendo datos por separado...")
-
-        // Obtener documento básico
-        const { data: docData, error: docError } = await supabase
-          .from("documents")
-          .select(`
-            *,
-            profiles!documents_created_by_fkey (id, full_name, email, company_id, current_department_id)
-          `)
-          .eq("id", id)
-          .single()
-
-        if (docError) {
-          if (docError.code === "PGRST116") {
-            setError("Documento no encontrado")
-          } else {
-            throw docError
-          }
-          return
-        }
-
-        // Obtener departamento por separado si existe current_department_id
-        let departmentData = null
-        if (docData.current_department_id) {
-          const { data: deptData, error: deptError } = await supabase
-            .from("departments")
-            .select("id, name, color")
-            .eq("id", docData.current_department_id)
-            .single()
-
-          if (!deptError) {
-            departmentData = deptData
-          }
-        }
-
-        // Obtener compañía por separado si existe company_id
-        let companyData = null
-        if (docData.company_id) {
-          const { data: compData, error: compError } = await supabase
-            .from("companies")
-            .select("id, name, code")
-            .eq("id", docData.company_id)
-            .single()
-
-          if (!compError) {
-            companyData = compData
-          }
-        }
-
-        let creatorCompanyData = null
-        let creatorDepartmentData = null
-
-        if (docData.profiles?.company_id) {
-          const { data: creatorCompData, error: creatorCompError } = await supabase
-            .from("companies")
-            .select("id, name, code")
-            .eq("id", docData.profiles.company_id)
-            .single()
-
-          if (!creatorCompError) {
-            creatorCompanyData = creatorCompData
-          }
-        }
-
-        if (docData.profiles?.current_department_id) {
-          const { data: creatorDeptData, error: creatorDeptError } = await supabase
-            .from("departments")
-            .select("id, name, color")
-            .eq("id", docData.profiles.current_department_id)
-            .single()
-
-          if (!creatorDeptError) {
-            creatorDepartmentData = creatorDeptData
-          }
-        }
-
-        const { data: movementsData } = await supabase
-          .from("document_movements")
-          .select("id, from_department_id, to_department_id, created_at")
-          .eq("document_id", id)
-
-        // Combinar los datos
-        data = {
-          ...docData,
-          departments: departmentData,
-          companies: companyData,
-          creator_company: creatorCompanyData,
-          creator_department: creatorDepartmentData,
-          document_movements: movementsData || [],
-        }
-      } else if (error) {
+      if (error) {
         if (error.code === "PGRST116") {
           setError("Documento no encontrado")
-        } else {
-          throw error
+          return
         }
-        return
-      } else if (data) {
-        if (data.profiles?.company_id) {
+        console.error("Query error:", error)
+      }
+
+      if (data) {
+        if (data.profiles?.company_id && !data.creator_company) {
           const { data: creatorCompData } = await supabase
             .from("companies")
             .select("id, name, code")
@@ -279,34 +172,124 @@ export default function DocumentDetailsPage() {
           data.creator_company = creatorCompData
         }
 
-        if (data.profiles?.current_department_id) {
+        if (data.profiles?.department_id && !data.creator_department) {
           const { data: creatorDeptData } = await supabase
             .from("departments")
             .select("id, name, color")
-            .eq("id", data.profiles.current_department_id)
+            .eq("id", data.profiles.department_id)
             .single()
           data.creator_department = creatorDeptData
         }
+
+        const hasHistoricalAccess = data.document_movements?.some(
+          (movement: any) =>
+            movement.to_department_id === user?.department_id || movement.from_department_id === user?.department_id,
+        )
+        if (
+          user?.role !== "admin" &&
+          user?.role !== "supervisor" &&
+          user?.department_id !== data.current_department_id &&
+          user?.id !== data.created_by &&
+          !hasHistoricalAccess
+        ) {
+          setError("No tienes permisos para ver este documento")
+          return
+        }
+
+        setDocument(data)
+        setCanViewAttachments(canUserViewAttachments(data))
+      } else {
+        // Fallback si es necesario
+        console.log("Fallback: Obteniendo datos por separado...")
+        const { data: docData, error: docError } = await supabase
+          .from("documents")
+          .select(`
+            *,
+            profiles!documents_created_by_fkey (id, full_name, email, company_id, department_id, current_department_id)
+          `)
+          .eq("id", id)
+          .single()
+        if (docError) {
+          if (docError.code === "PGRST116") {
+            setError("Documento no encontrado")
+          } else {
+            throw docError
+          }
+          return
+        }
+        let departmentData = null
+        if (docData.current_department_id) {
+          const { data: deptData, error: deptError } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", docData.current_department_id)
+            .single()
+          if (!deptError) {
+            departmentData = deptData
+          }
+        }
+        let companyData = null
+        if (docData.company_id) {
+          const { data: compData, error: compError } = await supabase
+            .from("companies")
+            .select("id, name, code")
+            .eq("id", docData.company_id)
+            .single()
+          if (!compError) {
+            companyData = compData
+          }
+        }
+        let creatorCompanyData = null
+        let creatorDepartmentData = null
+        if (docData.profiles?.company_id) {
+          const { data: creatorCompData, error: creatorCompError } = await supabase
+            .from("companies")
+            .select("id, name, code")
+            .eq("id", docData.profiles.company_id)
+            .single()
+          if (!creatorCompError) {
+            creatorCompanyData = creatorCompData
+          }
+        }
+        if (docData.profiles?.department_id) {
+          const { data: creatorDeptData, error: creatorDeptError } = await supabase
+            .from("departments")
+            .select("id, name, color")
+            .eq("id", docData.profiles.department_id)
+            .single()
+          if (!creatorDeptError) {
+            creatorDepartmentData = creatorDeptData
+          }
+        }
+        const { data: movementsData } = await supabase
+          .from("document_movements")
+          .select("id, from_department_id, to_department_id, created_at")
+          .eq("document_id", id)
+        data = {
+          ...docData,
+          departments: departmentData,
+          companies: companyData,
+          creator_company: creatorCompanyData,
+          creator_department: creatorDepartmentData,
+          document_movements: movementsData || [],
+        }
+        const hasHistoricalAccess = data.document_movements?.some(
+          (movement: any) =>
+            movement.to_department_id === user?.department_id || movement.from_department_id === user?.department_id,
+        )
+        if (
+          user?.role !== "admin" &&
+          user?.role !== "supervisor" &&
+          user?.department_id !== data.current_department_id &&
+          user?.id !== data.created_by &&
+          !hasHistoricalAccess
+        ) {
+          setError("No tienes permisos para ver este documento")
+          return
+        }
+        setDocument(data)
+        setCanViewAttachments(canUserViewAttachments(data))
       }
-
-      const hasHistoricalAccess = data.document_movements?.some(
-        (movement: any) =>
-          movement.to_department_id === user?.department_id || movement.from_department_id === user?.department_id,
-      )
-
-      if (
-        user?.role !== "admin" &&
-        user?.role !== "supervisor" &&
-        user?.department_id !== data.current_department_id &&
-        user?.id !== data.created_by &&
-        !hasHistoricalAccess
-      ) {
-        setError("No tienes permisos para ver este documento")
-        return
-      }
-
-      setDocument(data)
-      setCanViewAttachments(canUserViewAttachments(data))
     } catch (error: any) {
       console.error("Error fetching document:", error)
       setError("Error al cargar el documento")
@@ -314,7 +297,6 @@ export default function DocumentDetailsPage() {
       setLoading(false)
     }
   }
-
   const fetchMovements = async () => {
     try {
       const { data, error } = await supabase
@@ -327,14 +309,12 @@ export default function DocumentDetailsPage() {
         `)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
-
       if (error) throw error
       setMovements(data || [])
     } catch (error) {
       console.error("Error fetching movements:", error)
     }
   }
-
   const fetchAttachments = async () => {
     try {
       const { data, error } = await supabase
@@ -345,71 +325,53 @@ export default function DocumentDetailsPage() {
       `)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
-
       if (error) throw error
       setAttachments(data || [])
     } catch (error) {
       console.error("Error fetching attachments:", error)
     }
   }
-
   const fetchDownloadStats = async () => {
     if (user?.role !== "admin") {
       console.log("User is not admin, skipping download stats")
       return
     }
-
     try {
       setStatsLoading(true)
       console.log("Fetching download stats for document:", id)
       console.log("Current user:", user)
-
-      // Primero, verificar si el documento existe
       const { data: docCheck, error: docError } = await supabase
         .from("documents")
         .select("id, title")
         .eq("id", id)
         .single()
-
       if (docError) {
         console.error("Document not found:", docError)
         throw new Error("Documento no encontrado")
       }
-
       console.log("Document found:", docCheck)
-
-      // Consulta simplificada sin relaciones complejas
       const { data, error } = await supabase
         .from("document_downloads")
         .select("*")
         .eq("document_id", id)
         .order("downloaded_at", { ascending: false })
-
       if (error) {
         console.error("Error fetching download stats:", error)
         throw error
       }
-
       console.log("Raw download data:", data)
       console.log("Number of records found:", data?.length || 0)
-
-      // Si tenemos datos, obtener información de perfiles por separado
       let enrichedData = data || []
-
       if (data && data.length > 0) {
         const userIds = [...new Set(data.filter((d) => d.user_id).map((d) => d.user_id))]
         console.log("Unique user IDs:", userIds)
-
         if (userIds.length > 0) {
           const { data: profiles, error: profilesError } = await supabase
             .from("profiles")
             .select("id, full_name, email")
             .in("id", userIds)
-
           if (!profilesError && profiles) {
             console.log("Profiles found:", profiles)
-
-            // Enriquecer los datos con información de perfiles
             enrichedData = data.map((download) => {
               const profile = profiles.find((p) => p.id === download.user_id)
               return {
@@ -422,7 +384,6 @@ export default function DocumentDetailsPage() {
           }
         }
       }
-
       console.log("Final enriched data:", enrichedData)
       setDownloadStats(enrichedData)
     } catch (error) {
@@ -436,21 +397,16 @@ export default function DocumentDetailsPage() {
       setStatsLoading(false)
     }
   }
-
   const handleMovementComplete = () => {
     setMovementDialogOpen(false)
     fetchDocument()
     fetchMovements()
     fetchAttachments()
   }
-
   const handleStatusChange = async () => {
     if (!newStatus || !document) return
-
     try {
       setStatusLoading(true)
-
-      // Actualizar el estado del documento
       const { error: updateError } = await supabase
         .from("documents")
         .update({
@@ -458,10 +414,7 @@ export default function DocumentDetailsPage() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", document.id)
-
       if (updateError) throw updateError
-
-      // Crear una entrada en el historial de cambios (usando document_movements para tracking)
       if (statusNotes.trim()) {
         const { error: historyError } = await supabase.from("document_movements").insert({
           document_id: document.id,
@@ -471,26 +424,17 @@ export default function DocumentDetailsPage() {
           notes: `Cambio de estado: ${getStatusLabel(document.status)} → ${getStatusLabel(newStatus)}\n\nNotas: ${statusNotes}`,
           created_at: new Date().toISOString(),
         })
-
         if (historyError) {
           console.error("Error creating status change history:", historyError)
-          // No lanzamos error aquí porque el cambio de estado ya se guardó
         }
       }
-
-      // Actualizar el documento local
       setDocument((prev) => ({ ...prev, status: newStatus }))
-
-      // Refrescar datos
       fetchDocument()
       fetchMovements()
-
       toast({
         title: "Estado actualizado",
         description: `El estado del documento se cambió a "${getStatusLabel(newStatus)}"`,
       })
-
-      // Cerrar dialog y limpiar form
       setStatusDialogOpen(false)
       setNewStatus("")
       setStatusNotes("")
@@ -505,12 +449,10 @@ export default function DocumentDetailsPage() {
       setStatusLoading(false)
     }
   }
-
   const getStatusLabel = (status: string) => {
     const option = statusOptions.find((opt) => opt.value === status)
     return option?.label || status
   }
-
   const getStatusBadge = (status: string) => {
     const option = statusOptions.find((opt) => opt.value === status)
     if (option) {
@@ -522,48 +464,32 @@ export default function DocumentDetailsPage() {
     }
     return <Badge variant="outline">{status}</Badge>
   }
-
   const canChangeStatus = () => {
     if (user?.role === "admin" || user?.role === "supervisor") {
       return user?.department_id === document?.current_department_id
     }
-
-    // El creador solo puede cambiar estado si está en su departamento
     return user?.id === document?.created_by && user?.department_id === document?.current_department_id
   }
-
   const canEdit = () => {
     if (user?.department_id !== document?.current_department_id) {
       return false
     }
-
-    // Admins y supervisores pueden editar si está en su departamento
     if (user?.role === "admin" || user?.role === "supervisor") return true
-
-    // El creador puede editar si está en su departamento
     if (user?.id === document?.created_by) {
       return true
     }
-
     return false
   }
-
   const canMove = () => {
     if (user?.department_id !== document?.current_department_id) {
       return false
     }
-
-    // Admins pueden mover documentos que están en su departamento
     if (user?.role === "admin") return true
-
-    // Cualquier usuario puede mover documentos que están en su departamento
     return true
   }
-
   const viewFile = async (fileUrl: string) => {
     try {
       let filePath = fileUrl
-
       if (filePath.startsWith("http")) {
         try {
           const url = new URL(filePath)
@@ -577,11 +503,9 @@ export default function DocumentDetailsPage() {
           console.error("Error parsing URL:", e)
         }
       }
-
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("documents")
-        .createSignedUrl(filePath, 3600) // 1 hora
-
+        .createSignedUrl(filePath, 3600)
       if (signedUrlData?.signedUrl) {
         setViewerUrl(signedUrlData.signedUrl)
         setViewerOpen(true)
@@ -601,13 +525,10 @@ export default function DocumentDetailsPage() {
       })
     }
   }
-
   const downloadFile = async (fileUrl: string, fileName?: string) => {
     try {
       setDownloadLoading(true)
-
       let filePath = fileUrl
-
       if (filePath.startsWith("http")) {
         try {
           const url = new URL(filePath)
@@ -621,13 +542,10 @@ export default function DocumentDetailsPage() {
           console.error("Error parsing URL:", e)
         }
       }
-
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("documents")
         .createSignedUrl(filePath, 60)
-
       if (signedUrlData?.signedUrl) {
-        // Rastrear la descarga
         if (user) {
           await trackDownload({
             documentId: document.id,
@@ -636,22 +554,16 @@ export default function DocumentDetailsPage() {
             fileName: fileName || document.file_name || "documento",
           })
         }
-
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
-
       const { data, error } = await supabase.storage.from("documents").download(filePath)
-
       if (error) {
         throw new Error(error.message || "Error al descargar el archivo")
       }
-
       if (!data) {
         throw new Error("No se pudo obtener el archivo")
       }
-
-      // Rastrear la descarga
       if (user) {
         await trackDownload({
           documentId: document.id,
@@ -661,7 +573,6 @@ export default function DocumentDetailsPage() {
           fileSize: data.size,
         })
       }
-
       const url = URL.createObjectURL(data)
       const a = document.createElement("a")
       a.href = url
@@ -681,7 +592,6 @@ export default function DocumentDetailsPage() {
       setDownloadLoading(false)
     }
   }
-
   const downloadAttachment = async (attachment: any) => {
     if (!attachment?.file_url) {
       toast({
@@ -691,19 +601,13 @@ export default function DocumentDetailsPage() {
       })
       return
     }
-
     try {
       setDownloadLoading(true)
-
-      // Extraer la ruta del archivo de manera más robusta
       let filePath = attachment.file_url
       let bucketName = "document_attachments"
-
       if (filePath.startsWith("http")) {
         try {
           const url = new URL(filePath)
-
-          // Intentar diferentes patrones de URL
           let pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/document_attachments\/(.+)/)
           if (pathMatch && pathMatch[1]) {
             filePath = pathMatch[1]
@@ -713,34 +617,25 @@ export default function DocumentDetailsPage() {
               bucketName = pathMatch[1]
               filePath = pathMatch[2]
             } else {
-              // Último intento: eliminar el prefijo común
               filePath = url.pathname.replace("/storage/v1/object/public/", "")
-
-              // Si todavía tiene document_attachments/ al principio, extraerlo
               if (filePath.startsWith("document_attachments/")) {
                 filePath = filePath.replace("document_attachments/", "")
               }
             }
           }
-
           console.log("Bucket:", bucketName, "FilePath:", filePath)
         } catch (e) {
           console.error("Error parsing URL:", e)
         }
       }
-
-      // Intentar crear una URL firmada
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from(bucketName)
         .createSignedUrl(filePath, 60)
-
       if (signedUrlError) {
         console.error("Error creating signed URL:", signedUrlError)
         throw new Error(`Error al crear URL firmada: ${signedUrlError.message}`)
       }
-
       if (signedUrlData?.signedUrl) {
-        // Rastrear la descarga del adjunto
         if (user) {
           await trackDownload({
             documentId: document.id,
@@ -750,25 +645,17 @@ export default function DocumentDetailsPage() {
             fileName: attachment.file_name,
           })
         }
-
-        // Abrir en nueva pestaña
         window.open(signedUrlData.signedUrl, "_blank")
         return
       }
-
-      // Si no se pudo crear URL firmada, intentar descarga directa
       const { data, error } = await supabase.storage.from(bucketName).download(filePath)
-
       if (error) {
         console.error("Download error:", error)
         throw new Error(error.message || "Error al descargar el archivo adjunto")
       }
-
       if (!data) {
         throw new Error("No se pudo obtener el archivo adjunto")
       }
-
-      // Rastrear la descarga del adjunto
       if (user) {
         await trackDownload({
           documentId: document.id,
@@ -779,8 +666,6 @@ export default function DocumentDetailsPage() {
           fileSize: data.size,
         })
       }
-
-      // Crear blob URL y descargar
       const url = URL.createObjectURL(data)
       const a = document.createElement("a")
       a.href = url
@@ -800,12 +685,10 @@ export default function DocumentDetailsPage() {
       setDownloadLoading(false)
     }
   }
-
   const handleViewDownloadStats = async () => {
     await fetchDownloadStats()
     setDownloadStatsOpen(true)
   }
-
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -817,7 +700,6 @@ export default function DocumentDetailsPage() {
       </div>
     )
   }
-
   if (error || !document) {
     return (
       <div className="p-6">
@@ -840,7 +722,6 @@ export default function DocumentDetailsPage() {
       </div>
     )
   }
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -854,7 +735,6 @@ export default function DocumentDetailsPage() {
           <p className="text-muted-foreground dark:text-slate-400">Documento #{document.document_number}</p>
         </div>
       </div>
-
       {user?.role !== "admin" &&
         user?.role !== "supervisor" &&
         user?.department_id !== document.current_department_id &&
@@ -872,7 +752,6 @@ export default function DocumentDetailsPage() {
             </div>
           </div>
         )}
-
       {!canViewAttachments && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
@@ -887,7 +766,6 @@ export default function DocumentDetailsPage() {
           </div>
         </div>
       )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {document.file_url && (
@@ -935,7 +813,6 @@ export default function DocumentDetailsPage() {
               </CardContent>
             </Card>
           )}
-
           <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Información del Documento</CardTitle>
@@ -961,7 +838,9 @@ export default function DocumentDetailsPage() {
                     <div className="mt-1">{getStatusBadge(document.status)}</div>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Departamento</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">
+                      Departamento
+                    </h3>
                     <p className="mt-1 text-slate-700 dark:text-slate-200">
                       {document.departments?.name || "Sin departamento"}
                     </p>
@@ -977,7 +856,6 @@ export default function DocumentDetailsPage() {
                     </p>
                   </div>
                 </div>
-
                 {document.description && (
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400">Descripción</h3>
@@ -986,8 +864,6 @@ export default function DocumentDetailsPage() {
                     </p>
                   </div>
                 )}
-
-                {/* Información de Certificación */}
                 {document.is_certified && (
                   <>
                     <Separator />
@@ -1000,7 +876,6 @@ export default function DocumentDetailsPage() {
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="font-medium text-green-800">Documento Certificado</span>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           {document.certified_by && (
                             <div>
@@ -1008,7 +883,6 @@ export default function DocumentDetailsPage() {
                               <p className="font-medium text-slate-700 dark:text-slate-200">{document.certified_by}</p>
                             </div>
                           )}
-
                           {document.certified_at && (
                             <div>
                               <span className="text-muted-foreground dark:text-slate-400">Fecha de certificación:</span>
@@ -1017,7 +891,6 @@ export default function DocumentDetailsPage() {
                               </p>
                             </div>
                           )}
-
                           {document.verification_hash && (
                             <div className="md:col-span-2">
                               <span className="text-muted-foreground dark:text-slate-400">Hash de verificación:</span>
@@ -1026,7 +899,6 @@ export default function DocumentDetailsPage() {
                               </p>
                             </div>
                           )}
-
                           {document.certification_notes && (
                             <div className="md:col-span-2">
                               <span className="text-muted-foreground dark:text-slate-400">Notas de certificación:</span>
@@ -1040,15 +912,13 @@ export default function DocumentDetailsPage() {
                     </div>
                   </>
                 )}
-
-                {/* Información Adicional del Creador (Compañía y Departamento) */}
                 <Separator />
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-3">
                     Información del Creador
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    {document.creator_profile?.company_id && document.creator_company && (
+                    {document.profiles?.company_id && document.creator_company && (
                       <div>
                         <span className="text-muted-foreground dark:text-slate-400">Compañía:</span>
                         <p className="font-medium text-slate-700 dark:text-slate-200">
@@ -1056,8 +926,7 @@ export default function DocumentDetailsPage() {
                         </p>
                       </div>
                     )}
-
-                    {document.creator_profile?.department_id && document.creator_department && (
+                    {document.profiles?.department_id && document.creator_department && (
                       <div>
                         <span className="text-muted-foreground dark:text-slate-400">Departamento del Creador:</span>
                         <p className="font-medium text-slate-700 dark:text-slate-200">
@@ -1070,7 +939,6 @@ export default function DocumentDetailsPage() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Historial de Movimientos</CardTitle>
@@ -1089,13 +957,10 @@ export default function DocumentDetailsPage() {
                 <div className="space-y-4">
                   {movements.map((movement, index) => (
                     <div key={movement.id} className="relative">
-                      {/* Línea de conexión */}
                       {index < movements.length - 1 && (
                         <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gradient-to-b from-primary/80 to-primary/20"></div>
                       )}
-
                       <div className="flex gap-4">
-                        {/* Indicador circular moderno */}
                         <div className="relative flex-shrink-0">
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-md">
                             {movement.from_department_id === movement.to_department_id ? (
@@ -1108,29 +973,21 @@ export default function DocumentDetailsPage() {
                             <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background animate-pulse"></div>
                           )}
                         </div>
-
-                        {/* Contenido del movimiento */}
                         <div className="flex-1 min-w-0 pb-8">
                           <div className="bg-card dark:bg-slate-800 border border-slate-100 dark:border-slate-600 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-300">
-                            {/* Header del movimiento */}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-center gap-3">
-                                {/* Departamento origen */}
                                 {movement.from_departments && (
                                   <DepartmentBadge department={movement.from_departments} />
                                 )}
-
                                 {movement.from_department_id !== movement.to_department_id && (
                                   <MoveRight className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
                                 )}
-
-                                {/* Departamento destino */}
                                 {movement.to_departments &&
                                   movement.from_department_id !== movement.to_department_id && (
                                     <DepartmentBadge department={movement.to_departments} isDestination={true} />
                                   )}
                               </div>
-
                               <div className="text-right">
                                 <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
                                   {format(new Date(movement.created_at), "dd/MM/yyyy", { locale: es })}
@@ -1140,8 +997,6 @@ export default function DocumentDetailsPage() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Información del usuario */}
                             <div className="flex items-center gap-2 mb-3">
                               <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                                 <span className="text-xs font-medium">
@@ -1154,8 +1009,6 @@ export default function DocumentDetailsPage() {
                                   : `Movido por ${movement.profiles?.full_name || "Usuario desconocido"}`}
                               </span>
                             </div>
-
-                            {/* Notas del movimiento */}
                             {movement.notes && (
                               <div className="bg-muted/50 dark:bg-slate-700/50 rounded-md p-3 mb-3">
                                 <p className="text-sm font-medium mb-1 text-slate-700 dark:text-slate-200">Notas:</p>
@@ -1164,7 +1017,6 @@ export default function DocumentDetailsPage() {
                                 </p>
                               </div>
                             )}
-
                             {canViewAttachments &&
                               attachments.filter((att) => att.movement_id === movement.id).length > 0 && (
                                 <div className="border-t pt-3 border-slate-100 dark:border-slate-600">
@@ -1209,7 +1061,6 @@ export default function DocumentDetailsPage() {
               )}
             </CardContent>
           </Card>
-
           <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Archivos Adjuntos Generales</CardTitle>
@@ -1263,7 +1114,6 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
         </div>
-
         <div className="space-y-6">
           <Card className="bg-card dark:bg-slate-800">
             <CardHeader>
@@ -1289,7 +1139,6 @@ export default function DocumentDetailsPage() {
               )}
             </CardContent>
           </Card>
-
           <Card className="bg-card dark:bg-slate-800 border-slate-200 dark:border-slate-700">
             <CardHeader>
               <CardTitle className="text-slate-800 dark:text-slate-100">Acciones Rápidas</CardTitle>
@@ -1305,7 +1154,6 @@ export default function DocumentDetailsPage() {
                   Cambiar Estado
                 </Button>
               )}
-
               {canEdit() ? (
                 <Button
                   className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
@@ -1323,13 +1171,11 @@ export default function DocumentDetailsPage() {
                   Editar Documento
                 </Button>
               )}
-
               {!canEdit() && user?.id === document?.created_by && (
                 <div className="text-xs text-muted-foreground dark:text-slate-400 p-2 bg-muted/50 dark:bg-slate-700/50 rounded">
                   ℹ️ Solo puedes editar documentos que están en tu departamento
                 </div>
               )}
-
               {!canEdit() &&
                 user?.id !== document?.created_by &&
                 user?.role !== "admin" &&
@@ -1338,7 +1184,6 @@ export default function DocumentDetailsPage() {
                     👁️ Este documento pasó por tu área. Tienes acceso de solo lectura.
                   </div>
                 )}
-
               {document.file_url && (
                 <>
                   <Button
@@ -1360,7 +1205,6 @@ export default function DocumentDetailsPage() {
                   </Button>
                 </>
               )}
-
               {canMove() ? (
                 <Button className="w-full justify-start" variant="default" onClick={() => setMovementDialogOpen(true)}>
                   <MoveRight className="h-4 w-4 mr-2" />
@@ -1372,13 +1216,11 @@ export default function DocumentDetailsPage() {
                   Mover Documento
                 </Button>
               )}
-
               {!canMove() && user?.role !== "admin" && user?.role !== "supervisor" && (
                 <div className="text-xs text-muted-foreground dark:text-slate-400 p-2 bg-muted/50 dark:bg-slate-700/50 rounded">
                   ℹ️ Solo puedes mover documentos que están en tu departamento
                 </div>
               )}
-
               {user?.role === "admin" && (
                 <Button
                   className="w-full justify-start hover:bg-slate-50/50 dark:hover:bg-slate-700/50 bg-transparent"
@@ -1389,8 +1231,6 @@ export default function DocumentDetailsPage() {
                   Ver Estadísticas
                 </Button>
               )}
-
-              {/* Sticker Generator for Tracking */}
               {document && document.profiles?.full_name && (
                 <DocumentStickerGenerator
                   documentId={document.id}
@@ -1399,7 +1239,7 @@ export default function DocumentDetailsPage() {
                   creatorName={document.profiles.full_name}
                   trackingHash={document.tracking_hash || ""}
                   companyName={document.companies?.name}
-                  departmentName={document.departments?.name}
+                  departmentName={document.creator_department?.name}
                   creatorCompanyName={document.creator_company?.name}
                   creatorDepartmentName={document.creator_department?.name}
                 />
@@ -1408,8 +1248,6 @@ export default function DocumentDetailsPage() {
           </Card>
         </div>
       </div>
-
-      {/* Dialog para cambiar estado */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-800">
           <DialogHeader>
@@ -1460,8 +1298,6 @@ export default function DocumentDetailsPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Dialog para mover documento */}
       <Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
         <DialogContent className="max-w-2xl bg-white dark:bg-slate-800">
           <DialogHeader>
@@ -1477,8 +1313,6 @@ export default function DocumentDetailsPage() {
           />
         </DialogContent>
       </Dialog>
-
-      {/* Dialog para estadísticas de descarga */}
       <Dialog open={downloadStatsOpen} onOpenChange={setDownloadStatsOpen}>
         <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-800">
           <DialogHeader>
@@ -1576,7 +1410,6 @@ export default function DocumentDetailsPage() {
                     </CardContent>
                   </Card>
                 </div>
-
                 <div className="overflow-x-auto">
                   <Table className="bg-white dark:bg-slate-800">
                     <TableHeader>
@@ -1686,8 +1519,6 @@ export default function DocumentDetailsPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Visor de archivos */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] bg-white dark:bg-slate-800">
           <DialogHeader>
