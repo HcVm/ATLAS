@@ -1078,7 +1078,7 @@ export default function SalesKanbanPage() {
               .insert({
                 delivery_id: draggableId,
                 sale_id: delivery.sale_id,
-                collection_status: "verde",
+                collection_status: "pendiente",
                 days_in_current_status: 0,
                 status_start_date: new Date().toISOString(),
                 green_days: 10,
@@ -1256,7 +1256,7 @@ export default function SalesKanbanPage() {
               .insert({
                 delivery_id: deliveryId,
                 sale_id: delivery.sale_id,
-                collection_status: "verde",
+                collection_status: "pendiente",
                 days_in_current_status: 0,
                 status_start_date: new Date().toISOString(),
                 green_days: 10,

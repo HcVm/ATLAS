@@ -80,6 +80,11 @@ interface CollectionDetailsModalProps {
   onRefresh: () => void
 }
 
+function isValidUUID(id: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
 export function CollectionDetailsModal({ collection, open, onOpenChange, onRefresh }: CollectionDetailsModalProps) {
   const { user } = useAuth()
   const [notes, setNotes] = useState<CollectionNote[]>([])
@@ -164,6 +169,65 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
 
   const handleStatusUpdate = async (newSt: string) => {
     try {
+      if (newSt === "verde" && collection.sales?.company_id && isValidUUID(collection.sales.company_id)) {
+        try {
+          // Get users from sales, secretaría, administración, and gerencia logística departments
+          const { data: departmentUsers } = await supabase
+            .from("profiles")
+            .select(`
+              id,
+              email,
+              full_name,
+              department:current_department_id(name)
+            `)
+            .eq("company_id", collection.sales.company_id)
+            .in("current_department_id.name", ["Ventas", "Secretaría", "Administración", "Gerencia Logística"]);
+
+          if (departmentUsers && departmentUsers.length > 0) {
+            const today = new Date()
+            const fiveDaysLater = new Date(today)
+            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5)
+            const tenDaysLater = new Date(today)
+            tenDaysLater.setDate(tenDaysLater.getDate() + 10)
+
+            // Create events for each user
+            const calendarEvents = []
+            for (const user of departmentUsers) {
+              // 5 days event
+              calendarEvents.push({
+                user_id: user.id,
+                company_id: collection.sales.company_id,
+                title: `Seguimiento Cobranza - Venta #${collection.sales?.sale_number}`,
+                description: `Revisar estado de cobranza para ${collection.sales?.entity_name}. Total: S/ ${collection.sales?.total_sale}`,
+                event_date: fiveDaysLater.toISOString().split("T")[0],
+                importance: "medium",
+                category: "cobranza",
+              })
+              // 10 days event
+              calendarEvents.push({
+                user_id: user.id,
+                company_id: collection.sales.company_id,
+                title: `Seguimiento Cobranza - Venta #${collection.sales?.sale_number}`,
+                description: `Revisar notas y estado de cobranza para ${collection.sales?.entity_name}. Total: S/ ${collection.sales?.total_sale}`,
+                event_date: tenDaysLater.toISOString().split("T")[0],
+                importance: "high",
+                category: "cobranza",
+              })
+            }
+
+            // Insert calendar events
+            if (calendarEvents.length > 0) {
+              await supabase.from("calendar_events").insert(calendarEvents)
+            }
+          }
+        } catch (calendarError) {
+          console.warn("Error creating calendar events:", calendarError)
+          // Continue with status update even if calendar fails
+        }
+      } else if (newSt === "verde") {
+        console.error("Company ID is invalid or undefined, skipping calendar event creation");
+      }
+
       const { error } = await supabase
         .from("collection_tracking")
         .update({
@@ -185,6 +249,8 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "pendiente":
+        return "bg-gray-100 text-gray-800 border-gray-300"
       case "verde":
         return "bg-green-100 text-green-800 border-green-300"
       case "amarillo":
@@ -240,7 +306,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Fecha de Venta</p>
                     <p className="text-lg font-semibold">
-                      {format(new Date(collection.sales?.created_at), "dd/MM/yyyy", { locale: es })}
+                      {collection.sales?.created_at ? format(new Date(collection.sales.created_at), "dd/MM/yyyy", { locale: es }) : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -262,7 +328,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Cambiar Estado</p>
                   <div className="flex gap-2 flex-wrap">
-                    {["verde", "amarillo", "rojo", "pagado"].map((status) => (
+                    {["pendiente", "verde", "amarillo", "rojo", "pagado"].map((status) => (
                       <Button
                         key={status}
                         variant={newStatus === status ? "default" : "outline"}
@@ -270,7 +336,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
                         onClick={() => handleStatusUpdate(status)}
                         className={newStatus === status ? getStatusColor(status) : ""}
                       >
-                        {status.toUpperCase()}
+                        {status === "pendiente" ? "A ESPERA" : status.toUpperCase()}
                       </Button>
                     ))}
                   </div>
