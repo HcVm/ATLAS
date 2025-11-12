@@ -791,7 +791,7 @@ export default function SalesKanbanPage() {
     [user?.role, user?.departments?.name],
   )
 
-  const canEditDeliveryStatus = canSupervise
+  const canEditDeliveryStatus = canSupervise || user?.departments?.name === "Ventas"
 
   const fetchSingleDelivery = useCallback(async (deliveryId: string) => {
     try {
