@@ -1007,6 +1007,11 @@ export default function SalesKanbanPage() {
       const delivery = columns.flatMap((c) => c.deliveries).find((d) => d.id === draggableId)
       if (!delivery) return
 
+      if (delivery.delivery_status === "signed_guide") {
+        toast.error("No se puede mover una entrega con guía firmada")
+        return
+      }
+
       setColumns((prevColumns) => {
         const sourceCol = prevColumns.find((c) => c.id === source.droppableId)
         const destCol = prevColumns.find((c) => c.id === destination.droppableId)
@@ -1061,22 +1066,30 @@ export default function SalesKanbanPage() {
         if (updateError) throw updateError
 
         if (destColumnInfo.deliveryStatus === "signed_guide") {
-          const { error: collectionError } = await supabase
+          const { data: existingCollection } = await supabase
             .from("collection_tracking")
-            .insert({
-              delivery_id: draggableId,
-              sale_id: delivery.sale_id,
-              collection_status: "verde",
-              days_in_current_status: 0,
-              status_start_date: new Date().toISOString(),
-              green_days: 10,
-              yellow_days: 5,
-            })
-            .select()
+            .select("id")
+            .eq("delivery_id", draggableId)
             .single()
 
-          if (collectionError) {
-            console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+          if (!existingCollection) {
+            const { error: collectionError } = await supabase
+              .from("collection_tracking")
+              .insert({
+                delivery_id: draggableId,
+                sale_id: delivery.sale_id,
+                collection_status: "verde",
+                days_in_current_status: 0,
+                status_start_date: new Date().toISOString(),
+                green_days: 10,
+                yellow_days: 5,
+              })
+              .select()
+              .single()
+
+            if (collectionError) {
+              console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+            }
           }
         }
 
@@ -1176,6 +1189,11 @@ export default function SalesKanbanPage() {
       const oldStatus = delivery.delivery_status
       if (oldStatus === newStatus) return
 
+      if (oldStatus === "signed_guide") {
+        toast.error("No se puede mover una entrega con guía firmada")
+        return
+      }
+
       const originalColumns = columns
 
       setColumns((prevColumns) => {
@@ -1226,23 +1244,31 @@ export default function SalesKanbanPage() {
         if (updateError) throw updateError
 
         if (newStatus === "signed_guide") {
-          const { error: collectionError } = await supabase
+          const { data: existingCollection } = await supabase
             .from("collection_tracking")
-            .insert({
-              delivery_id: deliveryId,
-              sale_id: delivery.sale_id,
-              collection_status: "verde",
-              days_in_current_status: 0,
-              status_start_date: new Date().toISOString(),
-              green_days: 10,
-              yellow_days: 5,
-            })
-            .select()
+            .select("id")
+            .eq("delivery_id", deliveryId)
             .single()
 
-          if (collectionError) {
-            // Si el registro ya existe, no es un error crítico
-            console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+          if (!existingCollection) {
+            const { error: collectionError } = await supabase
+              .from("collection_tracking")
+              .insert({
+                delivery_id: deliveryId,
+                sale_id: delivery.sale_id,
+                collection_status: "verde",
+                days_in_current_status: 0,
+                status_start_date: new Date().toISOString(),
+                green_days: 10,
+                yellow_days: 5,
+              })
+              .select()
+              .single()
+
+            if (collectionError) {
+              // Si el registro ya existe, no es un error crítico
+              console.warn("No se pudo crear el registro de cobranzas:", collectionError)
+            }
           }
         }
 

@@ -619,7 +619,7 @@ export default function QuotationsPage() {
     }
   }
 
-  // Helper function to get display values for quotation - ACTUALIZADO PARA USAR PRECIOS OFERTADOS
+  // Helper function to get display data for quotation - ACTUALIZADO PARA USAR PRECIOS OFERTADOS
   const getQuotationDisplayData = (quotation: Quotation) => {
     if (quotation.quotation_items && quotation.quotation_items.length > 0) {
       const totalItems = quotation.quotation_items.length
@@ -735,7 +735,7 @@ export default function QuotationsPage() {
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="container mx-auto py-8 space-y-6">
+      <div className="mx-auto py-8 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
