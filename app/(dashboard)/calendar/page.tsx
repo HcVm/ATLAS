@@ -53,6 +53,7 @@ const eventCategoryColors: Record<string, string> = {
   meeting: "bg-green-100 text-green-700 border-green-300",
   reminder: "bg-indigo-100 text-indigo-700 border-indigo-300",
   other: "bg-gray-100 text-gray-700 border-gray-300",
+  cobranza: "bg-orange-100 text-orange-700 border-orange-300",
 }
 
 const eventCategoryLabels: Record<string, string> = {
@@ -61,6 +62,7 @@ const eventCategoryLabels: Record<string, string> = {
   meeting: "Reunión",
   reminder: "Recordatorio",
   other: "Otro",
+  cobranza: "Cobranza",
 }
 
 // Helper function to parse YYYY-MM-DD string into a local Date object
