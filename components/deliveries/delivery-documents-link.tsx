@@ -28,6 +28,7 @@ interface DeliveryDocumentsLinkProps {
   /** Actualiza tanto el estado local del diálogo como el padre (Kanban) */
   onDocumentsChange: (documents: LinkedDocument[]) => void
   canEdit?: boolean
+  companyId?: string // Added to filter documents by company
 }
 
 export function DeliveryDocumentsLink({
@@ -35,6 +36,7 @@ export function DeliveryDocumentsLink({
   linkedDocuments,
   onDocumentsChange,
   canEdit = true,
+  companyId, // New prop
 }: DeliveryDocumentsLinkProps) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -56,7 +58,7 @@ export function DeliveryDocumentsLink({
         .select(`
           id,
           document_id,
-          document:document_id (id, title, document_number, status)
+          documents (id, title, document_number, status)
         `)
         .eq("delivery_id", deliveryId)
 
@@ -69,7 +71,9 @@ export function DeliveryDocumentsLink({
   }, [deliveryId, onDocumentsChange])
 
   useEffect(() => {
-    if (open) loadLinked()
+    if (open) {
+      loadLinked()
+    }
   }, [open, loadLinked])
 
   const searchDocuments = useCallback(
@@ -80,11 +84,17 @@ export function DeliveryDocumentsLink({
       }
       setSearching(true)
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("documents")
-          .select("id, title, document_number, status")
+          .select("id, title, document_number, status, company_id")
           .or(`title.ilike.%${q}%,document_number.ilike.%${q}%`)
           .limit(10)
+
+        if (companyId) {
+          query = query.eq("company_id", companyId)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
@@ -96,7 +106,7 @@ export function DeliveryDocumentsLink({
         setSearching(false)
       }
     },
-    [localLinked],
+    [localLinked, companyId],
   )
 
   const handleInputChange = (value: string) => {
@@ -131,7 +141,7 @@ export function DeliveryDocumentsLink({
           .select(`
             id,
             document_id,
-            document:document_id (id, title, document_number, status)
+            documents (id, title, document_number, status)
           `)
           .single()
 
@@ -156,15 +166,26 @@ export function DeliveryDocumentsLink({
         const { error } = await supabase.from("delivery_documents").delete().eq("id", linkId)
         if (error) throw error
 
-        const updated = localLinked.filter((d) => d.id !== linkId)
-        setLocalLinked(updated)
-        onDocumentsChange(updated)
+        const { data: updatedLinks, error: fetchError } = await supabase
+          .from("delivery_documents")
+          .select(`
+            id,
+            document_id,
+            documents (id, title, document_number, status)
+          `)
+          .eq("delivery_id", deliveryId)
+
+        if (fetchError) throw fetchError
+
+        const linksData = updatedLinks ?? []
+        setLocalLinked(linksData)
+        onDocumentsChange(linksData)
         toast.success("Documento desvinculado")
       } catch (e: any) {
         toast.error("Error al desvincular: " + e.message)
       }
     },
-    [localLinked, onDocumentsChange],
+    [deliveryId, onDocumentsChange],
   )
 
   return (
@@ -212,13 +233,18 @@ export function DeliveryDocumentsLink({
                   {availableDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-2 hover:bg-muted rounded-lg transition-colors"
+                      className="flex items-start justify-between gap-2 p-2 hover:bg-muted rounded-lg transition-colors"
                     >
                       <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-sm font-medium truncate">{doc.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{doc.document_number}</p>
+                        <p className="text-sm font-medium break-words">{doc.title}</p>
+                        <p className="text-xs text-muted-foreground break-words">{doc.document_number}</p>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => handleLink(doc.id)} className="flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleLink(doc.id)}
+                        className="flex-shrink-0 mt-1"
+                      >
                         <Link className="h-4 w-4" />
                       </Button>
                     </div>
@@ -237,11 +263,13 @@ export function DeliveryDocumentsLink({
           localLinked.map((link) => (
             <div
               key={link.id}
-              className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+              className="flex items-start justify-between gap-2 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
             >
               <div className="flex-1 min-w-0 pr-2">
-                <p className="text-sm font-medium truncate">{link.document.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{link.document.document_number}</p>
+                <p className="text-sm font-medium break-words">{link.documents?.title || link.document?.title}</p>
+                <p className="text-xs text-muted-foreground break-words">
+                  {link.documents?.document_number || link.document?.document_number}
+                </p>
               </div>
 
               {canEdit && (
@@ -249,7 +277,7 @@ export function DeliveryDocumentsLink({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleUnlink(link.id)}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive flex-shrink-0"
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive flex-shrink-0 mt-1"
                 >
                   <Unlink className="h-4 w-4" />
                 </Button>

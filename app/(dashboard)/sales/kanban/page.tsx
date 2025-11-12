@@ -793,6 +793,83 @@ export default function SalesKanbanPage() {
 
   const canEditDeliveryStatus = canSupervise
 
+  const fetchSingleDelivery = useCallback(async (deliveryId: string) => {
+    try {
+      const { data: delivery, error: deliveryError } = await supabase
+        .from("deliveries")
+        .select(`
+        id, sale_id, delivery_status, tracking_number, estimated_delivery_date,
+        actual_delivery_date, notes, assigned_to, created_at, updated_at,
+        assigned_user:profiles!deliveries_assigned_to_fkey (full_name),
+        delivery_attachments (
+          id, file_name, file_url, file_size, file_type, created_at
+        ),
+        delivery_documents (
+          id, document_id,
+          document:document_id (id, title, document_number, status)
+        ),
+        delivery_status_history (
+          id, delivery_id, previous_status, new_status, changed_at, changed_by
+        )
+      `)
+        .eq("id", deliveryId)
+        .single()
+
+      if (deliveryError) throw deliveryError
+
+      // Fetch the related sale
+      const { data: sale, error: saleError } = await supabase
+        .from("sales")
+        .select(`
+        id, sale_number, sale_date, entity_name, entity_ruc, quotation_code,
+        total_sale, sale_status, ocam, company_id, is_multi_product, items_count,
+        final_destination, delivery_start_date, delivery_end_date, warehouse_manager,
+        created_by,
+        profiles!sales_created_by_fkey (full_name),
+        sale_items (product_name, product_brand, product_code, product_description, quantity)
+      `)
+        .eq("id", delivery.sale_id)
+        .single()
+
+      if (saleError) throw saleError
+
+      // Fetch user info for history
+      const changedByIds = new Set<string>()
+      delivery.delivery_status_history?.forEach((entry) => {
+        if (entry.changed_by) changedByIds.add(entry.changed_by)
+      })
+
+      const userMap = new Map<string, { full_name: string }>()
+      if (changedByIds.size > 0) {
+        const { data: users } = await supabase
+          .from("auth.users")
+          .select("id, raw_user_meta_data")
+          .in("id", Array.from(changedByIds))
+
+        users?.forEach((u) => {
+          const full_name = u.raw_user_meta_data?.full_name || "Usuario desconocido"
+          userMap.set(u.id, { full_name })
+        })
+      }
+
+      const historyWithUser = (delivery.delivery_status_history || []).map((entry) => ({
+        ...entry,
+        changed_by_user: entry.changed_by ? userMap.get(entry.changed_by) || null : null,
+      }))
+
+      return {
+        ...delivery,
+        sales: sale,
+        delivery_status_history: historyWithUser,
+        delivery_attachments: delivery.delivery_attachments || [],
+        delivery_documents: delivery.delivery_documents || [],
+      } as Delivery
+    } catch (error: any) {
+      console.error("Error fetching single delivery:", error.message)
+      return null
+    }
+  }, [])
+
   const fetchDeliveries = useCallback(async () => {
     if (!companyToUse) return
     try {
@@ -1066,14 +1143,21 @@ export default function SalesKanbanPage() {
     return firstItem.product_name || "Producto sin nombre"
   }, [])
 
-  const handleEditDelivery = useCallback((delivery: Delivery) => {
-    setSelectedDelivery(delivery)
-    setEditingDelivery({
-      tracking_number: delivery.tracking_number || "",
-      notes: delivery.notes || "",
-      assigned_to: delivery.assigned_to || "",
-    })
-  }, [])
+  const handleEditDelivery = useCallback(
+    (delivery: Delivery) => {
+      fetchSingleDelivery(delivery.id).then((freshDelivery) => {
+        if (freshDelivery) {
+          setSelectedDelivery(freshDelivery)
+          setEditingDelivery({
+            tracking_number: freshDelivery.tracking_number || "",
+            notes: freshDelivery.notes || "",
+            assigned_to: freshDelivery.assigned_to || "",
+          })
+        }
+      })
+    },
+    [fetchSingleDelivery],
+  )
 
   const handleViewDetails = useCallback((delivery: Delivery) => {
     setViewingDelivery(delivery)
@@ -1459,7 +1543,7 @@ export default function SalesKanbanPage() {
                       onDocumentsChange={(documents) => {
                         setSelectedDelivery((prev) => (prev ? { ...prev, delivery_documents: documents } : null))
                       }}
-                      canEdit={true}
+                      companyId={selectedDelivery.sales?.company_id}
                     />
                   </div>
                 </TabsContent>

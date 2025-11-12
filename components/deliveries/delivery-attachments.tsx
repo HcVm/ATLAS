@@ -42,6 +42,27 @@ export function DeliveryAttachments({
     setLocalAttachments(attachments)
   }, [attachments])
 
+  useEffect(() => {
+    const loadAttachments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("delivery_attachments")
+          .select("*")
+          .eq("delivery_id", deliveryId)
+          .order("created_at", { ascending: false })
+
+        if (error) throw error
+
+        setLocalAttachments(data || [])
+        onAttachmentsChange(data || [])
+      } catch (error: any) {
+        console.error("[v0] Loading attachments from DB:", error.message)
+      }
+    }
+
+    loadAttachments()
+  }, [deliveryId, onAttachmentsChange])
+
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return "N/A"
     if (bytes < 1024) return bytes + " B"
@@ -91,7 +112,7 @@ export function DeliveryAttachments({
 
         const updated = [...localAttachments, attachment]
         setLocalAttachments(updated)
-        onAttachmentsChange(updated)          // <-- actualiza Kanban + diálogo
+        onAttachmentsChange(updated) // <-- actualiza Kanban + diálogo
         toast.success("Archivo cargado")
       } catch (error: any) {
         console.error("[DeliveryAttachments] Upload error:", error.message)
@@ -112,9 +133,7 @@ export function DeliveryAttachments({
         const urlParts = fileUrl.split("/storage/v1/object/public/delivery-attachments/")
         const filePath = urlParts[1]
         if (filePath) {
-          const { error: storageError } = await supabase.storage
-            .from("delivery-attachments")
-            .remove([filePath])
+          const { error: storageError } = await supabase.storage.from("delivery-attachments").remove([filePath])
           if (storageError) throw storageError
         }
 
@@ -122,16 +141,23 @@ export function DeliveryAttachments({
         const { error } = await supabase.from("delivery_attachments").delete().eq("id", attachmentId)
         if (error) throw error
 
-        const updated = localAttachments.filter((a) => a.id !== attachmentId)
-        setLocalAttachments(updated)
-        onAttachmentsChange(updated)          // <-- actualiza Kanban + diálogo
+        const { data: updatedAttachments, error: fetchError } = await supabase
+          .from("delivery_attachments")
+          .select("*")
+          .eq("delivery_id", deliveryId)
+
+        if (fetchError) throw fetchError
+
+        const attachmentsData = updatedAttachments ?? []
+        setLocalAttachments(attachmentsData)
+        onAttachmentsChange(attachmentsData)
         toast.success("Archivo eliminado")
       } catch (error: any) {
         console.error("[DeliveryAttachments] Delete error:", error.message)
         toast.error("Error al eliminar: " + error.message)
       }
     },
-    [localAttachments, onAttachmentsChange, canEdit],
+    [deliveryId, onAttachmentsChange, canEdit],
   )
 
   return (
@@ -164,9 +190,7 @@ export function DeliveryAttachments({
 
       <div className="space-y-2">
         {localAttachments.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No hay archivos adjuntos
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-4">No hay archivos adjuntos</p>
         ) : (
           localAttachments.map((att) => (
             <div

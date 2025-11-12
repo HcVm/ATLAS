@@ -33,6 +33,7 @@ interface CollectionData {
     total_sale: number
     sale_status: string
     created_at: string
+    company_id: string
   }
   deliveries: {
     id: string
@@ -149,7 +150,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
           `
           id,
           document_id,
-          document (id, title, document_number, status)
+          documents (id, title, document_number, status)
         `,
         )
         .eq("delivery_id", collection.delivery_id)
@@ -360,6 +361,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
               linkedDocuments={linkedDocuments}
               onDocumentsChange={setLinkedDocuments}
               canEdit={user?.role === "admin" || user?.role === "supervisor"}
+              companyId={collection.sales?.company_id}
             />
           </TabsContent>
 
