@@ -178,10 +178,10 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
               id,
               email,
               full_name,
-              department:current_department_id(name)
+              department:department_id(name)
             `)
             .eq("company_id", collection.sales.company_id)
-            .in("current_department_id.name", ["Ventas", "Secretaría", "Administración", "Gerencia Logística"]);
+            .in("department_id.name", ["Ventas", "Secretaría", "Administración", "Gerencia Logística"]);
 
           if (departmentUsers && departmentUsers.length > 0) {
             const today = new Date()
