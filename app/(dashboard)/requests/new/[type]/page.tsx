@@ -31,6 +31,8 @@ import {
   Loader2,
   Upload,
   X,
+  CheckCircle,
+  XCircle,
 } from "lucide-react"
 
 const REQUEST_TYPES = {
@@ -84,6 +86,39 @@ const REQUEST_TYPES = {
   },
 }
 
+const STATUS_CONFIG = {
+  INGRESADA: {
+    label: "Ingresada",
+    icon: AlertCircle,
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  },
+  EN_GESTION: {
+    label: "En Gestión",
+    icon: Loader2,
+    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  },
+  APROBADA: {
+    label: "Aprobada",
+    icon: CheckCircle,
+    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  },
+  DESAPROBADA: {
+    label: "Desaprobada",
+    icon: XCircle,
+    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  },
+  EJECUTADA: {
+    label: "Ejecutada",
+    icon: CheckCircle,
+    color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  },
+  CANCELADA: {
+    label: "Cancelada",
+    icon: Clock,
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  },
+}
+
 const baseSchema = z.object({
   reason: z.string().min(10, "La razón debe tener al menos 10 caracteres"),
   attachments: z.array(z.any()).optional(),
@@ -110,12 +145,22 @@ const leaveRequestSchema = baseSchema.extend({
 })
 
 const equipmentRequestSchema = baseSchema.extend({
-  equipment_details: z.object({
-    type: z.string().min(1, "El tipo de equipo es requerido"),
-    quantity: z.number().min(1, "La cantidad debe ser al menos 1"),
-    specifications: z.string().optional(),
-    urgency: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
-  }),
+  requerimiento_numero: z.string().optional(),
+  fecha_entrega_solicitada: z.string().min(1, "La fecha de entrega es requerida"),
+  dirigido_a: z.string().min(1, "Campo 'Dirigido a' es requerido"),
+  area_solicitante: z.string().min(1, "El área solicitante es requerida"),
+  solicitante_nombre: z.string().min(1, "El solicitante es requerido"),
+  motivo_requerimiento: z.string().min(10, "El motivo debe tener al menos 10 caracteres"),
+  items_requeridos: z
+    .array(
+      z.object({
+        item: z.number().min(1),
+        especificaciones: z.string().min(1, "Las especificaciones son requeridas"),
+        cantidad: z.number().min(1, "Debe haber al menos 1 item"),
+      }),
+    )
+    .min(1, "Debe agregar al menos un item"),
+  urgencia: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
 })
 
 const generalRequestSchema = baseSchema
@@ -157,12 +202,14 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
       reason: "",
       attachments: [],
       ...(resolvedParams.type === "equipment_request" && {
-        equipment_details: {
-          type: "",
-          quantity: 1,
-          specifications: "",
-          urgency: "normal",
-        },
+        requerimiento_numero: "",
+        fecha_entrega_solicitada: "",
+        dirigido_a: "",
+        area_solicitante: "",
+        solicitante_nombre: "",
+        motivo_requerimiento: "",
+        items_requeridos: [{ item: 1, especificaciones: "", cantidad: 1 }],
+        urgencia: "normal",
       }),
     },
   })
@@ -286,13 +333,23 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
         company_id: user.company_id,
         department_id: user.department_id,
         request_type: resolvedParams.type,
-        incident_date: values.incident_date,
+        incident_date:
+          resolvedParams.type === "equipment_request" ? new Date().toISOString().split("T")[0] : values.incident_date,
         end_date: values.end_date || null,
         incident_time: values.incident_time || null,
         end_time: values.end_time || null,
-        reason: values.reason,
-        equipment_details: values.equipment_details || null,
-        priority: values.equipment_details?.urgency || "normal",
+        reason: resolvedParams.type === "equipment_request" ? values.motivo_requerimiento : values.reason,
+        ...(resolvedParams.type === "equipment_request" && {
+          requerimiento_numero: values.requerimiento_numero || `REQ-${Date.now()}`,
+          fecha_entrega_solicitada: values.fecha_entrega_solicitada,
+          dirigido_a: values.dirigido_a,
+          area_solicitante: values.area_solicitante,
+          solicitante_nombre: values.solicitante_nombre,
+          motivo_requerimiento: values.motivo_requerimiento,
+          items_requeridos: values.items_requeridos,
+          urgencia: values.urgencia,
+        }),
+        priority: resolvedParams.type === "equipment_request" ? values.urgencia : values.urgency || "normal",
         supporting_documents: attachmentUrls.length > 0 ? attachmentUrls : null,
       }
 
@@ -519,91 +576,205 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
 
                 {resolvedParams.type === "equipment_request" && (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6 border rounded-lg p-6 bg-card">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="requerimiento_numero"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Requerimiento N°</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Auto-generado" disabled {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="fecha_entrega_solicitada"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fecha de Entrega Solicitada</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="dirigido_a"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dirigido a</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Nombre del responsable o área" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="area_solicitante"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Área Solicitante</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Área que solicita" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
                       <FormField
                         control={form.control}
-                        name="equipment_details.type"
+                        name="solicitante_nombre"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Tipo de Equipo</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona el tipo" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="computer">Computadora/Laptop</SelectItem>
-                                <SelectItem value="software">Software</SelectItem>
-                                <SelectItem value="office_supplies">Suministros de Oficina</SelectItem>
-                                <SelectItem value="tools">Herramientas</SelectItem>
-                                <SelectItem value="furniture">Mobiliario</SelectItem>
-                                <SelectItem value="other">Otro</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>Solicitante</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Nombre del solicitante" {...field} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
-                        name="equipment_details.quantity"
+                        name="motivo_requerimiento"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Cantidad</FormLabel>
+                            <FormLabel>Motivo de Requerimiento</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
+                              <Textarea
+                                placeholder="Describe el motivo del requerimiento"
+                                className="min-h-[80px] resize-none"
                                 {...field}
-                                onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium">Ítems Requeridos</label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const items = form.getValues("items_requeridos") || []
+                              form.setValue("items_requeridos", [
+                                ...items,
+                                { item: items.length + 1, especificaciones: "", cantidad: 1 },
+                              ])
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Agregar Ítem
+                          </Button>
+                        </div>
+
+                        <div className="border rounded-lg overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted border-b">
+                                <th className="p-3 text-left font-medium">#</th>
+                                <th className="p-3 text-left font-medium">Especificaciones / Comentarios</th>
+                                <th className="p-3 text-left font-medium">Cantidad</th>
+                                <th className="p-3 text-left font-medium">Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {form.watch("items_requeridos")?.map((item: any, index: number) => (
+                                <tr key={index} className="border-b hover:bg-muted/50">
+                                  <td className="p-3">{index + 1}</td>
+                                  <td className="p-3">
+                                    <FormField
+                                      control={form.control}
+                                      name={`items_requeridos.${index}.especificaciones`}
+                                      render={({ field }) => (
+                                        <FormControl>
+                                          <Input placeholder="Descripción del ítem" {...field} />
+                                        </FormControl>
+                                      )}
+                                    />
+                                  </td>
+                                  <td className="p-3">
+                                    <FormField
+                                      control={form.control}
+                                      name={`items_requeridos.${index}.cantidad`}
+                                      render={({ field }) => (
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            {...field}
+                                            onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
+                                          />
+                                        </FormControl>
+                                      )}
+                                    />
+                                  </td>
+                                  <td className="p-3">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const items = form.getValues("items_requeridos")
+                                        form.setValue(
+                                          "items_requeridos",
+                                          items.filter((_, i) => i !== index),
+                                        )
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="urgencia"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Urgencia</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona la urgencia" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="low">Baja</SelectItem>
+                                <SelectItem value="normal">Normal</SelectItem>
+                                <SelectItem value="high">Alta</SelectItem>
+                                <SelectItem value="urgent">Urgente</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="equipment_details.urgency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Urgencia</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona la urgencia" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="low">Baja</SelectItem>
-                              <SelectItem value="normal">Normal</SelectItem>
-                              <SelectItem value="high">Alta</SelectItem>
-                              <SelectItem value="urgent">Urgente</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="equipment_details.specifications"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Especificaciones (opcional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Especifica detalles adicionales del equipo"
-                              className="min-h-[80px] resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </>
                 )}
 

@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
-import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle, Plus } from "lucide-react"
+import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle, Plus, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -25,11 +25,135 @@ import {
 } from "@/lib/requests-db"
 import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 
+interface Request {
+  id: string
+  user_id: string
+  company_id: string
+  department_id: string
+  request_type: string
+  incident_date: string
+  end_date?: string
+  incident_time?: string
+  end_time?: string
+  reason: string
+  equipment_details?: any
+  supporting_documents?: any
+  status: "ingresada" | "en_gestion" | "aprobada" | "desaprobada" | "ejecutada" | "cancelada"
+  priority: "low" | "normal" | "high" | "urgent"
+  reviewed_by?: string
+  reviewed_at?: string
+  review_comments?: string
+  created_at: string
+  updated_at: string
+  expires_at: string
+  requester_name: string
+  requester_email: string
+  department_name: string
+  company_name: string
+  reviewer_name?: string
+  is_expired: boolean
+  permission_validation?: string
+  permission_days?: number
+  requerimiento_numero?: string
+  dirigido_a?: string
+  area_solicitante?: string
+  solicitante_nombre?: string
+  motivo_requerimiento?: string
+  fecha_entrega_solicitada?: string
+  urgencia?: string
+  items_requeridos?: any[]
+}
+
+const REQUEST_TYPES = {
+  late_justification: {
+    title: "Justificación de Tardanza",
+    description: "Justificar llegadas tardías al trabajo",
+    icon: Clock,
+    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    timeLimit: "24 horas",
+    urgent: true,
+  },
+  absence_justification: {
+    title: "Justificación de Ausencia",
+    description: "Justificar ausencias al trabajo",
+    icon: UserX,
+    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    timeLimit: "24 horas",
+    urgent: true,
+  },
+  overtime_request: {
+    title: "Registro de Horas Extras",
+    description: "Registrar horas extras trabajadas",
+    icon: Plus,
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    timeLimit: "24 horas",
+    urgent: true,
+  },
+  leave_request: {
+    title: "Solicitud de Permiso",
+    description: "Solicitar permisos y vacaciones",
+    icon: Calendar,
+    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    timeLimit: "3 días",
+    urgent: false,
+  },
+  equipment_request: {
+    title: "Solicitud de Equipos/Materiales",
+    description: "Solicitar equipos o materiales para tu departamento",
+    icon: Wrench,
+    color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    timeLimit: "Sin límite",
+    urgent: false,
+  },
+  general_request: {
+    title: "Solicitud General",
+    description: "Comentarios, sugerencias y solicitudes generales",
+    icon: MessageSquare,
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    timeLimit: "Sin límite",
+    urgent: false,
+  },
+}
+
+const STATUS_CONFIG = {
+  INGRESADA: {
+    label: "Ingresada",
+    icon: AlertCircle,
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  },
+  EN_GESTION: {
+    label: "En Gestión",
+    icon: Loader2,
+    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  },
+  APROBADA: {
+    label: "Aprobada",
+    icon: CheckCircle,
+    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  },
+  DESAPROBADA: {
+    label: "Desaprobada",
+    icon: XCircle,
+    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  },
+  EJECUTADA: {
+    label: "Ejecutada",
+    icon: CheckCircle,
+    color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  },
+  CANCELADA: {
+    label: "Cancelada",
+    icon: Clock,
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  },
+}
+
 interface RequestStats {
   total: number
-  pending: number
-  approved: number
-  rejected: number
+  ingresada: number
+  en_gestion: number
+  aprobada: number
+  desaprobada: number
   expired: number
   by_type: Record<string, number>
   by_department: Record<string, number>
@@ -178,29 +302,12 @@ export default function AdminRequestsPage() {
     const matchesSearch =
       (request.requester_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (request.reason?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || request.status === statusFilter
+    const matchesStatus = statusFilter === "all" || (statusFilter === "expired" ? request.is_expired : request.status === statusFilter)
     const matchesType = typeFilter === "all" || request.request_type === typeFilter
     const matchesDepartment = departmentFilter === "all" || request.department_name === departmentFilter
 
     return matchesSearch && matchesStatus && matchesType && matchesDepartment
   })
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "default"
-      case "rejected":
-        return "destructive"
-      case "pending":
-        return "secondary"
-      case "in_progress":
-        return "outline"
-      case "expired":
-        return "destructive"
-      default:
-        return "secondary"
-    }
-  }
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
@@ -361,7 +468,7 @@ export default function AdminRequestsPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
@@ -373,11 +480,20 @@ export default function AdminRequestsPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="text-sm font-medium">Ingresadas</CardTitle>
+              <AlertCircle className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.ingresada}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">En Gestión</CardTitle>
+              <Loader2 className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{stats.en_gestion}</div>
             </CardContent>
           </Card>
           <Card>
@@ -386,16 +502,16 @@ export default function AdminRequestsPage() {
               <CheckCircle className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.aprobada}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rechazadas</CardTitle>
+              <CardTitle className="text-sm font-medium">Desaprobadas</CardTitle>
               <XCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+              <div className="text-2xl font-bold text-red-600">{stats.desaprobada}</div>
             </CardContent>
           </Card>
           <Card>
@@ -440,10 +556,12 @@ export default function AdminRequestsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los Estados</SelectItem>
-                    <SelectItem value="pending">Pendiente</SelectItem>
-                    <SelectItem value="in_progress">En Proceso</SelectItem>
-                    <SelectItem value="approved">Aprobada</SelectItem>
-                    <SelectItem value="rejected">Rechazada</SelectItem>
+                    <SelectItem value="ingresada">Ingresada</SelectItem>
+                    <SelectItem value="en_gestion">En Gestión</SelectItem>
+                    <SelectItem value="aprobada">Aprobada</SelectItem>
+                    <SelectItem value="desaprobada">Desaprobada</SelectItem>
+                    <SelectItem value="ejecutada">Ejecutada</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
                     <SelectItem value="expired">Expirada</SelectItem>
                   </SelectContent>
                 </Select>
@@ -492,20 +610,23 @@ export default function AdminRequestsPage() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRequests.map((request) => (
+              filteredRequests.map((request) => {
+                const StatusIcon = STATUS_CONFIG[request.status].icon
+                return (
                 <Card key={request.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2">
-                          <Badge variant={getStatusBadgeVariant(request.status)}>
-                            {STATUS_LABELS[request.status as keyof typeof STATUS_LABELS]}
+                          <Badge className={STATUS_CONFIG[request.status].color}>
+                            <StatusIcon className="h-4 w-4 mr-1" />
+                            {STATUS_CONFIG[request.status].label}
                           </Badge>
                           <Badge variant={getPriorityBadgeVariant(request.priority)}>
                             {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
                           </Badge>
-                          <Badge variant="outline">
-                            {REQUEST_TYPE_LABELS[request.request_type as keyof typeof REQUEST_TYPE_LABELS]}
+                          <Badge className={REQUEST_TYPES[request.request_type].color}>
+                            {REQUEST_TYPES[request.request_type].title}
                           </Badge>
                           {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
                         </div>
@@ -528,7 +649,7 @@ export default function AdminRequestsPage() {
                         <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
                           Ver Detalles
                         </Button>
-                        {(request.status === "pending" || request.status === "in_progress") && (
+                        {(request.status === "ingresada" || request.status === "en_gestion") && (
                           <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
                             Reasignar
                           </Button>
@@ -537,7 +658,7 @@ export default function AdminRequestsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+              )})
             )}
           </div>
         </TabsContent>
@@ -768,13 +889,13 @@ export default function AdminRequestsPage() {
           onOpenChange={() => setSelectedRequest(null)}
           onApprove={async (requestId, comments) => {
             if (!user?.id) return
-            await requestsDB.updateRequestStatus(requestId, user.id, { status: "approved", review_comments: comments })
+            await requestsDB.updateRequestStatus(requestId, user.id, { status: "aprobada", review_comments: comments })
             fetchRequests()
             setSelectedRequest(null)
           }}
           onReject={async (requestId, comments) => {
             if (!user?.id) return
-            await requestsDB.updateRequestStatus(requestId, user.id, { status: "rejected", review_comments: comments })
+            await requestsDB.updateRequestStatus(requestId, user.id, { status: "desaprobada", review_comments: comments })
             fetchRequests()
             setSelectedRequest(null)
           }}

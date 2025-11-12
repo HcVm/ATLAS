@@ -8,14 +8,25 @@ export interface RequestFormData {
     | "permission_request"
     | "equipment_request"
     | "general_request"
-  incident_date: string
+  incident_date?: string
   end_date?: string
   incident_time?: string
   end_time?: string
-  reason: string
+  reason?: string
   equipment_details?: any
   supporting_documents?: string[]
   priority?: "low" | "normal" | "high" | "urgent"
+  requerimiento_numero?: string
+  fecha_entrega?: string
+  dirigido_a?: string
+  area_solicitante?: string
+  solicitante?: string
+  motivo_requerimiento?: string
+  items?: Array<{
+    item: number
+    especificaciones: string
+    cantidad: number
+  }>
 }
 
 export interface RequestWithDetails {
@@ -24,14 +35,14 @@ export interface RequestWithDetails {
   company_id: string
   department_id: string
   request_type: string
-  incident_date: string
+  incident_date?: string
   end_date?: string
   incident_time?: string
   end_time?: string
-  reason: string
+  reason?: string
   equipment_details?: any
   supporting_documents?: any
-  status: "pending" | "in_progress" | "approved" | "rejected" | "expired"
+  status: "INGRESADA" | "EN_GESTION" | "APROBADA" | "DESAPROBADA" | "EJECUTADA" | "CANCELADA"
   priority: "low" | "normal" | "high" | "urgent"
   reviewed_by?: string
   reviewed_at?: string
@@ -50,7 +61,7 @@ export interface RequestWithDetails {
 }
 
 export interface ApprovalData {
-  status: "approved" | "rejected"
+  status: "APROBADA" | "DESAPROBADA"
   review_comments?: string
 }
 
@@ -126,7 +137,7 @@ export class RequestsDB {
         .from("requests_with_details")
         .select("*")
         .eq("company_id", companyId)
-        .in("status", ["pending", "in_progress"])
+        .in("status", ["INGRESADA", "EN_GESTION"])
 
       // Aplicar filtros de departamento y tipos de solicitud
       const departmentIds = approverData.map((a) => a.department_id).filter(Boolean)
@@ -200,7 +211,7 @@ export class RequestsDB {
         .from("employee_requests")
         .update({
           reviewed_by: newReviewerId,
-          status: "in_progress",
+          status: "EN_GESTION",
           updated_at: new Date().toISOString(),
         })
         .eq("id", requestId)
@@ -237,10 +248,12 @@ export class RequestsDB {
 
       const stats = {
         total: data?.length || 0,
-        pending: data?.filter((r) => r.status === "pending").length || 0,
-        approved: data?.filter((r) => r.status === "approved").length || 0,
-        rejected: data?.filter((r) => r.status === "rejected").length || 0,
-        expired: data?.filter((r) => r.status === "expired").length || 0,
+        ingresada: data?.filter((r) => r.status === "INGRESADA").length || 0,
+        en_gestion: data?.filter((r) => r.status === "EN_GESTION").length || 0,
+        approved: data?.filter((r) => r.status === "APROBADA").length || 0,
+        desaprobada: data?.filter((r) => r.status === "DESAPROBADA").length || 0,
+        ejecutada: data?.filter((r) => r.status === "EJECUTADA").length || 0,
+        cancelada: data?.filter((r) => r.status === "CANCELADA").length || 0,
         by_type: {} as Record<string, number>,
         by_department: {} as Record<string, number>,
       }
@@ -343,7 +356,7 @@ export class RequestsDB {
         .select("*")
         .eq("company_id", companyId)
         .eq("reviewed_by", reviewerId)
-        .in("status", ["approved", "rejected"])
+        .in("status", ["APROBADA", "DESAPROBADA"])
         .order("reviewed_at", { ascending: false })
 
       if (error) {
@@ -374,11 +387,12 @@ export const REQUEST_TYPE_LABELS = {
 }
 
 export const STATUS_LABELS = {
-  pending: "Pendiente",
-  in_progress: "En Proceso",
-  approved: "Aprobada",
-  rejected: "Rechazada",
-  expired: "Expirada",
+  INGRESADA: "Ingresada",
+  EN_GESTION: "En Gestión",
+  APROBADA: "Aprobada",
+  DESAPROBADA: "Desaprobada",
+  EJECUTADA: "Ejecutada",
+  CANCELADA: "Cancelada",
 }
 
 export const PRIORITY_LABELS = {
@@ -392,7 +406,7 @@ export const PRIORITY_LABELS = {
 export const validateRequestData = (type: string, data: RequestFormData): string[] => {
   const errors: string[] = []
 
-  if (!data.reason.trim()) {
+  if (!data.reason?.trim()) {
     errors.push("La razón es requerida")
   }
 
@@ -416,7 +430,7 @@ export const validateRequestData = (type: string, data: RequestFormData): string
       break
 
     case "permission_request":
-      const requestDate = new Date(data.incident_date)
+      const requestDate = new Date(data.incident_date!)
       const today = new Date()
       const diffDays = Math.ceil((requestDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
