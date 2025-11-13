@@ -56,7 +56,7 @@ export function RequestFormFields({ form, requestType }: RequestFormFieldsProps)
 
       {requestType === "overtime_request" && <OvertimeRequestFields form={form} />}
 
-      {requestType === "leave_request" && <LeaveRequestFields form={form} />}
+      {requestType === "permission_request" && <PermissionRequestFields form={form} />}
 
       {requestType === "equipment_request" && <EquipmentRequestFields form={form} />}
 
@@ -256,7 +256,7 @@ function OvertimeRequestFields({ form }: { form: any }) {
   )
 }
 
-function LeaveRequestFields({ form }: { form: any }) {
+function  PermissionRequestFields({ form }: { form: any }) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -289,7 +289,7 @@ function LeaveRequestFields({ form }: { form: any }) {
       </div>
       <FormField
         control={form.control}
-        name="leave_type"
+        name="permission_type"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Tipo de Permiso</FormLabel>

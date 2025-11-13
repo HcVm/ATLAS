@@ -39,7 +39,7 @@ const REQUEST_TYPES = [
     details: "Debe registrarse dentro de las 24 horas posteriores al trabajo extra.",
   },
   {
-    id: "leave_request",
+    id: "permission_request",
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
     icon: Calendar,

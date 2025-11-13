@@ -41,6 +41,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { permission } from "process"
 
 interface Request {
   id: string
@@ -97,7 +98,7 @@ const REQUEST_TYPES = {
     icon: Plus,
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   },
-  leave_request: {
+  permission_request: {
     label: "Solicitud de Permiso",
     icon: AlertCircle,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -192,11 +193,7 @@ export default function ApprovalsPage() {
       if (result.error) {
         throw result.error
       }
-
-      console.log("[v0] Fetched requests:", result.data?.length || 0)
       if (result.data && result.data.length > 0) {
-        console.log("[v0] First request status:", result.data[0].status)
-        console.log("[v0] First request type:", result.data[0].request_type)
       }
 
       const filteredRequests = (result.data || []).filter(
@@ -218,19 +215,15 @@ export default function ApprovalsPage() {
 
     try {
       setLoadingHistory(true)
-      console.log("[v0] Fetching approval history for user:", user.id)
 
       const result = await requestsDB.getApprovalHistory(user.id, user.company_id)
 
       if (result.error) {
-        console.error("[v0] Error fetching approval history:", result.error)
         throw result.error
       }
 
-      console.log("[v0] Approval history fetched:", result.data?.length || 0, "records")
       setApprovalHistory(result.data || [])
     } catch (err: any) {
-      console.error("Error fetching approval history:", err)
       toast({
         title: "Error",
         description: "No se pudo cargar el historial de aprobaciones",
@@ -361,7 +354,7 @@ export default function ApprovalsPage() {
             </div>
           ) : null
 
-        case "leave_request":
+        case "permission_request":
           return request.incident_date ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               <Calendar className="h-4 w-4" />

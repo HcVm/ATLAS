@@ -55,7 +55,7 @@ const REQUEST_TYPES = {
     icon: Clock,
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   },
-  leave_request: {
+  permission_request: {
     label: "Solicitud de Permiso",
     icon: Calendar,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -118,7 +118,7 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
           </div>
         ) : null
 
-      case "leave_request":
+      case "permission_request":
         return request.incident_date ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             <Calendar className="h-4 w-4" />

@@ -61,7 +61,7 @@ const REQUEST_TYPES = {
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
     description: "Registrar horas extras trabajadas (dentro de 24 horas)",
   },
-  leave_request: {
+  permission_request: {
     label: "Solicitud de Permiso",
     icon: Calendar,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",

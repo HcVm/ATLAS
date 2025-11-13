@@ -96,7 +96,7 @@ const REQUEST_TYPES = {
     timeLimit: "24 horas",
     urgent: true,
   },
-  leave_request: {
+  permission_request: {
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
     icon: AlertCircle,
@@ -346,16 +346,8 @@ export default function AdminRequestsPage() {
   }
 
   const saveApprover = async () => {
-    console.log("[v0] saveApprover function called")
-    console.log("[v0] Current approverForm:", approverForm)
-    console.log("[v0] Selected company_id:", selectedCompany?.id)
-    console.log("[v0] Validation checks:")
-    console.log("[v0] - Has company_id:", !!selectedCompany?.id)
-    console.log("[v0] - Has approver_user_id:", !!approverForm.approver_user_id)
-    console.log("[v0] - Has request_types:", approverForm.request_types.length > 0)
 
     if (!selectedCompany?.id || !approverForm.approver_user_id || approverForm.request_types.length === 0) {
-      console.log("[v0] Validation failed - missing required fields")
       return
     }
 
@@ -370,34 +362,25 @@ export default function AdminRequestsPage() {
         is_active: approverForm.is_active,
       }
 
-      console.log("[v0] Saving approver data:", approverData)
-
       let response
       if (selectedApprover) {
-        console.log("[v0] Updating existing approver")
         response = await fetch("/api/requests/approvers", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...approverData, id: selectedApprover.id }),
         })
       } else {
-        console.log("[v0] Creating new approver")
         response = await fetch("/api/requests/approvers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(approverData),
         })
       }
-
-      console.log("[v0] API Response status:", response.status)
       const result = await response.json()
-      console.log("[v0] API Response data:", result)
 
       if (!response.ok) {
         throw new Error(result.error || "Error desconocido")
       }
-
-      console.log("[v0] Approver operation completed successfully:", result)
 
       await fetchApprovers()
       setShowApproverDialog(false)
@@ -863,14 +846,6 @@ export default function AdminRequestsPage() {
             </Button>
             <Button
               onClick={() => {
-                console.log("[v0] Create button clicked")
-                console.log(
-                  "[v0] Button disabled state:",
-                  savingApprover || !approverForm.approver_user_id || approverForm.request_types.length === 0,
-                )
-                console.log("[v0] - savingApprover:", savingApprover)
-                console.log("[v0] - approver_user_id:", approverForm.approver_user_id)
-                console.log("[v0] - request_types length:", approverForm.request_types.length)
                 saveApprover()
               }}
               disabled={savingApprover || !approverForm.approver_user_id || approverForm.request_types.length === 0}

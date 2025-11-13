@@ -75,7 +75,6 @@ export class RequestsDB {
     )
   }
 
-  // Crear nueva solicitud
   async createRequest(userId: string, companyId: string, departmentId: string, data: RequestFormData) {
     try {
       const { data: result, error } = await this.supabase
@@ -98,7 +97,6 @@ export class RequestsDB {
     }
   }
 
-  // Obtener solicitudes del usuario
   async getUserRequests(userId: string) {
     try {
       const { data, error } = await this.supabase
@@ -115,10 +113,8 @@ export class RequestsDB {
     }
   }
 
-  // Obtener solicitudes para aprobación (supervisores)
   async getRequestsForApproval(userId: string, companyId: string) {
     try {
-      // Primero verificar si el usuario es aprobador
       const { data: approverData, error: approverError } = await this.supabase
         .from("request_approvers")
         .select("department_id, request_types")
@@ -132,24 +128,18 @@ export class RequestsDB {
         return { data: [], error: null }
       }
 
-      // Construir filtros basados en los permisos del aprobador
       let query = this.supabase
         .from("requests_with_details")
         .select("*")
         .eq("company_id", companyId)
-        .in("status", ["INGRESADA", "EN_GESTION"]) // Fixed status to uppercase to match database
+        .in("status", ["INGRESADA", "EN_GESTION"])
 
-      // Aplicar filtros de departamento y tipos de solicitud
       const departmentIds = approverData.map((a) => a.department_id).filter(Boolean)
       const requestTypes = [...new Set(approverData.flatMap((a) => a.request_types))]
 
-      // If department_id is null for any approver config, they see ALL departments
       if (departmentIds.length > 0 && departmentIds.length === approverData.length) {
-        // All approver configs have specific departments, so filter by them
         query = query.in("department_id", departmentIds)
       }
-      // If any approver config has department_id = null, we skip the department filter
-      // This means the approver sees requests from ALL departments
 
       if (requestTypes.length > 0) {
         query = query.in("request_type", requestTypes)
@@ -233,7 +223,6 @@ export class RequestsDB {
   // Obtener estadísticas de solicitudes
   async getRequestStats(companyId?: string) {
     try {
-      console.log("[v0] Getting request stats for company:", companyId)
 
       let query = this.supabase.from("requests_with_details").select("status, request_type, department_name")
 
@@ -277,10 +266,8 @@ export class RequestsDB {
         })
       }
 
-      console.log("[v0] Calculated stats:", stats)
       return { data: stats, error: null }
     } catch (error) {
-      console.error("[v0] Error fetching request stats:", error)
       return { data: null, error }
     }
   }
@@ -353,8 +340,6 @@ export class RequestsDB {
   // Obtener historial de trámites atendidos por supervisores
   async getApprovalHistory(reviewerId: string, companyId: string) {
     try {
-      console.log("[v0] Getting approval history for reviewer:", reviewerId, "company:", companyId)
-
       const { data, error } = await this.supabase
         .from("requests_with_details")
         .select("*")
@@ -367,8 +352,6 @@ export class RequestsDB {
         console.error("[v0] Error in getApprovalHistory query:", error)
         throw error
       }
-
-      console.log("[v0] Approval history data:", data?.length || 0, "records")
       return { data: data || [], error: null }
     } catch (error) {
       console.error("[v0] Error fetching approval history:", error)

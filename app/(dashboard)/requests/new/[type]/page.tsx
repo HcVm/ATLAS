@@ -60,7 +60,7 @@ const REQUEST_TYPES = {
     timeLimit: "24 horas",
     urgent: true,
   },
-  leave_request: {
+  permission_request: {
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
     icon: Calendar,
@@ -139,7 +139,7 @@ const overtimeRequestSchema = baseSchema.extend({
   end_time: z.string().min(1, "La hora de fin es requerida"),
 })
 
-const leaveRequestSchema = baseSchema.extend({
+const permissionRequestSchema = baseSchema.extend({
   incident_date: z.string().min(1, "La fecha de inicio es requerida"),
   end_date: z.string().optional(),
 })
@@ -173,8 +173,8 @@ function getSchemaForType(type: string) {
       return absenceJustificationSchema
     case "overtime_request":
       return overtimeRequestSchema
-    case "leave_request":
-      return leaveRequestSchema
+    case "permission_request":
+      return permissionRequestSchema
     case "equipment_request":
       return equipmentRequestSchema
     case "general_request":
@@ -270,12 +270,8 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
       const attachmentUrls: string[] = []
 
       if (uploadedFiles.length > 0) {
-        console.log("[v0] Starting file upload process for", uploadedFiles.length, "files")
-        console.log("[v0] User ID:", user.id)
-
         for (const file of uploadedFiles) {
           const fileName = `${user.id}/${Date.now()}-${file.name}`
-          console.log("[v0] Uploading file:", fileName)
 
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from("request-attachments")
@@ -315,17 +311,12 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
             }
           }
 
-          console.log("[v0] File uploaded successfully:", uploadData)
-
           const {
             data: { publicUrl },
           } = supabase.storage.from("request-attachments").getPublicUrl(fileName)
 
           attachmentUrls.push(publicUrl)
-          console.log("[v0] Generated public URL:", publicUrl)
         }
-
-        console.log("[v0] All files processed. Attachment URLs:", attachmentUrls)
       }
 
       const requestData = {
@@ -353,16 +344,12 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
         supporting_documents: attachmentUrls.length > 0 ? attachmentUrls : null,
       }
 
-      console.log("[v0] Creating request with data:", requestData)
-
       const { data, error } = await supabase.from("employee_requests").insert(requestData).select().single()
 
       if (error) {
         console.error("[v0] Error creating request:", error)
         throw error
       }
-
-      console.log("[v0] Request created successfully:", data)
 
       toast({
         title: "Solicitud creada",
@@ -543,7 +530,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                   </>
                 )}
 
-                {resolvedParams.type === "leave_request" && (
+                {resolvedParams.type === "permission_request" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
