@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -84,37 +84,25 @@ export function SeriesFilterModal({
     return filtered
   }
 
+  useEffect(() => {
+    const filtered = getFilteredSerials(filterMode)
+    setSelectedCount(filtered.length)
+  }, [filterMode, startSeries, endSeries, specificSeriesInput, allSerials])
+
   const handleFilterModeChange = (mode: string) => {
     setFilterMode(mode as any)
-    if (mode === "all") {
-      setSelectedCount(totalSeries)
-    } else if (mode === "range") {
-      setSelectedCount(0)
-    } else if (mode === "specific") {
-      setSelectedCount(0)
-    }
   }
 
   const handleSpecificSeriesChange = (value: string) => {
     setSpecificSeriesInput(value)
-    const filtered = getFilteredSerials("specific")
-    setSelectedCount(filtered.length)
   }
 
   const handleStartSeriesChange = (value: string) => {
     setStartSeries(value)
-    if (filterMode === "range") {
-      const filtered = getFilteredSerials("range")
-      setSelectedCount(filtered.length)
-    }
   }
 
   const handleEndSeriesChange = (value: string) => {
     setEndSeries(value)
-    if (filterMode === "range") {
-      const filtered = getFilteredSerials("range")
-      setSelectedCount(filtered.length)
-    }
   }
 
   const handleApplyFilter = () => {
@@ -132,7 +120,6 @@ export function SeriesFilterModal({
     setEndSeries("")
     setSpecificSeriesInput("")
     setFilterMode("all")
-    setSelectedCount(totalSeries)
   }
 
   const previewMatches = getFilteredSerials(filterMode)
