@@ -29,6 +29,7 @@ import JsBarcode from "jsbarcode"
 import QRCode from "qrcode"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { SaleStickersSection } from "./sale-stickers-section"
+import { SeriesFilterModal } from "@/components/warehouse/series-filter-modal"
 
 interface SaleWithLots {
   id: string
@@ -78,6 +79,9 @@ export default function EtiquetadoPage() {
   const [generatingBarcodes, setGeneratingBarcodes] = useState(false)
   const [expandedSale, setExpandedSale] = useState<string | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [filteredSerials, setFilteredSerials] = useState<string[]>([])
+  const [currentSaleAllSerials, setCurrentSaleAllSerials] = useState<string[]>([])
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -231,13 +235,41 @@ export default function EtiquetadoPage() {
       return
     }
 
+    const allSerials: string[] = []
+    for (const item of sale.sale_items) {
+      for (const lot of item.product_lots) {
+        for (const serial of lot.product_serials) {
+          if (serial.status !== "delivered" && serial.status !== "sold") {
+            allSerials.push(serial.serial_number)
+          }
+        }
+      }
+    }
+
+    setCurrentSaleAllSerials(allSerials)
+    setFilteredSerials(allSerials)
+    setSelectedSale(sale)
+    setFilterModalOpen(true)
+  }
+
+  const handleFilterApply = async (filteredSerials: string[]) => {
+    if (filteredSerials.length === 0) {
+      toast({
+        title: "Sin series",
+        description: "Selecciona al menos una serie",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setGeneratingBarcodes(true)
-      setSelectedSale(sale)
 
       const barcodesData: BarcodeData[] = []
 
-      for (const item of sale.sale_items) {
+      if (!selectedSale) return
+
+      for (const item of selectedSale.sale_items) {
         const { data: productData, error: productError } = await supabase
           .from("products")
           .select("qr_code_hash")
@@ -253,6 +285,14 @@ export default function EtiquetadoPage() {
 
         for (const lot of item.product_lots) {
           for (const serial of lot.product_serials) {
+            if (!filteredSerials.includes(serial.serial_number)) {
+              continue
+            }
+
+            if (serial.status === "delivered" || serial.status === "sold") {
+              continue
+            }
+
             const barcodeText = `${serial.serial_number}`
 
             try {
@@ -1047,6 +1087,13 @@ export default function EtiquetadoPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <SeriesFilterModal
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        totalSeries={currentSaleAllSerials.length}
+        allSerials={currentSaleAllSerials}
+        onApplyFilter={handleFilterApply}
+      />
     </div>
   )
 }
