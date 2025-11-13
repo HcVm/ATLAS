@@ -80,35 +80,50 @@ export default function LotsAndSerialsPage() {
     try {
       setLoading(true)
 
-      const { data, error } = await supabase
-        .from("product_lots")
-        .select(`
-          id,
-          lot_number,
-          product_id,
-          sale_id,
-          quantity,
-          status,
-          generated_date,
-          ingress_date,
-          delivery_date,
-          is_archived,
-          products (name, code),
-          sales (sale_number),
-          product_serials (id, serial_number, status)
-        `)
-        .eq("company_id", companyId)
-        .order("generated_date", { ascending: false })
+      let allLots: ProductLot[] = []
+      let offset = 0
+      const pageSize = 1000
 
-      if (error) {
-        console.error("Error fetching lots:", error)
-        throw error
+      while (true) {
+        const { data, error } = await supabase
+          .from("product_lots")
+          .select(`
+            id,
+            lot_number,
+            product_id,
+            sale_id,
+            quantity,
+            status,
+            generated_date,
+            ingress_date,
+            delivery_date,
+            is_archived,
+            products (name, code),
+            sales (sale_number),
+            product_serials (id, serial_number, status)
+          `)
+          .eq("company_id", companyId)
+          .order("generated_date", { ascending: false })
+          .range(offset, offset + pageSize - 1)
+
+        if (error) {
+          console.error("Error fetching lots:", error)
+          throw error
+        }
+
+        if (!data || data.length === 0) break
+
+        allLots = [...allLots, ...data]
+
+        if (data.length < pageSize) break
+
+        offset += pageSize
       }
 
-      setLots(data || [])
-      if (data && data.length > 0) {
+      setLots(allLots)
+      if (allLots && allLots.length > 0) {
         const saleKeys = new Set<string>()
-        data.forEach((lot) => {
+        allLots.forEach((lot) => {
           const saleKey = lot.sales?.sale_number || "sin-asignar"
           saleKeys.add(saleKey)
         })

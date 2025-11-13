@@ -103,7 +103,6 @@ export default function EtiquetadoPage() {
         `)
         .eq("company_id", companyId)
         .order("created_at", { ascending: false })
-        .limit(50)
 
       if (salesError) throw salesError
 
@@ -144,22 +143,37 @@ export default function EtiquetadoPage() {
 
               const lotsWithSerials = await Promise.all(
                 (lots || []).map(async (lot) => {
-                  const { data: serials, error: serialsError } = await supabase
-                    .from("product_serials")
-                    .select(`
-                      id,
-                      serial_number,
-                      status
-                    `)
-                    .eq("lot_id", lot.id)
-                    .order("serial_number", { ascending: true })
+                  let allSerials: any[] = []
+                  let offset = 0
+                  const pageSize = 1000
 
-                  if (serialsError) {
-                    console.error("Error fetching serials:", serialsError)
-                    return { ...lot, product_serials: [] }
+                  while (true) {
+                    const { data: serials, error: serialsError } = await supabase
+                      .from("product_serials")
+                      .select(`
+                        id,
+                        serial_number,
+                        status
+                      `)
+                      .eq("lot_id", lot.id)
+                      .order("serial_number", { ascending: true })
+                      .range(offset, offset + pageSize - 1)
+
+                    if (serialsError) {
+                      console.error("Error fetching serials:", serialsError)
+                      break
+                    }
+
+                    if (!serials || serials.length === 0) break
+
+                    allSerials = [...allSerials, ...serials]
+
+                    if (serials.length < pageSize) break
+
+                    offset += pageSize
                   }
 
-                  return { ...lot, product_serials: serials || [] }
+                  return { ...lot, product_serials: allSerials }
                 }),
               )
 
