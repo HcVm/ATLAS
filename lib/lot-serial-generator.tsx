@@ -132,6 +132,7 @@ export async function generateBarcodeDataUrl(code: string): Promise<string> {
 
 /**
  * Creates a lot and its associated serial numbers for a product in a sale
+ * Implemented batch processing for serial generation to handle quantities > 1000
  */
 export async function createLotWithSerials(params: LotGenerationParams): Promise<GeneratedLot> {
   const { productCode, productName, productId, saleId, quantity, companyId, createdBy, date = new Date() } = params
@@ -163,29 +164,43 @@ export async function createLotWithSerials(params: LotGenerationParams): Promise
       throw new Error(`Failed to create lot: ${lotError.message}`)
     }
 
-    // Generate serial numbers for each unit
-    const serialPromises: Promise<GeneratedSerial>[] = []
+    const BATCH_SIZE = 100
+    const serials: GeneratedSerial[] = []
 
-    for (let i = 1; i <= quantity; i++) {
-      serialPromises.push(
-        createSerial(
-          {
-            lotId: lotData.id,
-            lotNumber: lotNumber,
-            productCode,
-            productName,
-            productId,
-            saleId,
-            quantity: 1,
-            companyId,
-            createdBy,
-          },
-          i,
-        ),
-      )
+    console.log(`[v0] Starting batch serial generation for ${quantity} units with batch size ${BATCH_SIZE}`)
+
+    for (let batch = 0; batch < quantity; batch += BATCH_SIZE) {
+      const batchEnd = Math.min(batch + BATCH_SIZE, quantity)
+      const serialPromises: Promise<GeneratedSerial>[] = []
+
+      console.log(`[v0] Processing batch: ${batch + 1}-${batchEnd}`)
+
+      for (let i = batch + 1; i <= batchEnd; i++) {
+        serialPromises.push(
+          createSerial(
+            {
+              lotId: lotData.id,
+              lotNumber: lotNumber,
+              productCode,
+              productName,
+              productId,
+              saleId,
+              quantity: 1,
+              companyId,
+              createdBy,
+            },
+            i,
+          ),
+        )
+      }
+
+      const batchSerials = await Promise.all(serialPromises)
+      serials.push(...batchSerials)
+
+      console.log(`[v0] Batch complete: ${batchEnd}/${quantity} serials generated`)
     }
 
-    const serials = await Promise.all(serialPromises)
+    console.log(`[v0] All ${serials.length} serials generated successfully`)
 
     return {
       id: lotData.id,
@@ -865,6 +880,7 @@ export async function getSerialsForLot(lotId: string): Promise<any[]> {
 
 /**
  * Creates lots and serials for a manual inventory entry (entrada)
+ * Implemented batch processing for serial generation to handle quantities > 1000
  */
 export async function createLotsForInventoryEntry(
   productId: string,
@@ -887,13 +903,13 @@ export async function createLotsForInventoryEntry(
         product_id: productId,
         product_code: productCode,
         product_name: productName,
-        sale_id: null, // No sale associated with manual entries
+        sale_id: null,
         quantity: quantity,
-        status: "in_inventory", // Directly set to in_inventory for manual entries
+        status: "in_inventory",
         company_id: companyId,
         created_by: createdBy,
         generated_date: new Date().toISOString(),
-        ingress_date: new Date().toISOString(), // Set ingress date immediately
+        ingress_date: new Date().toISOString(),
       })
       .select()
       .single()
@@ -903,29 +919,41 @@ export async function createLotsForInventoryEntry(
       throw new Error(`Failed to create lot: ${lotError.message}`)
     }
 
-    // Generate serial numbers for each unit
-    const serialPromises: Promise<GeneratedSerial>[] = []
+    const BATCH_SIZE = 100
+    const serials: GeneratedSerial[] = []
 
-    for (let i = 1; i <= quantity; i++) {
-      serialPromises.push(
-        createSerialForInventoryEntry(
-          {
-            lotId: lotData.id,
-            lotNumber: lotNumber,
-            productCode,
-            productName,
-            productId,
-            saleId: null,
-            quantity: 1,
-            companyId,
-            createdBy,
-          },
-          i,
-        ),
-      )
+    console.log(`[v0] Starting batch serial generation for ${quantity} units with batch size ${BATCH_SIZE}`)
+
+    for (let batch = 0; batch < quantity; batch += BATCH_SIZE) {
+      const batchEnd = Math.min(batch + BATCH_SIZE, quantity)
+      const serialPromises: Promise<GeneratedSerial>[] = []
+
+      console.log(`[v0] Processing batch: ${batch + 1}-${batchEnd}`)
+
+      for (let i = batch + 1; i <= batchEnd; i++) {
+        serialPromises.push(
+          createSerialForInventoryEntry(
+            {
+              lotId: lotData.id,
+              lotNumber: lotNumber,
+              productCode,
+              productName,
+              productId,
+              saleId: null,
+              quantity: 1,
+              companyId,
+              createdBy,
+            },
+            i,
+          ),
+        )
+      }
+
+      const batchSerials = await Promise.all(serialPromises)
+      serials.push(...batchSerials)
+
+      console.log(`[v0] Batch complete: ${batchEnd}/${quantity} serials generated`)
     }
-
-    const serials = await Promise.all(serialPromises)
 
     console.log("[v0] Created lot", lotNumber, "with", serials.length, "serials for inventory entry")
 
@@ -966,8 +994,8 @@ async function createSerialForInventoryEntry(
         product_id: productId,
         product_code: productCode,
         product_name: productName,
-        sale_id: null, // No sale for manual entries
-        status: "in_inventory", // Directly set to in_inventory
+        sale_id: null,
+        status: "in_inventory",
         company_id: companyId,
         created_by: createdBy,
       })
