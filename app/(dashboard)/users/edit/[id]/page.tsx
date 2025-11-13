@@ -73,7 +73,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
   const fetchCompanies = async () => {
     try {
-      console.log("Cargando empresas en el editor de usuario...")
       const { data, error } = await supabase.from("companies").select("id, name, code").order("name")
 
       if (error) {

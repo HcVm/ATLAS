@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -21,6 +21,9 @@ import {
   XCircle,
   Loader2,
   Search,
+  ChevronRight,
+  Eye,
+  CalendarIcon,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -40,6 +43,15 @@ interface Request {
   profiles: {
     full_name: string
   }
+  priority?: string
+  reason?: string
+  requester_name?: string
+  department_name?: string
+  requerimiento_numero?: string
+  dirigido_a?: string
+  motivo_requerimiento?: string
+  items_requeridos?: any[]
+  supporting_documents?: any
 }
 
 const REQUEST_TYPES = {
@@ -86,26 +98,31 @@ const STATUS_CONFIG = {
     label: "Pendiente",
     icon: AlertCircle,
     color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    bgColor: "bg-yellow-50 dark:bg-yellow-950",
   },
   in_progress: {
     label: "En Proceso",
     icon: Loader2,
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    bgColor: "bg-blue-50 dark:bg-blue-950",
   },
   approved: {
     label: "Aprobada",
     icon: CheckCircle,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    bgColor: "bg-green-50 dark:bg-green-950",
   },
   rejected: {
     label: "Rechazada",
     icon: XCircle,
     color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    bgColor: "bg-red-50 dark:bg-red-950",
   },
   expired: {
     label: "Expirada",
     icon: Clock,
     color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    bgColor: "bg-gray-50 dark:bg-gray-950",
   },
 }
 
@@ -177,6 +194,14 @@ export default function RequestsPage() {
       year: "numeric",
       month: "short",
       day: "numeric",
+    })
+  }
+
+  const formatDateWithTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     })
@@ -194,55 +219,137 @@ export default function RequestsPage() {
       setShowDetailsDialog(true)
     }
 
+    const renderTypeSpecificFields = () => {
+      switch (request.request_type) {
+        case "equipment_request":
+          return (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {request.requerimiento_numero && (
+                <div className="flex items-start gap-2">
+                  <span className="font-medium text-foreground min-w-fit">Requerimiento:</span>
+                  <span className="break-all">{request.requerimiento_numero}</span>
+                </div>
+              )}
+              {request.dirigido_a && (
+                <div className="flex items-start gap-2">
+                  <span className="font-medium text-foreground min-w-fit">Dirigido a:</span>
+                  <span>{request.dirigido_a}</span>
+                </div>
+              )}
+              {request.motivo_requerimiento && (
+                <div className="flex items-start gap-2">
+                  <span className="font-medium text-foreground min-w-fit">Motivo:</span>
+                  <span className="line-clamp-2">{request.motivo_requerimiento}</span>
+                </div>
+              )}
+              {request.items_requeridos && request.items_requeridos.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">Artículos:</span>
+                  <span>{request.items_requeridos.length} artículo(s)</span>
+                </div>
+              )}
+            </div>
+          )
+        default:
+          return null
+      }
+    }
+
     return (
-      <Card className="glass-card hover:shadow-lg transition-all duration-300">
+      <Card
+        className={`glass-card hover:shadow-lg transition-all duration-300 border-l-4 overflow-hidden ${
+          status?.color.split(" ")[0] === "bg-yellow-100"
+            ? "border-l-yellow-400"
+            : status?.color.split(" ")[0] === "bg-blue-100"
+              ? "border-l-blue-400"
+              : status?.color.split(" ")[0] === "bg-green-100"
+                ? "border-l-green-400"
+                : status?.color.split(" ")[0] === "bg-red-100"
+                  ? "border-l-red-400"
+                  : "border-l-gray-400"
+        }`}
+      >
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${requestType?.color || "bg-gray-100"}`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className={`p-2 rounded-lg flex-shrink-0 ${requestType?.color || "bg-gray-100"}`}>
                 <Icon className="h-4 w-4" />
               </div>
-              <div>
-                <CardTitle className="text-lg">{request.subject}</CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className={requestType?.color}>
-                    {requestType?.label || request.request_type}
-                  </Badge>
-                </CardDescription>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base line-clamp-1">{requestType?.label || request.request_type}</CardTitle>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <Badge className={status?.color}>
-                <StatusIcon className="h-3 w-3 mr-1" />
-                {status?.label || request.status}
+            <div className="flex-shrink-0">
+              <Badge className={`${status?.color} text-xs flex items-center gap-1 whitespace-nowrap`}>
+                <StatusIcon className="h-2.5 w-2.5" />
+                <span>{status?.label || request.status}</span>
               </Badge>
-              {expired && (
-                <Badge variant="destructive" className="text-xs">
-                  Expirada
-                </Badge>
-              )}
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{request.description}</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Creada: {formatDate(request.created_at)}</span>
+
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground line-clamp-3">{request.description || request.reason}</p>
+
+          {renderTypeSpecificFields()}
+
+          <div className="grid grid-cols-2 gap-3 py-3 border-t border-b border-muted">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Creada</p>
+              <div className="flex items-center gap-2 text-xs">
+                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <span>{formatDate(request.created_at)}</span>
+              </div>
+            </div>
+
             {request.expires_at && (
-              <span className={expired ? "text-red-500" : ""}>Expira: {formatDate(request.expires_at)}</span>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Expira</p>
+                <div className={`flex items-center gap-2 text-xs ${expired ? "text-red-500 font-medium" : ""}`}>
+                  <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{formatDate(request.expires_at)}</span>
+                </div>
+              </div>
+            )}
+
+            {request.approved_at && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Aprobada</p>
+                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{formatDate(request.approved_at)}</span>
+                </div>
+              </div>
+            )}
+
+            {request.rejected_at && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Rechazada</p>
+                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                  <XCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{formatDate(request.rejected_at)}</span>
+                </div>
+              </div>
             )}
           </div>
+
           {request.approver_comments && (
-            <div className="mt-3 p-2 bg-muted rounded-md">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Comentarios del aprobador:</p>
-              <p className="text-sm">{request.approver_comments}</p>
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">Comentarios del Aprobador</p>
+              <p className="text-sm text-blue-800 dark:text-blue-300 line-clamp-2">{request.approver_comments}</p>
             </div>
           )}
-          <div className="mt-4 pt-2 border-t">
-            <Button size="sm" variant="outline" onClick={handleViewDetails} className="w-full bg-transparent">
-              Ver Detalles
-            </Button>
-          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleViewDetails}
+            className="w-full bg-transparent hover:bg-primary/5 mt-2"
+          >
+            <Eye className="h-3.5 w-3.5 mr-2" />
+            Ver Detalles Completos
+            <ChevronRight className="h-3.5 w-3.5 ml-auto" />
+          </Button>
         </CardContent>
       </Card>
     )
@@ -281,8 +388,8 @@ export default function RequestsPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="glass-card">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="glass-card border-t-2 border-t-yellow-400 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
@@ -295,7 +402,7 @@ export default function RequestsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card border-t-2 border-t-blue-400 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -308,7 +415,7 @@ export default function RequestsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card border-t-2 border-t-green-400 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -321,7 +428,7 @@ export default function RequestsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card border-t-2 border-t-red-400 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
@@ -338,43 +445,45 @@ export default function RequestsPage() {
 
       <Card className="glass-card">
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar solicitudes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar solicitudes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="in_progress">En Proceso</SelectItem>
+                  <SelectItem value="approved">Aprobada</SelectItem>
+                  <SelectItem value="rejected">Rechazada</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  {Object.entries(REQUEST_TYPES).map(([key, type]) => (
+                    <SelectItem key={key} value={key}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="pending">Pendiente</SelectItem>
-                <SelectItem value="in_progress">En Proceso</SelectItem>
-                <SelectItem value="approved">Aprobada</SelectItem>
-                <SelectItem value="rejected">Rechazada</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                {Object.entries(REQUEST_TYPES).map(([key, type]) => (
-                  <SelectItem key={key} value={key}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -398,7 +507,7 @@ export default function RequestsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {filteredRequests.map((request) => (
             <RequestCard key={request.id} request={request} />
           ))}

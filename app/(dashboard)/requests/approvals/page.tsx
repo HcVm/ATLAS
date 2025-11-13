@@ -199,8 +199,6 @@ export default function ApprovalsPage() {
       const filteredRequests = (result.data || []).filter(
         (request: Request) => request.status === "INGRESADA" || request.status === "EN_GESTION",
       )
-
-      console.log("[v0] Filtered requests after status check:", filteredRequests.length)
       setRequests(filteredRequests)
     } catch (err: any) {
       console.error("Error fetching requests:", err)
