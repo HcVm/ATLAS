@@ -31,3 +31,8 @@ next-env.d.ts
 
 # schema
 .schema
+
+
+#supabase
+.supabase/
+.dump.sql

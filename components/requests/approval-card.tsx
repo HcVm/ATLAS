@@ -3,41 +3,40 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Clock,
-  UserX,
-  Plus,
-  Calendar,
-  Wrench,
-  MessageSquare,
-  User,
-  CalendarIcon,
-  ThumbsUp,
-  ThumbsDown,
-} from "lucide-react"
+import { Clock, User, Calendar, Wrench, MessageSquare, CalendarIcon, Eye, FileText } from "lucide-react"
 
 interface Request {
   id: string
   request_type: string
   status: string
-  subject: string
-  description: string
+  reason: string
   created_at: string
   expires_at: string | null
-  metadata: any
-  profiles: {
-    full_name: string
-    email: string
-    departments?: {
-      name: string
-    }
-  }
+  requester_name: string
+  department_name: string
+  incident_date: string
+  incident_time?: string
+  end_date?: string
+  end_time?: string
+  equipment_details?: any
+  priority: string
+  requerimiento_numero?: string
+  dirigido_a?: string
+  area_solicitante?: string
+  solicitante_nombre?: string
+  motivo_requerimiento?: string
+  fecha_entrega_solicitada?: string
+  urgencia?: string
+  items_requeridos?: any[]
+  permission_days?: number
+  supporting_documents?: any
 }
 
 interface ApprovalCardProps {
   request: Request
   onApprove: (request: Request) => void
   onReject: (request: Request) => void
+  onViewDetails: (request: Request) => void
 }
 
 const REQUEST_TYPES = {
@@ -48,12 +47,12 @@ const REQUEST_TYPES = {
   },
   absence_justification: {
     label: "Justificación de Ausencia",
-    icon: UserX,
+    icon: User,
     color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   },
   overtime_request: {
     label: "Registro de Horas Extras",
-    icon: Plus,
+    icon: Clock,
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   },
   leave_request: {
@@ -73,7 +72,7 @@ const REQUEST_TYPES = {
   },
 }
 
-export function ApprovalCard({ request, onApprove, onReject }: ApprovalCardProps) {
+export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: ApprovalCardProps) {
   const requestType = REQUEST_TYPES[request.request_type as keyof typeof REQUEST_TYPES]
   const Icon = requestType?.icon || MessageSquare
 
@@ -94,6 +93,77 @@ export function ApprovalCard({ request, onApprove, onReject }: ApprovalCardProps
 
   const expired = isExpired(request.expires_at)
 
+  const renderTypeSpecificFields = () => {
+    switch (request.request_type) {
+      case "late_justification":
+      case "absence_justification":
+        return request.incident_date ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarIcon className="h-4 w-4" />
+            <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+            {request.incident_time && <span className="ml-2">Hora: {request.incident_time}</span>}
+          </div>
+        ) : null
+
+      case "overtime_request":
+        return request.incident_date ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+            {request.incident_time && request.end_time && (
+              <span className="ml-2">
+                {request.incident_time} - {request.end_time}
+              </span>
+            )}
+          </div>
+        ) : null
+
+      case "leave_request":
+        return request.incident_date ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <Calendar className="h-4 w-4" />
+            <span>{new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+            {request.end_date && (
+              <>
+                <span>-</span>
+                <span>{new Date(request.end_date).toLocaleDateString("es-ES")}</span>
+              </>
+            )}
+            {request.permission_days && <span className="ml-2">({request.permission_days} días)</span>}
+          </div>
+        ) : null
+
+      case "equipment_request":
+        return (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {request.requerimiento_numero && (
+              <div>
+                <span className="font-medium">Requerimiento:</span> {request.requerimiento_numero}
+              </div>
+            )}
+            {request.dirigido_a && (
+              <div>
+                <span className="font-medium">Dirigido a:</span> {request.dirigido_a}
+              </div>
+            )}
+            {request.motivo_requerimiento && (
+              <div className="line-clamp-2">
+                <span className="font-medium">Motivo:</span> {request.motivo_requerimiento}
+              </div>
+            )}
+            {request.items_requeridos && request.items_requeridos.length > 0 && (
+              <div>
+                <span className="font-medium">{request.items_requeridos.length} artículo(s)</span>
+              </div>
+            )}
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <Card className="glass-card hover:shadow-lg transition-all duration-300">
       <CardHeader className="pb-3">
@@ -103,7 +173,7 @@ export function ApprovalCard({ request, onApprove, onReject }: ApprovalCardProps
               <Icon className="h-4 w-4" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-lg">{request.subject}</CardTitle>
+              <CardTitle className="text-lg">{requestType?.label || request.request_type}</CardTitle>
               <CardDescription className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className={requestType?.color}>
                   {requestType?.label || request.request_type}
@@ -122,45 +192,26 @@ export function ApprovalCard({ request, onApprove, onReject }: ApprovalCardProps
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="h-4 w-4" />
-            <span>{request.profiles.full_name}</span>
-            {request.profiles.departments?.name && (
+            <span>{request.requester_name}</span>
+            {request.department_name && (
               <>
                 <span>•</span>
-                <span>{request.profiles.departments.name}</span>
+                <span>{request.department_name}</span>
               </>
             )}
           </div>
 
-          <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{request.reason}</p>
 
-          {/* Show specific metadata based on request type */}
-          {request.metadata && (
-            <div className="text-xs text-muted-foreground space-y-1">
-              {request.request_type === "late_justification" && request.metadata.incident_date && (
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-3 w-3" />
-                  <span>Fecha: {new Date(request.metadata.incident_date).toLocaleDateString("es-ES")}</span>
-                  {request.metadata.incident_time && <span>• Hora: {request.metadata.incident_time}</span>}
-                </div>
-              )}
-              {request.request_type === "overtime_request" && request.metadata.work_date && (
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3" />
-                  <span>Fecha: {new Date(request.metadata.work_date).toLocaleDateString("es-ES")}</span>
-                  {request.metadata.hours_worked && <span>• Horas: {request.metadata.hours_worked}</span>}
-                </div>
-              )}
-              {request.request_type === "leave_request" && request.metadata.start_date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-3 w-3" />
-                  <span>
-                    {new Date(request.metadata.start_date).toLocaleDateString("es-ES")} -{" "}
-                    {request.metadata.end_date ? new Date(request.metadata.end_date).toLocaleDateString("es-ES") : ""}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="text-xs text-muted-foreground space-y-2">
+            {renderTypeSpecificFields()}
+            {request.supporting_documents && request.supporting_documents.length > 0 && (
+              <div className="flex items-center gap-2">
+                <FileText className="h-3 w-3" />
+                <span>{request.supporting_documents.length} archivo(s) adjunto(s)</span>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Creada: {formatDate(request.created_at)}</span>
@@ -169,27 +220,34 @@ export function ApprovalCard({ request, onApprove, onReject }: ApprovalCardProps
             )}
           </div>
 
-          {/* Action buttons */}
           <div className="flex gap-2 pt-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onApprove(request)}
-              className="flex-1 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950"
+              onClick={() => onViewDetails(request)}
+              className="flex-1 bg-transparent"
             >
-              <ThumbsUp className="h-3 w-3 mr-1" />
-              Aprobar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onReject(request)}
-              className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
-            >
-              <ThumbsDown className="h-3 w-3 mr-1" />
-              Rechazar
+              <Eye className="h-3 w-3 mr-1" />
+              Ver Detalles
             </Button>
           </div>
+          {(request.status === "INGRESADA" || request.status === "EN_GESTION") && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  // Call a new onStatusChange callback instead of onApprove/onReject
+                  // This will be handled by the parent component
+                  onViewDetails(request)
+                }}
+                className="flex-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900"
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                Cambiar Estado
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

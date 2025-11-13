@@ -254,6 +254,89 @@ export function RequestDetailsDialog({ request, open, onOpenChange }: RequestDet
                     </div>
                   </div>
                 )}
+
+                {request.request_type === "equipment_request" && (
+                  <div className="space-y-3 bg-muted/50 p-3 rounded-md border border-muted-foreground/20">
+                    <h5 className="font-semibold text-sm">Información del Requerimiento</h5>
+
+                    {request.requerimiento_numero && (
+                      <div>
+                        <label className="text-sm font-medium">Número de Requerimiento:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.requerimiento_numero}</p>
+                      </div>
+                    )}
+
+                    {request.dirigido_a && (
+                      <div>
+                        <label className="text-sm font-medium">Dirigido a:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.dirigido_a}</p>
+                      </div>
+                    )}
+
+                    {request.area_solicitante && (
+                      <div>
+                        <label className="text-sm font-medium">Área Solicitante:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.area_solicitante}</p>
+                      </div>
+                    )}
+
+                    {request.solicitante_nombre && (
+                      <div>
+                        <label className="text-sm font-medium">Solicitante:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.solicitante_nombre}</p>
+                      </div>
+                    )}
+
+                    {request.motivo_requerimiento && (
+                      <div>
+                        <label className="text-sm font-medium">Motivo del Requerimiento:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.motivo_requerimiento}</p>
+                      </div>
+                    )}
+
+                    {request.fecha_entrega_solicitada && (
+                      <div>
+                        <label className="text-sm font-medium">Fecha de Entrega Solicitada:</label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {new Date(request.fecha_entrega_solicitada).toLocaleDateString("es-ES")}
+                        </p>
+                      </div>
+                    )}
+
+                    {request.urgencia && (
+                      <div>
+                        <label className="text-sm font-medium">Urgencia:</label>
+                        <p className="text-sm text-muted-foreground mt-1">{request.urgencia}</p>
+                      </div>
+                    )}
+
+                    {request.items_requeridos && request.items_requeridos.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium">
+                          Artículos Requeridos ({request.items_requeridos.length}):
+                        </label>
+                        <div className="mt-2 space-y-2">
+                          {request.items_requeridos.map((item: any, index: number) => (
+                            <div key={index} className="bg-background p-2 rounded border border-border">
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div>
+                                  <span className="font-medium">Item:</span> {item.item}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Cantidad:</span> {item.cantidad}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Especificaciones:</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.especificaciones}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

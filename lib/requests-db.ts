@@ -137,15 +137,19 @@ export class RequestsDB {
         .from("requests_with_details")
         .select("*")
         .eq("company_id", companyId)
-        .in("status", ["INGRESADA", "EN_GESTION"])
+        .in("status", ["INGRESADA", "EN_GESTION"]) // Fixed status to uppercase to match database
 
       // Aplicar filtros de departamento y tipos de solicitud
       const departmentIds = approverData.map((a) => a.department_id).filter(Boolean)
       const requestTypes = [...new Set(approverData.flatMap((a) => a.request_types))]
 
-      if (departmentIds.length > 0) {
+      // If department_id is null for any approver config, they see ALL departments
+      if (departmentIds.length > 0 && departmentIds.length === approverData.length) {
+        // All approver configs have specific departments, so filter by them
         query = query.in("department_id", departmentIds)
       }
+      // If any approver config has department_id = null, we skip the department filter
+      // This means the approver sees requests from ALL departments
 
       if (requestTypes.length > 0) {
         query = query.in("request_type", requestTypes)

@@ -22,7 +22,6 @@ import { useToast } from "@/hooks/use-toast"
 import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 import {
   Clock,
-  UserX,
   Plus,
   Calendar,
   Wrench,
@@ -56,7 +55,7 @@ interface Request {
   reason: string
   equipment_details?: any
   supporting_documents?: any
-  status: "ingresada" | "en_gestion" | "aprobada" | "desaprobada" | "ejecutada" | "cancelada"
+  status: "INGRESADA" | "EN_GESTION" | "APROBADA" | "DESAPROBADA" | "EJECUTADA" | "CANCELADA"
   priority: "low" | "normal" | "high" | "urgent"
   reviewed_by?: string
   reviewed_at?: string
@@ -90,7 +89,7 @@ const REQUEST_TYPES = {
   },
   absence_justification: {
     label: "Justificación de Ausencia",
-    icon: UserX,
+    icon: User,
     color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   },
   overtime_request: {
@@ -100,7 +99,7 @@ const REQUEST_TYPES = {
   },
   leave_request: {
     label: "Solicitud de Permiso",
-    icon: Calendar,
+    icon: AlertCircle,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   },
   equipment_request: {
@@ -160,7 +159,9 @@ export default function ApprovalsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null)
   const [showApprovalDialog, setShowApprovalDialog] = useState(false)
-  const [approvalAction, setApprovalAction] = useState<"approve" | "reject">("approve")
+  const [selectedStatus, setSelectedStatus] = useState<
+    "APROBADA" | "DESAPROBADA" | "EN_GESTION" | "EJECUTADA" | "CANCELADA"
+  >("APROBADA")
   const [approverComments, setApproverComments] = useState("")
   const [processingApproval, setProcessingApproval] = useState(false)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
@@ -192,10 +193,17 @@ export default function ApprovalsPage() {
         throw result.error
       }
 
+      console.log("[v0] Fetched requests:", result.data?.length || 0)
+      if (result.data && result.data.length > 0) {
+        console.log("[v0] First request status:", result.data[0].status)
+        console.log("[v0] First request type:", result.data[0].request_type)
+      }
+
       const filteredRequests = (result.data || []).filter(
-        (request: Request) => request.status === "ingresada" || request.status === "en_gestion",
+        (request: Request) => request.status === "INGRESADA" || request.status === "EN_GESTION",
       )
 
+      console.log("[v0] Filtered requests after status check:", filteredRequests.length)
       setRequests(filteredRequests)
     } catch (err: any) {
       console.error("Error fetching requests:", err)
@@ -254,12 +262,15 @@ export default function ApprovalsPage() {
   })
 
   const getRequestsByStatus = (status: string) => {
-    return filteredRequests.filter((req) => req.status === status)
+    const upperStatus = status.toUpperCase()
+    const filtered = filteredRequests.filter((req) => req.status === upperStatus)
+    console.log("[v0] getRequestsByStatus:", upperStatus, "found:", filtered.length)
+    return filtered
   }
 
   const handleApprovalAction = (request: Request, action: "approve" | "reject") => {
     setSelectedRequest(request)
-    setApprovalAction(action)
+    setSelectedStatus(action === "approve" ? "APROBADA" : "DESAPROBADA")
     setApproverComments("")
     setShowApprovalDialog(true)
   }
@@ -270,7 +281,7 @@ export default function ApprovalsPage() {
     setProcessingApproval(true)
     try {
       const result = await requestsDB.updateRequestStatus(selectedRequest.id, user.id, {
-        status: approvalAction === "approve" ? "aprobada" : "desaprobada",
+        status: selectedStatus,
         review_comments: approverComments || undefined,
       })
 
@@ -279,8 +290,8 @@ export default function ApprovalsPage() {
       }
 
       toast({
-        title: approvalAction === "approve" ? "Solicitud Aprobada" : "Solicitud Desaprobada",
-        description: `La solicitud de ${selectedRequest.requester_name} ha sido ${approvalAction === "approve" ? "aprobada" : "desaprobada"} correctamente`,
+        title: "Solicitud Actualizada",
+        description: `La solicitud de ${selectedRequest.requester_name} ha sido actualizada a ${STATUS_CONFIG[selectedStatus]?.label}`,
       })
 
       await fetchPendingRequests()
@@ -323,6 +334,77 @@ export default function ApprovalsPage() {
     const handleViewDetails = () => {
       setSelectedRequest(request)
       setShowDetailsDialog(true)
+    }
+
+    const renderTypeSpecificFields = () => {
+      switch (request.request_type) {
+        case "late_justification":
+        case "absence_justification":
+          return request.incident_date ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarIcon className="h-4 w-4" />
+              <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+              {request.incident_time && <span className="ml-2">Hora: {request.incident_time}</span>}
+            </div>
+          ) : null
+
+        case "overtime_request":
+          return request.incident_date ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+              {request.incident_time && request.end_time && (
+                <span className="ml-2">
+                  {request.incident_time} - {request.end_time}
+                </span>
+              )}
+            </div>
+          ) : null
+
+        case "leave_request":
+          return request.incident_date ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
+              {request.end_date && (
+                <>
+                  <span>-</span>
+                  <span>{new Date(request.end_date).toLocaleDateString("es-ES")}</span>
+                </>
+              )}
+              {request.permission_days && <span className="ml-2">({request.permission_days} días)</span>}
+            </div>
+          ) : null
+
+        case "equipment_request":
+          return (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {request.requerimiento_numero && (
+                <div>
+                  <span className="font-medium">Requerimiento:</span> {request.requerimiento_numero}
+                </div>
+              )}
+              {request.dirigido_a && (
+                <div>
+                  <span className="font-medium">Dirigido a:</span> {request.dirigido_a}
+                </div>
+              )}
+              {request.motivo_requerimiento && (
+                <div className="line-clamp-2">
+                  <span className="font-medium">Motivo:</span> {request.motivo_requerimiento}
+                </div>
+              )}
+              {request.items_requeridos && request.items_requeridos.length > 0 && (
+                <div>
+                  <span className="font-medium">{request.items_requeridos.length} artículo(s)</span>
+                </div>
+              )}
+            </div>
+          )
+
+        default:
+          return null
+      }
     }
 
     return (
@@ -370,23 +452,8 @@ export default function ApprovalsPage() {
 
             <p className="text-sm text-muted-foreground line-clamp-2">{request.reason}</p>
 
-            <div className="text-xs text-muted-foreground space-y-1">
-              {request.incident_date && (
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-3 w-3" />
-                  <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
-                  {request.incident_time && <span>• Hora: {request.incident_time}</span>}
-                </div>
-              )}
-              {request.end_date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-3 w-3" />
-                  <span>
-                    Hasta: {new Date(request.end_date).toLocaleDateString("es-ES")}
-                    {request.end_time && <span> • {request.end_time}</span>}
-                  </span>
-                </div>
-              )}
+            <div className="text-xs text-muted-foreground space-y-2">
+              {renderTypeSpecificFields()}
               {request.supporting_documents && request.supporting_documents.length > 0 && (
                 <div className="flex items-center gap-2">
                   <FileText className="h-3 w-3" />
@@ -408,36 +475,31 @@ export default function ApprovalsPage() {
                 Ver Detalles
               </Button>
             </div>
-            {(request.status === "ingresada" || request.status === "en_gestion") && (
+            {(request.status === "INGRESADA" || request.status === "EN_GESTION") && (
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleApprovalAction(request, "approve")}
-                  className="flex-1 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950"
+                  className="flex-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900"
                 >
-                  <ThumbsUp className="h-3 w-3 mr-1" />
-                  Aprobar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleApprovalAction(request, "reject")}
-                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
-                >
-                  <ThumbsDown className="h-3 w-3 mr-1" />
-                  Desaprobar
+                  <Clock className="h-3 w-3 mr-1" />
+                  Cambiar Estado
                 </Button>
               </div>
             )}
-            {(request.status === "aprobada" || request.status === "desaprobada" || request.status === "ejecutada" || request.status === "cancelada") && request.reviewed_at && (
-              <div className="text-xs text-muted-foreground pt-2 border-t">
-                <div className="flex items-center justify-between">
-                  <span>Revisada: {formatDate(request.reviewed_at)}</span>
+            {(request.status === "APROBADA" ||
+              request.status === "DESAPROBADA" ||
+              request.status === "EJECUTADA" ||
+              request.status === "CANCELADA") &&
+              request.reviewed_at && (
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  <div className="flex items-center justify-between">
+                    <span>Revisada: {formatDate(request.reviewed_at)}</span>
+                  </div>
+                  {request.review_comments && <p className="mt-1 text-xs italic">"{request.review_comments}"</p>}
                 </div>
-                {request.review_comments && <p className="mt-1 text-xs italic">"{request.review_comments}"</p>}
-              </div>
-            )}
+              )}
           </div>
         </CardContent>
       </Card>
@@ -495,7 +557,7 @@ export default function ApprovalsPage() {
                 <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("ingresada").length}</p>
+                <p className="text-2xl font-bold">{getRequestsByStatus("INGRESADA").length}</p>
                 <p className="text-xs text-muted-foreground">Ingresadas</p>
               </div>
             </div>
@@ -508,7 +570,7 @@ export default function ApprovalsPage() {
                 <Loader2 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("en_gestion").length}</p>
+                <p className="text-2xl font-bold">{getRequestsByStatus("EN_GESTION").length}</p>
                 <p className="text-xs text-muted-foreground">En Gestión</p>
               </div>
             </div>
@@ -579,7 +641,7 @@ export default function ApprovalsPage() {
           )}
         </TabsList>
 
-        <TabsContent value="ingresada" className="space-y-4">
+        <TabsContent value="INGRESADA" className="space-y-4">
           {getRequestsByStatus("INGRESADA").length === 0 ? (
             <Card className="glass-card">
               <CardContent className="p-8 text-center">
@@ -648,7 +710,7 @@ export default function ApprovalsPage() {
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{approvalAction === "approve" ? "Aprobar Solicitud" : "Desaprobar Solicitud"}</DialogTitle>
+            <DialogTitle>Actualizar Estado de Solicitud</DialogTitle>
             <DialogDescription>
               {selectedRequest && (
                 <>
@@ -661,15 +723,56 @@ export default function ApprovalsPage() {
 
           <div className="space-y-4">
             <div>
+              <Label htmlFor="status">Estado de la Solicitud</Label>
+              <Select value={selectedStatus} onValueChange={(value: any) => setSelectedStatus(value)}>
+                <SelectTrigger id="status" className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EN_GESTION">
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4" />
+                      En Gestión
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="APROBADA">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      Aprobada
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="DESAPROBADA">
+                    <span className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      Desaprobada
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="EJECUTADA">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-teal-600" />
+                      Ejecutada
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="CANCELADA">
+                    <span className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-600" />
+                      Cancelada
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label htmlFor="comments">
-                Comentarios {approvalAction === "reject" ? "(requeridos)" : "(opcionales)"}
+                Comentarios {selectedStatus === "DESAPROBADA" ? "(requeridos)" : "(opcionales)"}
               </Label>
               <Textarea
                 id="comments"
                 placeholder={
-                  approvalAction === "approve"
-                    ? "Comentarios adicionales sobre la aprobación..."
-                    : "Explica el motivo de la desaprobación..."
+                  selectedStatus === "DESAPROBADA"
+                    ? "Explica el motivo de la desaprobación..."
+                    : "Comentarios adicionales..."
                 }
                 value={approverComments}
                 onChange={(e) => setApproverComments(e.target.value)}
@@ -685,9 +788,13 @@ export default function ApprovalsPage() {
             </Button>
             <Button
               onClick={processApproval}
-              disabled={processingApproval || (approvalAction === "reject" && !approverComments.trim())}
+              disabled={processingApproval || (selectedStatus === "DESAPROBADA" && !approverComments.trim())}
               className={
-                approvalAction === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                selectedStatus === "APROBADA"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : selectedStatus === "DESAPROBADA"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : ""
               }
             >
               {processingApproval ? (
@@ -697,12 +804,14 @@ export default function ApprovalsPage() {
                 </>
               ) : (
                 <>
-                  {approvalAction === "approve" ? (
+                  {selectedStatus === "APROBADA" ? (
                     <ThumbsUp className="h-4 w-4 mr-2" />
-                  ) : (
+                  ) : selectedStatus === "DESAPROBADA" ? (
                     <ThumbsDown className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Clock className="h-4 w-4 mr-2" />
                   )}
-                  {approvalAction === "approve" ? "Aprobar" : "Desaprobar"}
+                  Actualizar Estado
                 </>
               )}
             </Button>

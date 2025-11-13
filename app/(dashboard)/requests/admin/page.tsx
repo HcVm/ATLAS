@@ -13,16 +13,23 @@ import { Switch } from "@/components/ui/switch"
 import { createBrowserClient } from "@supabase/ssr"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
-import { Search, BarChart3, Settings, Clock, CheckCircle, XCircle, AlertCircle, Plus, Loader2 } from "lucide-react"
+import {
+  Search,
+  BarChart3,
+  Settings,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Plus,
+  Loader2,
+  User,
+  Wrench,
+  MessageSquare,
+} from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-  requestsDB,
-  type RequestWithDetails,
-  REQUEST_TYPE_LABELS,
-  STATUS_LABELS,
-  PRIORITY_LABELS,
-} from "@/lib/requests-db"
+import { requestsDB, type RequestWithDetails, REQUEST_TYPE_LABELS, PRIORITY_LABELS } from "@/lib/requests-db"
 import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 
 interface Request {
@@ -76,7 +83,7 @@ const REQUEST_TYPES = {
   absence_justification: {
     title: "Justificación de Ausencia",
     description: "Justificar ausencias al trabajo",
-    icon: UserX,
+    icon: User,
     color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     timeLimit: "24 horas",
     urgent: true,
@@ -92,7 +99,7 @@ const REQUEST_TYPES = {
   leave_request: {
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
-    icon: Calendar,
+    icon: AlertCircle,
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     timeLimit: "3 días",
     urgent: false,
@@ -302,7 +309,8 @@ export default function AdminRequestsPage() {
     const matchesSearch =
       (request.requester_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (request.reason?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || (statusFilter === "expired" ? request.is_expired : request.status === statusFilter)
+    const matchesStatus =
+      statusFilter === "all" || (statusFilter === "expired" ? request.is_expired : request.status === statusFilter)
     const matchesType = typeFilter === "all" || request.request_type === typeFilter
     const matchesDepartment = departmentFilter === "all" || request.department_name === departmentFilter
 
@@ -613,52 +621,53 @@ export default function AdminRequestsPage() {
               filteredRequests.map((request) => {
                 const StatusIcon = STATUS_CONFIG[request.status].icon
                 return (
-                <Card key={request.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge className={STATUS_CONFIG[request.status].color}>
-                            <StatusIcon className="h-4 w-4 mr-1" />
-                            {STATUS_CONFIG[request.status].label}
-                          </Badge>
-                          <Badge variant={getPriorityBadgeVariant(request.priority)}>
-                            {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
-                          </Badge>
-                          <Badge className={REQUEST_TYPES[request.request_type].color}>
-                            {REQUEST_TYPES[request.request_type].title}
-                          </Badge>
-                          {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
+                  <Card key={request.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge className={STATUS_CONFIG[request.status].color}>
+                              <StatusIcon className="h-4 w-4 mr-1" />
+                              {STATUS_CONFIG[request.status].label}
+                            </Badge>
+                            <Badge variant={getPriorityBadgeVariant(request.priority)}>
+                              {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
+                            </Badge>
+                            <Badge className={REQUEST_TYPES[request.request_type].color}>
+                              {REQUEST_TYPES[request.request_type].title}
+                            </Badge>
+                            {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{request.requester_name}</h3>
+                            <p className="text-sm text-muted-foreground">{request.department_name}</p>
+                          </div>
+                          <p className="text-sm">{request.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>
+                              Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                            </span>
+                            <span>
+                              Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                            </span>
+                            {request.reviewer_name && <span>Revisor: {request.reviewer_name}</span>}
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold">{request.requester_name}</h3>
-                          <p className="text-sm text-muted-foreground">{request.department_name}</p>
-                        </div>
-                        <p className="text-sm">{request.reason}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>
-                            Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                          </span>
-                          <span>
-                            Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                          </span>
-                          {request.reviewer_name && <span>Revisor: {request.reviewer_name}</span>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                          Ver Detalles
-                        </Button>
-                        {(request.status === "ingresada" || request.status === "en_gestion") && (
+                        <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                            Reasignar
+                            Ver Detalles
                           </Button>
-                        )}
+                          {(request.status === "ingresada" || request.status === "en_gestion") && (
+                            <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
+                              Reasignar
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )})
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
           </div>
         </TabsContent>
@@ -895,7 +904,10 @@ export default function AdminRequestsPage() {
           }}
           onReject={async (requestId, comments) => {
             if (!user?.id) return
-            await requestsDB.updateRequestStatus(requestId, user.id, { status: "desaprobada", review_comments: comments })
+            await requestsDB.updateRequestStatus(requestId, user.id, {
+              status: "desaprobada",
+              review_comments: comments,
+            })
             fetchRequests()
             setSelectedRequest(null)
           }}

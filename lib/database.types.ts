@@ -87,11 +87,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "attendance_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -179,6 +193,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "brands_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       brands_count: {
@@ -248,6 +269,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "calendar_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "calendar_events_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -281,6 +309,151 @@ export type Database = {
           count?: number | null
         }
         Relationships: []
+      }
+      collection_notes: {
+        Row: {
+          action_taken: string
+          attended_by: string
+          collection_sale_status: string
+          collection_tracking_id: string
+          created_at: string | null
+          id: string
+          instructions_given: string
+          next_steps: string
+          notes: string | null
+          sale_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_taken: string
+          attended_by: string
+          collection_sale_status: string
+          collection_tracking_id: string
+          created_at?: string | null
+          id?: string
+          instructions_given: string
+          next_steps: string
+          notes?: string | null
+          sale_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_taken?: string
+          attended_by?: string
+          collection_sale_status?: string
+          collection_tracking_id?: string
+          created_at?: string | null
+          id?: string
+          instructions_given?: string
+          next_steps?: string
+          notes?: string | null
+          sale_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_notes_collection_tracking_id_fkey"
+            columns: ["collection_tracking_id"]
+            isOneToOne: false
+            referencedRelation: "collection_tracking"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_notes_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_notes_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_notes_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_totals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_tracking: {
+        Row: {
+          collection_status: string
+          created_at: string | null
+          days_in_current_status: number | null
+          delivery_id: string
+          green_days: number | null
+          id: string
+          last_collection_action_date: string | null
+          payment_deadline_days: number | null
+          sale_id: string
+          status_start_date: string
+          updated_at: string | null
+          yellow_days: number | null
+        }
+        Insert: {
+          collection_status?: string
+          created_at?: string | null
+          days_in_current_status?: number | null
+          delivery_id: string
+          green_days?: number | null
+          id?: string
+          last_collection_action_date?: string | null
+          payment_deadline_days?: number | null
+          sale_id: string
+          status_start_date?: string
+          updated_at?: string | null
+          yellow_days?: number | null
+        }
+        Update: {
+          collection_status?: string
+          created_at?: string | null
+          days_in_current_status?: number | null
+          delivery_id?: string
+          green_days?: number | null
+          id?: string
+          last_collection_action_date?: string | null
+          payment_deadline_days?: number | null
+          sale_id?: string
+          status_start_date?: string
+          updated_at?: string | null
+          yellow_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_tracking_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_tracking_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_tracking_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_tracking_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales_with_totals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
@@ -636,6 +809,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "departments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       destination_entities: {
@@ -710,6 +890,13 @@ export type Database = {
             columns: ["movement_id"]
             isOneToOne: false
             referencedRelation: "document_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_attachments_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_document_movements"
             referencedColumns: ["id"]
           },
           {
@@ -896,6 +1083,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "document_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "document_movements_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: false
@@ -915,6 +1109,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_from_department_id_fkey"
+            columns: ["from_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
           {
             foreignKeyName: "document_movements_moved_by_fkey"
@@ -943,6 +1144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_to_department_id_fkey"
+            columns: ["to_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -974,11 +1182,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "document_number_sequences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "document_number_sequences_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_number_sequences_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -1022,11 +1244,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "document_sequences_detailed_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "document_sequences_detailed_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_sequences_detailed_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
           {
             foreignKeyName: "document_sequences_detailed_user_id_fkey"
@@ -1120,6 +1356,7 @@ export type Database = {
           qr_code: string | null
           status: Database["public"]["Enums"]["document_status"] | null
           title: string
+          tracking_hash: string | null
           updated_at: string | null
           verification_enabled: boolean | null
           verification_hash: string | null
@@ -1144,6 +1381,7 @@ export type Database = {
           qr_code?: string | null
           status?: Database["public"]["Enums"]["document_status"] | null
           title: string
+          tracking_hash?: string | null
           updated_at?: string | null
           verification_enabled?: boolean | null
           verification_hash?: string | null
@@ -1168,6 +1406,7 @@ export type Database = {
           qr_code?: string | null
           status?: Database["public"]["Enums"]["document_status"] | null
           title?: string
+          tracking_hash?: string | null
           updated_at?: string | null
           verification_enabled?: boolean | null
           verification_hash?: string | null
@@ -1179,6 +1418,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "documents_created_by_fkey"
@@ -1208,73 +1454,104 @@ export type Database = {
             referencedRelation: "departments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_current_department_id_fkey"
+            columns: ["current_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
+          },
         ]
       }
       employee_requests: {
         Row: {
+          area_solicitante: string | null
           company_id: string
           created_at: string | null
           department_id: string | null
+          dirigido_a: string | null
           end_date: string | null
           end_time: string | null
           equipment_details: Json | null
           expires_at: string
+          fecha_entrega_solicitada: string | null
           id: string
           incident_date: string
           incident_time: string | null
+          items_requeridos: Json | null
+          motivo_requerimiento: string | null
           priority: string | null
           reason: string
+          requerimiento_numero: string | null
           request_type: Database["public"]["Enums"]["request_type"]
           review_comments: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          solicitante_nombre: string | null
           status: Database["public"]["Enums"]["request_status"] | null
           supporting_documents: Json | null
           updated_at: string | null
+          urgencia: string | null
           user_id: string
         }
         Insert: {
+          area_solicitante?: string | null
           company_id: string
           created_at?: string | null
           department_id?: string | null
+          dirigido_a?: string | null
           end_date?: string | null
           end_time?: string | null
           equipment_details?: Json | null
           expires_at: string
+          fecha_entrega_solicitada?: string | null
           id?: string
           incident_date: string
           incident_time?: string | null
+          items_requeridos?: Json | null
+          motivo_requerimiento?: string | null
           priority?: string | null
           reason: string
+          requerimiento_numero?: string | null
           request_type: Database["public"]["Enums"]["request_type"]
           review_comments?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          solicitante_nombre?: string | null
           status?: Database["public"]["Enums"]["request_status"] | null
           supporting_documents?: Json | null
           updated_at?: string | null
+          urgencia?: string | null
           user_id: string
         }
         Update: {
+          area_solicitante?: string | null
           company_id?: string
           created_at?: string | null
           department_id?: string | null
+          dirigido_a?: string | null
           end_date?: string | null
           end_time?: string | null
           equipment_details?: Json | null
           expires_at?: string
+          fecha_entrega_solicitada?: string | null
           id?: string
           incident_date?: string
           incident_time?: string | null
+          items_requeridos?: Json | null
+          motivo_requerimiento?: string | null
           priority?: string | null
           reason?: string
+          requerimiento_numero?: string | null
           request_type?: Database["public"]["Enums"]["request_type"]
           review_comments?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          solicitante_nombre?: string | null
           status?: Database["public"]["Enums"]["request_status"] | null
           supporting_documents?: Json | null
           updated_at?: string | null
+          urgencia?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1286,11 +1563,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "employee_requests_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_requests_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
           {
             foreignKeyName: "employee_requests_reviewed_by_fkey"
@@ -1504,11 +1795,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "equipment_inventory_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "equipment_inventory_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_inventory_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -1577,6 +1882,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_inventory_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "internal_inventory_movements_created_by_fkey"
@@ -1651,6 +1963,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "internal_product_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       internal_product_serials: {
@@ -1697,6 +2016,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_product_serials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "internal_product_serials_created_by_fkey"
@@ -1806,6 +2132,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "internal_products_created_by_fkey"
@@ -1996,6 +2329,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "inventory_movements_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -2087,6 +2427,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "news_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "news_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -2153,6 +2500,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -2394,6 +2748,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_vouchers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "payment_vouchers_sale_id_fkey"
             columns: ["sale_id"]
             isOneToOne: false
@@ -2494,6 +2855,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       product_entry_price_history: {
@@ -2543,6 +2911,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "fk_created_by"
@@ -2632,6 +3007,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "fk_created_by"
@@ -2739,6 +3121,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_lots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "product_lots_created_by_fkey"
@@ -2851,6 +3240,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_serials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "product_serials_created_by_fkey"
@@ -3028,6 +3424,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "products_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -3111,8 +3514,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "profiles_current_department_id_fkey"
             columns: ["current_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_current_department_id_fkey"
+            columns: ["current_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
+          },
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
@@ -3121,8 +3545,8 @@ export type Database = {
             foreignKeyName: "profiles_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -3403,6 +3827,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "quotations_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -3514,11 +3945,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "request_approvers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "request_approvers_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_approvers_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -3727,6 +4172,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "sales_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -3838,6 +4290,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_entities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -4048,6 +4507,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "support_tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "support_tickets_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -4159,6 +4625,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_boards_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "task_boards_user_id_fkey"
@@ -4475,11 +4948,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "work_schedules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "work_schedules_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_schedules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -4544,11 +5031,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "attendance_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -4581,11 +5082,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "equipment_inventory_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "equipment_inventory_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_inventory_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -4817,6 +5332,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "products_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -4884,6 +5406,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "quotations_created_by_fkey"
@@ -4965,9 +5494,6 @@ export type Database = {
           id: string | null
           incident_date: string | null
           incident_time: string | null
-          is_expired: boolean | null
-          permission_days: number | null
-          permission_validation: string | null
           priority: string | null
           reason: string | null
           request_type: Database["public"]["Enums"]["request_type"] | null
@@ -4983,20 +5509,6 @@ export type Database = {
           user_id: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "employee_requests_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_requests_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "employee_requests_reviewed_by_fkey"
             columns: ["reviewed_by"]
@@ -5083,6 +5595,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "sales_created_by_fkey"
@@ -5199,6 +5718,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "sales_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -5268,11 +5794,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "profiles_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
+          },
+        ]
+      }
+      tracking_document_movements: {
+        Row: {
+          document_id: string | null
+          from_department_id: string | null
+          id: string | null
+          moved_at: string | null
+          moved_by: string | null
+          notes: string | null
+          to_department_id: string | null
+          tracking_hash: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_movements_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "complete_download_stats"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "document_movements_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_from_department_id_fkey"
+            columns: ["from_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_from_department_id_fkey"
+            columns: ["from_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
+          },
+          {
+            foreignKeyName: "document_movements_moved_by_fkey"
+            columns: ["moved_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_moved_by_fkey"
+            columns: ["moved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_moved_by_fkey"
+            columns: ["moved_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_to_department_id_fkey"
+            columns: ["to_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_movements_to_department_id_fkey"
+            columns: ["to_department_id"]
+            isOneToOne: false
+            referencedRelation: "requests_with_details"
+            referencedColumns: ["department_id"]
           },
         ]
       }
@@ -5609,6 +6226,7 @@ export type Database = {
           stock: number
         }[]
       }
+      update_collection_days_and_status: { Args: never; Returns: undefined }
       update_support_ticket: {
         Args: {
           new_assigned_to?: string
@@ -5622,11 +6240,12 @@ export type Database = {
     Enums: {
       document_status: "pending" | "in_progress" | "completed" | "cancelled"
       request_status:
-        | "pending"
-        | "in_progress"
-        | "approved"
-        | "rejected"
-        | "expired"
+        | "INGRESADA"
+        | "EN_GESTION"
+        | "APROBADA"
+        | "DESAPROBADA"
+        | "EJECUTADA"
+        | "CANCELADA"
       request_type:
         | "late_justification"
         | "absence_justification"
@@ -5764,11 +6383,12 @@ export const Constants = {
     Enums: {
       document_status: ["pending", "in_progress", "completed", "cancelled"],
       request_status: [
-        "pending",
-        "in_progress",
-        "approved",
-        "rejected",
-        "expired",
+        "INGRESADA",
+        "EN_GESTION",
+        "APROBADA",
+        "DESAPROBADA",
+        "EJECUTADA",
+        "CANCELADA",
       ],
       request_type: [
         "late_justification",
