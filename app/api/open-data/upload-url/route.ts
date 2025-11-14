@@ -42,8 +42,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
-    // Validar tamaño (50MB máximo)
-    const maxSize = 50 * 1024 * 1024;
+    // Validar tamaño (100MB máximo)
+    const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: `Archivo demasiado grande. Máximo: ${maxSize / (1024 * 1024)}MB` },
@@ -94,3 +94,11 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
+  },
+};
