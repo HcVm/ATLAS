@@ -41,7 +41,6 @@ export default function NewSupportTicketPage() {
     const files = Array.from(event.target.files || [])
 
     files.forEach((file) => {
-      // Validar tamaño (10MB máximo)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`El archivo ${file.name} es demasiado grande (máximo 10MB)`)
         return
@@ -49,7 +48,6 @@ export default function NewSupportTicketPage() {
 
       const newAttachment: AttachmentFile = { file }
 
-      // Si es imagen, crear preview
       if (file.type.startsWith("image/")) {
         const reader = new FileReader()
         reader.onload = (e) => {
@@ -62,7 +60,7 @@ export default function NewSupportTicketPage() {
       }
     })
 
-    // Limpiar el input
+  
     event.target.value = ""
   }
 
@@ -120,7 +118,6 @@ export default function NewSupportTicketPage() {
     try {
       setLoading(true)
 
-      // Obtener el company_id del usuario actual
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("company_id")
@@ -143,7 +140,6 @@ export default function NewSupportTicketPage() {
         status: "open",
       })
 
-      // Crear el ticket
       const { data: ticket, error: ticketError } = await supabase
         .from("support_tickets")
         .insert({
@@ -164,15 +160,10 @@ export default function NewSupportTicketPage() {
         return
       }
 
-      console.log("Ticket created successfully:", ticket)
-
-      // Subir adjuntos si los hay
       if (attachments.length > 0) {
         try {
           await uploadAttachments(ticket.id)
-          console.log("Attachments uploaded successfully")
         } catch (attachmentError) {
-          console.error("Error uploading attachments:", attachmentError)
           toast.error("Ticket creado, pero hubo un error al subir algunos adjuntos")
         }
       }
@@ -180,7 +171,6 @@ export default function NewSupportTicketPage() {
       toast.success(`Ticket ${ticket.ticket_number} creado exitosamente`)
       router.push(`/support/${ticket.id}`)
     } catch (error) {
-      console.error("Error:", error)
       toast.error("Error al crear el ticket")
     } finally {
       setLoading(false)

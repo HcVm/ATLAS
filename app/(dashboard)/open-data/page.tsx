@@ -168,7 +168,7 @@ export default async function OpenDataPage() {
   const stats = await getOpenDataStats()
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="mx-auto p-6 max-w-8xl">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>

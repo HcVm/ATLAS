@@ -104,7 +104,6 @@ export default function TasksPage() {
   const [selectedDate, setSelectedDate] = useState(getCurrentDatePeru())
   const [viewMode, setViewMode] = useState<"my" | "all">("my")
 
-  // Form states
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -130,13 +129,11 @@ export default function TasksPage() {
     }
   }, [currentBoard])
 
-  // Improved automatic migration with better error handling and reliability
   useEffect(() => {
     if (!user) return
 
     const executeMigrationProcess = async () => {
       try {
-        console.log("[v0] Iniciando proceso de migración automática")
 
         const peruTime = new Date().toLocaleString("en-US", { timeZone: "America/Lima" })
         const now = new Date(peruTime)
@@ -144,32 +141,26 @@ export default function TasksPage() {
         const currentMinute = now.getMinutes()
         const today = getCurrentDatePeru()
 
-        console.log("[v0] Tiempo actual en Perú:", {
+        console.log("Tiempo actual en Perú:", {
           peruTime,
           currentHour,
           currentMinute,
           today,
         })
 
-        // Use a more reliable session-based check instead of localStorage
         const migrationKey = `task_migration_${user.id}_${today}`
         const sessionMigrationKey = `session_${migrationKey}`
 
-        // Check both localStorage and sessionStorage for redundancy
         const lastMigrationTime = localStorage.getItem(migrationKey) || sessionStorage.getItem(sessionMigrationKey)
         const now_timestamp = now.getTime()
 
-        // Execute migration if:
-        // 1. Never executed today
-        // 2. More than 6 hours have passed since last execution
-        // 3. It's during business hours (7 AM - 11 PM)
         const sixHoursInMs = 6 * 60 * 60 * 1000
         const shouldExecuteMigration =
           !lastMigrationTime || now_timestamp - Number.parseInt(lastMigrationTime) > sixHoursInMs
 
         const isBusinessHours = currentHour >= 7 && currentHour < 23
 
-        console.log("[v0] Estado de migración:", {
+        console.log("Estado de migración:", {
           shouldExecuteMigration,
           isBusinessHours,
           lastMigrationTime,
@@ -179,55 +170,48 @@ export default function TasksPage() {
         })
 
         if (shouldExecuteMigration && isBusinessHours) {
-          console.log("[v0] Ejecutando migración de tareas pendientes...")
+          console.log("Ejecutando comprobación de tareas pendientes...")
 
           const migrationResult = await migratePendingTasks()
 
           if (migrationResult.success) {
-            // Store timestamp in both storages
             const timestamp = now_timestamp.toString()
             localStorage.setItem(migrationKey, timestamp)
             sessionStorage.setItem(sessionMigrationKey, timestamp)
 
-            // If tasks were migrated, reload boards
             if (migrationResult.migratedTasks > 0) {
-              console.log("[v0] Recargando boards después de migración exitosa")
+              console.log("Recargando boards después de migración exitosa")
               await loadBoards()
             }
           }
         }
 
-        // Close past boards during late evening hours (23:00 - 23:59)
         if (currentHour === 23) {
-          console.log("[v0] Ejecutando cierre de boards pasados")
+          console.log("Ejecutando cierre de boards pasados")
           await closePastBoards()
         }
       } catch (error) {
-        console.error("[v0] Error en proceso de migración automática:", error)
-        // Don't throw - let the app continue working
+        console.error("Error en proceso de migración automática:", error)
       }
     }
 
-    // Execute immediately on load
     executeMigrationProcess()
 
-    // Set up intervals with better timing
-    const migrationInterval = setInterval(executeMigrationProcess, 10 * 60 * 1000) // every 10 minutes
+    const migrationInterval = setInterval(executeMigrationProcess, 10 * 60 * 1000)
 
     return () => {
       clearInterval(migrationInterval)
     }
   }, [user])
 
-  // Improved migration function with better error handling and retry logic
   const migratePendingTasks = async (retryCount = 0) => {
     const maxRetries = 2
 
     try {
-      console.log(`[v0] Llamando al endpoint de migración (intento ${retryCount + 1})...`)
+      console.log(`Llamando al endpoint de migración (intento ${retryCount + 1})...`)
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000)
 
       const response = await fetch("/api/migrate-pending-tasks", {
         method: "POST",
@@ -249,18 +233,17 @@ export default function TasksPage() {
       if (result.success) {
         if (result.data.migratedTasks > 0) {
           toast({
-            title: "✅ Tareas migradas automáticamente",
-            description: `Se migraron ${result.data.migratedTasks} tareas pendientes al día de hoy`,
+            title: "✅ Tareas comprobadas",
+            description: `Se realizó la comprobación de tareas pendientes.`,
             duration: 6000,
           })
         } else {
-          console.log("[v0] No había tareas para migrar")
+          console.log("No había tareas para migrar")
         }
         return { success: true, migratedTasks: result.data.migratedTasks }
       } else {
-        console.error("[v0] Error en migración:", result.error)
-
-        // Show error toast only for the final attempt
+        console.error("Error en migración:", result.error)
+        
         if (retryCount === maxRetries) {
           toast({
             title: "⚠️ Error en migración automática",
@@ -273,16 +256,14 @@ export default function TasksPage() {
         return { success: false, migratedTasks: 0 }
       }
     } catch (error) {
-      console.error(`[v0] Error ejecutando migración (intento ${retryCount + 1}):`, error)
+      console.error(`Error ejecutando migración (intento ${retryCount + 1}):`, error)
 
-      // Retry logic for network errors
       if (retryCount < maxRetries && (error.name === "TypeError" || error.message.includes("fetch"))) {
         console.log(`[v0] Reintentando migración en 5 segundos...`)
         await new Promise((resolve) => setTimeout(resolve, 5000))
         return migratePendingTasks(retryCount + 1)
       }
 
-      // Only show error toast on final failure and for non-abort errors
       if (retryCount === maxRetries && error.name !== "AbortError") {
         toast({
           title: "⚠️ Error en migración automática",
@@ -296,21 +277,18 @@ export default function TasksPage() {
     }
   }
 
-  // Improved manual migration function
   const forceMigration = async () => {
-    console.log("[v0] Forzando migración manual...")
+    console.log("Forzando migración manual...")
 
-    // Show loading toast
     const loadingToast = toast({
       title: "🔄 Migración en progreso",
       description: "Verificando tareas pendientes...",
-      duration: 0, // Don't auto-dismiss
+      duration: 0,
     })
 
     try {
       const result = await migratePendingTasks()
 
-      // Dismiss loading toast
       loadingToast.dismiss?.()
 
       if (result.success) {
@@ -332,10 +310,9 @@ export default function TasksPage() {
     }
   }
 
-  // Enhanced board closing with better error handling
   const closePastBoards = async () => {
     try {
-      console.log("[v0] Cerrando boards pasados...")
+      console.log("Cerrando boards pasados...")
       const today = getCurrentDatePeru()
 
       const { data, error } = await supabase
@@ -350,16 +327,13 @@ export default function TasksPage() {
         .select("id, board_date, user_id")
 
       if (error) {
-        console.error("[v0] Error cerrando boards pasados:", error)
+        console.error("Error cerrando boards pasados:", error)
         return
       }
 
       if (data && data.length > 0) {
-        console.log(`[v0] Se cerraron ${data.length} boards pasados:`, data)
-        // Only reload if boards were actually closed
+        console.log(`Se cerraron ${data.length} boards pasados:`, data)
         await loadBoards()
-
-        // Show notification for closed boards
         toast({
           title: "📋 Boards cerrados automáticamente",
           description: `Se cerraron ${data.length} pizarrones de fechas pasadas`,
@@ -367,7 +341,7 @@ export default function TasksPage() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error cerrando boards pasados:", error)
+      console.error("Error cerrando boards pasados:", error)
     }
   }
 
@@ -394,7 +368,6 @@ export default function TasksPage() {
 
       setBoards(data || [])
 
-      // Si hay boards, seleccionar el primero
       if (data && data.length > 0) {
         setCurrentBoard(data[0])
       } else {
@@ -469,8 +442,6 @@ export default function TasksPage() {
         description: "Se ha creado tu pizarrón de tareas para hoy",
       })
 
-      // Ejecutar migración después de crear el board
-      console.log("[v0] Ejecutando migración después de crear board...")
       await migratePendingTasks()
     } catch (error) {
       console.error("Error creating board:", error)
@@ -543,10 +514,9 @@ export default function TasksPage() {
         .eq("id", taskId)
         .select()
 
-      console.log("[v0] Update result:", { data, error })
 
       if (error) {
-        console.error("[v0] Database error:", error)
+        console.error("Database error:", error)
         throw error
       }
 
@@ -575,7 +545,7 @@ export default function TasksPage() {
         description: `La tarea se marcó como ${statusText[newStatus]}`,
       })
     } catch (error) {
-      console.error("[v0] Error updating task:", error)
+      console.error("Error updating task:", error)
       toast({
         title: "Error",
         description: `No se pudo actualizar el estado de la tarea: ${error.message || "Error desconocido"}`,

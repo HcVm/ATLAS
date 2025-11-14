@@ -130,7 +130,6 @@ export default function NewInternalProductPage() {
     }
 
     try {
-      // All products are now created as serialized with 0 stock
       const payload: any = {
         name: formData.name,
         description: formData.description,
@@ -138,9 +137,9 @@ export default function NewInternalProductPage() {
         unit_of_measure: formData.unit_of_measure,
         cost_price: parsedCostPrice,
         location: formData.location,
-        is_serialized: true, // All internal products are now serialized
+        is_serialized: true,
         minimum_stock: parsedMinimumStock,
-        current_stock: 0, // Always start with 0 stock
+        current_stock: 0,
         company_id: companyId,
         created_by: user.id,
       }

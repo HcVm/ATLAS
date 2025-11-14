@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase" // Client-side Supabase client
+import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { toast } from "sonner"
@@ -22,7 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Package, AlertTriangle, Edit, Eye, MoreHorizontal, QrCode, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { deleteInternalProduct } from "@/app/actions/internal-products" // Import the new Server Action
+import { deleteInternalProduct } from "@/app/actions/internal-products"
 
 interface Category {
   id: string
@@ -39,7 +39,7 @@ interface Product {
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
-  cost_price: number | null // Changed to allow null
+  cost_price: number | null
   location: string | null
   is_active: boolean
   is_serialized: boolean
@@ -49,7 +49,7 @@ interface Product {
     name: string
     color: string
   }
-  qr_code_hash?: string // Added new field for QR code hash
+  qr_code_hash?: string
 }
 
 export default function InternalProductsPage() {
@@ -71,7 +71,7 @@ export default function InternalProductsPage() {
     if (companyId) {
       fetchData()
     }
-  }, [companyId, selectedCategory, statusFilter]) // Re-fetch when filters change
+  }, [companyId, selectedCategory, statusFilter])
 
   const fetchData = async () => {
     try {
@@ -156,14 +156,14 @@ export default function InternalProductsPage() {
     const result = await deleteInternalProduct(productId)
     if (result.success) {
       toast.success(result.message)
-      fetchData() // Re-fetch data to update the list
+      fetchData()
     } else {
       toast.error(result.message)
     }
   }
 
   const stats = useMemo(() => {
-    const totalValue = products.reduce((sum, p) => sum + p.current_stock * (p.cost_price ?? 0), 0) // Handle null cost_price
+    const totalValue = products.reduce((sum, p) => sum + p.current_stock * (p.cost_price ?? 0), 0)
     return {
       total: products.length,
       active: products.filter((p) => p.is_active).length,

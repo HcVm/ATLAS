@@ -143,10 +143,7 @@ export default function SupportTicketDetailPage() {
     }
 
     try {
-      console.log("🔍 Fetching tech users for company:", companyId)
-      setTechUsers([]) // Reset
-
-      // Consulta directa más simple y robusta
+      setTechUsers([])
       const { data: allUsers, error: usersError } = await supabase
         .from("profiles")
         .select(`
@@ -177,7 +174,6 @@ export default function SupportTicketDetailPage() {
         return
       }
 
-      // Filtrar usuarios técnicos
       const techUsers = allUsers.filter((user) => {
         const isAdmin = user.role === "admin"
         const isTech = user.departments?.name === "Tecnología"
@@ -226,7 +222,6 @@ export default function SupportTicketDetailPage() {
     try {
       setLoading(true)
 
-      // Fetch ticket
       const { data: ticketData, error: ticketError } = await supabase
         .from("support_tickets")
         .select(`
@@ -254,12 +249,10 @@ export default function SupportTicketDetailPage() {
       setNewStatus(ticketData.status)
       setAssigningTo(ticketData.assigned_to || "none")
 
-      // Verificar permisos
       const canManage =
         (user?.role === "admin" || user?.departments?.name === "Tecnología") && ticketData.status !== "closed"
       setCanManageTicket(canManage)
 
-      // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
         .from("support_comments")
         .select(`
@@ -276,7 +269,6 @@ export default function SupportTicketDetailPage() {
         setComments(commentsData || [])
       }
 
-      // Fetch attachments
       const { data: attachmentsData, error: attachmentsError } = await supabase
         .from("support_attachments")
         .select(`

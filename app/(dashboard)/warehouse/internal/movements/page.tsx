@@ -66,7 +66,6 @@ interface InternalProductCategory {
 interface Department {
   id: string
   name: string
-  // Removed 'code' as it does not exist in the database according to the error
 }
 
 interface SerializedProduct {
@@ -225,10 +224,9 @@ export default function InternalMovementsPage() {
     }
     try {
       console.log("Fetching departments for company ID:", selectedCompany.id)
-      // Corrected: Removed 'code' from select statement
       const { data, error } = await supabase
         .from("departments")
-        .select("id, name") // Removed 'code'
+        .select("id, name")
         .eq("company_id", selectedCompany.id)
         .order("name")
 
@@ -342,7 +340,6 @@ export default function InternalMovementsPage() {
     let serialsArray: string[] = []
     if (selectedProductModel.is_serialized) {
       if (formData.movement_type === "entrada") {
-        // For entrada, we just need the quantity - serials will be auto-generated
         if (formData.quantity <= 0) {
           toast.error("La cantidad debe ser mayor a 0.")
           setIsSubmitting(false)

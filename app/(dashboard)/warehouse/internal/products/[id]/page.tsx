@@ -43,7 +43,7 @@ interface Product {
   unit_of_measure: string
   current_stock: number
   minimum_stock: number
-  cost_price: number | null // Changed to allow null
+  cost_price: number | null
   location: string | null
   is_active: boolean
   created_at: string
@@ -116,7 +116,6 @@ export default function InternalProductDetailPage() {
     try {
       setLoading(true)
 
-      // Fetch product details
       const { data: productData, error: productError } = await supabase
         .from("internal_products")
         .select(
@@ -151,7 +150,6 @@ export default function InternalProductDetailPage() {
 
       setProduct({ ...productData, current_stock: calculatedStock } as Product)
 
-      // If product is serialized, fetch its individual serials
       if (productData?.is_serialized) {
         const { data: serialsData, error: serialsError } = await supabase
           .from("internal_product_serials")
@@ -166,7 +164,6 @@ export default function InternalProductDetailPage() {
         setSerials([])
       }
 
-      // Fetch product movements
       const { data: movementsData, error: movementsError } = await supabase
         .from("internal_inventory_movements")
         .select(
@@ -220,7 +217,6 @@ export default function InternalProductDetailPage() {
       const companyName = companyData?.name || "EMPRESA"
       const currentYear = new Date().getFullYear()
 
-      // Generate barcode
       const barcodeCanvas = document.createElement("canvas")
       barcodeCanvas.width = 1200
       barcodeCanvas.height = 200
@@ -237,7 +233,6 @@ export default function InternalProductDetailPage() {
 
       const barcodeUrl = barcodeCanvas.toDataURL("image/png")
 
-      // Generate QR code
       let qrCodeUrl = ""
       if (serial.qr_code_hash) {
         const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
@@ -252,7 +247,6 @@ export default function InternalProductDetailPage() {
         })
       }
 
-      // Open print window with sticker
       const printWindow = window.open("", "_blank")
       if (printWindow) {
         printWindow.document.write(`

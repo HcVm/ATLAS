@@ -21,7 +21,7 @@ interface InternalProduct {
   unit_of_measure: string
   cost_price: number
   location: string | null
-  is_serialized: boolean // New field
+  is_serialized: boolean 
   internal_product_categories: {
     name: string
     color: string
@@ -49,7 +49,6 @@ interface RecentMovement {
     code: string
   }
   internal_product_serials: {
-    // New relation
     serial_number: string
   } | null
 }
@@ -78,7 +77,6 @@ export default function InternalWarehousePage() {
     try {
       setLoading(true)
 
-      // Obtener productos internos (modelos)
       const { data: productsData, error: productsError } = await supabase
         .from("internal_products")
         .select(`
@@ -94,7 +92,6 @@ export default function InternalWarehousePage() {
 
       if (productsError) throw productsError
 
-      // For serialized products, calculate current_stock from internal_product_serials
       const productsWithAggregatedStock = await Promise.all(
         (productsData || []).map(async (product) => {
           if (product.is_serialized) {
@@ -107,18 +104,15 @@ export default function InternalWarehousePage() {
 
             if (serialCountError) {
               console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
-              return { ...product, current_stock: 0 } // Default to 0 on error
+              return { ...product, current_stock: 0 }
             }
             return { ...product, current_stock: count || 0 }
           }
           return product
         }),
       )
-
-      // Obtener alertas de stock bajo (considerando el stock agregado)
       const lowStockProducts = productsWithAggregatedStock?.filter((p) => p.current_stock <= p.minimum_stock) || []
 
-      // Obtener movimientos recientes
       const { data: movementsData, error: movementsError } = await supabase
         .from("internal_inventory_movements")
         .select(`
@@ -137,7 +131,6 @@ export default function InternalWarehousePage() {
 
       if (movementsError) throw movementsError
 
-      // Calcular estadísticas
       const totalValue =
         productsWithAggregatedStock?.reduce((sum, product) => sum + product.current_stock * product.cost_price, 0) || 0
 
@@ -204,7 +197,7 @@ export default function InternalWarehousePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

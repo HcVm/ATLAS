@@ -111,7 +111,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         return
       }
 
-      // Obtener categorías
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
         .select("id, name")
@@ -123,7 +122,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         throw categoriesError
       }
 
-      // Obtener producto
       const { data: fetchedProduct, error: productError } = await supabase
         .from("internal_products")
         .select("*")
@@ -136,7 +134,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         throw new Error("Producto no encontrado o no tienes permisos para editarlo")
       }
 
-      // Obtener conteo de movimientos
       const { count: movementsCount, error: movementsError } = await supabase
         .from("internal_inventory_movements")
         .select("*", { count: "exact", head: true })
@@ -151,7 +148,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
       setProduct(fetchedProduct as Product)
       setMovementCount(movementsCount || 0)
 
-      // Generate QR code hash if missing
       const qrHash = fetchedProduct.qr_code_hash || uuidv4()
 
       setFormData({
@@ -159,7 +155,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         description: fetchedProduct.description || "",
         category_id: fetchedProduct.category_id?.toString() || "",
         unit_of_measure: fetchedProduct.unit_of_measure || "",
-        cost_price: fetchedProduct.cost_price?.toString() || "", // Handle null cost_price
+        cost_price: fetchedProduct.cost_price?.toString() || "",
         minimum_stock: fetchedProduct.minimum_stock?.toString() || "",
         current_stock: fetchedProduct.current_stock?.toString() || "",
         location: fetchedProduct.location || "",
@@ -169,7 +165,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         is_serialized: fetchedProduct.is_serialized ?? false,
       })
 
-      // If a new QR hash was generated, update the product in the DB
       if (!fetchedProduct.qr_code_hash && qrHash) {
         await supabase
           .from("internal_products")
@@ -195,7 +190,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
     setSaving(true)
 
     try {
-      // Validaciones
       if (!formData.name.trim()) {
         throw new Error("El nombre es requerido")
       }
@@ -234,7 +228,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
           description: formData.description || null,
           category_id: formData.category_id,
           unit_of_measure: formData.unit_of_measure,
-          cost_price: costPrice, // Use null if empty
+          cost_price: costPrice,
           minimum_stock: formData.is_serialized ? 0 : minStock,
           current_stock: formData.is_serialized ? product?.current_stock || 0 : currStock,
           location: formData.location || null,
@@ -280,7 +274,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         throw new Error("No se pudo determinar la empresa o el producto a eliminar.")
       }
 
-      // Check for movements first
       const { count: movementsCount, error: movementsCountError } = await supabase
         .from("internal_inventory_movements")
         .select("*", { count: "exact", head: true })
@@ -302,7 +295,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         return
       }
 
-      // If serialized, delete all associated serials first
       if (product.is_serialized) {
         const { error: deleteSerialsError } = await supabase
           .from("internal_product_serials")
@@ -316,7 +308,6 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
         }
       }
 
-      // Then delete the product
       const { error: deleteProductError } = await supabase
         .from("internal_products")
         .delete()

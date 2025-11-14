@@ -87,7 +87,6 @@ interface WarehouseStats {
   topProducts: Array<{ name: string; value: number }>
 }
 
-// Gradientes animados para los gráficos
 const renderGradients = () => (
   <defs>
     {/* Gradientes básicos */}
@@ -229,7 +228,6 @@ const renderGradients = () => (
   </defs>
 )
 
-// Componente personalizado para tooltips modernos con animaciones
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -364,7 +362,6 @@ export default function StatisticsPage() {
       console.log("User:", user?.email, "Role:", user?.role)
       console.log("Selected Company:", selectedCompany?.name || "General Mode", "ID:", selectedCompany?.id)
 
-      // Obtener departamentos con información de empresa
       let departmentsQuery = supabase.from("departments").select(`
         id, name, color, company_id,
         companies!departments_company_id_fkey (name)
@@ -379,17 +376,13 @@ export default function StatisticsPage() {
       }
       console.log("Departments found:", departments?.length || 0)
 
-      // Obtener documentos con información completa
       let documentsQuery = supabase.from("documents").select(`
         id, current_department_id, status, created_at, company_id, created_by
       `)
-
-      // Aplicar filtros de empresa
+a
       if (selectedCompany) {
         documentsQuery = documentsQuery.eq("company_id", selectedCompany.id)
       }
-
-      // Aplicar filtros de permisos de usuario DESPUÉS del filtro de empresa
       if (user?.role === "user") {
         documentsQuery = documentsQuery.or(`created_by.eq.${user.id},current_department_id.eq.${user.department_id}`)
       }
@@ -401,7 +394,6 @@ export default function StatisticsPage() {
       }
       console.log("Documents found:", documents?.length || 0)
 
-      // Obtener movimientos de documentos (con manejo de errores)
       let movements: any[] = []
       try {
         let movementsQuery = supabase.from("document_movements").select(`
@@ -419,24 +411,20 @@ export default function StatisticsPage() {
         const { data: movementsData, error: movError } = await movementsQuery
         if (movError) {
           console.warn("Error fetching movements (continuing without them):", movError)
-          // Continue without movements data
         } else {
           movements = movementsData || []
         }
       } catch (error) {
         console.warn("Failed to fetch document movements, continuing without them:", error)
       }
-      console.log("Document movements found:", movements.length)
 
-      // Obtener totales de usuarios
+
       let usersCountQuery = supabase.from("profiles").select("*", { count: "exact", head: true })
       if (selectedCompany) {
         usersCountQuery = usersCountQuery.eq("company_id", selectedCompany.id)
       }
       const { count: totalUsers } = await usersCountQuery
-      console.log("Users found:", totalUsers || 0)
 
-      // Obtener productos
       let productsQuery = supabase
         .from("products")
         .select(`
@@ -455,28 +443,14 @@ export default function StatisticsPage() {
         console.error("Error fetching products:", productsError)
         throw productsError
       }
-      console.log("Products found:", products?.length || 0)
-
-      // ===== DIAGNÓSTICO DETALLADO DE MOVIMIENTOS DE INVENTARIO =====
-      console.log("🔍 === INVENTORY MOVEMENTS DETAILED DIAGNOSIS ===")
-
-      // Paso 1: Verificar si la tabla existe y tiene datos
-      console.log("Step 1: Basic table check...")
       const {
         data: basicCheck,
         error: basicError,
         count,
       } = await supabase.from("inventory_movements").select("*", { count: "exact" }).limit(1)
 
-      console.log("Basic check result:", {
-        hasData: !!basicCheck?.length,
-        totalCount: count,
-        error: basicError?.message,
-      })
 
       if (basicError) {
-        console.error("❌ Basic check failed:", basicError)
-        // Continuar sin movimientos
         const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
         setStats(processedStats)
         const warehouseProcessed = processWarehouseStatistics(products || [], [])
@@ -485,7 +459,6 @@ export default function StatisticsPage() {
       }
 
       if (!basicCheck?.length) {
-        console.warn("⚠️ No inventory movements found in database")
         const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
         setStats(processedStats)
         const warehouseProcessed = processWarehouseStatistics(products || [], [])
@@ -493,23 +466,14 @@ export default function StatisticsPage() {
         return
       }
 
-      // Paso 2: Obtener muestra de datos sin filtros
-      console.log("Step 2: Sample data without filters...")
       const { data: sampleData, error: sampleError } = await supabase.from("inventory_movements").select("*").limit(5)
 
-      console.log("Sample data:", sampleData)
-      console.log("Sample error:", sampleError?.message)
 
-      // Paso 3: Verificar estructura de datos
+
       if (sampleData?.length) {
-        console.log("Step 3: Data structure analysis...")
         const firstRecord = sampleData[0]
-        console.log("First record structure:", Object.keys(firstRecord))
-        console.log("Movement types in sample:", [...new Set(sampleData.map((m) => m.movement_type))])
-        console.log("Company IDs in sample:", [...new Set(sampleData.map((m) => m.company_id))])
       }
 
-      // Paso 4: Aplicar filtro de empresa si existe
       let inventoryMovements: any[] = []
       if (selectedCompany) {
         console.log("Step 4: Applying company filter for:", selectedCompany.id)
@@ -518,10 +482,6 @@ export default function StatisticsPage() {
           .select("*")
           .eq("company_id", selectedCompany.id)
 
-        console.log("Company filtered result:", {
-          count: companyFiltered?.length,
-          error: companyError?.message,
-        })
 
         if (companyError) {
           console.error("❌ Company filter failed:", companyError)
@@ -530,13 +490,10 @@ export default function StatisticsPage() {
           inventoryMovements = companyFiltered || []
         }
       } else {
-        console.log("Step 4: No company filter, using all data")
         inventoryMovements = sampleData || []
       }
 
-      // Paso 5: Intentar obtener con relaciones si tenemos datos
       if (inventoryMovements.length > 0) {
-        console.log("Step 5: Attempting to get data with relations...")
         try {
           let fullQuery = supabase
             .from("inventory_movements")
@@ -561,19 +518,13 @@ export default function StatisticsPage() {
 
           if (fullError) {
             console.warn("⚠️ Full query failed, using basic data:", fullError)
-            // Usar datos básicos sin relaciones
           } else if (fullData) {
             inventoryMovements = fullData
-            console.log("✅ Successfully got data with relations")
           }
         } catch (relationError) {
           console.warn("⚠️ Relations query threw error:", relationError)
         }
       }
-
-      // Paso 6: Análisis final de datos
-      console.log("Step 6: Final data analysis...")
-      console.log("Final inventory movements count:", inventoryMovements.length)
 
       if (inventoryMovements.length > 0) {
         console.log(
@@ -594,27 +545,15 @@ export default function StatisticsPage() {
             inventoryMovements[0].created_at,
           ),
         })
-
-        console.log("Sample records for processing:", inventoryMovements.slice(0, 3))
       }
 
-      console.log("🔍 === END INVENTORY MOVEMENTS DIAGNOSIS ===")
 
-      console.log("=== PROCESSING STATISTICS ===")
-
-      // Procesar estadísticas
       const processedStats = processStatistics(documents || [], movements, departments || [], totalUsers || 0)
-      console.log("Processed document stats:", processedStats.totalStats)
       setStats(processedStats)
 
       const warehouseProcessed = processWarehouseStatistics(products || [], inventoryMovements)
-      console.log("Processed warehouse stats:", warehouseProcessed.inventoryValue)
-      console.log("Warehouse movements by type:", warehouseProcessed.movementsByType)
-      console.log("Warehouse movements by month:", warehouseProcessed.movementsByMonth)
-      console.log("Warehouse top products:", warehouseProcessed.topProducts)
       setWarehouseStats(warehouseProcessed)
 
-      console.log("=== STATISTICS COMPLETE ===")
     } catch (error) {
       console.error("Error fetching statistics:", error)
     } finally {
@@ -629,14 +568,7 @@ export default function StatisticsPage() {
     departments: any[],
     totalUsers: number,
   ): StatisticsData => {
-    console.log("Processing statistics with:", {
-      documents: documents.length,
-      movements: movements.length,
-      departments: departments.length,
-      users: totalUsers,
-    })
-
-    // Documentos por departamento con colores modernos e información de empresa
+    
     const modernColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16", "#EF4444"]
 
     const documentsByDepartment = departments
@@ -657,9 +589,7 @@ export default function StatisticsPage() {
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
 
-    console.log("Documents by department:", documentsByDepartment)
 
-    // Documentos por estado con gradientes
     const statusColors = {
       pending: "#F59E0B",
       in_progress: "#3B82F6",
@@ -695,9 +625,6 @@ export default function StatisticsPage() {
       }))
       .filter((item) => item.value > 0)
 
-    console.log("Documents by status:", documentsByStatus)
-
-    // Documentos por mes (últimos 6 meses)
     const now = new Date()
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -722,7 +649,6 @@ export default function StatisticsPage() {
       }
     })
 
-    // Movimientos por departamento con información de empresa
     const movementsByDepartment = departments
       .map((dept, index) => {
         const count = movements.filter((mov) => mov.to_department_id === dept.id).length
@@ -741,7 +667,6 @@ export default function StatisticsPage() {
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
 
-    // Actividad reciente (últimos 7 días)
     const recentActivity = []
     for (let i = 6; i >= 0; i--) {
       const date = new Date()
@@ -772,15 +697,11 @@ export default function StatisticsPage() {
       recentActivity,
     }
 
-    console.log("Final processed stats:", result.totalStats)
     return result
   }
 
   const processWarehouseStatistics = (products: any[], movements: any[]) => {
-    console.log("🏭 === PROCESSING WAREHOUSE STATISTICS ===")
-    console.log("Input data:", { products: products.length, movements: movements.length })
 
-    // Process products by category
     const categoryStats = {}
     const brandStats = {}
     let totalCostValue = 0
@@ -789,7 +710,6 @@ export default function StatisticsPage() {
     const lowStockProducts = []
 
     products.forEach((product) => {
-      // Category stats
       const categoryName = product.product_categories?.name || "Sin Categoría"
       if (!categoryStats[categoryName]) {
         categoryStats[categoryName] = {
@@ -800,7 +720,6 @@ export default function StatisticsPage() {
       }
       categoryStats[categoryName].value++
 
-      // Brand stats
       const brandName = product.brands?.name || "Sin Marca"
       if (!brandStats[brandName]) {
         brandStats[brandName] = {
@@ -811,11 +730,9 @@ export default function StatisticsPage() {
       }
       brandStats[brandName].value++
 
-      // Value calculations
       totalCostValue += (product.current_stock || 0) * (product.cost_price || 0)
       totalSaleValue += (product.current_stock || 0) * (product.sale_price || 0)
 
-      // Low stock check
       if (product.current_stock <= product.minimum_stock) {
         lowStockCount++
         lowStockProducts.push({
@@ -833,8 +750,6 @@ export default function StatisticsPage() {
       brands: Object.keys(brandStats).length,
     })
 
-    // Process movements by type - CON LOGGING DETALLADO
-    // Process movements by type - CORREGIDO PARA ESPAÑOL
     const movementTypes = {
       entrada: { name: "Entradas", value: 0, color: "#10B981" },
       salida: { name: "Salidas", value: 0, color: "#EF4444" },
@@ -842,7 +757,6 @@ export default function StatisticsPage() {
       transferencia: { name: "Transferencias", value: 0, color: "#8B5CF6" },
     }
 
-    console.log("Processing movements by type...")
     movements.forEach((movement, index) => {
       const movementType = movement.movement_type
       console.log(`Movement ${index + 1}:`, {
@@ -853,15 +767,12 @@ export default function StatisticsPage() {
 
       if (movementTypes[movementType]) {
         movementTypes[movementType].value++
-        console.log(`✅ Incremented ${movementType} to ${movementTypes[movementType].value}`)
       } else {
-        console.log(`❌ Unknown movement type: ${movementType}`)
+        console.warn(`⚠️ Unknown movement type encountered: ${movementType}`)
       }
     })
 
-    console.log("Final movement types:", movementTypes)
 
-    // Process movements by month (last 6 months) - CON LOGGING DETALLADO
     const now = new Date()
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -876,46 +787,27 @@ export default function StatisticsPage() {
       })
     }
 
-    console.log("Processing movements by month...")
-    console.log(
-      "Target months:",
-      months.map((m) => `${m.name} (${m.month}/${m.year})`),
-    )
 
     movements.forEach((movement, index) => {
       const movDate = new Date(movement.movement_date || movement.created_at)
       const monthData = months.find((m) => m.month === movDate.getMonth() && m.year === movDate.getFullYear())
 
-      console.log(`Movement ${index + 1}:`, {
-        date: movDate.toISOString().split("T")[0],
-        month: movDate.getMonth(),
-        year: movDate.getFullYear(),
-        type: movement.movement_type,
-        matchedMonth: monthData?.name || "NO MATCH",
-      })
-
       if (monthData) {
         if (movement.movement_type === "entrada") {
           monthData.entries++
-          console.log(`✅ Entry added to ${monthData.name}: ${monthData.entries}`)
         } else if (movement.movement_type === "salida") {
           monthData.exits++
-          console.log(`✅ Exit added to ${monthData.name}: ${monthData.exits}`)
         } else if (movement.movement_type === "ajuste") {
           monthData.adjustments++
-          console.log(`✅ Adjustment added to ${monthData.name}: ${monthData.adjustments}`)
         }
       }
     })
 
-    console.log("Final movements by month:", months)
 
-    // Top products by movement frequency - CON LOGGING DETALLADO
     const productMovements = {}
     console.log("Processing top products...")
     movements.forEach((movement, index) => {
       const productName = movement.products?.name || `Producto ID: ${movement.product_id || "Desconocido"}`
-      console.log(`Movement ${index + 1}: product = ${productName}`)
 
       if (!productMovements[productName]) {
         productMovements[productName] = 0
@@ -923,14 +815,10 @@ export default function StatisticsPage() {
       productMovements[productName]++
     })
 
-    console.log("Product movements summary:", productMovements)
-
     const topProducts = Object.entries(productMovements)
       .map(([name, count]) => ({ name, value: count }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-
-    console.log("Final top products:", topProducts)
 
     const result = {
       productsByCategory: Object.values(categoryStats).filter((item) => item.value > 0),
@@ -946,16 +834,6 @@ export default function StatisticsPage() {
       movementsByMonth: months,
       topProducts,
     }
-
-    console.log("🏭 === WAREHOUSE STATISTICS PROCESSING COMPLETE ===")
-    console.log("Final result summary:", {
-      categories: result.productsByCategory.length,
-      brands: result.productsByBrand.length,
-      movementTypes: result.movementsByType.length,
-      monthsWithData: result.movementsByMonth.filter((m) => m.entries + m.exits + m.adjustments > 0).length,
-      topProducts: result.topProducts.length,
-    })
-
     return result
   }
 

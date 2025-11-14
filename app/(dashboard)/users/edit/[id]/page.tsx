@@ -98,17 +98,14 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
       const file = event.target.files[0]
 
-      // Validar tipo de archivo
       if (!file.type.startsWith("image/")) {
         throw new Error("El archivo debe ser una imagen.")
       }
 
-      // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
         throw new Error("La imagen debe ser menor a 5MB.")
       }
 
-      // Crear nombre de archivo con estructura que funcione con RLS
       const fileExt = file.name.split(".").pop()
       const timestamp = Date.now()
       const fileName = `${params.id}/avatar-${timestamp}.${fileExt}`
@@ -116,7 +113,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
       console.log("Uploading file:", fileName)
       console.log("User ID:", params.id)
 
-      // Eliminar avatar anterior si existe
       if (user.avatar_url) {
         try {
           const oldPath = user.avatar_url.split("/").pop()
@@ -127,8 +123,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
           console.log("Could not delete old avatar:", error)
         }
       }
-
-      // Subir archivo a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
         cacheControl: "3600",
         upsert: true,
@@ -141,7 +135,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
       console.log("Upload successful:", uploadData)
 
-      // Obtener URL pública
       const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
       const publicUrl = data.publicUrl
 
@@ -151,7 +144,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
 
       console.log("Public URL:", publicUrl)
 
-      // Actualizar perfil con nueva URL
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -162,7 +154,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
         throw updateError
       }
 
-      // Actualizar estado local
       setUser({ ...user, avatar_url: publicUrl })
 
       toast.success("Foto actualizada correctamente")
@@ -171,7 +162,6 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
       toast.error(error.message || "No se pudo subir la imagen.")
     } finally {
       setUploading(false)
-      // Limpiar el input file
       const input = document.getElementById("avatar-upload") as HTMLInputElement
       if (input) input.value = ""
     }

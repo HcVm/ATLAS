@@ -92,12 +92,11 @@ export default function UsersPage() {
     }
   }
 
-  // CORRECCIÓN APLICADA AQUÍ
   const getCompanyBadge = (company: any) => {
     if (!company) return <Badge variant="outline">Sin empresa</Badge>
     return (
       <Badge
-        className="inline-flex items-center gap-1.5" // <-- CAMBIO DE 'flex' a 'inline-flex'
+        className="inline-flex items-center gap-1.5"
         style={{
           backgroundColor: company.color ? `${company.color}20` : "#e2e8f0",
           color: company.color || "#475569",

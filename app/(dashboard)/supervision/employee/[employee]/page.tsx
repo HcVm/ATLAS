@@ -20,8 +20,8 @@ interface Employee {
   id: string
   full_name: string
   email: string
-  role: string // Changed from user_role to role
-  department_id: string // Changed from department to department_id
+  role: string
+  department_id: string
   avatar_url?: string
   created_at: string
   company_id: string
@@ -79,17 +79,14 @@ export default function EmployeeDetailPage() {
   const [expandedBoards, setExpandedBoards] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    console.log("[v0] useEffect triggered with:", { employeeId, selectedCompany, dateRange })
 
     if (!employeeId) {
-      console.log("[v0] No employeeId provided")
       setError("ID de empleado no proporcionado")
       setLoading(false)
       return
     }
 
     if (selectedCompany === null) {
-      console.log("[v0] No company selected")
       setError("No hay empresa seleccionada")
       setLoading(false)
       return
@@ -101,17 +98,14 @@ export default function EmployeeDetailPage() {
   }, [employeeId, selectedCompany, dateRange])
 
   useEffect(() => {
-    console.log("[v0] Filtering boards with statusFilter:", statusFilter)
     filterBoards()
   }, [taskBoards, statusFilter])
 
   const loadEmployeeData = async () => {
     try {
-      console.log("[v0] Starting loadEmployeeData...")
       setLoading(true)
       setError(null)
 
-      console.log("[v0] Loading employee profile...")
       const { data: employeeData, error: employeeError } = await supabase
         .from("profiles")
         .select(`
@@ -127,10 +121,8 @@ export default function EmployeeDetailPage() {
         .eq("id", employeeId)
         .single()
 
-      console.log("[v0] Employee query result:", { employeeData, employeeError })
 
       if (employeeError) {
-        console.error("[v0] Employee query error:", employeeError)
         throw new Error(`Error cargando empleado: ${employeeError.message}`)
       }
 
@@ -143,7 +135,6 @@ export default function EmployeeDetailPage() {
       }
 
       setEmployee(employeeData)
-      console.log("[v0] Employee loaded successfully:", employeeData.full_name)
 
       const endDate = new Date()
       const startDate = new Date()
@@ -165,7 +156,6 @@ export default function EmployeeDetailPage() {
       const startDateStr = format(startDate, "yyyy-MM-dd")
       const endDateStr = format(endDate, "yyyy-MM-dd")
 
-      console.log("[v0] Loading task boards for date range:", { startDateStr, endDateStr })
 
       const { data: boardsData, error: boardsError } = await supabase
         .from("task_boards")
@@ -194,29 +184,19 @@ export default function EmployeeDetailPage() {
         .lte("board_date", endDateStr)
         .order("board_date", { ascending: false })
 
-      console.log("[v0] Boards query result:", {
-        boardsCount: boardsData?.length || 0,
-        boardsError,
-        firstBoard: boardsData?.[0],
-      })
 
       if (boardsError) {
-        console.error("[v0] Boards query error:", boardsError)
         throw new Error(`Error cargando pizarrones: ${boardsError.message}`)
       }
 
       const boards = boardsData || []
       setTaskBoards(boards)
-      console.log("[v0] Task boards loaded:", boards.length)
 
       calculateStats(boards)
-      console.log("[v0] Stats calculated successfully")
     } catch (error: any) {
-      console.error("[v0] Error in loadEmployeeData:", error)
       setError(error.message || "Error cargando datos del empleado")
     } finally {
       setLoading(false)
-      console.log("[v0] loadEmployeeData completed")
     }
   }
 
