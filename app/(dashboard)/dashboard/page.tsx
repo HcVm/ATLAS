@@ -5,17 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Users, TrendingUp, ArrowRight, Activity, RefreshCw, Clock } from "lucide-react"
+import { FileText, Users, TrendingUp, ArrowRight, Activity, RefreshCw, Clock, Search } from 'lucide-react'
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import { NewsCarousel } from "@/components/news/news-carousel"
 import { useCompany } from "@/lib/company-context"
+import { NewsCarousel } from "@/components/news/news-carousel"
 import { AttendanceWidget } from "@/components/attendance/attendance-widget"
 import { UpcomingEventsWidget } from "@/components/calendar/upcoming-events-widget"
+import { DocumentSearchDialog } from "@/components/documents/document-search-dialog"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -34,6 +35,7 @@ export default function DashboardPage() {
   const [recentMovements, setRecentMovements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [documentSearchOpen, setDocumentSearchOpen] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -306,15 +308,26 @@ export default function DashboardPage() {
             Bienvenido de vuelta, {user?.full_name || "Usuario"}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 hover:scale-105"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-          <span>{refreshing ? "Actualizando..." : "Actualizar"}</span>
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            onClick={() => setDocumentSearchOpen(true)}
+            className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            <Search className="h-4 w-4 mr-2" />
+            <span className="sm:hidden">Buscar Doc</span>
+            <span className="hidden sm:inline">Buscar Documento</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex-1 sm:flex-none w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <span className="sm:hidden">{refreshing ? "..." : "Act"}</span>
+            <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Actualizar"}</span>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -595,6 +608,8 @@ export default function DashboardPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <DocumentSearchDialog open={documentSearchOpen} onOpenChange={setDocumentSearchOpen} />
     </div>
   )
 }
