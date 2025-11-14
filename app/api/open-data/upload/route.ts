@@ -1,3 +1,6 @@
+// app/api/open-data/process/route.ts
+// This is your existing processing handler. No changes needed, as long as it handles the blob URL correctly.
+
 import { type NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import { createServiceClient } from "@/lib/supabase-server"
