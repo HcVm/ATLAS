@@ -1,8 +1,13 @@
-import type { NextRequest } from "next/server"
+
+
+import { type NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import { createServiceClient } from "@/lib/supabase-server"
 import type { Database } from "@/lib/database.types"
 
+// Límite de tamaño de archivo (50MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+// Límite de filas por chunk para procesamiento
 const MAX_ROWS_PER_CHUNK = 5000
 
 // Mapeo flexible de columnas del Excel a campos de la base de datos
@@ -510,269 +515,245 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient()
 
   try {
-    const { blobUrl, fileName, fileSize, acuerdoMarco } = await request.json()
+    const formData = await request.formData()
+    const file = formData.get("file") as File | null
+    const acuerdoMarco = formData.get("acuerdoMarco") as string | null
 
-    if (!blobUrl || !acuerdoMarco) {
-      return new Response(
-        JSON.stringify({
+    if (!file || !acuerdoMarco) {
+      return NextResponse.json(
+        {
           success: false,
-          message: "URL del archivo y acuerdo marco son requeridos",
-        }),
+          message: "Archivo y acuerdo marco son requeridos",
+        },
         { status: 400 },
+      )
+    }
+
+    // Validar tamaño del archivo
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `El archivo es demasiado grande. Tamaño máximo permitido: ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
+        },
+        { status: 413 },
       )
     }
 
     const trimmedAcuerdoMarco = acuerdoMarco.trim()
     const codigoAcuerdoMarco = trimmedAcuerdoMarco.split(" ")[0]
 
-    console.log(`Procesando archivo desde Blob: ${fileName} (${(fileSize / (1024 * 1024)).toFixed(2)}MB)`)
+    console.log(`Procesando archivo: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`)
+    console.log(`Acuerdo marco: "${trimmedAcuerdoMarco}" (Código: "${codigoAcuerdoMarco}")`)
 
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const response = await fetch(blobUrl)
-          const buffer = Buffer.from(await response.arrayBuffer())
+    // Leer archivo con configuración optimizada
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const workbook = XLSX.read(buffer, {
+      type: "buffer",
+      cellDates: false,
+      cellNF: false,
+      cellText: false,
+      dense: true,
+    })
 
-          // Process Excel file
-          const workbook = XLSX.read(buffer, {
-            type: "buffer",
-            cellDates: false,
-            cellNF: false,
-            cellText: false,
-            dense: true,
-          })
+    const sheetName = workbook.SheetNames[0]
+    const sheet = workbook.Sheets[sheetName]
 
-          const sheetName = workbook.SheetNames[0]
-          const sheet = workbook.Sheets[sheetName]
-          const rawData = XLSX.utils.sheet_to_json(sheet, {
-            header: 1,
-            defval: null,
-            raw: false,
-          }) as any[][]
+    // Obtener datos
+    const rawData = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: null,
+      raw: false,
+    }) as any[][]
 
-          if (!Array.isArray(rawData) || rawData.length < 7) {
-            throw new Error("El archivo no contiene suficientes datos o el formato es incorrecto")
-          }
+    if (!Array.isArray(rawData) || rawData.length < 7) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "El archivo no contiene suficientes datos o el formato es incorrecto",
+        },
+        { status: 400 },
+      )
+    }
 
-          // Las cabeceras están en la fila 6 (índice 5)
-          const headers = rawData[5] as string[]
-          const dataRows = rawData.slice(6) // Los datos empiezan desde la fila 7 (índice 6)
+    // Las cabeceras están en la fila 6 (índice 5)
+    const headers = rawData[5] as string[]
+    const dataRows = rawData.slice(6) // Los datos empiezan desde la fila 7 (índice 6)
 
-          console.log(`Archivo procesado: ${headers.length} columnas, ${dataRows.length} filas de datos`)
+    console.log(`Archivo procesado: ${headers.length} columnas, ${dataRows.length} filas de datos`)
 
-          // Send progress update
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "progress",
-                progress: 0.1,
-                message: `Archivo analizado: ${headers.length} columnas, ${dataRows.length} filas`,
-              })}\n\n`,
-            ),
-          )
+    // Mapear columnas
+    const columnIndexes: { [key: string]: number } = {}
+    const foundColumns: string[] = []
+    const missingColumns: string[] = []
 
-          // Mapear columnas
-          const columnIndexes: { [key: string]: number } = {}
-          const foundColumns: string[] = []
-          const missingColumns: string[] = []
+    Object.entries(COLUMN_MAPPING).forEach(([dbField, possibleNames]) => {
+      let found = false
 
-          Object.entries(COLUMN_MAPPING).forEach(([dbField, possibleNames]) => {
-            let found = false
+      for (const possibleName of possibleNames) {
+        const index = headers.findIndex((h) => {
+          if (!h) return false
+          const headerName = h.toString().trim()
+          const searchName = possibleName.trim()
 
-            for (const possibleName of possibleNames) {
-              const index = headers.findIndex((h) => {
-                if (!h) return false
-                const headerName = h.toString().trim()
-                const searchName = possibleName.trim()
+          // Búsqueda exacta primero
+          if (headerName === searchName) return true
 
-                // Búsqueda exacta primero
-                if (headerName === searchName) return true
+          // Búsqueda normalizada
+          return normalizeString(headerName) === normalizeString(searchName)
+        })
 
-                // Búsqueda normalizada
-                return normalizeString(headerName) === normalizeString(searchName)
-              })
-
-              if (index !== -1) {
-                columnIndexes[dbField] = index
-                foundColumns.push(`${dbField} -> "${headers[index]}"`)
-                found = true
-                break
-              }
-            }
-
-            if (!found) {
-              missingColumns.push(`${dbField}`)
-            }
-          })
-
-          console.log(`Columnas encontradas: ${foundColumns.length}, faltantes: ${missingColumns.length}`)
-
-          // Verificar columnas esenciales
-          const missingRequiredColumns = REQUIRED_COLUMNS.filter((col) => !(col in columnIndexes))
-          if (missingRequiredColumns.length > 0) {
-            throw new Error(`Faltan columnas críticas: ${missingRequiredColumns.join(", ")}`)
-          }
-
-          // Send progress update
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "progress",
-                progress: 0.2,
-                message: `Columnas mapeadas: ${foundColumns.length} encontradas`,
-              })}\n\n`,
-            ),
-          )
-
-          // Determinar si necesitamos dividir el archivo
-          const needsChunking = dataRows.length > MAX_ROWS_PER_CHUNK || fileSize > 10 * 1024 * 1024
-          const chunks = needsChunking ? divideDataIntoChunks(dataRows, MAX_ROWS_PER_CHUNK) : [dataRows]
-
-          console.log(`Procesamiento en ${chunks.length} chunk(s)${needsChunking ? " (archivo grande detectado)" : ""}`)
-
-          // 1. Eliminar datos existentes para este codigo_acuerdo_marco
-          console.log(`Eliminando datos existentes para código: "${codigoAcuerdoMarco}"`)
-          const { error: deleteError } = await supabase
-            .from("open_data_entries")
-            .delete()
-            .eq("codigo_acuerdo_marco", codigoAcuerdoMarco)
-
-          if (deleteError) {
-            throw new Error(`Error eliminando datos existentes: ${deleteError.message}`)
-          }
-
-          // Send progress update
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "progress",
-                progress: 0.3,
-                message: "Datos existentes eliminados, iniciando procesamiento...",
-              })}\n\n`,
-            ),
-          )
-
-          // 2. Las alertas existentes NO se eliminan para mantener el historial de seguimiento
-          console.log(`Manteniendo alertas existentes para preservar el historial de seguimiento`)
-
-          // 3. Procesar chunks secuencialmente
-          let totalInserted = 0
-          let totalBrandAlerts = 0
-          let totalFiltered = 0
-          let totalProcessed = 0
-          const allErrors: string[] = []
-
-          for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-            const chunk = chunks[chunkIndex]
-
-            console.log(`Procesando chunk ${chunkIndex + 1}/${chunks.length}`)
-
-            // Send progress update
-            const progress = 0.3 + (chunkIndex / chunks.length) * 0.6
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "progress",
-                  progress,
-                  message: `Procesando chunk ${chunkIndex + 1}/${chunks.length}...`,
-                })}\n\n`,
-              ),
-            )
-
-            // Procesar datos del chunk
-            const chunkResult = await processDataChunk(
-              chunk,
-              headers,
-              columnIndexes,
-              trimmedAcuerdoMarco,
-              codigoAcuerdoMarco,
-              chunkIndex,
-              chunks.length,
-            )
-
-            totalProcessed += chunkResult.processedData.length
-            totalFiltered += chunkResult.filteredCount
-            allErrors.push(...chunkResult.errors)
-
-            // Insertar datos del chunk si hay datos válidos
-            if (chunkResult.processedData.length > 0) {
-              const insertResult = await insertDataChunk(supabase, chunkResult.processedData, chunkResult.brandAlerts)
-
-              totalInserted += insertResult.insertedCount
-              totalBrandAlerts += insertResult.brandAlertsCount
-              allErrors.push(...insertResult.errors)
-
-              console.log(
-                `Chunk ${chunkIndex + 1} completado: ${insertResult.insertedCount} registros insertados, ${insertResult.brandAlertsCount} alertas procesadas`,
-              )
-            }
-
-            // Pequeña pausa entre chunks para no sobrecargar el sistema
-            if (chunkIndex < chunks.length - 1) {
-              await new Promise((resolve) => setTimeout(resolve, 100))
-            }
-          }
-
-          const finalMessage =
-            allErrors.length > 0
-              ? `Archivo procesado con algunos errores. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
-              : `Archivo procesado exitosamente. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
-
-          // Send completion
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "complete",
-                success: totalInserted > 0,
-                message: finalMessage,
-                stats: {
-                  totalRows: dataRows.length,
-                  processedRows: totalProcessed,
-                  filteredRows: totalFiltered,
-                  insertedRows: totalInserted,
-                  processedBrandAlerts: totalBrandAlerts,
-                  chunksProcessed: chunks.length,
-                  processingMethod: needsChunking ? "chunked" : "single",
-                  fileSize: fileSize,
-                  fileName: fileName,
-                  acuerdoMarco: codigoAcuerdoMarco,
-                  errors: allErrors.slice(0, 20),
-                },
-              })}\n\n`,
-            ),
-          )
-        } catch (error) {
-          console.error("Error en procesamiento:", error)
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "error",
-                message: error instanceof Error ? error.message : "Error desconocido",
-              })}\n\n`,
-            ),
-          )
-        } finally {
-          controller.close()
+        if (index !== -1) {
+          columnIndexes[dbField] = index
+          foundColumns.push(`${dbField} -> "${headers[index]}"`)
+          found = true
+          break
         }
-      },
+      }
+
+      if (!found) {
+        missingColumns.push(`${dbField}`)
+      }
     })
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
+    console.log(`Columnas encontradas: ${foundColumns.length}, faltantes: ${missingColumns.length}`)
+
+    // Verificar columnas esenciales
+    const missingRequiredColumns = REQUIRED_COLUMNS.filter((col) => !(col in columnIndexes))
+    if (missingRequiredColumns.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Faltan columnas críticas: ${missingRequiredColumns.join(", ")}`,
+        },
+        { status: 400 },
+      )
+    }
+
+    // Determinar si necesitamos dividir el archivo
+    const needsChunking = dataRows.length > MAX_ROWS_PER_CHUNK || file.size > 10 * 1024 * 1024
+    const chunks = needsChunking ? divideDataIntoChunks(dataRows, MAX_ROWS_PER_CHUNK) : [dataRows]
+
+    console.log(`Procesamiento en ${chunks.length} chunk(s)${needsChunking ? " (archivo grande detectado)" : ""}`)
+
+    // 1. Eliminar datos existentes para este codigo_acuerdo_marco
+    console.log(`Eliminando datos existentes para código: "${codigoAcuerdoMarco}"`)
+    const { error: deleteError } = await supabase
+      .from("open_data_entries")
+      .delete()
+      .eq("codigo_acuerdo_marco", codigoAcuerdoMarco)
+
+    if (deleteError) {
+      console.error("Error eliminando datos existentes:", deleteError.message)
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Error eliminando datos existentes: ${deleteError.message}`,
+        },
+        { status: 500 },
+      )
+    }
+
+    // 2. Las alertas existentes NO se eliminan para mantener el historial de seguimiento
+    console.log(`Manteniendo alertas existentes para preservar el historial de seguimiento`)
+
+    // 3. Procesar chunks secuencialmente
+    let totalInserted = 0
+    let totalBrandAlerts = 0
+    let totalFiltered = 0
+    let totalProcessed = 0
+    const allErrors: string[] = []
+
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex]
+
+      console.log(`Procesando chunk ${chunkIndex + 1}/${chunks.length}`)
+
+      // Procesar datos del chunk
+      const chunkResult = await processDataChunk(
+        chunk,
+        headers,
+        columnIndexes,
+        trimmedAcuerdoMarco,
+        codigoAcuerdoMarco,
+        chunkIndex,
+        chunks.length,
+      )
+
+      totalProcessed += chunkResult.processedData.length
+      totalFiltered += chunkResult.filteredCount
+      allErrors.push(...chunkResult.errors)
+
+      // Insertar datos del chunk si hay datos válidos
+      if (chunkResult.processedData.length > 0) {
+        const insertResult = await insertDataChunk(supabase, chunkResult.processedData, chunkResult.brandAlerts)
+
+        totalInserted += insertResult.insertedCount
+        totalBrandAlerts += insertResult.brandAlertsCount
+        allErrors.push(...insertResult.errors)
+
+        console.log(
+          `Chunk ${chunkIndex + 1} completado: ${insertResult.insertedCount} registros insertados, ${insertResult.brandAlertsCount} alertas procesadas`,
+        )
+      }
+
+      // Pequeña pausa entre chunks para no sobrecargar el sistema
+      if (chunkIndex < chunks.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+    }
+
+    const finalMessage =
+      allErrors.length > 0
+        ? `Archivo procesado con algunos errores. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
+        : `Archivo procesado exitosamente. Se insertaron ${totalInserted} registros y se procesaron ${totalBrandAlerts} alertas de marca en ${chunks.length} chunk(s) para el acuerdo ${codigoAcuerdoMarco}.`
+
+    return NextResponse.json({
+      success: totalInserted > 0,
+      message: finalMessage,
+      stats: {
+        totalRows: dataRows.length,
+        processedRows: totalProcessed,
+        filteredRows: totalFiltered,
+        insertedRows: totalInserted,
+        processedBrandAlerts: totalBrandAlerts,
+        chunksProcessed: chunks.length,
+        processingMethod: needsChunking ? "chunked" : "single",
+        fileSize: file.size,
+        fileName: file.name,
+        acuerdoMarco: codigoAcuerdoMarco,
+        errors: allErrors.slice(0, 20),
       },
     })
-  } catch (error) {
-    console.error("Error en process:", error)
-    return new Response(
-      JSON.stringify({
+  } catch (error: any) {
+    console.error("Error en upload:", error)
+
+    // Manejar errores específicos
+    if (error.message?.includes("PayloadTooLargeError") || error.code === "LIMIT_FILE_SIZE") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "El archivo es demasiado grande. El sistema intentará procesarlo automáticamente en chunks.",
+        },
+        { status: 413 },
+      )
+    }
+
+    return NextResponse.json(
+      {
         success: false,
-        message: "Error interno del servidor",
-      }),
+        message: "Error interno del servidor. Por favor, intenta nuevamente.",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      },
       { status: 500 },
     )
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
+  },
+};

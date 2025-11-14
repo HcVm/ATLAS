@@ -1,7 +1,9 @@
+// app/open-data/upload/page.tsx
+// Updated client-side page for server-side upload. Replace your existing code with this.
+
 "use client"
 
 import type React from "react"
-import { upload } from "@vercel/blob/client"
 import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -121,14 +123,23 @@ export default function OpenDataUploadPage() {
       setProgress(10)
       console.log(`Subiendo archivo: ${file.name}`)
 
-      const blob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/open-data/upload-url',
-        onUploadProgress: (progress) => {
-          setProgress(10 + Math.min(progress.percentage * 0.2, 20))
-        },
+      // Create FormData for server-side upload
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('acuerdoMarco', selectedAcuerdo)
+
+      // Send to server endpoint for upload
+      const uploadResponse = await fetch('/api/open-data/upload', {
+        method: 'POST',
+        body: formData,
       })
 
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || `Error en subida: ${uploadResponse.status}`)
+      }
+
+      const blob = await uploadResponse.json()
       setProgress(35)
       console.log(`Archivo subido a Blob: ${blob.url}`)
 
