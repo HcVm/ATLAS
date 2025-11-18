@@ -8,19 +8,15 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Package,
-  Search,
-  Barcode,
-  Hash,
-  Calendar,
-  TrendingUp,
-  Download,
-  ChevronDown,
-  ChevronUp,
-  ShoppingCart,
-  Box,
-  AlertCircle,
-} from "lucide-react"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Package, Search, Barcode, Hash, Calendar, TrendingUp, Download, ChevronDown, ChevronUp, ShoppingCart, Box, AlertCircle } from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -67,6 +63,14 @@ export default function LotsAndSerialsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [expandedLot, setExpandedLot] = useState<string | null>(null)
   const [collapsedSaleGroups, setCollapsedSaleGroups] = useState<Set<string>>(new Set())
+
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    lotId: "",
+    newStatus: "" as "pending" | "in_inventory" | "delivered" | "",
+    currentLot: null as ProductLot | null,
+  })
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -141,21 +145,37 @@ export default function LotsAndSerialsPage() {
     }
   }
 
-  const updateLotStatus = async (lotId: string, newStatus: "pending" | "in_inventory" | "delivered") => {
+  const handleStatusChangeClick = (lotId: string, newStatus: "pending" | "in_inventory" | "delivered") => {
+    const lot = lots.find((l) => l.id === lotId)
+    if (lot) {
+      setConfirmDialog({
+        open: true,
+        lotId,
+        newStatus,
+        currentLot: lot,
+      })
+    }
+  }
+
+  const confirmStatusChange = async () => {
+    if (!confirmDialog.lotId || !confirmDialog.newStatus) return
+
     try {
+      setIsUpdating(true)
       const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
 
       if (!companyId) {
         throw new Error("No company ID available")
       }
 
-      await updateLotStatusWithMovement(lotId, newStatus, companyId)
+      await updateLotStatusWithMovement(confirmDialog.lotId, confirmDialog.newStatus, companyId)
 
       toast({
         title: "Éxito",
         description: "Estado del lote actualizado y movimiento creado correctamente",
       })
 
+      setConfirmDialog({ open: false, lotId: "", newStatus: "", currentLot: null })
       fetchLots(companyId)
     } catch (error) {
       console.error("Error updating lot status:", error)
@@ -164,6 +184,8 @@ export default function LotsAndSerialsPage() {
         description: error instanceof Error ? error.message : "Error al actualizar el estado del lote",
         variant: "destructive",
       })
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -233,59 +255,107 @@ export default function LotsAndSerialsPage() {
     }
   }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-"
-    return new Date(dateString).toLocaleDateString("es-PE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+  const getConfirmationContent = () => {
+    const { currentLot, newStatus } = confirmDialog
+    if (!currentLot) return null
 
-  const exportToExcel = () => {
-    const dataToExport = filteredLots.flatMap(
-      (lot) =>
-        lot.product_serials?.map((serial) => ({
-          "Número de Lote": lot.lot_number,
-          Producto: lot.products?.name || "N/A",
-          "Código Producto": lot.products?.code || "N/A",
-          "Número de Serie": serial.serial_number,
-          Estado:
-            lot.status === "pending" ? "Pendiente" : lot.status === "in_inventory" ? "En Inventario" : "Entregado",
-          "Fecha Generación": formatDate(lot.generated_date),
-          "Fecha Ingreso": formatDate(lot.ingress_date),
-          "Fecha Entrega": formatDate(lot.delivery_date),
-          "Venta Asociada": lot.sales?.sale_number || "N/A",
-        })) || [],
-    )
+    const productInfo = `${currentLot.quantity} unidades de ${currentLot.products?.name || "N/A"} (${currentLot.products?.code || "N/A"})`
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Lotes y Series")
+    if (currentLot.status === "pending" && newStatus === "in_inventory") {
+      return {
+        title: "Confirmar Ingreso al Inventario",
+        description: `Estás a punto de ingresar estos productos al sistema. Recuerda que se generará un movimiento de inventario de ingreso, lo que aumentará el stock del producto.\n\n${productInfo}`,
+      }
+    }
 
-    const fileName = `lotes_series_${new Date().toISOString().split("T")[0]}.xlsx`
-    XLSX.writeFile(wb, fileName)
+    if (currentLot.status === "in_inventory" && newStatus === "delivered") {
+      return {
+        title: "Confirmar Entrega",
+        description: `Estás a punto de marcar como entregado ${productInfo}. Tras esta acción se generará un movimiento de inventario de salida, lo que disminuirá el stock del producto y bloqueará la creación de etiquetas de esta venta.`,
+      }
+    }
 
-    toast({
-      title: "Exportación exitosa",
-      description: `Se exportaron ${dataToExport.length} registros a Excel.`,
-    })
-  }
-
-  const isGroupFullyDelivered = (lots: ProductLot[]) => {
-    return lots.every((lot) => lot.status === "delivered")
+    return null
   }
 
   const toggleSaleGroupCollapse = (saleKey: string) => {
-    const newCollapsed = new Set(collapsedSaleGroups)
-    if (newCollapsed.has(saleKey)) {
-      newCollapsed.delete(saleKey)
-    } else {
-      newCollapsed.add(saleKey)
+    setCollapsedSaleGroups((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(saleKey)) {
+        newSet.delete(saleKey)
+      } else {
+        newSet.add(saleKey)
+      }
+      return newSet
+    })
+  }
+
+  const isGroupFullyDelivered = (saleLots: ProductLot[]): boolean => {
+    return saleLots.every((lot) => lot.status === "delivered")
+  }
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "N/A"
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    } catch {
+      return dateString
     }
-    setCollapsedSaleGroups(newCollapsed)
+  }
+
+  const exportToExcel = () => {
+    try {
+      const exportData = filteredLots.map((lot) => ({
+        "Número de Lote": lot.lot_number,
+        "Número de Venta": lot.sales?.sale_number || "Sin asignar",
+        "Producto": lot.products?.name || "N/A",
+        "Código": lot.products?.code || "N/A",
+        "Cantidad": lot.quantity,
+        "Estado": lot.status === "pending" ? "Pendiente" : lot.status === "in_inventory" ? "En Inventario" : "Entregado",
+        "Fecha Generación": formatDate(lot.generated_date),
+        "Fecha Ingreso": lot.ingress_date ? formatDate(lot.ingress_date) : "N/A",
+        "Fecha Entrega": lot.delivery_date ? formatDate(lot.delivery_date) : "N/A",
+        "Total Series": lot.product_serials?.length || 0,
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Lotes")
+
+      // Ajustar ancho de columnas
+      const colWidths = [
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+      ]
+      ws["!cols"] = colWidths
+
+      XLSX.writeFile(wb, `lotes_y_series_${new Date().toISOString().split("T")[0]}.xlsx`)
+
+      toast({
+        title: "Éxito",
+        description: "Archivo exportado correctamente",
+      })
+    } catch (error) {
+      console.error("Error exporting to Excel:", error)
+      toast({
+        title: "Error",
+        description: "Error al exportar los datos",
+        variant: "destructive",
+      })
+    }
   }
 
   if (loading) {
@@ -309,6 +379,8 @@ export default function LotsAndSerialsPage() {
       </div>
     )
   }
+
+  const confirmationContent = getConfirmationContent()
 
   return (
     <div className="min-h-screen bg-background">
@@ -556,7 +628,7 @@ export default function LotsAndSerialsPage() {
                                   {lot.status === "pending" && (
                                     <Button
                                       size="sm"
-                                      onClick={() => updateLotStatus(lot.id, "in_inventory")}
+                                      onClick={() => handleStatusChangeClick(lot.id, "in_inventory")}
                                       className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
                                     >
                                       Ingresar
@@ -567,7 +639,7 @@ export default function LotsAndSerialsPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => updateLotStatus(lot.id, "delivered")}
+                                        onClick={() => handleStatusChangeClick(lot.id, "delivered")}
                                         disabled={!lot.sale_id}
                                         title={
                                           !lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""
@@ -728,7 +800,7 @@ export default function LotsAndSerialsPage() {
                                           {lot.status === "pending" && (
                                             <Button
                                               size="sm"
-                                              onClick={() => updateLotStatus(lot.id, "in_inventory")}
+                                              onClick={() => handleStatusChangeClick(lot.id, "in_inventory")}
                                               className="bg-green-600 hover:bg-green-700 text-white text-xs whitespace-nowrap"
                                             >
                                               Ingresar
@@ -739,7 +811,7 @@ export default function LotsAndSerialsPage() {
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => updateLotStatus(lot.id, "delivered")}
+                                                onClick={() => handleStatusChangeClick(lot.id, "delivered")}
                                                 disabled={!lot.sale_id}
                                                 title={
                                                   !lot.sale_id
@@ -817,6 +889,42 @@ export default function LotsAndSerialsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {confirmationContent && (
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => {
+          if (!open) {
+            setConfirmDialog({ open: false, lotId: "", newStatus: "", currentLot: null })
+          }
+        }}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-lg">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                {confirmationContent.title}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-4 whitespace-pre-wrap text-base">
+                {confirmationContent.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-3 justify-end mt-6">
+              <AlertDialogCancel disabled={isUpdating} className="bg-gray-100 hover:bg-gray-200">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmStatusChange}
+                disabled={isUpdating}
+                className={`${
+                  confirmDialog.newStatus === "delivered"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                {isUpdating ? "Procesando..." : confirmDialog.newStatus === "delivered" ? "Confirmar Entrega" : "Confirmar Ingreso"}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }
