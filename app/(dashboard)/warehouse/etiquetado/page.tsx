@@ -7,20 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Barcode,
-  Search,
-  Printer,
-  Package,
-  Hash,
-  ShoppingCart,
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  Building2,
-  AlertCircle,
-  Tag,
-} from "lucide-react"
+import { Barcode, Search, Printer, Package, Hash, ShoppingCart, ChevronDown, ChevronUp, FileText, Building2, AlertCircle, Tag } from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -66,6 +53,33 @@ interface BarcodeData {
   qrCodeUrl: string
   productHash: string
 }
+
+function sortSerialsNumerically(serials: string[]): string[] {
+  return serials.sort((a, b) => {
+    // Extract the numeric part from the end of each serial
+    const aMatch = a.match(/(\d+)$/)
+    const bMatch = b.match(/(\d+)$/)
+
+    if (!aMatch || !bMatch) {
+      // If either doesn't have a numeric suffix, do string comparison
+      return a.localeCompare(b)
+    }
+
+    const aNum = parseInt(aMatch[1], 10)
+    const bNum = parseInt(bMatch[1], 10)
+
+    // Compare numerically
+    if (aNum !== bNum) {
+      return aNum - bNum
+    }
+
+    // If numeric parts are equal, compare the prefix alphabetically
+    const aPrefix = a.substring(0, a.length - aMatch[1].length)
+    const bPrefix = b.substring(0, b.length - bMatch[1].length)
+    return aPrefix.localeCompare(bPrefix)
+  })
+}
+
 
 export default function EtiquetadoPage() {
   const { user } = useAuth()
@@ -246,8 +260,10 @@ export default function EtiquetadoPage() {
       }
     }
 
-    setCurrentSaleAllSerials(allSerials)
-    setFilteredSerials(allSerials)
+    const sortedSerials = sortSerialsNumerically(allSerials)
+
+    setCurrentSaleAllSerials(sortedSerials)
+    setFilteredSerials(sortedSerials)
     setSelectedSale(sale)
     setFilterModalOpen(true)
   }
@@ -265,6 +281,7 @@ export default function EtiquetadoPage() {
     try {
       setGeneratingBarcodes(true)
 
+      const sortedFilteredSerials = sortSerialsNumerically(filteredSerials)
       const barcodesData: BarcodeData[] = []
 
       if (!selectedSale) return
@@ -285,7 +302,7 @@ export default function EtiquetadoPage() {
 
         for (const lot of item.product_lots) {
           for (const serial of lot.product_serials) {
-            if (!filteredSerials.includes(serial.serial_number)) {
+            if (!sortedFilteredSerials.includes(serial.serial_number)) {
               continue
             }
 
@@ -341,6 +358,17 @@ export default function EtiquetadoPage() {
           }
         }
       }
+
+      barcodesData.sort((a, b) => {
+        const aNum = parseInt(a.serialNumber.match(/(\d+)$/)?.[1] || "0", 10)
+        const bNum = parseInt(b.serialNumber.match(/(\d+)$/)?.[1] || "0", 10)
+        
+        if (aNum !== bNum) {
+          return aNum - bNum
+        }
+        
+        return a.serialNumber.localeCompare(b.serialNumber)
+      })
 
       setBarcodes(barcodesData)
 
