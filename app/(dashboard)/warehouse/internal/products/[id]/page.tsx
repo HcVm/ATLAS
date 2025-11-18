@@ -1,29 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import {
-  ArrowLeft,
-  Package,
-  AlertTriangle,
-  Edit,
-  Calendar,
-  MapPin,
-  ArrowUp,
-  ArrowDown,
-  RotateCcw,
-  User,
-  Eye,
-  QrCode,
-  Tag,
-  ListOrdered,
-  Printer,
-} from "lucide-react"
+import { ArrowLeft, Package, AlertTriangle, Edit, Calendar, MapPin, ArrowUp, ArrowDown, RotateCcw, User, Eye, QrCode, Tag, ListOrdered, Printer, Trash2 } from 'lucide-react'
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -85,12 +69,14 @@ interface SerializedProduct {
   updated_at: string
   product_id: string
   qr_code_hash: string | null
+  condition?: "nuevo" | "usado"
 }
 
 const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
   { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
   { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
+  { value: "baja", label: "Baja del Sistema", icon: Trash2, color: "text-orange-600", bgColor: "bg-orange-50" }, // ← NUEVO
 ]
 
 export default function InternalProductDetailPage() {
@@ -625,7 +611,9 @@ export default function InternalProductDetailPage() {
                                     ? "default"
                                     : serial.status === "out_of_stock"
                                       ? "destructive"
-                                      : "secondary"
+                                      : serial.status === "withdrawn"
+                                        ? "secondary"
+                                        : "outline"
                                 }
                               >
                                 {serial.status === "in_stock"
@@ -634,8 +622,15 @@ export default function InternalProductDetailPage() {
                                     ? "Asignado"
                                     : serial.status === "in_repair"
                                       ? "En Reparación"
-                                      : "Desechado"}
+                                      : serial.status === "withdrawn"
+                                        ? "Dado de Baja"
+                                        : "Desechado"}
                               </Badge>
+                              {serial.condition && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {serial.condition === "nuevo" ? "Nuevo" : "Usado"}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>{serial.current_location || "N/A"}</TableCell>
                             <TableCell>
@@ -676,7 +671,7 @@ export default function InternalProductDetailPage() {
                   <p className="text-muted-foreground">No hay movimientos registrados</p>
                 </div>
               ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto overflow-y-visible">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -694,6 +689,32 @@ export default function InternalProductDetailPage() {
                       {movements.map((movement) => {
                         const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
                         const Icon = movementType?.icon || Package
+
+                        // LÓGICA INTELIGENTE PARA MOSTRAR SERIALES (incluyendo entradas múltiples)
+                        let serialDisplay = "N/A"
+                        let fullSerialsList = ""
+                        let showTooltip = false
+
+                        if (product.is_serialized) {
+                          if (movement.internal_product_serials?.serial_number) {
+                            // Salidas, bajas, ajustes → tienen serial_id
+                            serialDisplay = movement.internal_product_serials.serial_number
+                          } else if (movement.movement_type === "entrada" && movement.notes?.includes("Series generadas:")) {
+                            // Entradas → extraemos de las notas
+                            const match = movement.notes.match(/Series generadas: (.*?)( - |$)/)
+                            if (match && match[1]) {
+                              fullSerialsList = match[1].trim()
+                              const seriales = fullSerialsList.split(", ").map(s => s.trim())
+
+                              if (seriales.length === 1) {
+                                serialDisplay = seriales[0]
+                              } else {
+                                serialDisplay = `${seriales[0]} y +${seriales.length - 1} más`
+                                showTooltip = true
+                              }
+                            }
+                          }
+                        }
                         return (
                           <TableRow key={movement.id}>
                             <TableCell>
@@ -709,45 +730,71 @@ export default function InternalProductDetailPage() {
                                 </div>
                               </div>
                             </TableCell>
+
                             <TableCell>
                               <Badge variant="outline" className="flex items-center gap-1 w-fit">
                                 <Icon className={`h-3 w-3 ${movementType?.color}`} />
                                 {movementType?.label}
                               </Badge>
                             </TableCell>
+
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <span className={`font-medium ${movementType?.color}`}>
-                                  {movement.movement_type === "salida" ? "-" : "+"}
+                                  {movement.movement_type === "salida" || movement.movement_type === "baja" ? "-" : "+"}
                                   {movement.quantity}
                                 </span>
                                 <span className="text-muted-foreground text-sm">{product.unit_of_measure}</span>
                               </div>
                             </TableCell>
+
                             {product.is_serialized && (
-                              <TableCell>
-                                {movement.internal_product_serials?.serial_number ? (
-                                  <div className="flex items-center gap-1">
-                                    <Tag className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-sm">{movement.internal_product_serials.serial_number}</span>
+                              <TableCell className="font-mono text-sm relative">
+                                {serialDisplay === "N/A" ? (
+                                  <span className="text-muted-foreground">N/A</span>
+                                ) : showTooltip ? (
+                                  // TOOLTIP QUE NUNCA SE CORTA (usa Portal implícito con posicionamiento fijo relativo)
+                                  <div 
+                                    className="group cursor-help inline-block"
+                                    data-tooltip={fullSerialsList}
+                                  >
+                                    <span className="text-blue-600 border-b border-dotted border-blue-400">
+                                      {serialDisplay}
+                                    </span>
+
+                                    {/* Tooltip que aparece por encima de todo */}
+                                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 shadow-2xl">
+                                      <div className="font-semibold mb-2 text-green-400">Series generadas ({fullSerialsList.split(", ").length}):</div>
+                                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                                        {fullSerialsList.split(", ").map((s, i) => (
+                                          <div key={i} className="font-mono">{s.trim()}</div>
+                                        ))}
+                                      </div>
+                                      {/* Flechita */}
+                                      <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-1.5 border-8 border-transparent border-t-gray-900"></div>
+                                    </div>
                                   </div>
                                 ) : (
-                                  <span className="text-muted-foreground text-sm">N/A</span>
+                                  <span>{serialDisplay}</span>
                                 )}
                               </TableCell>
                             )}
+
                             <TableCell>S/ {movement.total_amount.toFixed(2)}</TableCell>
+
                             <TableCell>
                               <div className="max-w-[200px] truncate" title={movement.reason}>
                                 {movement.reason}
                               </div>
                             </TableCell>
+
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <User className="h-3 w-3 text-muted-foreground" />
                                 <span className="text-sm">{movement.requested_by}</span>
                               </div>
                             </TableCell>
+
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" asChild>
                                 <Link href={`/warehouse/internal/movements/${movement.id}`}>

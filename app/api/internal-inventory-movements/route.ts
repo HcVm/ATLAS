@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     is_serialized_product,
     serials_to_process,
     selected_serials,
+    condition,
   } = await request.json()
 
   const cookieStore = await cookies()
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
               company_id: company_id,
               created_by: user.id,
               qr_code_hash: serialQrCodeHash,
+              condition: condition || "nuevo",
             })
             .select()
             .single()
@@ -181,9 +183,9 @@ export async function POST(request: Request) {
             .select(),
         )
       } else {
-        // For serialized product exit/adjustment, update existing serials and create movements
+        // For serialized product exit/adjustment/withdrawal
         for (const serialId of selected_serials) {
-          const newStatus = movement_type === "salida" ? "out_of_stock" : "in_repair" // Or other adjustment status
+          const newStatus = movement_type === "baja" ? "withdrawn" : movement_type === "salida" ? "out_of_stock" : "in_repair"
           serialUpdatePromises.push(
             supabase
               .from("internal_product_serials")

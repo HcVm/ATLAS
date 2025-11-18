@@ -3,26 +3,12 @@
 import type React from "react"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  ArrowLeft,
-  Trash,
-  Package,
-  ArrowUp,
-  ArrowDown,
-  RotateCcw,
-  User,
-  Search,
-  Check,
-  Loader2,
-  Eye,
-  PlusCircle,
-  FileText,
-} from "lucide-react"
+import { ArrowLeft, Trash, Package, ArrowUp, ArrowDown, RotateCcw, User, Search, Check, Loader2, Eye, PlusCircle, FileText } from 'lucide-react'
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -71,15 +57,16 @@ interface Department {
 interface SerializedProduct {
   id: string
   serial_number: string
-  status: "in_stock" | "out_of_stock" | "in_repair" | "discarded"
+  status: "in_stock" | "out_of_stock" | "in_repair" | "discarded" | "withdrawn"
   current_location: string | null
   product_id: string
+  condition?: "nuevo" | "usado"
 }
 
 interface Movement {
   id: string
   product_id: string
-  movement_type: "entrada" | "salida" | "ajuste"
+  movement_type: "entrada" | "salida" | "ajuste" | "baja"
   quantity: number
   cost_price: number
   total_amount: number
@@ -106,6 +93,7 @@ const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
   { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
   { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
+  { value: "baja", label: "Baja del Sistema", icon: Trash, color: "text-orange-600", bgColor: "bg-orange-50" },
 ]
 
 export default function InternalMovementsPage() {
@@ -137,6 +125,7 @@ export default function InternalMovementsPage() {
     movement_date: format(new Date(), "yyyy-MM-dd"),
     serials_to_process: "",
     selected_serials: [] as string[],
+    condition: "nuevo" as "nuevo" | "usado",
   })
 
   const [selectedProductModel, setSelectedProductModel] = useState<InternalProduct | null>(null)
@@ -156,7 +145,7 @@ export default function InternalMovementsPage() {
   useEffect(() => {
     if (
       selectedProductModel?.is_serialized &&
-      (formData.movement_type === "salida" || formData.movement_type === "ajuste")
+      (formData.movement_type === "salida" || formData.movement_type === "ajuste" || formData.movement_type === "baja")
     ) {
       fetchAvailableSerials(selectedProductModel.id)
     } else {
@@ -246,7 +235,7 @@ export default function InternalMovementsPage() {
     try {
       const { data, error } = await supabase
         .from("internal_product_serials")
-        .select("id, serial_number, status, current_location, product_id")
+        .select("id, serial_number, status, current_location, product_id, condition")
         .eq("product_id", productId)
         .eq("company_id", selectedCompany?.id)
         .eq("status", "in_stock")
@@ -273,6 +262,7 @@ export default function InternalMovementsPage() {
         quantity: selectedProductModel?.is_serialized ? 1 : 1,
         serials_to_process: "",
         selected_serials: [],
+        condition: "nuevo",
       }))
     }
   }
@@ -288,6 +278,7 @@ export default function InternalMovementsPage() {
         quantity: product.is_serialized ? 1 : 1,
         serials_to_process: "",
         selected_serials: [],
+        condition: "nuevo",
       }))
     } else {
       setFormData((prev) => ({
@@ -298,6 +289,7 @@ export default function InternalMovementsPage() {
         quantity: 1,
         serials_to_process: "",
         selected_serials: [],
+        condition: "nuevo",
       }))
     }
   }
@@ -323,6 +315,28 @@ export default function InternalMovementsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (formData.movement_type === "baja") {
+      const quantity = selectedProductModel?.is_serialized ? formData.selected_serials.length : formData.quantity
+      const itemDetails = `${quantity} ${selectedProductModel?.unit_of_measure}`
+      const productInfo = `${selectedProductModel?.name} (${selectedProductModel?.code})`
+      
+      // Show confirmation before proceeding
+      const confirmed = window.confirm(
+        `Confirmación de Baja del Sistema\n\n` +
+        `Estás a punto de dar de baja: ${itemDetails} de ${productInfo}\n\n` +
+        `Esta acción:\n` +
+        `- Disminuirá el stock disponible\n` +
+        `- Marcará los productos como retirados del sistema\n` +
+        `- Generará un movimiento de salida permanente\n\n` +
+        `¿Deseas continuar?`
+      )
+      
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsSubmitting(true)
 
     if (!selectedCompany?.id) {
@@ -370,6 +384,7 @@ export default function InternalMovementsPage() {
         selected_serials: serialsArray,
         total_amount: formData.quantity * formData.cost_price,
         department_requesting: selectedDepartmentName,
+        condition: formData.condition,
       }
 
       const response = await fetch("/api/internal-inventory-movements", {
@@ -385,7 +400,14 @@ export default function InternalMovementsPage() {
         throw new Error(errorData.error || "Error al registrar el movimiento.")
       }
 
-      toast.success("Movimiento registrado exitosamente. Los números de serie se generaron automáticamente.")
+      const successMessage = 
+        formData.movement_type === "baja" 
+          ? "Productos dados de baja exitosamente. El movimiento ha sido registrado."
+          : formData.movement_type === "entrada"
+          ? "Movimiento registrado exitosamente. Los números de serie se generaron automáticamente."
+          : "Movimiento registrado exitosamente."
+
+      toast.success(successMessage)
 
       clearInternalProductCache()
 
@@ -403,6 +425,7 @@ export default function InternalMovementsPage() {
         movement_date: format(new Date(), "yyyy-MM-dd"),
         serials_to_process: "",
         selected_serials: [],
+        condition: "nuevo",
       })
       setSelectedCategory(null)
       setSelectedProductModel(null)
@@ -613,6 +636,28 @@ export default function InternalMovementsPage() {
                   </Select>
                 </div>
 
+                {formData.movement_type === "entrada" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="condition">Estado del Producto</Label>
+                    <Select
+                      name="condition"
+                      value={formData.condition}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, condition: value as "nuevo" | "usado" }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nuevo">Nuevo</SelectItem>
+                        <SelectItem value="usado">Usado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Indica si los productos ingresados son nuevos o ya fueron utilizados.
+                    </p>
+                  </div>
+                )}
+
                 {selectedProductModel?.is_serialized ? (
                   <>
                     {formData.movement_type === "entrada" && (
@@ -633,9 +678,11 @@ export default function InternalMovementsPage() {
                       </div>
                     )}
 
-                    {(formData.movement_type === "salida" || formData.movement_type === "ajuste") && (
+                    {(formData.movement_type === "salida" || formData.movement_type === "ajuste" || formData.movement_type === "baja") && (
                       <div className="space-y-2">
-                        <Label htmlFor="selected_serials">Seleccionar Números de Serie</Label>
+                        <Label htmlFor="selected_serials">
+                          {formData.movement_type === "baja" ? "Seleccionar Números de Serie para Baja" : "Seleccionar Números de Serie"}
+                        </Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className="w-full justify-between bg-transparent">
@@ -676,7 +723,9 @@ export default function InternalMovementsPage() {
                   </>
                 ) : (
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">Cantidad</Label>
+                    <Label htmlFor="quantity">
+                      {formData.movement_type === "baja" ? "Cantidad para Baja" : "Cantidad"}
+                    </Label>
                     <Input
                       id="quantity"
                       name="quantity"
@@ -704,13 +753,19 @@ export default function InternalMovementsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reason">Motivo</Label>
+                  <Label htmlFor="reason">
+                    {formData.movement_type === "baja" ? "Motivo de la Baja" : "Motivo"}
+                  </Label>
                   <Input
                     id="reason"
                     name="reason"
                     value={formData.reason}
                     onChange={handleChange}
-                    placeholder="Ej: Venta, Consumo interno, Devolución, etc."
+                    placeholder={
+                      formData.movement_type === "baja" 
+                        ? "Ej: Consumido, Dañado, Vencido, etc."
+                        : "Ej: Venta, Consumo interno, Devolución, etc."
+                    }
                     required
                   />
                 </div>
@@ -737,26 +792,27 @@ export default function InternalMovementsPage() {
                   />
                 </div>
 
-                {/* Departamento Solicitante (usando Select) */}
-                <div className="space-y-2">
-                  <Label htmlFor="department_requesting_id">Departamento Solicitante (Opcional)</Label>
-                  <Select
-                    name="department_requesting_id"
-                    value={formData.department_requesting_id}
-                    onValueChange={(value) => handleSelectChange("department_requesting_id", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un departamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {formData.movement_type !== "baja" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="department_requesting_id">Departamento Solicitante (Opcional)</Label>
+                    <Select
+                      name="department_requesting_id"
+                      value={formData.department_requesting_id}
+                      onValueChange={(value) => handleSelectChange("department_requesting_id", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {formData.movement_type === "entrada" && !selectedProductModel?.is_serialized && (
                   <div className="space-y-2">
@@ -821,7 +877,7 @@ export default function InternalMovementsPage() {
                     <TableHead>Producto</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Cantidad</TableHead>
-                    <TableHead>N° Serie</TableHead>
+                    <TableHead>N° Serie / Seriales Generados</TableHead>
                     <TableHead>Motivo</TableHead>
                     <TableHead>Solicitante</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -831,6 +887,10 @@ export default function InternalMovementsPage() {
                   {movements.map((movement) => {
                     const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
                     const Icon = movementType?.icon || Package
+                    const generatedSerials = movement.movement_type === "entrada" && movement.notes
+                      ? movement.notes.split("Series generadas: ")[1]?.split(" - Series")[0] || ""
+                      : ""
+                    const displaySerial = generatedSerials || movement.internal_product_serials?.serial_number || "N/A"
                     return (
                       <TableRow key={movement.id}>
                         <TableCell>
@@ -856,7 +916,7 @@ export default function InternalMovementsPage() {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <span className={`font-medium ${movementType?.color}`}>
-                              {movement.movement_type === "salida" ? "-" : "+"}
+                              {movement.movement_type === "salida" || movement.movement_type === "baja" ? "-" : "+"}
                               {movement.quantity}
                             </span>
                             <span className="text-muted-foreground text-sm">
@@ -864,12 +924,19 @@ export default function InternalMovementsPage() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {movement.internal_products?.is_serialized ? (
-                            movement.internal_product_serials?.serial_number || "N/A"
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
+                        <TableCell className="max-w-[250px] truncate" title={displaySerial}>
+                          <div className="text-sm">
+                            {generatedSerials ? (
+                              <div className="space-y-1">
+                                <span className="text-xs text-muted-foreground">Generados:</span>
+                                <div className="text-xs font-mono">{displaySerial}</div>
+                              </div>
+                            ) : movement.internal_product_serials?.serial_number ? (
+                              <span className="font-mono">{displaySerial}</span>
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate" title={movement.reason}>
                           {movement.reason}

@@ -374,6 +374,29 @@ body {
     animation: atlixFloat 4s ease-in-out infinite;
   }
 
+
+  /* Tooltip que nunca se corta - agregar en globals.css */
+.group {
+  position: relative;
+}
+
+.group:hover > div[class*="absolute"] {
+  z-index: 9999 !important;
+}
+
+/* Asegura que las tablas no corten tooltips */
+.table-container,
+.overflow-auto,
+.rounded-md.border {
+  overflow: visible !important;
+}
+
+/* Opcional: si tienes scroll horizontal en la tabla, solo aplica visible al overflow-y */
+.rounded-md.border {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
   /* Clase de desintegración con duración exacta de 0.8s */
   .atlix-disintegrate {
     animation: atlixDisintegrate 0.8s ease-in-out forwards;
