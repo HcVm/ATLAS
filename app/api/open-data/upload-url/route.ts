@@ -1,96 +1,53 @@
-import { put } from '@vercel/blob';
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+// app/api/open-data/upload-url/route.ts
+// Alternative client-side upload endpoint using handleUpload(). Use this if you want to switch back to client-side.
 
-export async function POST(request: NextRequest): Promise<Response> {
+import { handleUpload, type HandleUploadBody } from '@vercel/blob';
+import { NextResponse } from 'next/server';
+
+export const runtime = 'edge'; // Optional: Use edge runtime for faster performance
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as HandleUploadBody;
+
   try {
-    // Verificar token de Blob
+    // Verify token
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error("❌ BLOB_READ_WRITE_TOKEN no está configurado");
-      return NextResponse.json(
-        { error: "Token de Blob no configurado" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Token de Blob no configurado' }, { status: 500 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const acuerdoMarco = formData.get('acuerdoMarco') as string;
-    
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
+    const blob = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname /*, clientPayload */) => {
+        // Add auth if needed (e.g., check user session)
+        // Example: const { user } = await getSession(); if (!user) throw new Error('Unauthorized');
 
-    if (!acuerdoMarco) {
-      return NextResponse.json({ error: "Acuerdo marco is required" }, { status: 400 });
-    }
+        const allowedTypes = [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+          'text/csv',
+          'application/csv',
+        ];
 
-    console.log("📁 Archivo recibido:", file.name, file.type, file.size);
-
-    // Validar tipo de archivo
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'text/csv',
-      'application/csv'
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: `Tipo de archivo no permitido: ${file.type}` },
-        { status: 400 }
-      );
-    }
-
-    // Validar tamaño (50MB máximo)
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: `Archivo demasiado grande. Máximo: ${maxSize / (1024 * 1024)}MB` },
-        { status: 400 }
-      );
-    }
-
-    // Generar nombre único para evitar conflictos
-    const timestamp = Date.now();
-    const codigoAcuerdo = acuerdoMarco.split(' ')[0];
-    const fileName = `${codigoAcuerdo}-${timestamp}-${file.name}`;
-
-    console.log("🔄 Subiendo archivo a Vercel Blob...");
-
-    // Subir usando put directamente
-    const blob = await put(fileName, file, {
-      access: 'public',
+        return {
+          addRandomSuffix: true,
+          allowedContentTypes: allowedTypes,
+          maximumSizeInBytes: 100 * 1024 * 1024, // 100MB
+          tokenPayload: JSON.stringify({ /* optional metadata */ }),
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        console.log('Upload completed:', blob.url);
+        // Optional: Trigger processing or log
+      },
     });
 
-    console.log("✅ Upload completed:", blob.url);
-
-    return NextResponse.json({
-      success: true,
-      url: blob.url,
-      pathname: blob.pathname,
-      contentType: file.type,
-      size: file.size,
-      originalName: file.name,
-    });
-
+    return NextResponse.json(blob);
   } catch (error) {
-    console.error("❌ Upload error:", error);
-    
-    if (error instanceof Error) {
-      if (error.message.includes("token")) {
-        return NextResponse.json(
-          { error: "Error de autenticación con Vercel Blob. Verifica tu BLOB_READ_WRITE_TOKEN." },
-          { status: 401 }
-        );
-      }
-      
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    
+    console.error('Error in handleUpload:', error);
     return NextResponse.json(
-      { error: "Error desconocido en la subida" },
-      { status: 500 }
+      { error: (error as { message: string }).message },
+      { status: 400 },
     );
   }
 }
