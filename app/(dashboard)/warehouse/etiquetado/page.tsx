@@ -14,7 +14,7 @@ import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import JsBarcode from "jsbarcode"
 import QRCode from "qrcode"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SaleStickersSection } from "./sale-stickers-section"
 import { SeriesFilterModal } from "@/components/warehouse/series-filter-modal"
 
@@ -221,21 +221,22 @@ export default function EtiquetadoPage() {
   }
 
   const areAllSeriesDeliveredOrSold = (sale: SaleWithLots): boolean => {
+    // "in_inventory" and "sold" status should allow sticker generation
     let totalSerials = 0
-    let deliveredOrSoldSerials = 0
+    let deliveredSerials = 0
 
     for (const item of sale.sale_items) {
       for (const lot of item.product_lots) {
         for (const serial of lot.product_serials) {
           totalSerials++
-          if (serial.status === "delivered" || serial.status === "sold") {
-            deliveredOrSoldSerials++
+          if (serial.status === "delivered") {
+            deliveredSerials++
           }
         }
       }
     }
 
-    return totalSerials > 0 && totalSerials === deliveredOrSoldSerials
+    return totalSerials > 0 && totalSerials === deliveredSerials
   }
 
   const generateBarcodesForSale = async (sale: SaleWithLots) => {
@@ -243,17 +244,18 @@ export default function EtiquetadoPage() {
       toast({
         title: "No se pueden generar stickers",
         description:
-          "Todas las series de esta venta ya están entregadas o vendidas. No es posible generar stickers duplicados.",
+          "Todas las series de esta venta ya están entregadas. No es posible generar stickers duplicados.",
         variant: "destructive",
       })
       return
     }
 
+    // "in_inventory" and "sold" status can generate stickers
     const allSerials: string[] = []
     for (const item of sale.sale_items) {
       for (const lot of item.product_lots) {
         for (const serial of lot.product_serials) {
-          if (serial.status !== "delivered" && serial.status !== "sold") {
+          if (serial.status !== "delivered") {
             allSerials.push(serial.serial_number)
           }
         }
@@ -306,7 +308,7 @@ export default function EtiquetadoPage() {
               continue
             }
 
-            if (serial.status === "delivered" || serial.status === "sold") {
+            if (serial.status === "delivered") {
               continue
             }
 
