@@ -440,8 +440,8 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar className="glass-sidebar border-r border-slate-200/50 dark:border-slate-700/50">
-      <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20">
+    <Sidebar className="glass-sidebar border-r border-slate-200/50 dark:border-slate-700/50 flex flex-col h-screen">
+      <SidebarHeader className="shrink-0 p-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20">
         <div className="sidebar-header-glass rounded-xl p-4">
           <div className="flex items-center gap-2 justify-center">
             <div className="flex h-24 w-28 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
@@ -458,7 +458,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 pb-20 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+      <SidebarContent className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent hover:scrollbar-thumb-slate-400 dark:hover:scrollbar-thumb-slate-600">
         {user.role ? (
           <>
             {Object.entries(menuSections).map(([sectionKey, section]) => {
@@ -535,7 +535,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 z-20 shadow-lg">
+      <SidebarFooter className="shrink-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 z-20 shadow-lg">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider">
             USUARIO
