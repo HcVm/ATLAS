@@ -1,44 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname } from 'next/navigation'
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import {
-  LayoutDashboard,
-  FileText,
-  Plus,
-  Bell,
-  BarChart3,
-  Users,
-  Building2,
-  Newspaper,
-  User,
-  Settings,
-  LogOut,
-  AlertTriangle,
-  MapPin,
-  Package,
-  PackageOpen,
-  Activity,
-  Box,
-  ClipboardList,
-  Headphones,
-  ShoppingCart,
-  CalendarDays,
-  BookText,
-  Database,
-  CheckSquare,
-  Eye,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  FileCheck,
-  UserCheck,
-  Barcode,
-  Wrench,
-  DollarSign,
-} from "lucide-react"
+import { LayoutDashboard, FileText, Plus, Bell, BarChart3, Users, Building2, Newspaper, User, Settings, LogOut, AlertTriangle, MapPin, Package, PackageOpen, Activity, Box, ClipboardList, Headphones, ShoppingCart, CalendarDays, BookText, Database, CheckSquare, Eye, ChevronDown, ChevronRight, Clock, FileCheck, UserCheck, Barcode, Wrench, DollarSign } from 'lucide-react'
 
 import {
   Sidebar,
@@ -474,8 +440,8 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar className="glass-sidebar">
-      <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50">
+    <Sidebar className="glass-sidebar border-r border-slate-200/50 dark:border-slate-700/50">
+      <SidebarHeader className="p-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20">
         <div className="sidebar-header-glass rounded-xl p-4">
           <div className="flex items-center gap-2 justify-center">
             <div className="flex h-24 w-28 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
@@ -492,7 +458,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 pb-20 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
         {user.role ? (
           <>
             {Object.entries(menuSections).map(([sectionKey, section]) => {
@@ -507,12 +473,12 @@ export function AppSidebar() {
                 <Collapsible key={sectionKey} open={isExpanded} onOpenChange={() => toggleSection(sectionKey)}>
                   <SidebarGroup className="py-2">
                     <CollapsibleTrigger asChild>
-                      <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200 flex items-center justify-between group">
-                        <span>{section.title}</span>
+                      <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200 flex items-center justify-between group h-auto min-h-[2rem]">
+                        <span className="truncate leading-tight">{section.title}</span>
                         {isExpanded ? (
-                          <ChevronDown className="h-3 w-3 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                          <ChevronDown className="h-3 w-3 shrink-0 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
                         ) : (
-                          <ChevronRight className="h-3 w-3 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                          <ChevronRight className="h-3 w-3 shrink-0 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
                         )}
                       </SidebarGroupLabel>
                     </CollapsibleTrigger>
@@ -531,7 +497,7 @@ export function AppSidebar() {
                                   }`}
                                 >
                                   <div
-                                    className={`flex h-8 w-8 items-center justify-center rounded-md transition-all duration-300 ${
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
                                       pathname === item.url
                                         ? "bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200"
                                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-slate-700 dark:group-hover:text-slate-200"
@@ -539,7 +505,7 @@ export function AppSidebar() {
                                   >
                                     <item.icon className="h-4 w-4" />
                                   </div>
-                                  <span className="font-medium transition-colors duration-300">{item.title}</span>
+                                  <span className="font-medium transition-colors duration-300 truncate">{item.title}</span>
                                   {item.title === "Notificaciones" && (
                                     <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 dark:bg-slate-600 text-[10px] font-medium text-white shadow-sm">
                                       <Bell className="h-3 w-3" />
@@ -569,9 +535,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarSeparator className="bg-slate-200/50 dark:bg-slate-700/50" />
-
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 z-20 shadow-lg">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider">
             USUARIO
@@ -613,9 +577,9 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {user && (
-          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50 dark:border-slate-700/50">
+          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 ring-2 ring-slate-200 dark:ring-slate-700">
+              <Avatar className="h-10 w-10 ring-2 ring-slate-200 dark:ring-slate-700 shrink-0">
                 <AvatarImage src={user.avatar_url || ""} />
                 <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold">
                   {user.full_name
@@ -625,12 +589,12 @@ export function AppSidebar() {
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">{user.full_name}</p>
                 <div className="flex items-center gap-1">
                   <Badge
                     variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
-                    className={`text-xs px-2 py-0 h-5 ${
+                    className={`text-xs px-2 py-0 h-5 truncate max-w-full ${
                       user.role === "admin"
                         ? "bg-slate-700 dark:bg-slate-600 text-white"
                         : user.role === "supervisor"
