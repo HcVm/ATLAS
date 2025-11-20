@@ -823,9 +823,9 @@ export function AttendanceWidget() {
 
   return (
     <Card className="shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden relative group hover:shadow-slate-500/20 transition-all duration-500 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-200/30 via-slate-100/20 to-slate-300/30 dark:from-slate-700/30 dark:via-slate-800/20 dark:to-slate-600/30" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.15),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(100,116,139,0.15),transparent_50%)]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-200/30 via-slate-100/20 to-slate-300/30 dark:from-slate-700/30 dark:via-slate-800/20 dark:to-slate-600/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.15),transparent_50%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(100,116,139,0.15),transparent_50%)] pointer-events-none" />
 
       <CardHeader className="pb-4 relative z-10">
         <div className="flex items-center justify-between">

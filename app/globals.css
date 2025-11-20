@@ -379,11 +379,6 @@ body {
 .group {
   position: relative;
 }
-
-.group:hover > div[class*="absolute"] {
-  z-index: 9999 !important;
-}
-
 /* Asegura que las tablas no corten tooltips */
 .table-container,
 .overflow-auto,
