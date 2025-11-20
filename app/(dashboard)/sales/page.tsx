@@ -27,6 +27,7 @@ import {
   Users,
   Hash,
   Loader2,
+  FileCheck
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -1213,9 +1214,12 @@ export default function SalesPage() {
                     className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex justify-between items-start gap-4 mb-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold truncate" title={sale.entity_name}>
+                      <div className="flex justify-between items-start gap-3 mb-3">
+                        <div className="flex-1 min-w-0"> 
+                          <p 
+                            className="text-sm font-semibold line-clamp-2 break-words" 
+                            title={sale.entity_name}
+                          >
                             {sale.entity_name}
                           </p>
                           <p className="text-sm text-muted-foreground">Venta #{sale.sale_number || "N/A"}</p>
@@ -1223,19 +1227,21 @@ export default function SalesPage() {
                             <p className="text-xs text-muted-foreground">Por: {sale.profiles?.full_name || "N/A"}</p>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
                           {renderStatusBadge(sale.sale_status)}
                           {renderVoucherStatus(sale.payment_vouchers || [])}
                         </div>
                       </div>
-                      <div className="text-sm text-muted-foreground my-3">
-                        <p className="font-medium text-foreground truncate" title={sale.display_product_name}>
+
+                      <div className="text-sm text-muted-foreground mb-3">
+                        <p className="font-medium text-foreground line-clamp-2" title={sale.display_product_name}>
                           {sale.display_product_name}
                         </p>
                         {sale.is_multi_product && <p className="text-xs">y {sale.total_items - 1} más</p>}
                       </div>
                     </div>
                     <div className="border-t pt-3 mt-3">
+                      {/* Fecha + Monto (lo dejamos igual) */}
                       <div className="flex justify-between items-center text-sm mb-3">
                         <span className="text-muted-foreground">
                           {format(new Date(sale.sale_date), "dd MMM yy", { locale: es })}
@@ -1244,81 +1250,107 @@ export default function SalesPage() {
                           S/ {sale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 w-full mb-2">
+
+                      {/* Botones principales siempre visibles (Detalles y Editar) con texto en sm+, solo icono en móvil */}
+                      <div className="grid grid-cols-2 gap-2 mb-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full bg-transparent"
+                          className="w-full"
                           onClick={() => handleViewDetails(sale)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Detalles
+                          <Eye className="h-4 w-4 mr-2 sm:mr-1.5" />
+                          <span className="hidden sm:inline">Detalles</span>
                         </Button>
+
                         {canEditSales && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full bg-transparent"
+                            className="w-full"
                             onClick={() => handleEditSale(sale)}
                             disabled={!canViewAllSales && sale.created_by !== user?.id}
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
+                            <Edit className="h-4 w-4 mr-2 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Editar</span>
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-4 gap-2 w-full">
+
+                      {/* Resto de acciones → solo iconos + tooltip (se ve perfecto en móvil) */}
+                      <div className="flex flex-wrap justify-center gap-2.5">
                         {canEditSales && (
                           <Button
                             variant="outline"
-                            size="sm"
-                            className="w-full bg-transparent"
+                            size="icon"
+                            className="h-9 w-9"
                             onClick={() => handleStatusChange(sale)}
-                            disabled={!canViewAllSales && sale.created_by !== user?.id}
+                            title="Cambiar estado"
                           >
-                            <Badge className="h-4 w-4 mr-1" />
-                            Estado
+                            <Badge className="h-4 w-4" />
                           </Button>
                         )}
+
+                        {!isAcuerdosMarco && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => handleVoucherDialog(sale)}
+                            title="Comprobante"
+                          >
+                            <Receipt className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        {/* Garantía y CCI */}
                         {!isAcuerdosMarco && (
                           <>
                             <Button
                               variant="outline"
-                              size="sm"
-                              className="w-full bg-transparent text-blue-600 hover:bg-blue-50"
-                              onClick={() => handleVoucherDialog(sale)}
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => handleGenerateWarrantyLetter(sale)}
+                              title="Carta de Garantía"
                             >
-                              <Receipt className="h-4 w-4 mr-1" />
-                              Comp.
+                              <FileText className="h-4 w-4" />
                             </Button>
-                            <ConditionalLetterButtons
-                              entityId={sale.entity_id}
-                              onGenerateWarranty={() => handleGenerateWarrantyLetter(sale)}
-                              onGenerateCCI={() => handleGenerateCCILetter(sale)}
-                              variant="buttons"
-                              size="sm"
-                            />
+
+                            {/* Solo mostramos CCI si el cliente es gobierno */}
+                            {/* (ConditionalLetterButtons ya lo controla internamente, pero como ahora es solo icono, lo manejamos directo) */}
+                            {/* Alternativa simple: */}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => handleGenerateCCILetter(sale)}
+                              title="Carta CCI"
+                            >
+                              <FileCheck className="h-4 w-4" />
+                            </Button>
                           </>
                         )}
+
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent text-purple-600 hover:bg-purple-50"
+                          size="icon"
+                          className="h-9 w-9"
                           onClick={() => handleViewLots(sale)}
+                          title="Lotes y series"
                         >
-                          <Package className="h-4 w-4 mr-1" />
-                          Lotes
+                          <Package className="h-4 w-4" />
                         </Button>
+
                         {canGenerateLots && (
                           <Button
                             variant="outline"
-                            size="sm"
-                            className="w-full bg-transparent text-indigo-600 hover:bg-indigo-50"
+                            size="icon"
+                            className="h-9 w-9"
                             onClick={() => handleGenerateLots(sale)}
                             disabled={generatingLots}
+                            title="Generar lotes"
                           >
-                            <Hash className="h-4 w-4 mr-1" />
-                            Gen. Lotes
+                            <Hash className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

@@ -882,9 +882,8 @@ export default function QuotationsPage() {
                 />
               </div>
             </div>
-
-            {/* Quotations Table */}
-            <div className="rounded-md border border-border overflow-x-auto">
+            {/* Desktop Table - Solo se ve en lg+ */}
+            <div className="hidden lg:block rounded-md border border-border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 border-border">
@@ -1110,6 +1109,192 @@ export default function QuotationsPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            {/* Mobile Cards - NUEVA VISTA MÓVIL */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+              {filteredQuotations.length === 0 ? (
+                <div className="col-span-2 text-center py-12 text-muted-foreground">
+                  {searchTerm
+                    ? "No se encontraron cotizaciones que coincidan"
+                    : "No hay cotizaciones registradas"}
+                </div>
+              ) : (
+                filteredQuotations.map((quotation) => {
+                  const displayData = getQuotationDisplayData(quotation)
+                  const hasRoute = quotation.route_distance_km && quotation.route_distance_km > 0
+
+                  return (
+                    <div
+                      key={quotation.id}
+                      className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Cliente + Estado */}
+                        <div className="flex justify-between items-start gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold line-clamp-2 break-words" title={quotation.entity_name}>
+                              {quotation.entity_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              #{quotation.quotation_number || quotation.id.slice(0, 8)}
+                            </p>
+                            {canViewAllQuotations && quotation.profiles?.full_name && (
+                              <p className="text-xs text-muted-foreground">
+                                Por: {quotation.profiles.full_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            {getStatusBadge(quotation.status)}
+                            {hasRoute && (
+                              <div className="flex items-center gap-1">
+                                <Route className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-xs font-medium text-green-600">
+                                  {quotation.route_distance_km.toFixed(0)} km
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Producto */}
+                        <p className="text-sm font-medium text-foreground line-clamp-2 mb-2">
+                          {displayData.productDescription}
+                        </p>
+                      </div>
+
+                      <div className="border-t pt-3 mt-3">
+                        {/* Fecha + Total */}
+                        <div className="flex justify-between items-center text-sm mb-3">
+                          <span className="text-muted-foreground">
+                            {format(new Date(quotation.quotation_date), "dd MMM yy", { locale: es })}
+                          </span>
+                          <span className="font-bold text-base text-foreground">
+                            S/ {displayData.totalAmount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+
+                        {/* Botones principales con texto */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              setSelectedQuotation(quotation)
+                              setShowDetailsDialog(true)
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Detalles</span>
+                          </Button>
+
+                          {((quotation.status === "draft" && quotation.created_by === user?.id) ||
+                            (quotation.status === "sent" &&
+                              (user?.departments?.name === "Jefatura de Ventas" ||
+                                user?.role === "admin" ||
+                                user?.role === "supervisor"))) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                setEditingQuotationContent(quotation)
+                                setShowEditContentDialog(true)
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2 sm:mr-1.5" />
+                              <span className="hidden sm:inline">Editar</span>
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Acciones secundarias → solo iconos */}
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {/* Cambiar estado */}
+                          {(canViewAllQuotations || quotation.created_by === user?.id) && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => {
+                                setEditingQuotation(quotation)
+                                setNewStatus(quotation.status)
+                                setShowEditStatusDialog(true)
+                              }}
+                              title="Cambiar estado"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {/* PDFs */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon" className="h-9 w-9" title="Generar PDF">
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="center" className="bg-popover border-border">
+                              {selectedCompany && quotation.sales_entities?.client_type === "government" ? (
+                                selectedCompany.code === "ARM" ? (
+                                  <DropdownMenuItem asChild>
+                                    <ARMEntityQuotationPDFGenerator
+                                      quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem asChild>
+                                    <EntityQuotationPDFGenerator
+                                      quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                )
+                              ) : selectedCompany.code === "ARM" ? (
+                                <DropdownMenuItem asChild>
+                                  <ARMPrivateQuotationPDFGenerator
+                                    quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                    companyInfo={selectedCompany}
+                                  />
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem asChild>
+                                  <PrivateQuotationPDFGenerator
+                                    quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                    companyInfo={selectedCompany}
+                                  />
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem asChild>
+                                <QuotationPDFGenerator quotation={quotation} companyInfo={selectedCompany} />
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {/* Eliminar (solo borrador/rechazada) */}
+                          {(quotation.status === "draft" || quotation.status === "rejected") &&
+                            (quotation.created_by === user?.id || canViewAllQuotations) && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => {
+                                  setQuotationToDelete(quotation)
+                                  setShowDeleteDialog(true)
+                                }}
+                                title="Eliminar cotización"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </CardContent>
         </Card>
