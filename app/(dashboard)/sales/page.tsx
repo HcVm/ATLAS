@@ -27,7 +27,7 @@ import {
   Users,
   Hash,
   Loader2,
-  FileCheck
+  FileCheck,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -848,8 +848,11 @@ export default function SalesPage() {
               ? "destructive"
               : status === "firmado"
                 ? "outline"
-                : "outline"
+                : status === "rechazada" // Added 'rechazada' status
+                  ? "destructive"
+                  : "outline"
       }
+      className={status === "rechazada" ? "bg-red-600 text-white border-red-600" : ""} // Added className for 'rechazada'
     >
       {status?.toUpperCase() || "PENDIENTE"}
     </Badge>
@@ -1215,11 +1218,8 @@ export default function SalesPage() {
                   >
                     <div>
                       <div className="flex justify-between items-start gap-3 mb-3">
-                        <div className="flex-1 min-w-0"> 
-                          <p 
-                            className="text-sm font-semibold line-clamp-2 break-words" 
-                            title={sale.entity_name}
-                          >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold line-clamp-2 break-words" title={sale.entity_name}>
                             {sale.entity_name}
                           </p>
                           <p className="text-sm text-muted-foreground">Venta #{sale.sale_number || "N/A"}</p>
@@ -1256,7 +1256,7 @@ export default function SalesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full"
+                          className="w-full bg-transparent"
                           onClick={() => handleViewDetails(sale)}
                         >
                           <Eye className="h-4 w-4 mr-2 sm:mr-1.5" />
@@ -1267,7 +1267,7 @@ export default function SalesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full"
+                            className="w-full bg-transparent"
                             onClick={() => handleEditSale(sale)}
                             disabled={!canViewAllSales && sale.created_by !== user?.id}
                           >
@@ -1283,7 +1283,7 @@ export default function SalesPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9"
+                            className="h-9 w-9 bg-transparent"
                             onClick={() => handleStatusChange(sale)}
                             title="Cambiar estado"
                           >
@@ -1295,7 +1295,7 @@ export default function SalesPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9"
+                            className="h-9 w-9 bg-transparent"
                             onClick={() => handleVoucherDialog(sale)}
                             title="Comprobante"
                           >
@@ -1309,7 +1309,7 @@ export default function SalesPage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-9 w-9"
+                              className="h-9 w-9 bg-transparent"
                               onClick={() => handleGenerateWarrantyLetter(sale)}
                               title="Carta de Garantía"
                             >
@@ -1322,7 +1322,7 @@ export default function SalesPage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-9 w-9"
+                              className="h-9 w-9 bg-transparent"
                               onClick={() => handleGenerateCCILetter(sale)}
                               title="Carta CCI"
                             >
@@ -1334,7 +1334,7 @@ export default function SalesPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-9 w-9"
+                          className="h-9 w-9 bg-transparent"
                           onClick={() => handleViewLots(sale)}
                           title="Lotes y series"
                         >
@@ -1345,7 +1345,7 @@ export default function SalesPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9"
+                            className="h-9 w-9 bg-transparent"
                             onClick={() => handleGenerateLots(sale)}
                             disabled={generatingLots}
                             title="Generar lotes"
@@ -1603,7 +1603,7 @@ export default function SalesPage() {
                           {selectedSale.total_quantity.toLocaleString()}
                         </p>
                       </div>
-                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 dark:border-700">
                         <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">Precio Unit.</p>
                         <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
                           S/{" "}
@@ -1790,6 +1790,17 @@ export default function SalesPage() {
                       FIRMADO
                     </Badge>
                     Firmado
+                  </Button>
+                  {/* Added button for 'rechazada' status */}
+                  <Button
+                    variant={statusSale.sale_status === "rechazada" ? "default" : "outline"}
+                    onClick={() => handleStatusUpdate("rechazada")}
+                    className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Badge variant="destructive" className="mr-2 bg-red-600 text-white">
+                      RECHAZADA
+                    </Badge>
+                    Rechazada (Cancela el delivery)
                   </Button>
                   {/* End of CHANGE */}
                 </div>

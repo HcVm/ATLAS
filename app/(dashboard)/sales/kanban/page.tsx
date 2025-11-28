@@ -37,6 +37,7 @@ import {
   Maximize2,
   FileCheck,
   History,
+  XCircle,
 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { DeliveryAttachments } from "@/components/deliveries/delivery-attachments"
@@ -159,6 +160,13 @@ const KANBAN_COLUMNS: Omit<KanbanColumn, "deliveries">[] = [
     color: "bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700",
     icon: FileCheck,
   },
+  {
+    id: "cancelado",
+    title: "Cancelado",
+    deliveryStatus: "cancelled",
+    color: "bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700",
+    icon: XCircle,
+  },
 ]
 
 const DeliveryDetailsDialog = memo(
@@ -188,6 +196,7 @@ const DeliveryDetailsDialog = memo(
         shipped: "Enviado",
         delivered: "Entregado",
         signed_guide: "Guía Firmada",
+        cancelled: "Cancelado", // Added cancelled status
       }
       return map[status] || status
     }
@@ -199,6 +208,7 @@ const DeliveryDetailsDialog = memo(
         shipped: "bg-purple-100 text-purple-800",
         delivered: "bg-green-100 text-green-800",
         signed_guide: "bg-emerald-100 text-emerald-800",
+        cancelled: "bg-red-100 text-red-800", // Added cancelled status color
       }
       return map[status] || "bg-gray-100 text-gray-800"
     }
@@ -346,7 +356,9 @@ const DeliveryDetailsDialog = memo(
                     className={
                       delivery.delivery_status === "signed_guide"
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                        : ""
+                        : delivery.delivery_status === "cancelled"
+                          ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" // Added cancelled badge color
+                          : ""
                     }
                   >
                     {delivery.delivery_status}
@@ -448,6 +460,7 @@ const DeliveryCard = memo(
   }) => {
     const isDelivered = delivery.delivery_status === "delivered"
     const isSignedGuide = delivery.delivery_status === "signed_guide"
+    const isCancelled = delivery.delivery_status === "cancelled" // Check for cancelled status
 
     const parseDate = (dateString: string) => {
       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -456,6 +469,12 @@ const DeliveryCard = memo(
       }
       return new Date(dateString)
     }
+
+    const cardColorClass = isCancelled
+      ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" // Red color for cancelled
+      : isSignedGuide
+        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+        : ""
 
     const cardContent = (provided?: any, snapshot?: any) => (
       <div
@@ -466,12 +485,12 @@ const DeliveryCard = memo(
           snapshot?.isDragging
             ? "shadow-2xl scale-105 z-50 bg-background/95 backdrop-blur-sm border-primary/50"
             : "hover:shadow-lg hover:scale-[1.02]"
-        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${
-          isSignedGuide ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : ""
-        } ${isDelivered && !isSignedGuide ? "p-2 sm:p-3" : "p-3 sm:p-4"}`}
+        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${cardColorClass} ${
+          isDelivered && !isSignedGuide ? "p-2 sm:p-3" : "p-3 sm:p-4"
+        }`}
         style={provided?.draggableProps?.style}
       >
-        {isDelivered || isSignedGuide ? (
+        {isDelivered || isSignedGuide || isCancelled ? ( // Apply this style for delivered, signed_guide, and cancelled
           <div className="space-y-1.5 sm:space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
@@ -484,7 +503,11 @@ const DeliveryCard = memo(
                 <Badge
                   variant="secondary"
                   className={
-                    isSignedGuide ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200" : ""
+                    isSignedGuide
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                      : isCancelled
+                        ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" // Cancelled badge
+                        : ""
                   }
                 >
                   {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
@@ -521,7 +544,7 @@ const DeliveryCard = memo(
               </div>
               {delivery.actual_delivery_date && (
                 <div
-                  className={`text-[10px] sm:text-xs font-medium ${isSignedGuide ? "text-emerald-600" : "text-green-600"}`}
+                  className={`text-[10px] sm:text-xs font-medium ${isSignedGuide ? "text-emerald-600" : isCancelled ? "text-red-600" : "text-green-600"}`}
                 >
                   {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
                 </div>
@@ -536,7 +559,7 @@ const DeliveryCard = memo(
                 </span>
               </div>
             )}
-          </div>
+          </div> // Style for other statuses
         ) : (
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-start justify-between gap-2">
@@ -722,14 +745,18 @@ const DeliveryCard = memo(
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {KANBAN_COLUMNS.map((col) => (
-                      <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
-                        <div className="flex items-center gap-2">
-                          <col.icon className="h-3 w-3" />
-                          {col.title}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {KANBAN_COLUMNS.filter((col) => col.deliveryStatus !== "cancelled").map(
+                      (
+                        col, // Exclude cancelled from move options
+                      ) => (
+                        <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <col.icon className="h-3 w-3" />
+                            {col.title}
+                          </div>
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -741,7 +768,12 @@ const DeliveryCard = memo(
 
     if (isDraggable) {
       return (
-        <Draggable key={delivery.id} draggableId={delivery.id} index={index} isDragDisabled={!canEditDeliveryStatus}>
+        <Draggable
+          key={delivery.id}
+          draggableId={delivery.id}
+          index={index}
+          isDragDisabled={!canEditDeliveryStatus || delivery.delivery_status === "cancelled"}
+        >
           {(provided, snapshot) => cardContent(provided, snapshot)}
         </Draggable>
       )
@@ -1007,8 +1039,9 @@ export default function SalesKanbanPage() {
       const delivery = columns.flatMap((c) => c.deliveries).find((d) => d.id === draggableId)
       if (!delivery) return
 
-      if (delivery.delivery_status === "signed_guide") {
-        toast.error("No se puede mover una entrega con guía firmada")
+      // Prevent moving if the delivery is already 'signed_guide' or 'cancelled'
+      if (delivery.delivery_status === "signed_guide" || delivery.delivery_status === "cancelled") {
+        toast.error(`No se puede mover una entrega con estado "${delivery.delivery_status}"`)
         return
       }
 
@@ -1060,6 +1093,9 @@ export default function SalesKanbanPage() {
 
         if (destColumnInfo.deliveryStatus === "delivered" || destColumnInfo.deliveryStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
+        } else if (destColumnInfo.deliveryStatus === "cancelled") {
+          // If moving to cancelled, reset actual_delivery_date if it exists
+          updateData.actual_delivery_date = null
         }
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
@@ -1093,7 +1129,7 @@ export default function SalesKanbanPage() {
           }
         }
 
-        // Registrar en historial
+        // Register in history
         const { error: historyError } = await supabase.from("delivery_status_history").insert({
           delivery_id: draggableId,
           previous_status: delivery.delivery_status,
@@ -1194,6 +1230,16 @@ export default function SalesKanbanPage() {
         return
       }
 
+      if (oldStatus === "cancelled") {
+        toast.error("No se puede mover una entrega cancelada")
+        return
+      }
+
+      if (newStatus === "cancelled" && (oldStatus === "delivered" || oldStatus === "signed_guide")) {
+        toast.error("No se puede cancelar una entrega que ya fue entregada o tiene guía firmada")
+        return
+      }
+
       const originalColumns = columns
 
       setColumns((prevColumns) => {
@@ -1238,6 +1284,9 @@ export default function SalesKanbanPage() {
 
         if (newStatus === "delivered" || newStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
+        } else if (newStatus === "cancelled") {
+          // If moving to cancelled, reset actual_delivery_date if it exists
+          updateData.actual_delivery_date = null
         }
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
@@ -1266,7 +1315,7 @@ export default function SalesKanbanPage() {
               .single()
 
             if (collectionError) {
-              // Si el registro ya existe, no es un error crítico
+              // If the record already exists, it's not a critical error
               console.warn("No se pudo crear el registro de cobranzas:", collectionError)
             }
           }
@@ -1444,13 +1493,16 @@ export default function SalesKanbanPage() {
                   </Badge>
                 </div>
 
-                <Droppable droppableId={column.id} isDropDisabled={!canEditDeliveryStatus}>
+                <Droppable
+                  droppableId={column.id}
+                  isDropDisabled={!canEditDeliveryStatus || column.deliveryStatus === "cancelled"}
+                >
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`min-h-[400px] space-y-2 transition-all duration-200 ease-out rounded-lg ${
-                        snapshot.isDraggingOver && canEditDeliveryStatus
+                        snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
                           ? "bg-primary/5 border-2 border-dashed border-primary/30 p-2"
                           : ""
                       } ${isDragging && canEditDeliveryStatus ? "bg-muted/30" : ""}`}
@@ -1473,12 +1525,12 @@ export default function SalesKanbanPage() {
                       {column.deliveries.length === 0 && (
                         <div
                           className={`flex items-center justify-center h-32 text-muted-foreground text-sm border-2 border-dashed rounded-lg transition-all duration-200 ${
-                            snapshot.isDraggingOver && canEditDeliveryStatus
+                            snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
                               ? "border-primary/50 bg-primary/5 text-primary"
                               : "border-muted"
                           }`}
                         >
-                          {snapshot.isDraggingOver && canEditDeliveryStatus
+                          {snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
                             ? "Suelta aquí para cambiar estado"
                             : "No hay entregas en esta etapa"}
                         </div>
@@ -1589,6 +1641,7 @@ export default function SalesKanbanPage() {
           </p>
           <p>
             • <strong>Permisos:</strong> Solo supervisores y administradores pueden mover las tarjetas entre estados
+            (excepto a "Cancelado")
           </p>
           <p>
             • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking, notas, subir
@@ -1611,6 +1664,9 @@ export default function SalesKanbanPage() {
           </p>
           <p>
             • <strong>Guía Firmada:</strong> Entregas con guía firmada (venta exitosa con fondo verde tenuo)
+          </p>
+          <p>
+            • <strong>Cancelado:</strong> Entregas que fueron canceladas (fondo rojo tenuo)
           </p>
         </CardContent>
       </Card>

@@ -457,6 +457,7 @@ export default function SaleEditForm({ sale, onSuccess, onCancel }: SaleEditForm
                 <SelectItem value="devengado">Devengado</SelectItem>
                 <SelectItem value="girado">Girado</SelectItem>
                 <SelectItem value="firmado">Firmado</SelectItem>
+                <SelectItem value="rechazada">Rechazada</SelectItem>
               </SelectContent>
             </Select>
           </div>
