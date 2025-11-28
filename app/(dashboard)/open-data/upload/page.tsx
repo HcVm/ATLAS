@@ -1,6 +1,5 @@
 "use client"
 import type React from "react"
-import { upload } from "@vercel/blob/client"
 import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,19 +16,34 @@ import { toast } from "sonner"
 
 const ACUERDOS_MARCO = [
   {
-    codigo: "EXT-CE-2024-11",
+    codigo: "EXT-CE-2025-11",
     nombre: "MOBILIARIO EN GENERAL",
     descripcion: "Acuerdo marco para la adquisición de mobiliario en general",
+    status: "active",
+  },
+  {
+    codigo: "EXT-CE-2024-12",
+    nombre: "TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL",
+    descripcion: "Acuerdo marco para tuberías, pinturas, cerámicos, sanitarios, accesorios y complementos",
+    status: "active",
+  },
+  {
+    codigo: "EXT-CE-2024-3",
+    nombre: "MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA",
+    descripcion: "Acuerdo marco para materiales e insumos de limpieza",
+    status: "active",
   },
   {
     codigo: "EXT-CE-2024-16",
     nombre: "ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS",
     descripcion: "Acuerdo marco para accesorios domésticos y bienes diversos",
+    status: "active",
   },
   {
     codigo: "EXT-CE-2024-26",
     nombre: "MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA",
     descripcion: "Acuerdo marco para maquinaria y equipos agrícolas",
+    status: "active",
   },
 ]
 
@@ -55,7 +69,7 @@ export default function OpenDataUploadPage() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+  const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
   const CHUNKING_THRESHOLD = 10 * 1024 * 1024 // 10MB
 
   const formatFileSize = (bytes: number) => {
@@ -104,109 +118,105 @@ export default function OpenDataUploadPage() {
   }
 
   const handleUpload = async () => {
-  if (!file || !selectedAcuerdo) {
-    toast.error("Datos incompletos", {
-      description: "Por favor selecciona un acuerdo marco y un archivo",
-    })
-    return
-  }
-
-  setUploading(true)
-  setProgress(0)
-  setError(null)
-  setUploadStats(null)
-
-  try {
-    setProgress(10)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('acuerdoMarco', selectedAcuerdo)
-
-    const uploadResponse = await fetch("/api/open-data/upload-url", {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!uploadResponse.ok) {
-      const errorData = await uploadResponse.json().catch(() => ({}))
-      throw new Error(errorData.error || `Error del servidor: ${uploadResponse.status}`)
+    if (!file || !selectedAcuerdo) {
+      toast.error("Datos incompletos", {
+        description: "Por favor selecciona un acuerdo marco y un archivo",
+      })
+      return
     }
 
-    const uploadResult = await uploadResponse.json()
-    setProgress(30)
-    console.log(`Archivo subido a Blob: ${uploadResult.url}`)
+    setUploading(true)
+    setProgress(0)
+    setError(null)
+    setUploadStats(null)
 
-    const response = await fetch("/api/open-data/process", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        blobUrl: uploadResult.url,
-        fileName: file.name,
-        fileSize: file.size,
-        acuerdoMarco: selectedAcuerdo,
-      }),
-    })
+    try {
+      setProgress(10)
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("acuerdoMarco", selectedAcuerdo)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Error del servidor: ${response.status}`)
-    }
+      const uploadResponse = await fetch("/api/open-data/upload-url", {
+        method: "POST",
+        body: formData,
+      })
 
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    let result: any = null
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || `Error del servidor: ${uploadResponse.status}`)
+      }
 
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      const uploadResult = await uploadResponse.json()
+      setProgress(30)
+      console.log(`Archivo subido a Blob: ${uploadResult.url}`)
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n").filter((line) => line.trim())
+      const response = await fetch("/api/open-data/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          blobUrl: uploadResult.url,
+          fileName: file.name,
+          fileSize: file.size,
+          acuerdoMarco: selectedAcuerdo,
+        }),
+      })
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6))
-              if (data.type === "progress") {
-                setProgress(30 + data.progress * 0.7)
-              } else if (data.type === "complete") {
-                result = data
-                setProgress(100)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Error del servidor: ${response.status}`)
+      }
 
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let result: any = null
 
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
+          const chunk = decoder.decode(value)
+          const lines = chunk.split("\n").filter((line) => line.trim())
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                if (data.type === "progress") {
+                  setProgress(30 + data.progress * 0.7)
+                } else if (data.type === "complete") {
+                  result = data
+                  setProgress(100)
+                }
+              } catch (e) {
+                console.error("Error parsing SSE data:", e)
               }
-            } catch (e) {
-              console.error("Error parsing SSE data:", e)
             }
           }
         }
       }
-    }
 
-    if (result) {
-      setUploadStats(result.stats)
-      toast.success("¡Archivo procesado exitosamente!", {
-        description: `${result.stats.insertedRows} registros insertados para ${selectedAcuerdo.split(" ")[0]}`,
+      if (result) {
+        setUploadStats(result.stats)
+        toast.success("¡Archivo procesado exitosamente!", {
+          description: `${result.stats.insertedRows} registros insertados para ${selectedAcuerdo.split(" ")[0]}`,
+        })
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+      setError(errorMessage)
+
+      toast.error("Error al procesar el archivo", {
+        description: errorMessage,
       })
-
+    } finally {
+      setUploading(false)
+      setTimeout(() => setProgress(0), 2000)
     }
-  } catch (error) {
-    console.error("Error uploading file:", error)
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
-    setError(errorMessage)
-
-    toast.error("Error al procesar el archivo", {
-      description: errorMessage,
-    })
-  } finally {
-    setUploading(false)
-    setTimeout(() => setProgress(0), 2000)
   }
-}
 
   const resetUpload = () => {
     setFile(null)
@@ -288,7 +298,7 @@ export default function OpenDataUploadPage() {
                     <SelectValue placeholder="Selecciona un acuerdo marco" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACUERDOS_MARCO.map((acuerdo) => (
+                    {ACUERDOS_MARCO.filter((acuerdo) => acuerdo.status === "active").map((acuerdo) => (
                       <SelectItem key={acuerdo.codigo} value={`${acuerdo.codigo} ${acuerdo.nombre}`}>
                         <div className="flex flex-col">
                           <span className="font-medium">{acuerdo.codigo}</span>
@@ -446,7 +456,7 @@ export default function OpenDataUploadPage() {
               <CardTitle className="text-lg">Acuerdos Marco Disponibles</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {ACUERDOS_MARCO.map((acuerdo) => (
+              {ACUERDOS_MARCO.filter((acuerdo) => acuerdo.status === "active").map((acuerdo) => (
                 <div
                   key={acuerdo.codigo}
                   className={`p-3 rounded-lg border transition-colors ${

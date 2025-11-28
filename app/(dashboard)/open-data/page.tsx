@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, FileText, Download, Eye, Calendar, AlertTriangle, TrendingUp } from "lucide-react"
+import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
@@ -16,6 +16,34 @@ const ACUERDOS_MARCO = [
     color: "bg-blue-500",
     icon: "🪑",
     fullName: "EXT-CE-2024-11 MOBILIARIO EN GENERAL",
+    status: "inactive", // Marcado como inactivo
+  },
+  {
+    id: "EXT-CE-2025-11",
+    name: "Mobiliario en General",
+    description: "Acuerdo marco reemplazante para mobiliario en general (vigente 2025)",
+    color: "bg-blue-600",
+    icon: "🪑",
+    fullName: "EXT-CE-2025-11 MOBILIARIO EN GENERAL",
+    status: "active",
+  },
+  {
+    id: "EXT-CE-2024-12",
+    name: "Tuberías, Pinturas, Cerámicos, Sanitarios, Accesorios y Complementos",
+    description: "Acuerdo marco para materiales de construcción y acabados",
+    color: "bg-amber-500",
+    icon: "🔧",
+    fullName: "EXT-CE-2024-12 TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL",
+    status: "active",
+  },
+  {
+    id: "EXT-CE-2024-3",
+    name: "Materiales e Insumos de Limpieza",
+    description: "Acuerdo marco para materiales e insumos de limpieza, papeles para aseo y limpieza",
+    color: "bg-green-600",
+    icon: "🧹",
+    fullName: "EXT-CE-2024-3 MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA",
+    status: "active",
   },
   {
     id: "EXT-CE-2024-16",
@@ -24,6 +52,7 @@ const ACUERDOS_MARCO = [
     color: "bg-green-500",
     icon: "🏠",
     fullName: "EXT-CE-2024-16 ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS",
+    status: "active",
   },
   {
     id: "EXT-CE-2024-26",
@@ -32,6 +61,7 @@ const ACUERDOS_MARCO = [
     color: "bg-orange-500",
     icon: "🌱",
     fullName: "EXT-CE-2024-26 MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA",
+    status: "active",
   },
 ]
 
@@ -112,9 +142,12 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
 function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
   const count = stats.acuerdosCount?.[acuerdo.id] || 0
   const isAvailable = count > 0
+  const isActive = acuerdo.status === "active"
 
   return (
-    <Card className={`transition-all duration-200 hover:shadow-lg ${isAvailable ? "hover:scale-105" : "opacity-60"}`}>
+    <Card
+      className={`transition-all duration-200 ${isAvailable ? "hover:shadow-lg hover:scale-105" : "opacity-60"} ${!isActive && "border-red-300 dark:border-red-800"}`}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -129,11 +162,18 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-mono">{acuerdo.id}</div>
             </div>
           </div>
-          {isAvailable && (
-            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-              Disponible
-            </Badge>
-          )}
+          <div className="flex flex-col gap-2">
+            {!isActive && (
+              <Badge variant="destructive" className="bg-red-500 text-white">
+                Inactivo
+              </Badge>
+            )}
+            {isAvailable && isActive && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                Disponible
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
@@ -143,7 +183,7 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
             <span>{count.toLocaleString()} registros</span>
           </div>
           <div className="flex gap-2">
-            {isAvailable ? (
+            {isAvailable && isActive ? (
               <>
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`}>
@@ -153,8 +193,8 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" disabled>
-                Sin datos
+              <Button variant="outline" size="sm" disabled title={!isActive ? "Acuerdo inactivo" : "Sin datos"}>
+                {!isActive ? "Inactivo" : "Sin datos"}
               </Button>
             )}
           </div>

@@ -11,12 +11,29 @@ import { ExportButtons } from "@/components/open-data/export-buttons"
 
 // Definir los acuerdos marco válidos
 const ACUERDOS_MARCO = {
-  "EXT-CE-2024-11 MOBILIARIO EN GENERAL": {
-    id: "EXT-CE-2024-11",
+  "EXT-CE-2025-11 MOBILIARIO EN GENERAL": {
+    id: "EXT-CE-2025-11",
     name: "Mobiliario en General",
-    description: "Datos de compras de mobiliario y equipamiento para oficinas y espacios públicos",
-    color: "bg-blue-500",
+    description: "Acuerdo marco para la adquisición de mobiliario en general",
+    color: "bg-blue-600",
     icon: "🪑",
+    status: "active",
+  },
+  "EXT-CE-2024-12 TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL": {
+    id: "EXT-CE-2024-12",
+    name: "Tuberías, Pinturas, Cerámicos, Sanitarios, Accesorios y Complementos",
+    description: "Acuerdo marco para tuberías, pinturas, cerámicos, sanitarios y complementos",
+    color: "bg-amber-500",
+    icon: "🔧",
+    status: "active",
+  },
+  "EXT-CE-2024-3 MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA": {
+    id: "EXT-CE-2024-3",
+    name: "Materiales e Insumos de Limpieza",
+    description: "Acuerdo marco para materiales e insumos de limpieza",
+    color: "bg-green-600",
+    icon: "🧹",
+    status: "active",
   },
   "EXT-CE-2024-16 ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS": {
     id: "EXT-CE-2024-16",
@@ -24,6 +41,7 @@ const ACUERDOS_MARCO = {
     description: "Accesorios domésticos y bienes para usos diversos en instituciones públicas",
     color: "bg-green-500",
     icon: "🏠",
+    status: "active",
   },
   "EXT-CE-2024-26 MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA": {
     id: "EXT-CE-2024-26",
@@ -31,6 +49,7 @@ const ACUERDOS_MARCO = {
     description: "Máquinas, equipos y herramientas para jardinería, silvicultura y agricultura",
     color: "bg-orange-500",
     icon: "🌱",
+    status: "active",
   },
 }
 

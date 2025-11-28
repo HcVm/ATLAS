@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
-    const maxSize = 50 * 1024 * 1024;
+    const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: `Archivo demasiado grande. Máximo: ${maxSize / (1024 * 1024)}MB` },
