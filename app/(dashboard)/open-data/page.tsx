@@ -145,62 +145,87 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
   const isActive = acuerdo.status === "active"
 
   return (
-    <Card
-      className={`transition-all duration-200 ${isAvailable ? "hover:shadow-lg hover:scale-105" : "opacity-60"} ${!isActive && "border-red-300 dark:border-red-800"}`}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-12 h-12 rounded-lg ${acuerdo.color} flex items-center justify-center text-white text-xl`}
-            >
-              {acuerdo.icon}
+    <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "" : "cursor-pointer"}>
+      <Card
+        className={`transition-all duration-200 h-full ${
+          isActive && isAvailable ? "hover:shadow-lg hover:scale-105" : ""
+        } ${
+          !isActive
+            ? "bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800"
+            : "bg-white dark:bg-slate-950"
+        }`}
+      >
+        <CardHeader className={`${!isActive ? "pb-2" : "pb-3"}`}>
+          <div className="flex items-start justify-between gap-2">
+            <div className={`flex items-center gap-3 ${!isActive && "gap-2"}`}>
+              <div
+                className={`${!isActive ? "w-10 h-10" : "w-12 h-12"} rounded-lg ${acuerdo.color} flex items-center justify-center text-white ${!isActive ? "text-lg" : "text-xl"}`}
+              >
+                {acuerdo.icon}
+              </div>
+              <div>
+                <CardTitle className={`${!isActive ? "text-base" : "text-lg"}`}>{acuerdo.name}</CardTitle>
+                {isActive && <CardDescription className="text-sm mt-1">{acuerdo.description}</CardDescription>}
+                <div className={`text-xs text-slate-500 dark:text-slate-400 font-mono ${isActive ? "mt-2" : "mt-1"}`}>
+                  {acuerdo.id}
+                </div>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-lg">{acuerdo.name}</CardTitle>
-              <CardDescription className="text-sm mt-1">{acuerdo.description}</CardDescription>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-mono">{acuerdo.id}</div>
+            <div className="flex flex-col gap-2">
+              {!isActive && (
+                <Badge
+                  variant="outline"
+                  className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 text-xs whitespace-nowrap"
+                >
+                  Histórico
+                </Badge>
+              )}
+              {isAvailable && isActive && (
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs"
+                >
+                  Disponible
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            {!isActive && (
-              <Badge variant="destructive" className="bg-red-500 text-white">
-                Inactivo
-              </Badge>
-            )}
-            {isAvailable && isActive && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                Disponible
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <FileText className="h-4 w-4" />
-            <span>{count.toLocaleString()} registros</span>
-          </div>
-          <div className="flex gap-2">
-            {isAvailable && isActive ? (
-              <>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`}>
-                    <Eye className="h-4 w-4 mr-1" />
-                    Ver Datos
-                  </Link>
+        </CardHeader>
+        <CardContent className={`pt-0 ${!isActive && "pb-2"}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <FileText className="h-4 w-4" />
+              <span>{count.toLocaleString()} registros</span>
+            </div>
+            <div className="flex gap-2">
+              {isAvailable ? (
+                <Button
+                  asChild
+                  variant={isActive ? "outline" : "ghost"}
+                  size={isActive ? "sm" : "xs"}
+                  className={`${isActive ? "" : "text-xs hover:bg-slate-200 dark:hover:bg-slate-800"}`}
+                >
+                  <span>
+                    <Eye className={`h-4 w-4 ${isActive ? "mr-1" : ""}`} />
+                    {isActive ? "Ver Datos" : ""}
+                  </span>
                 </Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" disabled title={!isActive ? "Acuerdo inactivo" : "Sin datos"}>
-                {!isActive ? "Inactivo" : "Sin datos"}
-              </Button>
-            )}
+              ) : (
+                <Button
+                  variant="ghost"
+                  size={isActive ? "sm" : "xs"}
+                  disabled
+                  title={isActive ? "Sin datos" : "Acuerdo histórico sin datos"}
+                  className={isActive ? "" : "text-xs"}
+                >
+                  {isActive ? "Sin datos" : "Ver"}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   )
 }
 
@@ -246,7 +271,7 @@ export default async function OpenDataPage() {
         <OpenDataStatsCard stats={stats} />
       </Suspense>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 auto-rows-max">
         {ACUERDOS_MARCO.map((acuerdo) => (
           <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} stats={stats} />
         ))}

@@ -11,6 +11,15 @@ import { ExportButtons } from "@/components/open-data/export-buttons"
 
 // Definir los acuerdos marco válidos
 const ACUERDOS_MARCO = {
+  "EXT-CE-2024-11 MOBILIARIO EN GENERAL": {
+    id: "EXT-CE-2024-11",
+    name: "Mobiliario en General",
+    description: "Datos de compras de mobiliario y equipamiento para oficinas y espacios públicos",
+    color: "bg-blue-500",
+    icon: "🪑",
+    fullName: "EXT-CE-2024-11 MOBILIARIO EN GENERAL",
+    status: "inactive",
+  },
   "EXT-CE-2025-11 MOBILIARIO EN GENERAL": {
     id: "EXT-CE-2025-11",
     name: "Mobiliario en General",
@@ -262,6 +271,8 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
   }
 
   const acuerdoInfo = ACUERDOS_MARCO[acuerdoMarco as keyof typeof ACUERDOS_MARCO]
+  const acuerdoFullInfo = ACUERDOS_MARCO[acuerdoMarco as keyof typeof ACUERDOS_MARCO]
+  const isInactive = acuerdoFullInfo?.status === "inactive"
 
   const [result, stats] = await Promise.all([
     getAcuerdoData(acuerdoMarco, resolvedSearchParams),
@@ -314,15 +325,27 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
         </div>
 
         <div className="flex items-center justify-between">
-          <Badge variant="secondary" className="font-mono text-xs">
-            {acuerdoInfo.id}
-          </Badge>
-          <ExportButtons
-            data={data}
-            acuerdoMarco={acuerdoInfo.name}
-            searchParams={resolvedSearchParams}
-            acuerdoMarcoFullString={acuerdoMarco}
-          />
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="font-mono text-xs">
+              {acuerdoInfo.id}
+            </Badge>
+            {isInactive && (
+              <Badge
+                variant="outline"
+                className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+              >
+                Datos Históricos
+              </Badge>
+            )}
+          </div>
+          {!isInactive && (
+            <ExportButtons
+              data={data}
+              acuerdoMarco={acuerdoInfo.name}
+              searchParams={resolvedSearchParams}
+              acuerdoMarcoFullString={acuerdoMarco}
+            />
+          )}
         </div>
       </div>
 
@@ -333,12 +356,13 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Datos del Acuerdo Marco</span>
+            <span>Datos {isInactive ? "Históricos" : "del Acuerdo Marco"}</span>
             <Badge variant="outline">{count.toLocaleString()} registros</Badge>
           </CardTitle>
           <CardDescription>
-            Información detallada sobre las contrataciones realizadas bajo este acuerdo marco (ordenado por fecha de
-            aceptación)
+            {isInactive
+              ? "Información histórica de contrataciones bajo este acuerdo marco (ya no vigente). Los datos son de consulta únicamente."
+              : "Información detallada sobre las contrataciones realizadas bajo este acuerdo marco (ordenado por fecha de aceptación)"}
           </CardDescription>
         </CardHeader>
         <CardContent>
