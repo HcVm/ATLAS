@@ -13,11 +13,9 @@ const chromium = chromiumImport as unknown as {
 import { generatePrivateQuotationHTML } from "@/lib/pdf-generator-private"
 import { generateARMPrivateQuotationHTML } from "@/lib/pdf-generator-private-arm"
 import { generateGALURPrivateQuotationHTML } from "@/lib/pdf-generator-private-galur"
-import { generateGALUREntityQuotationHTML } from "@/lib/pdf-generator-entity-galur"
 import type { PrivateQuotationPDFData } from "@/lib/pdf-generator-private"
 import type { ARMPrivateQuotationPDFData } from "@/lib/pdf-generator-private-arm"
 import type { GALURPrivateQuotationPDFData } from "@/lib/pdf-generator-private-galur"
-import type { GALUREntityQuotationPDFData } from "@/lib/pdf-generator-entity-galur"
 
 export const runtime = "nodejs"
 
@@ -36,8 +34,6 @@ export async function POST(req: NextRequest) {
       htmlContent = generateARMPrivateQuotationHTML(pdfData as ARMPrivateQuotationPDFData)
     } else if (type === "galur-private") {
       htmlContent = generateGALURPrivateQuotationHTML(pdfData as GALURPrivateQuotationPDFData)
-    } else if (type === "galur-entity") {
-      htmlContent = generateGALUREntityQuotationHTML(pdfData as GALUREntityQuotationPDFData)
     }
 
     if (!htmlContent) {
@@ -48,7 +44,6 @@ export async function POST(req: NextRequest) {
       private: "Cotizacion_Privada",
       "arm-private": "Cotizacion_ARM_Privada",
       "galur-private": "Cotizacion_GALUR_Privada",
-      "galur-entity": "Cotizacion_GALUR_Entidad",
     }
 
     const filenamePrefix = `${typeMap[type] || type}_${pdfData.quotationNumber.replace(/[^a-zA-Z0-9]/g, "_")}`
