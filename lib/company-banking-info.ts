@@ -71,7 +71,7 @@ export const COMPANY_BANKING_INFO: CompanyBankingData = {
     contactInfo: {
       mobile: "915166406",
       phone: "082-470 013 ANEXO 122",
-      email: ["ventas.galurbc@gmail.com"],
+      email: ["ventas.galur@galurbc.com", "ventas2.galur@galurbc.com"],
     },
   },
   AMCO: {
