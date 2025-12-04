@@ -1,141 +1,48 @@
+import type { PrivateQuotationPDFData } from "./pdf-generator-private"
+import QRCode from "qrcode"
+import { getBankingInfoByCompanyCode } from "./get-banking-info"
+import { getStatusLabel, formatDate } from "./pdf-utils"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
-import QRCode from "qrcode"
 
-export interface GALURPrivateQuotationPDFData {
-  companyName: string
-  companyRuc: string
-  companyCode: string
-  companyAddress?: string
-  companyPhone?: string
-  companyEmail?: string
-  companyLogoUrl?: string
-  companyAccountInfo: string
-
-  bankingInfo?: BankingInfo
-
-  quotationNumber: string
-  quotationDate: string
-  validUntil?: string
-  status: string
-
-  clientCode: string
-  clientName: string
-  clientRuc: string
-  clientAddress: string
-  clientFiscalAddress?: string
-  clientDepartment?: string
-  clientAttention: string
-  currency: string
-
-  products: Array<{
-    quantity: number
-    description: string
-    unit: string
-    brand?: string
-    code?: string
-    unitPrice: number
-    totalPrice: number
-    brandLogoUrl?: string
-  }>
-
-  subtotal: number
-  igv: number
-  total: number
-
-  createdBy: string
-  qrCodeBase64?: string
-}
-
-export const generateQRForGALURQuotation = async (
-  quotationNumber: string,
-  data: GALURPrivateQuotationPDFData,
-): Promise<string> => {
+export const generateGALURQRForQuotation = async (quotationNumber: string): Promise<string> => {
   try {
-    console.log("🔐 Creando validación GALUR a través de API...")
-
-    const response = await fetch("/api/create-validation", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        quotationNumber: data.quotationNumber,
-        clientRuc: data.clientRuc,
-        clientName: data.clientName,
-        companyRuc: data.companyRuc,
-        companyName: data.companyName,
-        totalAmount: data.total,
-        quotationDate: data.quotationDate,
-        createdBy: data.createdBy,
-      }),
+    const qrCodeUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://atlas.com.pe"}/quotations/${quotationNumber}`
+    const qrCode = await QRCode.toDataURL(qrCodeUrl, {
+      errorCorrectionLevel: "H",
+      type: "image/png",
+      quality: 0.95,
+      margin: 1,
+      width: 200,
     })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    const validationData = await response.json()
-    const validationHash = validationData.validationHash
-    const validationUrl = validationData.validationUrl
-
-    console.log("✅ Validación GALUR creada:", validationHash.substring(0, 16) + "...")
-    console.log("🔗 URL de validación:", validationUrl)
-
-    console.log("📱 Generando código QR...")
-    const qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
-      width: 256,
-      margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    })
-
-    console.log("✅ QR Code GALUR generado exitosamente")
-    return qrCodeDataUrl
+    return qrCode
   } catch (error) {
-    console.error("Error generating GALUR QR code:", error)
+    console.error("Error generating QR code:", error)
     return ""
   }
 }
 
-const getStatusLabel = (status: string): string => {
-  const statusLabels: Record<string, string> = {
-    draft: "Borrador",
-    sent: "Enviada",
-    approved: "Aprobada",
-    rejected: "Rechazada",
-    expired: "Expirada",
-  }
-  return statusLabels[status] || status
-}
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("es-PE", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-}
-
-export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDFData): string => {
-  console.log("=== Generando HTML GALUR Privado ===")
+export const generateGALURPrivateQuotationHTML = (data: PrivateQuotationPDFData): string => {
+  console.log("=== Generando HTML Privado GALUR ===")
   console.log("Datos recibidos para HTML:", data)
 
   const formattedDate = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
 
+  const colorGaluPrimary = "#1e7a3a"
+  const colorGaluSecondary = "#2a9d54"
+  const colorGaluAccent = "#fbbf24"
+  const colorGaluLight = "#f0fdf4"
+
+  // Obtener información bancaria automáticamente
   if (data.companyCode && !data.bankingInfo) {
     const bankingInfo = getBankingInfoByCompanyCode(data.companyCode)
     if (bankingInfo) {
       data.bankingInfo = bankingInfo
     }
-    console.log("✅ Banking info obtained for GALUR company:", data.companyCode, data.bankingInfo)
   }
 
+  // Obtener marcas únicas con logos
   const uniqueBrands = data.products
     .filter((product) => product.brand && product.brandLogoUrl)
     .reduce(
@@ -156,9 +63,9 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Cotización GALUR Privada ${data.quotationNumber}</title>
+      <title>Cotización Privada ${data.quotationNumber}</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         * {
           margin: 0;
@@ -167,575 +74,477 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
         }
         
         body {
-          font-family: 'Inter', 'Segoe UI', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 9px;
-          line-height: 1.3;
-          color: #1a1a1a;
+          line-height: 1.4;
+          color: #1e293b;
           background: white;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         
-        .document-container {
+        .container {
           width: 100%;
-          max-width: 200mm;
+          max-width: 190mm;
           margin: 0 auto;
-          background: white;
         }
 
-        /* Header único con diseño moderno - colores verde y blanco */
-        .header-premium {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
+        /* Header con diseño moderno GALUR */
+        .header-galur {
+          background: linear-gradient(135deg, ${colorGaluPrimary} 0%, ${colorGaluSecondary} 100%);
           color: white;
-          padding: 4mm 5mm;
-          margin-bottom: 3mm;
-          border-radius: 3mm;
-          box-shadow: 0 2mm 8mm rgba(30, 122, 58, 0.2);
+          padding: 8mm 6mm;
+          margin-bottom: 4mm;
           page-break-inside: avoid;
-          position: relative;
-          overflow: hidden;
         }
 
-        .header-premium::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 80mm;
-          height: 100%;
-          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="15" fill="rgba(255,255,255,0.05)"/><circle cx="80" cy="80" r="20" fill="rgba(255,255,255,0.03)"/></svg>');
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .header-content {
-          display: grid;
-          grid-template-columns: 1fr 1.5fr 1fr;
-          gap: 5mm;
-          align-items: center;
-          position: relative;
-          z-index: 1;
-        }
-
-        .logo-section {
-          text-align: center;
+        .header-top {
           display: flex;
-          flex-direction: column;
-          align-items: center;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 6mm;
+          gap: 8mm;
         }
 
-        .company-logo-header {
-          width: 60px;
-          height: 60px;
-          object-fit: contain;
-          margin-bottom: 2mm;
+        .company-section {
+          display: flex;
+          gap: 6mm;
+          flex: 1;
+        }
+
+        .company-logo-galur {
+          width: 35mm;
+          height: 25mm;
           background: white;
-          padding: 2mm;
-          border-radius: 2mm;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
 
-        .company-name-header {
-          font-size: 13px;
-          font-weight: 900;
-          letter-spacing: 0.5px;
+        .company-logo-galur img {
+          width: 90%;
+          height: 90%;
+          object-fit: contain;
         }
 
-        .quotation-status-section {
-          background: rgba(251, 191, 36, 0.2);
-          border: 2px solid #fbbf24;
-          border-radius: 3mm;
-          padding: 3mm;
+        .company-data {
+          flex: 1;
+        }
+
+        .company-data h1 {
+          font-size: 18px;
+          font-weight: 800;
+          margin-bottom: 2mm;
+          letter-spacing: -0.5px;
+        }
+
+        .company-data p {
+          font-size: 8px;
+          margin: 1mm 0;
+          opacity: 0.95;
+        }
+
+        .header-right {
+          background: ${colorGaluAccent};
+          color: ${colorGaluPrimary};
+          padding: 5mm 8mm;
+          border-radius: 3px;
           text-align: center;
-          backdrop-filter: blur(10px);
+          min-width: 45mm;
+          flex-shrink: 0;
         }
 
         .quotation-label {
-          font-size: 8px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          opacity: 0.9;
-          margin-bottom: 1mm;
-        }
-
-        .quotation-number-header {
-          font-size: 15px;
-          font-weight: 900;
-          color: #fbbf24;
-          margin-bottom: 1mm;
-        }
-
-        .quotation-date-header {
-          font-size: 8px;
-          opacity: 0.85;
-          margin-bottom: 1mm;
-        }
-
-        .status-badge-header {
-          background: #fbbf24;
-          color: #1e7a3a;
-          padding: 1mm 2mm;
-          border-radius: 12px;
-          font-size: 7px;
-          font-weight: 700;
-          display: inline-block;
-          text-transform: uppercase;
-        }
-
-        .company-info-section {
-          text-align: right;
-          line-height: 1.5;
-        }
-
-        .company-info-label {
-          font-size: 7px;
-          font-weight: 500;
-          opacity: 0.8;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-        }
-
-        .company-info-value {
-          font-size: 9px;
-          font-weight: 600;
-          margin-bottom: 1mm;
-        }
-
-        /* Marcas en grid moderno */
-        .brands-section {
-          background: linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%);
-          border: 2px solid #fbbf24;
-          border-radius: 3mm;
-          padding: 3mm;
-          margin-bottom: 3mm;
-          page-break-inside: avoid;
-        }
-
-        .brands-title {
-          text-align: center;
           font-size: 10px;
-          font-weight: 700;
-          color: #1e7a3a;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
           margin-bottom: 2mm;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
 
-        .brands-grid {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 3mm;
+        .quotation-number {
+          font-size: 20px;
+          font-weight: 800;
+          margin-bottom: 2mm;
         }
 
-        .brand-item {
-          background: white;
-          border: 1px solid #dbeafe;
-          border-radius: 2mm;
-          padding: 2mm;
-          text-align: center;
-          min-width: 55px;
-          box-shadow: 0 1mm 3mm rgba(30, 122, 58, 0.05);
-        }
-
-        .brand-logo {
-          width: 50px;
-          height: 40px;
-          object-fit: contain;
-          margin-bottom: 1mm;
-        }
-
-        .brand-name {
-          font-size: 7px;
-          font-weight: 600;
-          color: #1a1a1a;
-        }
-
-        /* Cliente y condiciones en layout horizontal */
-        .client-conditions-section {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 3mm;
-          margin-bottom: 3mm;
-        }
-
-        .client-card {
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-radius: 3mm;
-          padding: 3mm;
-          page-break-inside: avoid;
-        }
-
-        .card-header {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
-          color: white;
-          padding: 2mm;
-          margin: -3mm -3mm 2mm -3mm;
-          border-radius: 1.5mm 1.5mm 0 0;
+        .quotation-date {
           font-size: 9px;
+          margin-bottom: 1mm;
+          opacity: 0.9;
+        }
+
+        .status-badge {
+          display: inline-block;
+          background: ${colorGaluPrimary};
+          color: white;
+          padding: 2px 6px;
+          border-radius: 2px;
+          font-size: 8px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        /* Sección de marcas en horizontal */
+        .brands-section {
+          background: ${colorGaluLight};
+          border-top: 2px solid ${colorGaluSecondary};
+          border-bottom: 2px solid ${colorGaluAccent};
+          padding: 4mm 6mm;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8mm;
+          flex-wrap: wrap;
+          margin-bottom: 4mm;
+        }
+
+        .brands-label {
+          font-size: 8px;
           font-weight: 700;
           text-transform: uppercase;
+          color: ${colorGaluPrimary};
+          white-space: nowrap;
         }
 
-        .client-field {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 1.5mm;
-          padding-bottom: 1.5mm;
-          border-bottom: 1px solid #f0fdf4;
-        }
-
-        .client-field:last-child {
-          margin-bottom: 0;
-          padding-bottom: 0;
-          border-bottom: none;
-        }
-
-        .client-label {
-          font-size: 8px;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-        }
-
-        .client-value {
-          font-size: 8px;
-          font-weight: 600;
-          color: #1a1a1a;
-          text-align: right;
-          max-width: 60%;
-          word-break: break-word;
-        }
-
-        .conditions-card {
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-radius: 3mm;
-          padding: 3mm;
-          page-break-inside: avoid;
-        }
-
-        .condition-item {
-          display: flex;
-          gap: 2mm;
-          margin-bottom: 1.5mm;
-          padding-bottom: 1.5mm;
-          border-bottom: 1px solid #f0fdf4;
-        }
-
-        .condition-item:last-child {
-          margin-bottom: 0;
-          padding-bottom: 0;
-          border-bottom: none;
-        }
-
-        .condition-number {
-          background: #fbbf24;
-          color: #1e7a3a;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
+        .brand-logo-item {
+          height: 12mm;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 700;
-          font-size: 8px;
-          flex-shrink: 0;
-          box-shadow: 0 1mm 3mm rgba(251, 191, 36, 0.3);
         }
 
-        .condition-text {
-          font-size: 8px;
-          line-height: 1.3;
-          color: #475569;
+        .brand-logo-item img {
+          max-height: 12mm;
+          max-width: 25mm;
+          object-fit: contain;
         }
 
-        /* Tabla de productos mejorada */
-        .products-section {
-          margin-bottom: 3mm;
+        /* Grid de 2 columnas para Cliente y Condiciones */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4mm;
+          margin-bottom: 4mm;
           page-break-inside: avoid;
         }
 
-        .section-title {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
+        .info-card {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-left: 3px solid ${colorGaluSecondary};
+          padding: 4mm;
+          border-radius: 2px;
+        }
+
+        .info-card-title {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: ${colorGaluPrimary};
+          margin-bottom: 3mm;
+          letter-spacing: 0.5px;
+        }
+
+        .info-row {
+          display: flex;
+          margin-bottom: 2mm;
+          font-size: 8px;
+        }
+
+        .info-label {
+          font-weight: 600;
+          width: 35%;
+          color: ${colorGaluPrimary};
+        }
+
+        .info-value {
+          flex: 1;
+          word-break: break-word;
+          color: #374151;
+        }
+
+        /* Tabla de productos compacta */
+        .products-section {
+          margin-bottom: 4mm;
+          page-break-inside: avoid;
+        }
+
+        .section-header {
+          background: ${colorGaluPrimary};
           color: white;
-          padding: 2mm 3mm;
-          border-radius: 3mm 3mm 0 0;
+          padding: 3mm 4mm;
           font-size: 10px;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          margin-bottom: 3mm;
+          border-radius: 2px;
         }
 
         .products-table {
           width: 100%;
           border-collapse: collapse;
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-top: none;
-          border-radius: 0 0 3mm 3mm;
-          overflow: hidden;
+          margin-bottom: 3mm;
+          font-size: 8px;
         }
 
         .products-table thead {
-          background: #f0fdf4;
-          border-bottom: 2px solid #fbbf24;
+          background: ${colorGaluLight};
+          border-bottom: 2px solid ${colorGaluSecondary};
         }
 
-        .products-table th {
-          color: #1e7a3a;
-          padding: 2mm;
+        .products-table thead th {
+          padding: 3mm 2mm;
+          text-align: left;
           font-weight: 700;
-          text-align: center;
-          font-size: 8px;
+          color: ${colorGaluPrimary};
+          font-size: 7px;
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.5px;
         }
 
-        .products-table td {
-          padding: 2mm;
-          border-bottom: 1px solid #f0fdf4;
-          font-size: 8px;
-          vertical-align: middle;
-        }
-
-        .products-table tbody tr:last-child td {
-          border-bottom: none;
-        }
-
-        .products-table tbody tr:nth-child(odd) {
-          background: white;
+        .products-table tbody tr {
+          border-bottom: 1px solid #e5e7eb;
         }
 
         .products-table tbody tr:nth-child(even) {
-          background: #f9fafb;
+          background: ${colorGaluLight};
         }
 
-        .product-index {
-          background: #1e7a3a;
-          color: white;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .products-table tbody td {
+          padding: 2.5mm 2mm;
+          vertical-align: middle;
+        }
+
+        .product-number {
           font-weight: 700;
-          font-size: 8px;
-          margin: 0 auto;
-        }
-
-        .product-description-cell {
-          font-weight: 600;
-          color: #1a1a1a;
-        }
-
-        .quantity-badge {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
-          color: white;
-          padding: 1mm;
-          border-radius: 2mm;
-          font-weight: 700;
+          color: ${colorGaluSecondary};
           text-align: center;
-          display: inline-block;
-          min-width: 20px;
         }
 
-        .price-text {
+        .product-desc {
+          font-weight: 500;
+          color: #1e293b;
+        }
+
+        .product-price {
           text-align: right;
-          font-weight: 700;
-          color: #059669;
+          font-weight: 600;
+          color: ${colorGaluPrimary};
         }
 
-        .total-price {
-          text-align: right;
-          background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-          color: #1e7a3a;
-          padding: 1mm;
-          border-radius: 2mm;
-          font-weight: 700;
-        }
-
-        /* Sección financiera con layout en 3 columnas */
-        .financial-section {
+        /* Sección de Totales con diseño destacado */
+        .totals-section {
+          background: ${colorGaluLight};
+          border: 1px solid ${colorGaluSecondary};
+          border-radius: 3px;
+          padding: 4mm;
+          margin-bottom: 4mm;
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
           gap: 3mm;
-          margin-bottom: 3mm;
           page-break-inside: avoid;
-        }
-
-        .banking-column {
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-radius: 3mm;
-          padding: 3mm;
-        }
-
-        .totals-column {
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-radius: 3mm;
-          padding: 3mm;
-        }
-
-        .qr-column {
-          background: white;
-          border: 2px solid #1e7a3a;
-          border-radius: 3mm;
-          padding: 3mm;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-        }
-
-        .column-header {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
-          color: white;
-          padding: 1.5mm;
-          margin: -3mm -3mm 2mm -3mm;
-          border-radius: 1.5mm 1.5mm 0 0;
-          font-size: 9px;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .banking-item {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 1mm;
-          padding-bottom: 1mm;
-          border-bottom: 1px solid #f0fdf4;
-          font-size: 8px;
-        }
-
-        .banking-item:last-child {
-          border-bottom: none;
-          margin-bottom: 0;
-        }
-
-        .banking-label {
-          font-weight: 500;
-          color: #64748b;
-        }
-
-        .banking-value {
-          font-weight: 600;
-          color: #1a1a1a;
-          font-family: 'Courier New', monospace;
         }
 
         .total-item {
           display: flex;
-          justify-content: space-between;
-          margin-bottom: 1.5mm;
-          padding: 1mm 0;
-          border-bottom: 1px solid #f0fdf4;
+          flex-direction: column;
+          align-items: center;
+          padding: 2mm;
         }
 
-        .total-item:last-child {
-          border-bottom: none;
-        }
-
-        .total-item-label {
-          font-size: 8px;
-          color: #64748b;
-          font-weight: 600;
-        }
-
-        .total-item-value {
-          font-size: 8px;
+        .total-label {
+          font-size: 7px;
+          text-transform: uppercase;
           font-weight: 700;
-          color: #1a1a1a;
-        }
-
-        .total-final {
-          background: linear-gradient(135deg, #1e7a3a 0%, #2a9d54 100%);
-          color: white;
-          padding: 2mm;
-          border-radius: 2mm;
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          font-weight: 900;
-          margin-top: 1.5mm;
-        }
-
-        .qr-code-container {
-          background: white;
-          padding: 2mm;
-          border-radius: 2mm;
-          border: 2px solid #fbbf24;
+          color: ${colorGaluPrimary};
           margin-bottom: 2mm;
-          box-shadow: 0 2mm 5mm rgba(251, 191, 36, 0.2);
+          letter-spacing: 0.5px;
         }
 
-        .qr-code-image {
-          width: 30mm;
-          height: 30mm;
-          object-fit: contain;
+        .total-value {
+          font-size: 14px;
+          font-weight: 800;
+          color: ${colorGaluSecondary};
         }
 
-        .qr-text {
-          font-size: 8px;
-          color: #64748b;
+        .total-value.main {
+          font-size: 18px;
+          color: ${colorGaluPrimary};
+          border-top: 2px solid ${colorGaluAccent};
+          padding-top: 3mm;
           margin-top: 1mm;
-          line-height: 1.2;
         }
 
-        .qr-text strong {
-          color: #1e7a3a;
-          font-weight: 700;
-        }
-
-        .footer {
-          background: linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%);
-          border-top: 3px solid #fbbf24;
-          padding: 3mm;
-          margin-top: 3mm;
-          border-radius: 0 0 3mm 3mm;
-          text-align: center;
-          font-size: 8px;
-          color: #64748b;
+        /* Sección de Información Bancaria */
+        .banking-section {
+          background: white;
+          border: 2px solid ${colorGaluAccent};
+          border-radius: 3px;
+          padding: 4mm;
+          margin-bottom: 4mm;
           page-break-inside: avoid;
         }
 
-        .footer-text {
+        .banking-section h3 {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: ${colorGaluPrimary};
+          margin-bottom: 3mm;
+          letter-spacing: 0.5px;
+          border-bottom: 1px solid ${colorGaluAccent};
+          padding-bottom: 2mm;
+        }
+
+        .banking-info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4mm;
+        }
+
+        .banking-item {
+          font-size: 8px;
+        }
+
+        .banking-label {
+          font-weight: 600;
+          color: ${colorGaluSecondary};
           margin-bottom: 1mm;
         }
 
-        .footer-date {
+        .banking-value {
+          font-family: monospace;
+          background: ${colorGaluLight};
+          padding: 2mm;
+          border-radius: 2px;
+          color: #1e293b;
+          word-break: break-all;
+        }
+
+        /* Condiciones en layout diagonal/moderno */
+        .conditions-section {
+          margin-bottom: 4mm;
+          page-break-inside: avoid;
+        }
+
+        .conditions-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2mm;
+          margin-bottom: 3mm;
+        }
+
+        .condition-item {
+          background: ${colorGaluLight};
+          border-left: 3px solid ${colorGaluAccent};
+          padding: 3mm;
+          border-radius: 2px;
+          font-size: 8px;
+          line-height: 1.3;
+        }
+
+        .condition-number {
+          display: inline-block;
+          background: ${colorGaluPrimary};
+          color: white;
+          width: 5mm;
+          height: 5mm;
+          border-radius: 50%;
+          text-align: center;
+          line-height: 5mm;
+          font-weight: 700;
           font-size: 7px;
-          color: #94a3b8;
-          font-style: italic;
+          margin-right: 2mm;
+        }
+
+        .condition-text {
+          display: inline;
+        }
+
+        /* QR y Validación */
+        .validation-section {
+          background: white;
+          border: 1px solid ${colorGaluSecondary};
+          border-radius: 3px;
+          padding: 4mm;
+          display: flex;
+          gap: 6mm;
+          align-items: center;
+          justify-content: center;
+          page-break-inside: avoid;
+        }
+
+        .qr-container {
+          flex-shrink: 0;
+        }
+
+        .qr-container img {
+          width: 30mm;
+          height: 30mm;
+        }
+
+        .validation-text {
+          flex: 1;
+          font-size: 8px;
+        }
+
+        .validation-text h4 {
+          font-size: 10px;
+          font-weight: 700;
+          color: ${colorGaluPrimary};
+          margin-bottom: 2mm;
+        }
+
+        .validation-text p {
+          margin: 1mm 0;
+          line-height: 1.3;
+        }
+
+        /* Footer */
+        .footer {
+          margin-top: 4mm;
+          padding-top: 3mm;
+          border-top: 1px solid #e5e7eb;
+          font-size: 7px;
+          color: #9ca3af;
+          text-align: center;
+          page-break-inside: avoid;
         }
       </style>
     </head>
     <body>
-      <div class="document-container">
-        <!-- Header Premium -->
-        <div class="header-premium">
-          <div class="header-content">
-            <div class="logo-section">
-              ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" alt="Logo" class="company-logo-header">` : ""}
-              <div class="company-name-header">${data.companyName}</div>
+      <div class="container">
+        <!-- Header Galur -->
+        <div class="header-galur">
+          <div class="header-top">
+            <div class="company-section">
+              ${
+                data.companyLogoUrl
+                  ? `
+                <div class="company-logo-galur">
+                  <img src="${data.companyLogoUrl}" alt="${data.companyName}">
+                </div>
+              `
+                  : ""
+              }
+              <div class="company-data">
+                <h1>${data.companyName}</h1>
+                <p><strong>RUC:</strong> ${data.companyRuc}</p>
+                <p><strong>Código:</strong> ${data.companyCode}</p>
+                ${data.companyAddress ? `<p><strong>Dirección:</strong> ${data.companyAddress}</p>` : ""}
+                ${data.companyEmail ? `<p><strong>Email:</strong> ${data.companyEmail}</p>` : ""}
+                ${data.companyPhone ? `<p><strong>Teléfono:</strong> ${data.companyPhone}</p>` : ""}
+              </div>
             </div>
-            
-            <div class="quotation-status-section">
+            <div class="header-right">
               <div class="quotation-label">Cotización</div>
-              <div class="quotation-number-header">${data.quotationNumber}</div>
-              <div class="quotation-date-header">${formattedDate}</div>
-              <div class="status-badge-header">${getStatusLabel(data.status)}</div>
-            </div>
-
-            <div class="company-info-section">
-              <div class="company-info-label">Ruc:</div>
-              <div class="company-info-value">${data.companyRuc}</div>
-              <div class="company-info-label">Código:</div>
-              <div class="company-info-value">${data.companyCode}</div>
+              <div class="quotation-number">${data.quotationNumber}</div>
+              <div class="quotation-date">${formattedDate}</div>
+              <div class="status-badge">${getStatusLabel(data.status)}</div>
             </div>
           </div>
         </div>
@@ -744,85 +553,77 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
         ${
           uniqueBrands.length > 0
             ? `
-        <div class="brands-section">
-          <div class="brands-title">Marcas Disponibles</div>
-          <div class="brands-grid">
-            ${uniqueBrands
-              .map(
-                (brand) => `
-              <div class="brand-item">
-                <img src="${brand.logoUrl}" alt="${brand.name}" class="brand-logo">
-                <div class="brand-name">${brand.name}</div>
-              </div>
-            `,
-              )
-              .join("")}
+          <div class="brands-section">
+            <span class="brands-label">Marcas Disponibles:</span>
+            ${uniqueBrands.map((brand) => `<div class="brand-logo-item"><img src="${brand.logoUrl}" alt="${brand.name}"></div>`).join("")}
           </div>
-        </div>
         `
             : ""
         }
 
-        <!-- Cliente y Condiciones -->
-        <div class="client-conditions-section">
-          <div class="client-card">
-            <div class="card-header">Información del Cliente</div>
-            <div class="client-field">
-              <span class="client-label">Nombre:</span>
-              <span class="client-value">${data.clientName}</span>
+        <!-- Info Grid: Cliente + Condiciones de Pago -->
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-card-title">Información del Cliente</div>
+            <div class="info-row">
+              <span class="info-label">Cliente:</span>
+              <span class="info-value">${data.clientName}</span>
             </div>
-            <div class="client-field">
-              <span class="client-label">RUC:</span>
-              <span class="client-value">${data.clientRuc}</span>
+            <div class="info-row">
+              <span class="info-label">RUC:</span>
+              <span class="info-value">${data.clientRuc}</span>
             </div>
-            <div class="client-field">
-              <span class="client-label">Código:</span>
-              <span class="client-value">${data.clientCode}</span>
+            <div class="info-row">
+              <span class="info-label">Atención:</span>
+              <span class="info-value">${data.clientAttention}</span>
             </div>
-            <div class="client-field">
-              <span class="client-label">Atención:</span>
-              <span class="client-value">${data.clientAttention}</span>
-            </div>
-            <div class="client-field">
-              <span class="client-label">Dirección:</span>
-              <span class="client-value">${addressToDisplay}</span>
+            <div class="info-row">
+              <span class="info-label">Dirección:</span>
+              <span class="info-value">${addressToDisplay}</span>
             </div>
           </div>
 
-          <div class="conditions-card">
-            <div class="card-header">Condiciones Comerciales</div>
-            <div class="condition-item">
-              <div class="condition-number">1</div>
-              <div class="condition-text">Plazo de validez de la cotización: 30 días hábiles</div>
+          <div class="info-card">
+            <div class="info-card-title">Detalles de Cotización</div>
+            <div class="info-row">
+              <span class="info-label">Moneda:</span>
+              <span class="info-value">${data.currency}</span>
             </div>
-            <div class="condition-item">
-              <div class="condition-number">2</div>
-              <div class="condition-text">Entrega según coordinar con área comercial</div>
+            <div class="info-row">
+              <span class="info-label">Fecha:</span>
+              <span class="info-value">${formattedDate}</span>
             </div>
-            <div class="condition-item">
-              <div class="condition-number">3</div>
-              <div class="condition-text">Precios incluyen IGV. Sujetos a cambios sin previo aviso</div>
-            </div>
-            <div class="condition-item">
-              <div class="condition-number">4</div>
-              <div class="condition-text">Modalidad de pago según política de empresa</div>
+            ${
+              data.validUntil
+                ? `
+              <div class="info-row">
+                <span class="info-label">Válida hasta:</span>
+                <span class="info-value">${formatDate(data.validUntil)}</span>
+              </div>
+            `
+                : ""
+            }
+            <div class="info-row">
+              <span class="info-label">Estado:</span>
+              <span class="info-value">${getStatusLabel(data.status)}</span>
             </div>
           </div>
         </div>
 
-        <!-- Tabla de Productos -->
+        <!-- Productos -->
         <div class="products-section">
-          <div class="section-title">Detalle de Productos</div>
+          <div class="section-header">Detalle de Productos</div>
           <table class="products-table">
             <thead>
               <tr>
-                <th style="width: 5%">#</th>
-                <th style="width: 35%">Descripción</th>
-                <th style="width: 10%">Cantidad</th>
-                <th style="width: 10%">Unidad</th>
-                <th style="width: 15%">Precio Unitario</th>
-                <th style="width: 15%">Total</th>
-                <th style="width: 10%">Marca</th>
+                <th style="width: 5%;">#</th>
+                <th style="width: 10%;">Código</th>
+                <th style="width: 35%;">Descripción</th>
+                <th style="width: 12%;">Marca</th>
+                <th style="width: 8%;">Cantidad</th>
+                <th style="width: 8%;">Unidad</th>
+                <th style="width: 11%;">P. Unitario</th>
+                <th style="width: 11%;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
@@ -830,16 +631,14 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
                 .map(
                   (product, index) => `
                 <tr>
-                  <td><div class="product-index">${index + 1}</div></td>
-                  <td class="product-description-cell">
-                    ${product.description}
-                    ${product.code ? `<br><small style="color: #94a3b8; font-size: 7px;">${product.code}</small>` : ""}
-                  </td>
-                  <td style="text-align: center;"><div class="quantity-badge">${product.quantity}</div></td>
+                  <td class="product-number">${index + 1}</td>
+                  <td style="font-family: monospace; font-size: 7px;">${product.code || "-"}</td>
+                  <td class="product-desc">${product.description}</td>
+                  <td style="text-align: center; font-size: 8px;">${product.brand || "-"}</td>
+                  <td style="text-align: center; font-weight: 600;">${product.quantity.toLocaleString()}</td>
                   <td style="text-align: center;">${product.unit}</td>
-                  <td class="price-text">${data.currency} ${product.unitPrice.toFixed(2)}</td>
-                  <td class="total-price">${data.currency} ${product.totalPrice.toFixed(2)}</td>
-                  <td style="text-align: center;">${product.brand || "-"}</td>
+                  <td class="product-price">S/ ${product.unitPrice.toFixed(2)}</td>
+                  <td class="product-price" style="font-weight: 700;">S/ ${product.totalPrice.toFixed(2)}</td>
                 </tr>
               `,
                 )
@@ -848,76 +647,110 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
           </table>
         </div>
 
-        <!-- Sección Financiera -->
-        <div class="financial-section">
-          <!-- Columna Bancaria -->
-          <div class="banking-column">
-            <div class="column-header">Datos Bancarios</div>
-            ${
-              data.bankingInfo
-                ? `
-              <div class="banking-item">
-                <span class="banking-label">Banco:</span>
-                <span class="banking-value">${data.bankingInfo.bankName}</span>
-              </div>
-              <div class="banking-item">
-                <span class="banking-label">Moneda:</span>
-                <span class="banking-value">${data.bankingInfo.currency}</span>
-              </div>
-              <div class="banking-item">
-                <span class="banking-label">Cuenta:</span>
-                <span class="banking-value">${data.bankingInfo.accountNumber}</span>
-              </div>
-              <div class="banking-item">
-                <span class="banking-label">Interbancario:</span>
-                <span class="banking-value">${data.bankingInfo.interbankCode}</span>
-              </div>
-            `
-                : '<div style="color: #94a3b8; font-size: 8px;">No hay información bancaria</div>'
-            }
+        <!-- Totales destacados -->
+        <div class="totals-section">
+          <div class="total-item">
+            <div class="total-label">Subtotal</div>
+            <div class="total-value">S/ ${data.subtotal.toFixed(2)}</div>
           </div>
+          <div class="total-item">
+            <div class="total-label">IGV (18%)</div>
+            <div class="total-value">S/ ${data.igv.toFixed(2)}</div>
+          </div>
+          <div class="total-item">
+            <div class="total-label">Total</div>
+            <div class="total-value main">S/ ${data.total.toFixed(2)}</div>
+          </div>
+        </div>
 
-          <!-- Columna de Totales -->
-          <div class="totals-column">
-            <div class="column-header">Resumen Financiero</div>
-            <div class="total-item">
-              <span class="total-item-label">Subtotal:</span>
-              <span class="total-item-value">${data.currency} ${data.subtotal.toFixed(2)}</span>
-            </div>
-            <div class="total-item">
-              <span class="total-item-label">IGV (18%):</span>
-              <span class="total-item-value">${data.currency} ${data.igv.toFixed(2)}</span>
-            </div>
-            <div class="total-final">
-              <span>TOTAL</span>
-              <span>${data.currency} ${data.total.toFixed(2)}</span>
+        <!-- Información Bancaria -->
+        ${
+          data.bankingInfo?.bankAccount
+            ? `
+          <div class="banking-section">
+            <h3>Información para Depósito</h3>
+            <div class="banking-info-grid">
+              <div class="banking-item">
+                <div class="banking-label">BANCO:</div>
+                <div class="banking-value">${data.bankingInfo.bankAccount.bank}</div>
+              </div>
+              <div class="banking-item">
+                <div class="banking-label">TIPO DE CUENTA:</div>
+                <div class="banking-value">${data.bankingInfo.bankAccount.type}</div>
+              </div>
+              <div class="banking-item">
+                <div class="banking-label">NÚMERO DE CUENTA:</div>
+                <div class="banking-value">${data.bankingInfo.bankAccount.accountNumber}</div>
+              </div>
+              <div class="banking-item">
+                <div class="banking-label">CCI:</div>
+                <div class="banking-value">${data.bankingInfo.bankAccount.cci}</div>
+              </div>
+              <div class="banking-item" style="grid-column: 1 / -1;">
+                <div class="banking-label">DIRECCIÓN FISCAL:</div>
+                <div class="banking-value">${data.bankingInfo.fiscalAddress}</div>
+              </div>
+              <div class="banking-item" style="grid-column: 1 / -1;">
+                <div class="banking-label">CONTACTO:</div>
+                <div class="banking-value">${data.bankingInfo.contactInfo?.email || ""} | ${data.bankingInfo.contactInfo?.phone || ""}</div>
+              </div>
             </div>
           </div>
-
-          <!-- Columna QR -->
-          <div class="qr-column">
-            <div class="column-header">Validación</div>
-            ${
-              data.qrCodeBase64
-                ? `
-              <div class="qr-code-container">
-                <img src="${data.qrCodeBase64}" alt="QR Code" class="qr-code-image">
+        `
+            : data.companyAccountInfo
+              ? `
+          <div class="banking-section">
+            <h3>Información para Depósito</h3>
+            <div class="banking-info-grid">
+              <div class="banking-item" style="grid-column: 1 / -1;">
+                <div class="banking-label">CUENTA:</div>
+                <div class="banking-value">${data.companyAccountInfo}</div>
               </div>
-            `
-                : ""
-            }
-            <div class="qr-text">
-              <strong>Cotización:</strong> ${data.quotationNumber}<br>
-              <strong>Creado por:</strong> ${data.createdBy}<br>
-              <small>${currentDate}</small>
             </div>
+          </div>
+        `
+              : ""
+        }
+
+        <!-- Condiciones -->
+        <div class="conditions-section">
+          <div class="section-header">Condiciones de Venta</div>
+          <div class="conditions-grid">
+            ${[
+              "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
+              "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
+              "FORMA DE PAGO: Contado.",
+              "Validez de esta oferta: Solo por 3 días hábiles.",
+              "No hay devolución de dinero, posterior al recojo.",
+              "Si el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
+            ]
+              .map(
+                (condition, index) => `
+              <div class="condition-item">
+                <span class="condition-number">${index + 1}</span><span class="condition-text">${condition}</span>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>
+        </div>
+
+        <!-- QR y Validación -->
+        <div class="validation-section">
+          <div class="qr-container">
+            ${data.qrCodeBase64 ? `<img src="${data.qrCodeBase64}" alt="QR Code">` : ""}
+          </div>
+          <div class="validation-text">
+            <h4>Validar Cotización</h4>
+            <p>Escanee el código QR con su dispositivo móvil para validar la autenticidad de esta cotización.</p>
+            <p><strong>N° Cotización:</strong> ${data.quotationNumber}</p>
+            <p><strong>Generada:</strong> ${currentDate}</p>
           </div>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-          <div class="footer-text">Documento generado automáticamente por el sistema de cotizaciones GALUR</div>
-          <div class="footer-date">Fecha y hora: ${currentDate}</div>
+          <p>Cotización generada automáticamente por ATLAS | ${data.createdBy} | Válida hasta: ${data.validUntil ? formatDate(data.validUntil) : "No especificado"}</p>
         </div>
       </div>
     </body>
