@@ -44,6 +44,8 @@ import EntityQuotationPDFGenerator from "@/components/quotations/entity-quotatio
 import PrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator"
 import ARMEntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator-arm"
 import ARMPrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator-arm"
+import GALUREntityQuotationPDFGenerator from "@/components/quotations/entity-quotation-pdf-generator-galur"
+import GALURPrivateQuotationPDFGenerator from "@/components/quotations/private-quotation-pdf-generator-galur"
 import { createNotification } from "@/lib/notifications"
 import {
   DropdownMenu,
@@ -1016,39 +1018,45 @@ export default function QuotationsPage() {
                                   <DropdownMenuSeparator className="bg-border" />
 
                                   {/* PDF Generators in a Submenu */}
-                                  {selectedCompany && (
-                                    <DropdownMenuSub>
-                                      <DropdownMenuSubTrigger className="text-foreground hover:bg-accent">
-                                        <FileText className="mr-2 h-4 w-4" /> Generar PDFs
-                                      </DropdownMenuSubTrigger>
-                                      <DropdownMenuSubContent className="bg-popover border-border">
-                                        {quotation.sales_entities?.client_type === "government" ? (
-                                          // Solo mostrar PDF para entidades gubernamentales
-                                          selectedCompany.code === "ARM" ? (
-                                            <DropdownMenuItem asChild>
-                                              <ARMEntityQuotationPDFGenerator
-                                                quotation={{
-                                                  ...quotation,
-                                                  fiscal_address: quotation.sales_entities?.fiscal_address || null,
-                                                }}
-                                                companyInfo={selectedCompany}
-                                              />
-                                            </DropdownMenuItem>
-                                          ) : (
-                                            <DropdownMenuItem asChild>
-                                              <EntityQuotationPDFGenerator
-                                                quotation={{
-                                                  ...quotation,
-                                                  fiscal_address: quotation.sales_entities?.fiscal_address || null,
-                                                }}
-                                                companyInfo={selectedCompany}
-                                              />
-                                            </DropdownMenuItem>
-                                          )
-                                        ) : // Solo mostrar PDF para empresas privadas
-                                        selectedCompany.code === "ARM" ? (
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="text-foreground hover:bg-accent">
+                                      <FileText className="mr-2 h-4 w-4" /> Generar PDFs
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="bg-popover border-border">
+                                      {selectedCompany?.code === "GALUR" ? (
+                                        <>
+                                          <DropdownMenuItem asChild>
+                                            <GALUREntityQuotationPDFGenerator
+                                              quotation={quotation}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem asChild>
+                                            <GALURPrivateQuotationPDFGenerator
+                                              quotation={quotation}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
+                                        </>
+                                      ) : selectedCompany?.code === "ARM" ? (
+                                        <>
+                                          <DropdownMenuItem asChild>
+                                            <ARMEntityQuotationPDFGenerator
+                                              quotation={quotation}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
                                           <DropdownMenuItem asChild>
                                             <ARMPrivateQuotationPDFGenerator
+                                              quotation={quotation}
+                                              companyInfo={selectedCompany}
+                                            />
+                                          </DropdownMenuItem>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <DropdownMenuItem asChild>
+                                            <EntityQuotationPDFGenerator
                                               quotation={{
                                                 ...quotation,
                                                 fiscal_address: quotation.sales_entities?.fiscal_address || null,
@@ -1056,7 +1064,6 @@ export default function QuotationsPage() {
                                               companyInfo={selectedCompany}
                                             />
                                           </DropdownMenuItem>
-                                        ) : (
                                           <DropdownMenuItem asChild>
                                             <PrivateQuotationPDFGenerator
                                               quotation={{
@@ -1066,27 +1073,13 @@ export default function QuotationsPage() {
                                               companyInfo={selectedCompany}
                                             />
                                           </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem asChild>
-                                          <QuotationPDFGenerator
-                                            quotation={quotation}
-                                            companyInfo={{
-                                              id: selectedCompany.id,
-                                              name: selectedCompany.name,
-                                              ruc: selectedCompany.ruc || "",
-                                              code: selectedCompany.code || "",
-                                              description: selectedCompany.description,
-                                              logo_url: selectedCompany.logo_url,
-                                              color: selectedCompany.color || "#3B82F6",
-                                              address: selectedCompany.address,
-                                              phone: selectedCompany.phone,
-                                              email: selectedCompany.email,
-                                            }}
-                                          />
-                                        </DropdownMenuItem>
-                                      </DropdownMenuSubContent>
-                                    </DropdownMenuSub>
-                                  )}
+                                        </>
+                                      )}
+                                      <DropdownMenuItem asChild>
+                                        <QuotationPDFGenerator quotation={quotation} companyInfo={selectedCompany} />
+                                      </DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
                                   {(quotation.status === "draft" || quotation.status === "rejected") &&
                                     (quotation.created_by === user?.id || canViewAllQuotations) && (
                                       <DropdownMenuItem
@@ -1114,9 +1107,7 @@ export default function QuotationsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
               {filteredQuotations.length === 0 ? (
                 <div className="col-span-2 text-center py-12 text-muted-foreground">
-                  {searchTerm
-                    ? "No se encontraron cotizaciones que coincidan"
-                    : "No hay cotizaciones registradas"}
+                  {searchTerm ? "No se encontraron cotizaciones que coincidan" : "No hay cotizaciones registradas"}
                 </div>
               ) : (
                 filteredQuotations.map((quotation) => {
@@ -1139,9 +1130,7 @@ export default function QuotationsPage() {
                               #{quotation.quotation_number || quotation.id.slice(0, 8)}
                             </p>
                             {canViewAllQuotations && quotation.profiles?.full_name && (
-                              <p className="text-xs text-muted-foreground">
-                                Por: {quotation.profiles.full_name}
-                              </p>
+                              <p className="text-xs text-muted-foreground">Por: {quotation.profiles.full_name}</p>
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -1179,7 +1168,7 @@ export default function QuotationsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full"
+                            className="w-full bg-transparent"
                             onClick={() => {
                               setSelectedQuotation(quotation)
                               setShowDetailsDialog(true)
@@ -1197,7 +1186,7 @@ export default function QuotationsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full"
+                              className="w-full bg-transparent"
                               onClick={() => {
                                 setEditingQuotationContent(quotation)
                                 setShowEditContentDialog(true)
@@ -1216,7 +1205,7 @@ export default function QuotationsPage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-9 w-9"
+                              className="h-9 w-9 bg-transparent"
                               onClick={() => {
                                 setEditingQuotation(quotation)
                                 setNewStatus(quotation.status)
@@ -1231,41 +1220,67 @@ export default function QuotationsPage() {
                           {/* PDFs */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon" className="h-9 w-9" title="Generar PDF">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9 bg-transparent"
+                                title="Generar PDF"
+                              >
                                 <FileText className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="center" className="bg-popover border-border">
-                              {selectedCompany && quotation.sales_entities?.client_type === "government" ? (
-                                selectedCompany.code === "ARM" ? (
+                              {selectedCompany?.code === "GALUR" ? (
+                                <>
+                                  <DropdownMenuItem asChild>
+                                    <GALUREntityQuotationPDFGenerator
+                                      quotation={quotation}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <GALURPrivateQuotationPDFGenerator
+                                      quotation={quotation}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                </>
+                              ) : selectedCompany?.code === "ARM" ? (
+                                <>
                                   <DropdownMenuItem asChild>
                                     <ARMEntityQuotationPDFGenerator
-                                      quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                      quotation={quotation}
                                       companyInfo={selectedCompany}
                                     />
                                   </DropdownMenuItem>
-                                ) : (
+                                  <DropdownMenuItem asChild>
+                                    <ARMPrivateQuotationPDFGenerator
+                                      quotation={quotation}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                <>
                                   <DropdownMenuItem asChild>
                                     <EntityQuotationPDFGenerator
-                                      quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
+                                      quotation={{
+                                        ...quotation,
+                                        fiscal_address: quotation.sales_entities?.fiscal_address || null,
+                                      }}
                                       companyInfo={selectedCompany}
                                     />
                                   </DropdownMenuItem>
-                                )
-                              ) : selectedCompany.code === "ARM" ? (
-                                <DropdownMenuItem asChild>
-                                  <ARMPrivateQuotationPDFGenerator
-                                    quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
-                                    companyInfo={selectedCompany}
-                                  />
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem asChild>
-                                  <PrivateQuotationPDFGenerator
-                                    quotation={{ ...quotation, fiscal_address: quotation.sales_entities?.fiscal_address || null }}
-                                    companyInfo={selectedCompany}
-                                  />
-                                </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <PrivateQuotationPDFGenerator
+                                      quotation={{
+                                        ...quotation,
+                                        fiscal_address: quotation.sales_entities?.fiscal_address || null,
+                                      }}
+                                      companyInfo={selectedCompany}
+                                    />
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               <DropdownMenuItem asChild>
                                 <QuotationPDFGenerator quotation={quotation} companyInfo={selectedCompany} />
@@ -1279,7 +1294,7 @@ export default function QuotationsPage() {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-9 w-9"
+                                className="h-9 w-9 bg-transparent"
                                 onClick={() => {
                                   setQuotationToDelete(quotation)
                                   setShowDeleteDialog(true)

@@ -21,7 +21,7 @@ interface InternalProduct {
   unit_of_measure: string
   cost_price: number
   location: string | null
-  is_serialized: boolean 
+  is_serialized: boolean
   internal_product_categories: {
     name: string
     color: string
@@ -53,11 +53,17 @@ interface RecentMovement {
   } | null
 }
 
+interface EquipmentByDepartment {
+  department: string
+  equipment_count: number
+}
+
 export default function InternalWarehousePage() {
   const { user } = useAuth()
   const [products, setProducts] = useState<InternalProduct[]>([])
   const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
+  const [equipmentByDepartment, setEquipmentByDepartment] = useState<EquipmentByDepartment[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -279,6 +285,9 @@ export default function InternalWarehousePage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="equipment" asChild>
+            <Link href="/warehouse/internal/equipment-by-department">Equipos por Departamento</Link>
+          </TabsTrigger>
           <TabsTrigger value="movements">Movimientos Recientes</TabsTrigger>
         </TabsList>
 
@@ -401,6 +410,10 @@ export default function InternalWarehousePage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="equipment" className="space-y-4">
+          {/* Equipment data will be managed from the equipment-by-department page */}
         </TabsContent>
 
         <TabsContent value="movements" className="space-y-4">
