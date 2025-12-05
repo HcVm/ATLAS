@@ -422,7 +422,7 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
                 ? `
             <div>
               <p style="margin: 0 0 3px 0; font-size: 9px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Email</p>
-              <p style="margin: 0; word-break: break-all;">${data.bankingInfo.contactInfo.email}</p>
+              <p style="margin: 0; word-break: break-all;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>
             </div>
             `
                 : ""

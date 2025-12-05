@@ -390,7 +390,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
           <h3 style="margin:0 0 5px 0; font-size:10px; color:var(--green);">INFORMACIÓN BANCARIA</h3>
           ${data.bankingInfo?.bankAccount ? `
             <div style="margin-bottom:4px;">
-              <strong>${data.bankingInfo.bankAccount.bank}</strong> ${data.bankingInfo.bankAccount.currency} <br>
+              <strong>${data.bankingInfo.bankAccount.bank}</strong><br>
               <span style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span>
             </div>
             <div style="font-size:9px; color:#666;">CCI: ${data.bankingInfo.bankAccount.cci}</div>
