@@ -415,13 +415,13 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
 
         <!-- Contact and Footer -->
         <div style="border-top: 2px solid #e2e8f0; padding-top: 10mm;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10mm; margin-bottom: 8mm; font-size: 9px; color: #4a5568;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8mm; margin-bottom: 8mm; font-size: 11px; color: #4a5568;">
             
             ${
               data.bankingInfo?.contactInfo?.email
                 ? `
             <div>
-              <p style="margin: 0 0 3px 0; font-size: 9px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Email</p>
+              <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Email</p>
               <p style="margin: 0; word-break: break-all;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>
             </div>
             `
@@ -432,7 +432,7 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
               data.bankingInfo?.contactInfo?.mobile
                 ? `
             <div>
-              <p style="margin: 0 0 3px 0; font-size: 9px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Celular</p>
+              <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Celular</p>
               <p style="margin: 0; font-weight: 600;">${data.bankingInfo.contactInfo.mobile}</p>
             </div>
             `
@@ -443,7 +443,7 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
               data.bankingInfo?.contactInfo?.phone
                 ? `
             <div>
-              <p style="margin: 0 0 3px 0; font-size: 9px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Teléfono</p>
+              <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Teléfono</p>
               <p style="margin: 0;">${data.bankingInfo.contactInfo.phone}</p>
             </div>
             `
