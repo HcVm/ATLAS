@@ -436,7 +436,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 
     <div class="legal-text">
       Generado digitalmente por <strong>${data.createdBy}</strong> el ${hoy} | 
-      Documento validado por <strong>Galur Business Corporation</strong>
+      Documento validado por el <strong>SISTEMA DE GESTIÓN ATLAS</strong>
     </div>
 
   </div>
