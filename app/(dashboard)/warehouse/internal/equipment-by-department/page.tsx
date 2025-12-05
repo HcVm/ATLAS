@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2 } from "lucide-react"
+import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Laptop, Printer, LibraryBig } from "lucide-react"
 import Link from "next/link"
 
 interface Department {
@@ -67,112 +67,195 @@ interface DepartmentStats {
   value: number
 }
 
-// Office Fill Visualization Component
-function OfficeVisualization({
+// Definición de tipos de espacios en el plano
+type LayoutItemType = 'desk' | 'shelf' | 'printer';
+
+interface LayoutItem {
+  type: LayoutItemType;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+function FloorPlanVisualization({
   department,
-  count,
-  maxCount = 12,
-}: { department: Department; count: number; maxCount?: number }) {
-  const fillPercentage = Math.min((count / maxCount) * 100, 100)
-  const itemsToShow = Math.ceil((fillPercentage / 100) * maxCount)
+  furnitureCount,
+  equipmentCount,
+  maxCount = 50,
+}: {
+  department: Department
+  furnitureCount: number
+  equipmentCount: number
+  maxCount?: number
+}) {
+  // Calculamos el porcentaje basado en la mayor cantidad de items (no la suma)
+  // para que la barra de progreso tenga sentido con la superposición.
+  const maxItems = Math.max(furnitureCount, equipmentCount);
+  const fillPercentage = Math.min((maxItems / maxCount) * 100, 100);
+  
+  const deptColor = department.color || "#3b82f6";
+  const wallColor = "currentColor"; 
+  const machineColor = "#334155"; 
 
-  // Predefined irregular shapes (SVG paths) - like tetris pieces
-  const shapes = [
-    "M0,0 L2,0 L2,2 L0,2 Z", // square
-    "M0,0 L3,0 L3,1 L0,1 Z", // rect horizontal
-    "M0,0 L1,0 L1,3 L0,3 Z", // rect vertical
-    "M0,0 L2,0 L2,1 L1,1 L1,2 L0,2 Z", // L shape
-    "M1,0 L2,0 L2,2 L0,2 L0,1 L1,1 Z", // Z shape
-    "M0,0 L2,0 L1,0 L1,2 L0,2 Z", // T shape
-  ]
-
-  // Create a packed layout with irregular items
-  const shapeAssignment = Array.from({ length: maxCount }).map((_, idx) => shapes[idx % shapes.length])
+  // LAYOUT (Mismas coordenadas)
+  const officeLayout: LayoutItem[] = [
+    // Isleta Izquierda
+    { type: 'desk', x: 20, y: 25, rotation: 0 }, { type: 'desk', x: 50, y: 25, rotation: 0 },
+    { type: 'desk', x: 20, y: 75, rotation: 0 }, { type: 'desk', x: 50, y: 75, rotation: 0 },
+    // Estantería superior (Solo mobiliario)
+    { type: 'shelf', x: 90, y: 15, rotation: 0 }, 
+    { type: 'shelf', x: 125, y: 15, rotation: 0 },
+    // Isleta Derecha
+    { type: 'desk', x: 100, y: 60, rotation: -90 },
+    { type: 'desk', x: 100, y: 90, rotation: -90 },
+    { type: 'desk', x: 160, y: 70, rotation: 90 },
+    // Impresora
+    { type: 'printer', x: 160, y: 105, rotation: 0 },
+  ];
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Compact visualization container */}
-      <div className="relative bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700 min-h-[120px] max-w-[300px]">
-        {/* SVG grid with irregular shapes */}
-        <svg viewBox="0 0 12 8" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-          {/* Background grid (optional, subtle) */}
-          <defs>
-            <pattern id={`grid-${department.id}`} width="1" height="1" patternUnits="userSpaceOnUse">
-              <path d="M 1 0 L 0 0 0 1" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="0.02" />
-            </pattern>
-          </defs>
-          <rect width="12" height="8" fill={`url(#grid-${department.id})`} />
+      <div className="relative bg-white dark:bg-slate-950 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-2 aspect-[4/3] w-full overflow-hidden">
+        
+        <svg viewBox="0 0 190 150" className="w-full h-full text-slate-400 dark:text-slate-600">
+          
+          {/* ARQUITECTURA */}
+          <g fill="none" stroke={wallColor} strokeWidth="2" strokeLinecap="square">
+            <path d="M 10 10 L 180 10 L 180 40" /> 
+            <path d="M 180 60 L 180 140 L 10 140 L 10 10" /> 
+            <path d="M 180 40 Q 160 40 160 60 L 180 60" strokeWidth="1" strokeDasharray="2,2" opacity="0.5" />
+            <line x1="180" y1="40" x2="180" y2="60" strokeWidth="1" opacity="0.3" />
+            <text x="185" y="50" fontSize="5" stroke="none" fill="currentColor" opacity="0.5" transform="rotate(90 185 50)">ENTRADA</text>
+          </g>
 
-          {/* Packed irregular shapes */}
-          {Array.from({ length: maxCount }).map((_, idx) => {
-            // Simple packing algorithm
-            const col = idx % 4
-            const row = Math.floor(idx / 4)
-            const x = col * 3
-            const y = row * 2.5
+          {/* RENDERIZADO DE ÍTEMS */}
+          {officeLayout.map((item, index) => {
+            // --- NUEVA LÓGICA DE SUPERPOSICIÓN ---
+            
+            // 1. ¿Tiene silla/mueble este puesto?
+            // Comparamos el índice actual directamente con la cantidad de mobiliario
+            const hasFurniture = index < furnitureCount;
 
-            return idx < itemsToShow ? (
-              <g key={idx} transform={`translate(${x}, ${y})`}>
-                <rect
-                  width="2.8"
-                  height="2.3"
-                  rx="0.3"
-                  fill={department.color || "#3b82f6"}
-                  opacity="0.8"
-                  stroke={department.color || "#3b82f6"}
-                  strokeWidth="0.1"
-                  className="transition-all duration-300"
-                  style={{
-                    filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.1))`,
-                  }}
-                />
-                <text
-                  x="1.4"
-                  y="1.4"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-[0.6px] fill-white font-bold pointer-events-none"
-                  style={{ fontSize: "0.6px" }}
-                >
-                  ✓
-                </text>
-              </g>
-            ) : (
-              <g key={idx} transform={`translate(${x}, ${y})`} opacity="0.3">
-                <rect
-                  width="2.8"
-                  height="2.3"
-                  rx="0.3"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="0.08"
-                  strokeDasharray="0.2,0.2"
-                  className="text-slate-300 dark:text-slate-600"
-                />
+            // 2. ¿Tiene equipo este puesto?
+            // Comparamos el índice actual directamente con la cantidad de equipos
+            // (Nota: Los equipos se asignan primero a escritorios, ignorando estantes si se prefiere, 
+            // pero para simplificar visualmente usamos el índice general)
+            let hasEquipment = false;
+            
+            if (item.type === 'printer') {
+               // La impresora es el último ítem (índice 11). Solo se enciende si tenemos muchos equipos
+               // O podemos hacer que se encienda si hay AL MENOS 1 equipo en la sala.
+               // Vamos a hacer que se encienda si el equipmentCount llega hasta su índice.
+               hasEquipment = index < equipmentCount;
+            } else if (item.type === 'desk') {
+               hasEquipment = index < equipmentCount;
+            }
+
+            // ¿El puesto está activo (tiene algo)?
+            const isActive = hasFurniture || hasEquipment;
+
+            // Estilos
+            const baseOpacity = isActive ? 1 : 0.3;
+            const highlightStroke = isActive ? deptColor : wallColor;
+
+            return (
+              <g 
+                key={index} 
+                transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation})`}
+                className="transition-all duration-500"
+                opacity={baseOpacity}
+              >
+                {/* === ESCRITORIO === */}
+                {item.type === 'desk' && (
+                  <>
+                    {/* Mesa */}
+                    <rect x="0" y="0" width="24" height="14" rx="1" 
+                          fill="white" className="dark:fill-slate-900" 
+                          stroke={highlightStroke} strokeWidth="1" />
+                    
+                    {/* Silla (Solo si hasFurniture es true) */}
+                    <path d="M 6 16 L 18 16 Q 18 20 12 20 Q 6 20 6 16" 
+                          fill={hasFurniture ? deptColor : "none"} 
+                          opacity={hasFurniture ? 0.5 : 0} 
+                          stroke={hasFurniture ? highlightStroke : "none"} 
+                          strokeWidth="1" />
+                    
+                    {/* Monitor (Solo si hasEquipment es true) - SE DIBUJA ENCIMA */}
+                    {hasEquipment && (
+                      <g transform="translate(5, 1)">
+                        <line x1="7" y1="9" x2="7" y2="11" stroke={machineColor} strokeWidth="2" />
+                        <line x1="4" y1="11" x2="10" y2="11" stroke={machineColor} strokeWidth="2" />
+                        <rect x="0" y="0" width="14" height="9" rx="0.5" fill={machineColor} stroke={machineColor} strokeWidth="0.5" />
+                        <rect x="1" y="1" width="12" height="7" rx="0" fill={deptColor} stroke="none" />
+                      </g>
+                    )}
+                  </>
+                )}
+
+                {/* === ESTANTERÍA === */}
+                {item.type === 'shelf' && (
+                  <>
+                    <rect x="0" y="0" width="30" height="8" fill="none" stroke={highlightStroke} strokeWidth="1.5" />
+                    {/* Los estantes solo reaccionan a Mobiliario */}
+                    {hasFurniture && (
+                        <g stroke={deptColor} strokeWidth="1" fill={deptColor}>
+                            <line x1="2" y1="4" x2="28" y2="4" opacity="0.5" />
+                            <rect x="4" y="1" width="4" height="3" />
+                            <rect x="10" y="1" width="6" height="3" />
+                            <rect x="22" y="5" width="5" height="3" />
+                        </g>
+                    )}
+                  </>
+                )}
+
+                {/* === IMPRESORA === */}
+                {item.type === 'printer' && (
+                  <g transform="translate(-2, -2)">
+                    <rect x="0" y="4" width="20" height="12" rx="1" fill={machineColor} stroke={machineColor} strokeWidth="1" />
+                    <rect x="2" y="0" width="16" height="4" rx="0.5" fill={machineColor} opacity="0.8" />
+                    {/* Solo se ilumina si le toca turno por conteo de equipos */}
+                    {hasEquipment && (
+                      <>
+                        <line x1="5" y1="16" x2="15" y2="16" stroke="white" strokeWidth="2" />
+                        <circle cx="17" cy="7" r="1.5" fill={deptColor} stroke="white" strokeWidth="0.5" />
+                      </>
+                    )}
+                  </g>
+                )}
               </g>
             )
           })}
         </svg>
 
-        {/* Percentage indicator */}
-        <div className="absolute top-2 right-3 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 px-2 py-1 rounded">
-          {Math.round(fillPercentage)}%
+        {/* Etiqueta de Porcentaje */}
+        <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-[10px] px-2 py-0.5 rounded shadow-sm font-mono flex items-center gap-1 z-10">
+          <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: deptColor }}/>
+          {Math.round(fillPercentage)}% cap.
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Barra de progreso */}
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{count} equipos</span>
-          <span className="text-slate-500 dark:text-slate-400">{maxCount} máx</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <span className="flex items-center text-slate-500"><Armchair className="w-3 h-3 mr-0.5 inline"/> {furnitureCount}</span>
+            <span className="text-slate-300">|</span>
+            <span className="flex items-center text-slate-700 dark:text-slate-200 font-bold"><Monitor className="w-3 h-3 mr-0.5 inline"/> {equipmentCount}</span>
+          </span>
+          <span className="text-slate-400 text-[10px]">{maxCount} total</span>
         </div>
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-          <div
-            className="h-full transition-all duration-500 rounded-full"
-            style={{
-              width: `${fillPercentage}%`,
-              backgroundColor: department.color || "#3b82f6",
-            }}
+        
+        {/* Barra Visual: Ahora usamos superposición visual también */}
+        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden relative">
+          {/* Fondo para Mobiliario (Opacidad baja) */}
+          <div 
+            className="absolute top-0 left-0 h-full transition-all duration-500"
+            style={{ width: `${(furnitureCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 0.3 }} 
+          />
+          {/* Barra para Equipos (Color sólido, se dibuja encima) */}
+          <div 
+            className="absolute top-0 left-0 h-full transition-all duration-500"
+            style={{ width: `${(equipmentCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 1 }} 
           />
         </div>
       </div>
@@ -455,7 +538,12 @@ export default function EquipmentByDepartmentPage() {
               </div>
             </CardHeader>
             <CardContent className="pb-3">
-              <OfficeVisualization department={dept} count={dept.count} maxCount={12} />
+              <FloorPlanVisualization 
+                department={dept} 
+                furnitureCount={dept.furnitureCount} 
+                equipmentCount={dept.equipmentCount}
+                maxCount={12} 
+              />
               <EquipmentCounter
                 department={dept}
                 furnitureCount={dept.furnitureCount}
