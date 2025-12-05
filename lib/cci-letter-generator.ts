@@ -38,6 +38,7 @@ export interface CCILetterData {
 const LETTERHEAD_URLS = {
   AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLEFIX.png",
   ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARMFIX.png",
+  GALUR: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20GALUR%20BC.png",
 }
 
 // Función para determinar qué hoja membretada usar
@@ -48,19 +49,23 @@ const getLetterheadUrl = (companyCode: string): string | null => {
     return LETTERHEAD_URLS.AGLE
   } else if (upperCode.includes("ARM")) {
     return LETTERHEAD_URLS.ARM
+  } else if (upperCode.includes("GALUR")) {
+    return LETTERHEAD_URLS.GALUR
   }
 
   return null
 }
 
 // Función para determinar el tipo de plantilla
-const getLetterheadType = (companyCode: string): "AGLE" | "ARM" | null => {
+const getLetterheadType = (companyCode: string): "AGLE" | "ARM" | "GALUR" | null => {
   const upperCode = companyCode.toUpperCase()
 
   if (upperCode.includes("AGLE")) {
     return "AGLE"
   } else if (upperCode.includes("ARM")) {
     return "ARM"
+  } else if (upperCode.includes("GALUR")) {
+    return "GALUR"
   }
 
   return null
@@ -324,7 +329,7 @@ export const generateCCILetter = async (data: CCILetterData): Promise<void> => {
 const createCCILetterHTML = (
   data: CCILetterData,
   letterheadBase64: string | null,
-  letterheadType: "AGLE" | "ARM" | null,
+  letterheadType: "AGLE" | "ARM" | "GALUR" | null,
 ): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
@@ -345,6 +350,8 @@ const createCCILetterHTML = (
         return createAGLELetterheadHTML(data, letterheadBase64, currentDate)
       case "ARM":
         return createARMLetterheadHTML(data, letterheadBase64, currentDate)
+      case "GALUR":
+        return createGALURLetterheadHTML(data, letterheadBase64, currentDate)
       default:
         return createStandardHTML(data, currentDate)
     }
@@ -352,6 +359,151 @@ const createCCILetterHTML = (
 
   // Diseño estándar sin membrete
   return createStandardHTML(data, currentDate)
+}
+
+
+const createGALURLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+
+  // Estilos de filas para GALUR - Texto un poco más pequeño para asegurar que quepa
+  const labelStyle = "padding: 3mm 0; font-weight: 600; color: #666; width: 35%; font-size: 10px;"
+  const valueStyle = "padding: 3mm 0; color: #1a1a1a; font-weight: 700; font-size: 11px;"
+
+  let bankingInfoRows = `
+    <tr>
+      <td style="${labelStyle}">EMPRESA:</td>
+      <td style="${valueStyle}">${data.companyName || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="${labelStyle}">RUC:</td>
+      <td style="${valueStyle}">${data.companyRuc || "N/A"}</td>
+    </tr>
+    <tr>
+      <td style="${labelStyle}">ENTIDAD BANCARIA:</td>
+      <td style="${valueStyle}">
+        ${data.bankingInfo?.bankAccount?.bank || "BANCO DE CRÉDITO DEL PERÚ (BCP)"}
+      </td>
+    </tr>
+    <tr>
+      <td style="${labelStyle}">NÚMERO DE CUENTA:</td>
+      <td style="${valueStyle} font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.accountNumber || "N/A"}
+      </td>
+    </tr>
+    <tr>
+      <td style="${labelStyle}">CÓDIGO CCI:</td>
+      <td style="${valueStyle} font-family: monospace;">
+        ${data.bankingInfo?.bankAccount?.cci || "N/A"}
+      </td>
+    </tr>
+  `
+
+  if (data.ocam) {
+    bankingInfoRows += `
+    <tr>
+      <td style="${labelStyle}">OCAM:</td>
+      <td style="${valueStyle}">${data.ocam}</td>
+    </tr>
+    `
+  }
+
+  if (data.oc) {
+    bankingInfoRows += `
+    <tr>
+      <td style="${labelStyle}">OC:</td>
+      <td style="${valueStyle}">${data.oc}</td>
+    </tr>
+    `
+  }
+
+  if (data.physical_order) {
+    bankingInfoRows += `
+    <tr>
+      <td style="${labelStyle}">ORDEN FÍSICA:</td>
+      <td style="${valueStyle}">${data.physical_order}</td>
+    </tr>
+    `
+  }
+
+  if (data.siaf) {
+    bankingInfoRows += `
+    <tr>
+      <td style="${labelStyle}">SIAF:</td>
+      <td style="${valueStyle}">${data.siaf}</td>
+    </tr>
+    `
+  }
+
+  return `
+    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; margin: 0; padding: 0;">
+
+      <!-- Hoja membretada como fondo -->
+      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+        <img src="${letterheadBase64}" alt="Hoja Membretada" style="width: 100%; height: 100%; object-fit: cover;" />
+      </div>
+
+      <!-- Contenido sobre la hoja membretada - Ajustado para GALUR -->
+      <!-- Margen Izquierdo 45mm para evitar franja verde -->
+      <div style="position: relative; z-index: 2; padding: 0; margin: 0; width: 100%; height: 100%;">
+
+        <!-- Área de fecha - Alineada a la derecha de la zona blanca -->
+        <div style="position: absolute; top: 50mm; right: 20mm; text-align: right;">
+          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;">Lima, ${currentDate}.</p>
+        </div>
+
+        <!-- Título de la carta - Centrado en el área útil (de 60mm a 210mm-20mm) -->
+        <div style="position: absolute; top: 60mm; left: 45mm; right: 20mm; text-align: center;">
+          <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.5px; text-decoration: underline;">CARTA DE AUTORIZACIÓN</h1>
+        </div>
+
+        <!-- Área del destinatario - Ajustada al área blanca -->
+        <div style="position: absolute; top: 70mm; left: 45mm; right: 20mm;">
+          <div style="margin-bottom: 6mm;">
+            <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">SEÑORES:</p>
+            <h3 style="margin: 0 0 2mm 0; font-size: 13px; font-weight: 800; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h3>
+            <p style="margin: 0 0 2mm 0; font-size: 10px; color: #666;">RUC: ${data.clientRuc}</p>
+            <p style="margin: 0; font-size: 10px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
+          </div>
+          
+          <p style="margin: 6mm 0; font-size: 11px; font-weight: 600; color: #1a1a1a;">Presente. –</p>
+        </div>
+
+        <!-- Contenido principal - Ajustado al área blanca -->
+        <div style="position: absolute; top: 110mm; left: 50mm; right: 25mm; line-height: 1.4;">
+          <p style="margin: 0 0 5mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Por medio de la presente, comunico a usted, que la entidad bancaria, número de cuenta y el 
+            respectivo Código de Cuenta Interbancario (CCI) de la empresa que represento es la siguiente:
+          </p>
+
+          <!-- Información bancaria -->
+          <div style="margin: 6mm 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              ${bankingInfoRows}
+            </table>
+          </div>
+
+          <p style="margin: 5mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Se certifica que el número de cuenta bancaria informado se encuentra vinculado al RUC 
+            indicado, conforme a los datos registrados en el sistema financiero nacional al momento de su 
+            apertura.
+          </p>
+
+          <p style="margin: 5mm 0; font-size: 10px; color: #1a1a1a; text-align: justify;">
+            Asimismo, dejo constancia que la factura a ser emitida por mi representada, una vez cumplida o 
+            atendida la correspondiente Orden de Compra y/o de Servicio o las prestaciones en bienes y/o 
+            servicios materia del contrato quedará cancelada para todos sus efectos mediante la sola 
+            acreditación del importe de la referida factura a favor de la cuenta en la entidad bancaria a que 
+            se refiere el primer párrafo de la presente.
+          </p>
+        </div>
+
+        <!-- Área de despedida y firma - Ajustado para no chocar con las ondas inferiores -->
+        <div style="position: absolute; bottom: 50mm; left: 50mm; right: 20mm;">
+          <p style="margin: 0; font-size: 10px; color: #1a1a1a;">Atentamente,</p>
+        </div>
+      </div>
+    </div>
+  `
 }
 
 const createARMLetterheadHTML = (data: CCILetterData, letterheadBase64: string, currentDate: string): string => {
