@@ -132,7 +132,7 @@ const formatDate = (dateString: string) => {
 
 // Función principal para generar el HTML
 export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDFData): string => {
-  const fechaCotizacion = format(new Date(data.quotationDate), "dd 'de' MMMM 'de' yyyy", { locale: es }).toUpperCase()
+  const fechaCotizacion = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const fechaValidez = data.validUntil ? format(new Date(data.validUntil), "dd/MM/yyyy", { locale: es }) : "15 días"
   const hoy = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
 
@@ -142,6 +142,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   }
 
   const simbolo = data.currency === "USD" ? "US$" : "S/"
+  const nombreMoneda = data.currency === "USD" ? "Dólares Americanos" : "Soles"
 
   const uniqueBrands = data.products
     .filter(p => p.brand && p.brandLogoUrl)
@@ -157,205 +158,246 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 <meta charset="UTF-8">
 <title>Cotización GALUR ${data.quotationNumber}</title>
 <style>
-  body, html { margin:0; padding:0; height:100%; font-family:'Segoe UI','Helvetica Neue',sans-serif; background:white; color:#222; font-size:10px; }
-  .page { width:210mm; min-height:297mm; margin:0 auto; padding:12mm 14mm; background:white; position:relative; }
+  /* CONFIGURACIÓN BÁSICA */
+  body, html { margin:0; padding:0; height:100%; font-family:'Segoe UI','Roboto','Helvetica',sans-serif; background:white; color:#333; font-size:10px; line-height:1.4; }
+  .page { width:210mm; min-height:297mm; margin:0 auto; padding:12mm 15mm; background:white; position:relative; box-sizing:border-box; }
   table { border-collapse:collapse; width:100%; }
   img { max-width:100%; height:auto; }
+  
+  /* UTILIDADES */
   .text-right { text-align:right; }
   .text-center { text-align:center; }
-  .fw-bold { font-weight:800; }
+  .fw-bold { font-weight:700; }
+  .text-green { color: #006f3d; }
+  .text-gold { color: #d4af37; }
   .fs-9 { font-size:9px; }
   .fs-10 { font-size:10px; }
-  .fs-11 { font-size:11px; }
   .fs-12 { font-size:12px; }
   .fs-14 { font-size:14px; }
-  .fs-18 { font-size:18px; }
   .fs-24 { font-size:24px; }
   .mb-2 { margin-bottom:2mm; }
-  .mb-3 { margin-bottom:3mm; }
   .mb-4 { margin-bottom:4mm; }
-  .mt-4 { margin-top:4mm; }
-  .w-100 { width:100%; }
   .d-flex { display:flex; }
   .justify-between { justify-content:space-between; }
+  .align-start { align-items:flex-start; }
   .align-center { align-items:center; }
-  .gap-4 { gap:4mm; }
+  .w-100 { width:100%; }
 
-  /* COLORES GALUR OFICIALES */
+  /* COLORES DE MARCA */
   :root {
     --green: #006f3d;
     --gold: #d4af37;
-    --light: #f9fafb;
+    --gray-light: #f4f4f4;
+    --border-color: #e0e0e0;
   }
 
-  /* HEADER */
-  .header { border-bottom:4px solid var(--green); padding-bottom:8mm; margin-bottom:6mm; }
-  .logo-galur { height:78px; }
-  .company-title { font-size:28px; color:var(--green); font-weight:900; margin:0; letter-spacing:-0.5px; }
-  .ruc-badge { background:var(--green); color:white; padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px; display:inline-block; margin-top:4px; }
+  /* --- HEADER REESTRUCTURADO --- */
+  .header { margin-bottom:6mm; padding-bottom:4mm; border-bottom:3px solid var(--green); }
+  
+  .logo-section img { height:65px; }
+  .company-info { margin-top:2mm; }
+  .company-name { font-size:20px; font-weight:800; color:var(--green); margin:0; line-height:1; }
+  .company-ruc { font-size:11px; font-weight:600; color:#555; letter-spacing:1px; }
 
-  .quo-box { background:var(--green); color:white; padding:10mm 8mm; border-radius:12px; text-align:center; min-width:135px; box-shadow:0 8px 25px rgba(0,111,61,0.3); }
-  .quo-number { font-size:32px; font-weight:900; margin:0; line-height:1; }
-  .quo-label { font-size:11px; opacity:0.9; margin:2px 0; }
-  .status-badge { background:var(--gold); color:black; font-weight:800; padding:3px 14px; border-radius:30px; font-size:11px; margin-top:6px; display:inline-block; }
+  /* Contenedor derecho del header: Info Cotización + QR */
+  .header-meta { display:flex; gap:4mm; align-items:flex-start; justify-content:flex-end; }
+  
+  .quote-data { text-align:right; }
+  .quote-label { font-size:10px; text-transform:uppercase; color:#888; letter-spacing:1px; margin-bottom:2px; }
+  .quote-number { font-size:22px; font-weight:800; color:var(--green); line-height:1; margin-bottom:4px; }
+  .status-pill { display:inline-block; background:var(--gold); color:#000; padding:2px 8px; border-radius:4px; font-size:9px; font-weight:bold; text-transform:uppercase; }
 
-  /* MARCAS */
-  .brands-bar { background:#f5f8f5; border:2px solid #e0ece4; border-radius:12px; padding:8mm 4mm; text-align:center; margin-bottom:6mm; }
-  .brands-bar img { height:42px; margin:0 12px; }
+  .qr-header img { width:65px; height:65px; border:1px solid #ddd; padding:2px; border-radius:4px; }
 
-  /* CLIENTE Y CONDICIONES */
-  .info-grid { display:grid; grid-template-columns:1.7fr 1fr; gap:5mm; margin-bottom:6mm; }
-  .card { background:white; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.08); }
-  .card-header { background:var(--green); color:white; padding:4mm 5mm; font-weight:700; font-size:12px; }
-  .card-header.gold { background:var(--gold); color:black; }
-  .card-body { padding:5mm; }
-  .row { display:flex; justify-content:space-between; padding:2.5mm 0; border-bottom:1px solid #eee; font-size:10px; }
-  .row:last-child { border:none; }
-  .label { color:#666; font-weight:600; text-transform:uppercase; font-size:9.5px; }
-  .value { font-weight:700; color:#222; }
+  /* --- SECCIÓN DE INFORMACIÓN (CLIENTE Y CONDICIONES) SIN CAJAS --- */
+  .info-strip { display:flex; margin-bottom:8mm; gap:10mm; }
+  
+  .info-col-left { flex:1.4; } /* Cliente tiene más espacio */
+  .info-col-right { flex:1; border-left:1px solid var(--border-color); padding-left:6mm; }
 
-  /* TABLA PRODUCTOS */
-  .table-wrapper { border-radius:12px; overflow:hidden; box-shadow:0 6px 25px rgba(0,111,61,0.18); margin-bottom:6mm; }
+  .section-title { 
+    font-size:10px; 
+    font-weight:700; 
+    color:var(--green); 
+    text-transform:uppercase; 
+    letter-spacing:0.5px; 
+    border-bottom:1px solid var(--border-color); 
+    padding-bottom:1mm;
+    margin-bottom:3mm; 
+  }
+
+  .data-row { display:flex; margin-bottom:1.5mm; font-size:10px; }
+  .data-label { width:80px; color:#666; font-weight:500; flex-shrink:0; }
+  .data-value { font-weight:600; color:#222; }
+
+  /* --- TABLA PRODUCTOS --- */
+  .table-prod { margin-bottom:6mm; }
   .table-prod thead { background:var(--green); color:white; }
-  .table-prod th { padding:4mm 3mm; font-weight:700; font-size:10px; text-align:center; }
-  .table-prod th:first-child { text-align:center; width:6%; }
-  .table-prod td { padding:4mm 3mm; border-bottom:1px solid #eee; vertical-align:middle; }
-  .table-prod tbody tr:hover { background:#f8fcf8; }
-  .num-circle { background:var(--gold); color:black; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; margin:0 auto; }
-  .total-cell { background:var(--green); color:white; padding:3mm 5mm; border-radius:8px; font-weight:800; text-align:center; }
+  .table-prod th { padding:3mm; font-weight:600; font-size:9px; letter-spacing:0.5px; text-transform:uppercase; text-align:center; }
+  .table-prod th:nth-child(2) { text-align:left; } /* Descripción alineada izq */
+  
+  .table-prod tbody tr { border-bottom:1px solid var(--border-color); }
+  .table-prod td { padding:3mm; vertical-align:middle; color:#444; }
+  
+  .item-idx { color:#888; font-size:9px; }
+  .prod-desc { font-weight:600; color:#222; }
+  .prod-code { display:block; font-size:8px; color:#888; font-family:monospace; margin-top:1px; }
+  
+  .total-cell { font-weight:700; color:var(--green); }
 
-  /* FOOTER 3 COLUMNAS */
-  .footer-grid { display:grid; grid-template-columns:1.3fr 1fr 0.9fr; gap:5mm; }
-  .total-final { background:var(--green); color:white; padding:6mm; text-align:right; font-size:20px; font-weight:900; border-radius:0 0 12px 12px; margin:5mm -5mm -5mm; }
+  /* --- FOOTER: BANCOS Y TOTALES --- */
+  .footer-grid { display:flex; gap:10mm; align-items:flex-start; margin-top:4mm; }
+  
+  /* Bancos a la izquierda, limpio */
+  .bank-section { flex:1.5; }
+  .bank-block { margin-bottom:3mm; font-size:9.5px; }
+  .bank-name { font-weight:700; color:#333; display:inline-block; width:60px; }
+  .bank-num { font-family:monospace; color:#555; }
+  .cci-row { color:#888; margin-left:64px; font-size:8.5px; font-family:monospace; }
 
-  .qr-box { background:#f5f8f5; border:3px dashed var(--green); border-radius:14px; padding:8mm; text-align:center; }
-  .qr-box img { width:88px; height:88px; background:white; padding:6px; border-radius:10px; }
+  /* Totales a la derecha, estilo lista */
+  .totals-section { flex:1; padding-top:2mm; }
+  .total-row { display:flex; justify-content:space-between; margin-bottom:2mm; padding-bottom:1mm; border-bottom:1px solid #f0f0f0; }
+  .total-row.final { border-bottom:none; border-top:2px solid var(--green); padding-top:2mm; margin-top:2mm; align-items:center; }
+  
+  .t-label { color:#666; font-size:10px; }
+  .t-val { font-weight:600; font-size:11px; }
+  
+  .final .t-label { font-size:12px; font-weight:800; color:var(--green); }
+  .final .t-val { font-size:16px; font-weight:800; color:var(--green); }
 
-  .footer-final { margin-top:8mm; padding-top:6mm; border-top:3px solid var(--gold); display:flex; justify-content:space-between; font-size:10px; color:#555; }
-  .footer-final strong { color:var(--green); }
+  /* Disclaimer y firma */
+  .legal-footer { margin-top:12mm; border-top:1px solid var(--border-color); padding-top:4mm; display:flex; justify-content:space-between; color:#777; font-size:9px; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- HEADER -->
-  <div class="header d-flex justify-between align-center">
-    <div class="d-flex align-center gap-4">
-      ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" class="logo-galur">` : ''}
-      <div>
-        <h1 class="company-title">${data.companyName}</h1>
-        <div class="ruc-badge">RUC ${data.companyRuc}</div>
+  <div class="header d-flex justify-between align-start">
+    <div class="logo-section">
+      ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" alt="Logo">` : ''}
+      <div class="company-info">
+        <h1 class="company-name">${data.companyName}</h1>
+        <div class="company-ruc">RUC: ${data.companyRuc}</div>
       </div>
     </div>
-    <div class="quo-box">
-      <div class="quo-number">${data.quotationNumber}</div>
-      <div class="quo-label">COTIZACIÓN PRIVADA</div>
-      <div class="quo-label fs-11">${fechaCotizacion}</div>
-      <div class="status-badge">${getStatusLabel(data.status)}</div>
+
+    <div class="header-meta">
+      <div class="quote-data">
+        <div class="quote-label">N° de Cotización</div>
+        <div class="quote-number">${data.quotationNumber}</div>
+        <div class="status-pill">${getStatusLabel(data.status)}</div>
+      </div>
+      <div class="qr-header">
+        ${data.qrCodeBase64 
+          ? `<img src="${data.qrCodeBase64}" alt="QR Validación">` 
+          : `<div style="width:65px;height:65px;background:#f4f4f4;border:1px dashed #ccc;"></div>`
+        }
+      </div>
     </div>
   </div>
 
-  <!-- MARCAS -->
   ${uniqueBrands.length > 0 ? `
-    <div class="brands-bar">
-      ${uniqueBrands.map(b => `<img src="${b.logoUrl}" alt="${b.name}">`).join('')}
+    <div style="text-align:center; margin-bottom:6mm; padding-bottom:2mm; border-bottom:1px dashed #eee;">
+      ${uniqueBrands.map(b => `<img src="${b.logoUrl}" style="height:32px; margin:0 10px; opacity:0.8;">`).join('')}
     </div>
   ` : ''}
 
-  <!-- CLIENTE + CONDICIONES -->
-  <div class="info-grid">
-    <div class="card">
-      <div class="card-header">DATOS DEL CLIENTE</div>
-      <div class="card-body">
-        <div class="row"><span class="label">Razón Social</span><span class="value">${data.clientName}</span></div>
-        <div class="row"><span class="label">RUC</span><span class="value">${data.clientRuc}</span></div>
-        <div class="row"><span class="label">Código Cliente</span><span class="value">${data.clientCode}</span></div>
-        <div class="row"><span class="label">Dirección Fiscal</span><span class="value">${data.clientFiscalAddress || data.clientAddress || '-'}</span></div>
-        ${data.contactPerson ? `<div class="row"><span class="label">Atención</span><span class="value">${data.contactPerson}</span></div>` : ''}
-      </div>
+  <div class="info-strip">
+    
+    <div class="info-col-left">
+      <div class="section-title">Datos del Cliente</div>
+      <div class="data-row"><span class="data-label">Razón Social:</span> <span class="data-value">${data.clientName}</span></div>
+      <div class="data-row"><span class="data-label">RUC:</span> <span class="data-value">${data.clientRuc}</span></div>
+      <div class="data-row"><span class="data-label">Dirección:</span> <span class="data-value" style="font-size:9px;">${data.clientFiscalAddress || data.clientAddress || '-'}</span></div>
+      <div class="data-row"><span class="data-label">Contacto:</span> <span class="data-value">${data.contactPerson || data.clientEmail || '-'}</span></div>
     </div>
 
-    <div class="card">
-      <div class="card-header gold">CONDICIONES COMERCIALES</div>
-      <div class="card-body">
-        <div class="row"><span class="label">Moneda</span><span class="value">${data.currency === "USD" ? "DÓLARES AMERICANOS" : "SOLES"}</span></div>
-        <div class="row"><span class="label">IGV</span><span class="value">INCLUIDO</span></div>
-        <div class="row"><span class="label">Validez</span><span class="value">${fechaValidez}</span></div>
-        <div class="row"><span class="label">Entrega</span><span class="value">SEGÚN COORDINACIÓN</span></div>
-      </div>
+    <div class="info-col-right">
+      <div class="section-title">Detalles Comerciales</div>
+      <div class="data-row"><span class="data-label">Fecha Emisión:</span> <span class="data-value">${fechaCotizacion}</span></div>
+      <div class="data-row"><span class="data-label">Válido hasta:</span> <span class="data-value">${fechaValidez}</span></div>
+      <div class="data-row"><span class="data-label">Moneda:</span> <span class="data-value">${nombreMoneda}</span></div>
+      <div class="data-row"><span class="data-label">Forma Pago:</span> <span class="data-value">A tratar</span></div>
     </div>
+
   </div>
 
-  <!-- TABLA PRODUCTOS -->
-  <div class="table-wrapper">
-    <table class="table-prod">
-      <thead>
+  <table class="table-prod">
+    <thead>
+      <tr>
+        <th width="5%">ITM</th>
+        <th width="45%">DESCRIPCIÓN</th>
+        <th width="10%">MARCA</th>
+        <th width="10%">CANT.</th>
+        <th width="10%">UND.</th>
+        <th width="10%">P. UNIT</th>
+        <th width="10%">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${data.products.map((p, i) => `
         <tr>
-          <th>ITEM</th>
-          <th>DESCRIPCIÓN</th>
-          <th>CANT.</th>
-          <th>UND</th>
-          <th>MARCA</th>
-          <th>P. UNITARIO</th>
-          <th>P. TOTAL</th>
+          <td class="text-center"><span class="item-idx">${i + 1}</span></td>
+          <td>
+            <span class="prod-desc">${p.description}</span>
+            ${p.code ? `<span class="prod-code">COD: ${p.code}</span>` : ''}
+          </td>
+          <td class="text-center" style="font-size:9px;">${p.brand || '-'}</td>
+          <td class="text-center fw-bold">${p.quantity}</td>
+          <td class="text-center" style="font-size:9px;">${p.unit}</td>
+          <td class="text-right">${simbolo} ${p.unitPrice.toFixed(2)}</td>
+          <td class="text-right total-cell">${simbolo} ${p.totalPrice.toFixed(2)}</td>
         </tr>
-      </thead>
-      <tbody>
-        ${data.products.map((p, i) => `
-          <tr>
-            <td><div class="num-circle">${i + 1}</div></td>
-            <td style="font-weight:600;">${p.description}${p.code ? `<br><small style="color:var(--green);font-family:monospace;">${p.code}</small>` : ''}</td>
-            <td class="text-center fw-bold">${p.quantity}</td>
-            <td class="text-center">${p.unit}</td>
-            <td class="text-center">${p.brandLogoUrl ? `<img src="${p.brandLogoUrl}" style="height:28px;">` : (p.brand || '-')}</td>
-            <td class="text-right fw-bold">${simbolo} ${p.unitPrice.toFixed(2)}</td>
-            <td><div class="total-cell">${simbolo} ${p.totalPrice.toFixed(2)}</div></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  </div>
+      `).join('')}
+    </tbody>
+  </table>
 
-  <!-- FOOTER 3 COLUMNAS -->
   <div class="footer-grid">
-    <!-- Bancos -->
-    <div class="card">
-      <div class="card-header">DATOS BANCARIOS</div>
-      <div class="card-body fs-10">
-        ${data.bankingInfo?.bankAccount ? `
-          <div class="row"><span class="label">Banco</span><span class="value">${data.bankingInfo.bankAccount.bank}</span></div>
-          <div class="row"><span class="label">Cuenta ${data.bankingInfo.bankAccount.type}</span><span class="value" style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span></div>
-          <div class="row"><span class="label">CCI</span><span class="value" style="font-family:monospace;">${data.bankingInfo.bankAccount.cci}</span></div>
-          ${data.bankingInfo.detractionAccount ? `<div class="row mt-4" style="border-top:1px solid #eee;padding-top:6px;"><span class="label">Cta. Detracción</span><span class="value" style="font-family:monospace;">${data.bankingInfo.detractionAccount.accountNumber}</span></div>` : ''}
-        ` : '<em>Sin información bancaria</em>'}
+    
+    <div class="bank-section">
+      <div class="section-title">Información Bancaria</div>
+      ${data.bankingInfo?.bankAccount ? `
+        <div class="bank-block">
+          <div><span class="bank-name">${data.bankingInfo.bankAccount.bank}:</span> <span class="bank-num">${data.bankingInfo.bankAccount.accountNumber}</span></div>
+          <div class="cci-row">CCI: ${data.bankingInfo.bankAccount.cci}</div>
+        </div>
+        ${data.bankingInfo.detractionAccount ? `
+          <div class="bank-block">
+            <div><span class="bank-name">Banco Nación:</span> <span class="bank-num">${data.bankingInfo.detractionAccount.accountNumber}</span></div>
+            <div class="cci-row">Cta. Detracciones (${data.bankingInfo.detractionAccount.percentage || '10'}%)</div>
+          </div>
+        ` : ''}
+      ` : '<div style="font-style:italic; color:#888;">Cuentas bancarias no especificadas.</div>'}
+      
+      <div class="mt-4" style="font-size:9px; color:#666; margin-top:6mm;">
+        * Los precios incluyen IGV.<br>
+        * El tiempo de entrega corre a partir de la confirmación de la orden de compra.
       </div>
     </div>
 
-    <!-- Totales -->
-    <div class="card">
-      <div class="card-header gold">RESUMEN</div>
-      <div class="card-body">
-        <div class="row"><span>Subtotal</span><span>${simbolo} ${data.subtotal.toFixed(2)}</span></div>
-        <div class="row"><span>IGV 18%</span><span>${simbolo} ${data.igv.toFixed(2)}</span></div>
-        <div class="total-final">TOTAL ${simbolo} ${data.total.toFixed(2)}</div>
+    <div class="totals-section">
+      <div class="total-row">
+        <span class="t-label">Subtotal</span>
+        <span class="t-val">${simbolo} ${data.subtotal.toFixed(2)}</span>
       </div>
-    </div>
-
-    <!-- QR -->
-    <div class="qr-box">
-      ${data.qrCodeBase64 ? `<img src="${data.qrCodeBase64}">` : `<div style="width:88px;height:88px;background:#eee;border-radius:10px;margin:0 auto;"></div>`}
-      <div class="mt-4" style="color:var(--green);font-weight:700;">Escanee para verificar autenticidad</div>
+      <div class="total-row">
+        <span class="t-label">IGV (18%)</span>
+        <span class="t-val">${simbolo} ${data.igv.toFixed(2)}</span>
+      </div>
+      <div class="total-row final">
+        <span class="t-label">TOTAL A PAGAR</span>
+        <span class="t-val">${simbolo} ${data.total.toFixed(2)}</span>
+      </div>
     </div>
   </div>
 
-  <!-- FOOTER FINAL -->
-  <div class="footer-final">
+  <div class="legal-footer">
     <div>
-      Elaborado por: <strong>${data.createdBy}</strong><br>
-      Generado: ${hoy}
+      Generado por: <strong>${data.createdBy}</strong> el ${hoy}
     </div>
     <div class="text-right">
-      <strong style="color:var(--green);font-size:18px;">GALUR</strong><br>
+      <strong>GALUR BUSINESS CORPORATION</strong><br>
       Confianza • Calidad • Servicio
     </div>
   </div>
