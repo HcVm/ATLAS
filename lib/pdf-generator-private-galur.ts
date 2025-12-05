@@ -183,7 +183,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 60%;
+    width: 80%;
     opacity: 0.04;
     z-index: 0;
     pointer-events: none;
@@ -324,7 +324,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   
   .totals-box { flex: 1; }
   
-  .total-row { display: flex; justify-content: space-between; padding: 2mm 0; border-bottom: 1px solid #eee; font-size: 10px; }
+  .total-row { display: flex; justify-content: space-between; padding: 2mm 0; border-bottom: 1px solid #eee; font-size: 12px; }
   .total-final { 
     background: var(--green); 
     color: white; 
@@ -335,7 +335,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     align-items: center; 
     margin-top: 2mm;
     font-weight: 800;
-    font-size: 12px;
+    font-size: 13px;
     box-shadow: 0 4px 6px rgba(0,111,61,0.2);
   }
 
@@ -429,7 +429,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
                 </div>
               </td>
               <td class="text-center fw-bold">${p.quantity}</td>
-              <td class="text-center" style="font-size:9px;">${p.unit}</td>
+              <td class="text-center" style="font-size:10px;">${p.unit}</td>
               <td class="text-right">${simbolo} ${p.unitPrice.toFixed(2)}</td>
               <td class="text-right fw-bold" style="color:#222;">${simbolo} ${p.totalPrice.toFixed(2)}</td>
             </tr>
@@ -441,10 +441,10 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     <div class="footer-area">
       
       <div class="bank-box">
-        <h3 style="margin:0 0 5px 0; font-size:10px; color:var(--green);">INFORMACIÓN BANCARIA</h3>
+        <h3 style="margin:0 0 5px 0; font-size:12px; color:var(--green);">INFORMACIÓN BANCARIA</h3>
         ${data.bankingInfo?.bankAccount ? `
           <div style="margin-bottom:4px;">
-            <strong>${data.bankingInfo.bankAccount.bank}</strong> ${data.bankingInfo.bankAccount.currency} <br>
+            <strong>${data.bankingInfo.bankAccount.bank}</strong><br>
             <span style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span>
           </div>
           <div style="font-size:9px; color:#666;">CCI: ${data.bankingInfo.bankAccount.cci}</div>
