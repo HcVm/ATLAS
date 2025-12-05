@@ -132,9 +132,9 @@ const formatDate = (dateString: string) => {
 
 // Función principal para generar el HTML
 export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDFData): string => {
-  const fechaCotizacion = format(new Date(data.quotationDate), "dd 'de' MMMM 'de' yyyy", { locale: es }).toUpperCase()
-  const fechaValidez = data.validUntil ? format(new Date(data.validUntil), "dd/MM/yyyy", { locale: es }) : "15 días"
+  const fechaCot = format(new Date(data.quotationDate), "dd/MM/yyyy", { locale: es })
   const hoy = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
+  const validez = data.validUntil ? format(new Date(data.validUntil), "dd/MM/yyyy", { locale: es }) : "15 días"
 
   if (data.companyCode && !data.bankingInfo) {
     const info = getBankingInfoByCompanyCode(data.companyCode)
@@ -143,328 +143,202 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 
   const simbolo = data.currency === "USD" ? "US$" : "S/"
 
+  // QR con fallback seguro
+  const qrSrc = data.qrCodeBase64 ||
+    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('COT-' + data.quotationNumber)}`
+
   const uniqueBrands = data.products
-    .filter(p => p.brand && p.brandLogoUrl)
-    .reduce((acc: any[], p => {
+    .products.filter(p => p.brand && p.brandLogoUrl)
+    .reduce((acc: any[], p) => {
       if (!acc.find(b => b.name === p.brand)) acc.push({ name: p.brand!, logoUrl: p.brandLogoUrl! })
       return acc
     }, [])
-
-  // QR fallback: si no viene base64, generamos uno local con el número de cotización
-  const qrFinal = data.qrCodeBase64 || 
-    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=COT-${data.quotationNumber}-${data.clientRuc}`
 
   return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cotización ${data.quotationNumber}</title>
+<title>COT-${data.quotationNumber}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  body,html{margin:0;padding:0;font-family:'Segoe UI',Tahoma,sans-serif;background:white;color:#222;font-size:10px}
+  table{width:100%;border-collapse:collapse}
+  img{max-width:100%;height:auto}
+  .page{width:210mm;min-height:297mm;margin:0 auto;padding:14mm 16mm;background:white}
+  .text-center{text-align:center}
+  .text-right{text-align:right}
+  .fw-bold{font-weight:800}
+  .mb1{margin-bottom:4mm}
+  .mb2{margin-bottom:8mm}
+  .green{color:#006f3d}
+  .gold{color:#d4af37}
+  .bg-green{background:#006f3d}
+  .bg-gold{background:#d4af37}
+  .br6{border-radius:6px}
+  .br0{border-radius:0}
+  .shadow{box-shadow:0 4px 20px rgba(0,111,61,0.25)}
   
-  body, html { margin:0; padding:0; font-family: 'Inter', system-ui, sans-serif; background: white; color: #1a1a1a; font-size: 10.5px; line-height: 1.4; }
-  .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 15mm 16mm; background: white; }
-
-  :root {
-    --green: #006f3d;
-    --gold: #d4af37;
-    --gray: #f4f4f4;
-  }
-
-  /* HEADER MINIMAL + ELEGANTE */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12mm;
-    border-bottom: 3px solid var(--green);
-    margin-bottom: 10mm;
-  }
-  .logo { height: 82px; }
-  .company { font-size: 26px; font-weight: 900; color: var(--green); margin: 0; letter-spacing: -0.8px; }
-  .ruc { background: var(--green); color: white; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 11px; margin-top: 4px; display: inline-block; }
-
-  .quo-box {
-    background: var(--green);
-    color: white;
-    padding: 14px 20px;
-    text-align: center;
-    border-radius: 0; /* SIN bordes redondeados */
-    min-width: 160px;
-    box-shadow: 0 6px 20px rgba(0,111,61,0.3);
-  }
-  .quo-number { font-size: 34px; font-weight: 900; margin: 0; line-height: 1; }
-  .quo-text { font-size: 11.5px; font-weight: 600; opacity: 0.95; }
-  .status { 
-    background: var(--gold); 
-    color: black; 
-    font-weight: 800; 
-    padding: 5px 16px; 
-    border-radius: 20px; 
-    font-size: 11px; 
-    margin-top: 8px; 
-    display: inline-block; 
-  }
-
-  /* MARCAS EN LÍNEA SIMPLE */
-  .brands { 
-    text-align: center; 
-    padding: 10px 0; 
-    margin: 12px 0 16px; 
-    border-top: 1px solid #eee; 
-    border-bottom: 1px solid #eee; 
-  }
-  .brands img { height: 38px; margin: 0 10px; vertical-align: middle; }
-
-  /* GRID CLIENTE + CONDICIONES - SIN BORDER RADIUS */
-  .grid {
-    display: grid;
-    grid-template-columns: 1.8fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-  .box {
-    border: 1.5px solid var(--green);
-    background: white;
-  }
-  .box-header {
-    background: var(--green);
-    color: white;
-    padding: 10px 14px;
-    font-weight: 700;
-    font-size: 12.5px;
-  }
-  .box-header.gold { background: var(--gold); color: black; }
-  .box-body { padding: 14px; }
-  .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-    font-size: 10.8px;
-  }
-  .row:last-child { border-bottom: none; }
-  .label { color: #555; font-weight: 600; text-transform: uppercase; font-size: 9.8px; }
-  .value { font-weight: 700; color: #111; text-align: right; }
-
-  /* TABLA LIMPIA Y MODERNA */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0;
-    font-size: 10.5px;
-  }
-  thead { background: var(--green); color: white; }
-  th {
-    padding: 12px 10px;
-    font-weight: 700;
-    text-align: center;
-    font-size: 11px;
-  }
-  td { padding: 14px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
-  tbody tr:hover { background: #f8fff9; }
-  .item-num {
-    background: var(--gold);
-    color: black;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 13px;
-    margin: 0 auto;
-  }
-  .price { text-align: right; font-weight: 700; color: var(--green); }
-  .total-price {
-    background: var(--green);
-    color: white;
-    padding: 7px 14px;
-    border-radius: 6px;
-    font-weight: 800;
-    display: inline-block;
-  }
-
-  /* FOOTER 3 COLUMNAS MINIMAL */
-  .footer-grid {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
-    gap: 16px;
-    margin-top: 20px;
-  }
-  .total-box {
-    border: 1.5px solid var(--green);
-  }
-  .total-header {
-    background: var(--gold);
-    color: black;
-    padding: 10px 14px;
-    font-weight: 700;
-    font-size: 12.5px;
-  }
-  .total-final {
-    background: var(--green);
-    color: white;
-    padding: 16px 20px;
-    font-size: 22px;
-    font-weight: 900;
-    text-align: right;
-  }
-
-  .qr-container {
-    border: 2px dashed var(--green);
-    padding: 16px;
-    text-align: center;
-    background: #f8fff9;
-  }
-  .qr-container img {
-    width: 100px;
-    height: 100px;
-    padding: 8px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  .qr-text {
-    margin-top: 10px;
-    font-weight: 700;
-    color: var(--green);
-    font-size: 11px;
-  }
-
-  .footer-line {
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 2px solid var(--gold);
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #444;
-  }
-  .footer-line strong { color: var(--green); }
+  .header-table td{vertical-align:middle;padding:6mm 4mm}
+  .logo-td{width:120px;background:white;border:3px solid #006f3d;text-align:center}
+  .logo-img{height:76px}
+  .company-td{background:#006f3d;color:white;text-align:center}
+  .company-name{font-size:28px;font-weight:900;letter-spacing:-0.5px}
+  .quo-td{width:160px;background:white;border:3px solid #006f3d;text-align:center}
+  .quo-num{font-size:36px;font-weight:900;color:#006f3d;margin:0}
+  .status-badge{background:#d4af37;color:black;padding:4px 16px;border-radius:20px;font-weight:800;font-size:11px;margin-top:4px;display:inline-block}
+  
+  .brands-row td{padding:6px 0;background:#f8f9f5;border:1px solid #e0e8e2}
+  .brand-img{height:40px;margin:0 12px}
+  
+  .info-table td{padding:8px 10px;border:1px solid #ddd}
+  .info-header{background:#006f3d;color:white;font-weight:700;padding:10px}
+  .info-header-gold{background:#d4af37;color:black}
+  
+  .prod-table th{background:#006f3d;color:white;padding:10px 8px;font-weight:700;text-align:center}
+  .prod-table td{padding:12px 8px;border-bottom:1px solid #eee;vertical-align:middle}
+  .prod-table tbody tr:hover{background:#f8fff8}
+  .item-circle{background:#d4af37;color:black;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;margin:0 auto}
+  .total-cell{background:#006f3d;color:white;padding:8px 14px;border-radius:6px;font-weight:800;display:inline-block}
+  
+  .footer-grid td{padding:10px;vertical-align:top}
+  .total-final-td{background:#006f3d;color:white;text-align:right;padding:16px;font-size:24px;font-weight:900}
+  .qr-td{background:#f8fff9;border:2px dashed #006f3d;text-align:center;padding:12px}
+  .qr-img{width:100px;height:100px;background:white;padding:8px;border-radius:8px}
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div style="display:flex;align-items:center;gap:16px;">
-      ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" class="logo" alt="Logo">` : ''}
-      <div>
-        <div class="company">${data.companyName}</div>
-        <div class="ruc">RUC ${data.companyRuc}</div>
-      </div>
-    </div>
-
-    <div class="quo-box">
-      <div class="quo-number">${data.quotationNumber}</div>
-      <div class="quo-text">COTIZACIÓN PRIVADA</div>
-      <div class="quo-text">${fechaCotizacion}</div>
-      <div class="status">${getStatusLabel(data.status).toUpperCase()}</div>
-    </div>
-  </div>
+  <!-- HEADER (tabla ultra compatible) -->
+  <table class="header-table mb2">
+    <tr>
+      <td class="logo-td br6">
+        ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" class="logo-img">` : '<div style="font-size:32px;font-weight:900;color:#006f3d">GALUR</div>'}
+      </td>
+      <td class="company-td br0">
+        <div class="company-name">${data.companyName}</div>
+        <div style="margin-top:4px;font-size:12px">RUC ${data.companyRuc}</div>
+      </td>
+      <td class="quo-td br6">
+        <div class="quo-num">${data.quotationNumber}</div>
+        <div style="font-size:12px;margin:4px 0">Cotización Privada</div>
+        <div style="font-size:11px;color:#666">${fechaCot}</div>
+        <div class="status-badge">${getStatusLabel(data.status).toUpperCase()}</div>
+      </td>
+    </tr>
+  </table>
 
   <!-- MARCAS -->
   ${uniqueBrands.length > 0 ? `
-    <div class="brands">
-      ${uniqueBrands.map(b => `<img src="${b.logoUrl}" alt="${b.name}">`).join('')}
-    </div>
+  <table class="brands-row mb2">
+    <tr>
+      <td class="text-center" colspan="7">
+        ${uniqueBrands.map(b => `<img src="${b.logoUrl}" class="brand-img" alt="${b.name}">`).join('')}
+      </td>
+    </tr>
+  </table>
   ` : ''}
 
   <!-- CLIENTE + CONDICIONES -->
-  <div class="grid">
-    <div class="box">
-      <div class="box-header">DATOS DEL CLIENTE</div>
-      <div class="box-body">
-        <div class="row"><span class="label">Razón Social</span><span class="value">${data.clientName}</span></div>
-        <div class="row"><span class="label">RUC</span><span class="value">${data.clientRuc}</span></div>
-        <div class="row"><span class="label">Código</span><span class="value">${data.clientCode}</span></div>
-        <div class="row"><span class="label">Dirección Fiscal</span><span class="value">${data.clientFiscalAddress || data.clientAddress || '-'}</span></div>
-        ${data.contactPerson ? `<div class="row"><span class="label">Atención</span><span class="value">${data.contactPerson}</span></div>` : ''}
-      </div>
-    </div>
+  <table style="width:100%;margin-bottom:10px">
+    <tr>
+      <td style="width:60%">
+        <table class="info-table" style="width:100%">
+          <tr><td class="info-header" colspan="2">DATOS DEL CLIENTE</td></tr>
+          <tr><td class="label">Razón Social</td><td class="value fw-bold">${data.clientName}</td></tr>
+          <tr><td class="label">RUC</td><td class="value fw-bold">${data.clientRuc}</td></tr>
+          <tr><td class="label">Código</td><td class="value fw-bold">${data.clientCode}</td></tr>
+          <tr><td class="label">Dirección</td><td class="value fw-bold">${data.clientFiscalAddress || data.clientAddress || '-'}</td></tr>
+          ${data.contactPerson ? `<tr><td class="label">Atención</td><td class="value fw-bold">${data.contactPerson}</td></tr>` : ''}
+        </table>
+      </td>
+      <td style="width:40%;padding-left:12px">
+        <table class="info-table" style="width:100%">
+          <tr><td class="info-header-gold" colspan="2">CONDICIONES</td></tr>
+          <tr><td class="label">Moneda</td><td class="value fw-bold">${data.currency === "USD" ? "DÓLARES" : "SOLES"}</td></tr>
+          <tr><td class="label">IGV</td><td class="value fw-bold">INCLUIDO</td></tr>
+          <tr><td class="label">Validez</td><td class="value fw-bold">${validez}</td></tr>
+          <tr><td class="label">Entrega</td><td class="value fw-bold">SEGÚN COORDINACIÓN</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="box">
-      <div class="box-header gold">CONDICIONES COMERCIALES</div>
-      <div class="box-body">
-        <div class="row"><span class="label">Moneda</span><span class="value">${data.currency === "USD" ? "DÓLARES" : "SOLES"}</span></div>
-        <div class="row"><span class="label">IGV</span><span class="value">INCLUIDO</span></div>
-        <div class="row"><span class="label">Validez</span><span class="value">${fechaValidez}</span></div>
-        <div class="row"><span class="label">Entrega</span><span class="value">SEGÚN COORDINACIÓN</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TABLA PRODUCTOS -->
-  <table>
+  <!-- PRODUCTOS -->
+  <table class="prod-table mb2">
     <thead>
       <tr>
-        <th style="width:6%;">ITEM</th>
-        <th>DESCRIPCIÓN</th>
-        <th style="width:10%;">CANT.</th>
-        <th style="width:8%;">UND</th>
-        <th style="width:12%;">MARCA</th>
-        <th style="width:12%;">P. UNIT.</th>
-        <th style="width:14%;">P. TOTAL</th>
+        <th style="width:6%">#</th>
+        <th style="width:38%">DESCRIPCIÓN</th>
+        <th style="width:9%">CANT.</th>
+        <th style="width:9%">UND</th>
+        <th style="width:12%">MARCA</th>
+        <th style="width:12%">P. UNIT.</th>
+        <th style="width:14%">TOTAL</th>
       </tr>
     </thead>
     <tbody>
       ${data.products.map((p, i) => `
-        <tr>
-          <td style="text-align:center;"><div class="item-num">${i + 1}</div></td>
-          <td style="font-weight:600;">${p.description}${p.code ? `<br><small style="color:var(--green);font-family:monospace;font-size:9.5px;">${p.code}</small>` : ''}</td>
-          <td style="text-align:center;font-weight:700;">${p.quantity}</td>
-          <td style="text-align:center;">${p.unit}</td>
-          <td style="text-align:center;">${p.brandLogoUrl ? `<img src="${p.brandLogoUrl}" style="height:30px;">` : (p.brand || '-')}</td>
-          <td class="price">${simbolo} ${p.unitPrice.toFixed(2)}</td>
-          <td style="text-align:right;"><span class="total-price">${simbolo} ${p.totalPrice.toFixed(2)}</span></td>
-        </tr>
+      <tr>
+        <td><div class="item-circle">${i + 1}</div></td>
+        <td style="font-weight:600">
+          ${p.description}
+          ${p.code ? `<br><small style="color:#006f3d;font-family:monospace">${p.code}</small>` : ''}
+        </td>
+        <td class="text-center fw-bold">${p.quantity}</td>
+        <td class="text-center">${p.unit}</td>
+        <td class="text-center">
+          ${p.brandLogoUrl ? `<img src="${p.brandLogoUrl}" style="height:32px">` : (p.brand || '-')}
+        </td>
+        <td class="text-right fw-bold">${simbolo} ${p.unitPrice.toFixed(2)}</td>
+        <td class="text-right"><span class="total-cell">${simbolo} ${p.totalPrice.toFixed(2)}</span></td>
+      </tr>
       `).join('')}
     </tbody>
   </table>
 
-  <!-- FOOTER -->
-  <div class="footer-grid">
-    <div class="box">
-      <div class="box-header">DATOS BANCARIOS</div>
-      <div class="box-body" style="font-size:10.5px;">
-        ${data.bankingInfo?.bankAccount ? `
-        <div class="row"><span class="label">Banco</span><span class="value">${data.bankingInfo.bankAccount.bank}</span></div>
-        <div class="row"><span class="label">Cuenta ${data.bankingInfo.bankAccount.type}</span><span class="value" style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span></div>
-        <div class="row"><span class="label">CCI</span><span class="value" style="font-family:monospace;">${data.bankingInfo.bankAccount.cci}</span></div>
-        ${data.bankingInfo.detractionAccount ? `<div class="row" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee;"><span class="label">Cta. Detracción</span><span class="value" style="font-family:monospace;">${data.bankingInfo.detractionAccount.accountNumber}</span></div>` : ''}
-      ` : 'Sin información disponible'}
-      </div>
-    </div>
+  <!-- FOOTER 3 COLUMNAS -->
+  <table class="footer-grid">
+    <tr>
+      <!-- Bancos -->
+      <td style="width:38%">
+        <table style="width:100%;border:2px solid #006f3d" class="br6">
+          <tr><td class="bg-green" style="color:white;padding:10px;font-weight:700">DATOS BANCARIOS</td></tr>
+          <tr><td style="padding:10px">
+            ${data.bankingInfo?.bankAccount ? `
+              <div><strong>Banco:</strong> ${data.bankingInfo.bankAccount.bank}</div>
+              <div><strong>Cuenta ${data.bankingInfo.bankAccount.type}:</strong> ${data.bankingInfo.bankAccount.accountNumber}</div>
+              <div><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</div>
+              ${data.bankingInfo.detractionAccount ? `<div style="margin-top:6px"><strong>Cta. Detracción:</strong> ${data.bankingInfo.detractionAccount.accountNumber}</div>` : ''}
+            ` : '<em>No registrada</em>'}
+          </td></tr>
+        </table>
+      </td>
 
-    <div class="total-box">
-      <div class="total-header">RESUMEN</div>
-      <div class="box-body" style="padding-bottom:0;">
-        <div class="row"><span>Subtotal</span><span>${simbolo} ${data.subtotal.toFixed(2)}</span></div>
-        <div class="row"><span>IGV 18%</span><span>${simbolo} ${data.igv.toFixed(2)}</span></div>
-        <div class="total-final">TOTAL ${simbolo} ${data.total.toFixed(2)}</div>
-      </div>
-    </div>
+      <!-- Totales -->
+      <td style="width:32%;padding:0 10px">
+        <table style="width:100%;border:2px solid #d4af37" class="br6">
+          <tr><td class="bg-gold" style="color:black;padding:10px;font-weight:700;text-align:center">RESUMEN</td></tr>
+          <tr><td style="padding:10px">
+            <div style="display:flex;justify-content:space-between"><span>Subtotal:</span><strong>${simbolo} ${data.subtotal.toFixed(2)}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>IGV 18%:</span><strong>${simbolo} ${data.igv.toFixed(2)}</strong></div>
+          </td></tr>
+          <tr><td class="total-final-td">TOTAL ${simbolo} ${data.total.toFixed(2)}</td></tr>
+        </table>
+      </td>
 
-    <div class="qr-container">
-      <img src="${qrFinal}" alt="QR Verificación">
-      <div class="qr-text">Escanee para verificar<br>autenticidad</div>
-    </div>
-  </div>
+      <!-- QR -->
+      <td style="width:30%" class="qr-td br6">
+        <img src="${qrSrc}" class="qr-img">
+        <div style="margin-top:8px;font-weight:700;color:#006f3d">Escanee para verificar autenticidad</div>
+      </td>
+    </tr>
+  </table>
 
-  <!-- PIE DE PÁGINA -->
-  <div class="footer-line">
-    <div>
-      Elaborado por: <strong>${data.createdBy}</strong><br>
-      Generado: ${hoy}
-    </div>
-    <div style="text-align:right;">
-      <strong style="color:var(--green);font-size:18px;">GALUR</strong><br>
-      Confianza • Calidad • Servicio
-    </div>
+  <!-- PIE FINAL -->
+  <div style="margin-top:16px;padding-top:12px;border-top:3px solid #d4af37;text-align:center;color:#555;font-size:11px">
+    Elaborado por: <strong>${data.createdBy}</strong> • Generado: ${hoy}<br>
+    <strong style="color:#006f3d;font-size:16px">GALUR</strong> — Confianza • Calidad • Servicio
   </div>
 
 </div>
