@@ -162,45 +162,37 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   /* CONFIGURACIÓN BASE */
   body, html { margin:0; padding:0; height:100%; font-family:'Segoe UI','Roboto','Helvetica',sans-serif; background:#555; color:#333; font-size:10px; line-height:1.4; }
   
-  /* PÁGINA A4 CON DISEÑO DE FONDO */
+  /* PÁGINA A4 - MÁRGENES AJUSTADOS */
   .page { 
     width:210mm; 
     min-height:297mm; 
     margin:0 auto; 
-    padding:12mm 15mm; 
+    /* CAMBIO AQUÍ: Reducido padding lateral de 15mm a 10mm */
+    padding:12mm 10mm; 
     background:white; 
     position:relative; 
     box-sizing:border-box; 
-    overflow:hidden; /* Para cortar los elementos decorativos */
+    overflow:hidden;
   }
 
   /* --- ELEMENTOS DE FONDO (BACKGROUND ART) --- */
   
-  /* 1. Marca de Agua Central */
+  /* 1. Marca de Agua Central (MANTENIDA) */
   .bg-watermark {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 60%;
-    opacity: 0.04; /* Muy sutil */
+    opacity: 0.04;
     z-index: 0;
     pointer-events: none;
     filter: grayscale(100%);
   }
 
-  /* 2. Acento Geométrico Esquina Superior Derecha */
-  .bg-accent-top {
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 200px;
-    height: 200px;
-    background: linear-gradient(135deg, transparent 50%, rgba(212, 175, 55, 0.15) 50%); /* Dorado suave */
-    z-index: 0;
-  }
+  /* (ELIMINADO) .bg-accent-top */
   
-  /* 3. Acento Geométrico Esquina Inferior Izquierda */
+  /* 2. Acento Geométrico Inferior (MANTENIDO) */
   .bg-accent-bottom {
     position: absolute;
     bottom: 0;
@@ -232,21 +224,21 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   /* --- HEADER --- */
   .header { margin-bottom:4mm; padding-bottom:4mm; border-bottom:3px solid var(--green); display:flex; justify-content:space-between; align-items:flex-end; }
   
-  .logo-main img { height:75px; } /* Logo empresa principal un poco más grande */
+  .logo-main img { height:75px; }
   
   .header-info { text-align:right; }
   .quote-title { font-size:10px; text-transform:uppercase; color:#888; letter-spacing:2px; margin-bottom:2px; }
   .quote-number { font-size:26px; font-weight:900; color:var(--green); line-height:1; letter-spacing:-0.5px; }
   .status-badge { background:var(--gold); color:white; padding:2px 10px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block; margin-top:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
 
-  /* --- BARRA DE MARCAS Y QR (NUEVA ZONA CENTRAL) --- */
+  /* --- BARRA CENTRAL: MARCAS + QR --- */
   .middle-strip {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(to right, #fcfcfc, #fff); /* Degradado sutil */
+    background: linear-gradient(to right, #fcfcfc, #fff);
     border: 1px solid var(--border-color);
-    border-left: 4px solid var(--gold); /* Detalle de color */
+    border-left: 4px solid var(--gold);
     border-radius: 6px;
     padding: 4mm 6mm;
     margin-bottom: 8mm;
@@ -260,11 +252,10 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     flex: 1;
   }
   
-  /* Logos de marcas MÁS GRANDES como pediste */
   .brand-logo { 
-    height: 55px; /* Aumentado considerablemente */
+    height: 55px;
     object-fit: contain;
-    filter: grayscale(20%); /* Un toque elegante */
+    filter: grayscale(20%);
     transition: filter 0.3s;
   }
 
@@ -293,7 +284,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     background: white;
   }
 
-  /* --- INFO CLIENTE (ESTILO LIMPIO) --- */
+  /* --- INFO CLIENTE --- */
   .info-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10mm; margin-bottom: 8mm; }
   
   .info-block h3 {
@@ -314,7 +305,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   
   .table-prod thead { background: var(--green); color: white; }
   .table-prod th { padding: 4mm; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-  .table-prod tbody tr:nth-child(even) { background-color: var(--gray-light); } /* Filas cebradas sutiles */
+  .table-prod tbody tr:nth-child(even) { background-color: var(--gray-light); }
   .table-prod td { padding: 4mm; border-bottom: 1px solid var(--border-color); vertical-align: middle; color: #444; }
   
   .desc-main { font-weight: 700; color: #222; font-size: 10.5px; display: block; margin-bottom: 2px; }
@@ -348,7 +339,6 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     box-shadow: 0 4px 6px rgba(0,111,61,0.2);
   }
 
-  /* TEXTO LEGAL */
   .legal-text { font-size: 8px; color: #999; margin-top: 10mm; text-align: center; border-top: 1px solid #eee; padding-top: 3mm; }
 
 </style>
@@ -357,7 +347,6 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 <div class="page">
   
   ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}" class="bg-watermark">` : ''}
-  <div class="bg-accent-top"></div>
   <div class="bg-accent-bottom"></div>
 
   <div class="content-layer">
@@ -490,7 +479,8 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
       Documento validado por <strong>Galur Business Corporation</strong>
     </div>
 
-  </div> </div>
+  </div>
+</div>
 </body>
 </html>
   `
