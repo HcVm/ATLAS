@@ -136,15 +136,19 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   const fechaValidez = data.validUntil ? format(new Date(data.validUntil), "dd/MM/yyyy", { locale: es }) : "15 días"
   const hoy = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })
 
+  // 1. Asegurar que tenemos la info bancaria completa usando tu función
   if (data.companyCode && !data.bankingInfo) {
     const info = getBankingInfoByCompanyCode(data.companyCode)
     if (info) data.bankingInfo = info
   }
 
+  // 2. Extraer variables para facilitar el renderizado
+  const contactInfo = data.bankingInfo?.contactInfo
+  const fiscalAddress = data.bankingInfo?.fiscalAddress || data.companyAddress || ''
+
   const simbolo = data.currency === "USD" ? "US$" : "S/"
   const nombreMoneda = data.currency === "USD" ? "Dólares Americanos" : "Soles"
 
-  // Filtramos marcas únicas
   const uniqueBrands = data.products
     .filter(p => p.brand && p.brandLogoUrl)
     .reduce((acc: any[], p) => {
@@ -162,12 +166,10 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   /* CONFIGURACIÓN BASE */
   body, html { margin:0; padding:0; height:100%; font-family:'Segoe UI','Roboto','Helvetica',sans-serif; background:#555; color:#333; font-size:10px; line-height:1.4; }
   
-  /* PÁGINA A4 - MÁRGENES AJUSTADOS */
   .page { 
     width:210mm; 
     min-height:297mm; 
     margin:0 auto; 
-    /* CAMBIO AQUÍ: Reducido padding lateral de 15mm a 10mm */
     padding:12mm 10mm; 
     background:white; 
     position:relative; 
@@ -175,35 +177,24 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     overflow:hidden;
   }
 
-  /* --- ELEMENTOS DE FONDO (BACKGROUND ART) --- */
-  
-  /* 1. Marca de Agua Central (MANTENIDA) */
+  /* MARCA DE AGUA Y FONDO */
   .bg-watermark {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 80%;
+    width: 60%;
     opacity: 0.04;
     z-index: 0;
     pointer-events: none;
     filter: grayscale(100%);
   }
 
-  /* (ELIMINADO) .bg-accent-top */
-  
-  /* 2. Acento Geométrico Inferior (MANTENIDO) */
   .bg-accent-bottom {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 8px;
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 8px;
     background: linear-gradient(90deg, #006f3d 0%, #006f3d 70%, #d4af37 70%, #d4af37 100%);
     z-index: 0;
   }
 
-  /* Contenido por encima del fondo */
   .content-layer { position: relative; z-index: 1; }
 
   /* UTILIDADES */
@@ -221,97 +212,51 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     --border-color: #e9ecef;
   }
 
-  /* --- HEADER --- */
+  /* HEADER */
   .header { margin-bottom:4mm; padding-bottom:4mm; border-bottom:3px solid var(--green); display:flex; justify-content:space-between; align-items:flex-end; }
   
   .logo-main img { height:75px; }
   
+  .company-details { margin-top:4px; max-width:400px; } /* Limitamos ancho para que no choque con la derecha */
+  .company-name { font-size:18px; font-weight:800; color:var(--green); line-height:1; }
+  .company-ruc { font-size:10px; color:#222; font-weight:700; margin-top:2px; }
+  .company-address { font-size:8px; color:#666; margin-top:2px; line-height:1.2; text-transform:uppercase; }
+
   .header-info { text-align:right; }
   .quote-title { font-size:10px; text-transform:uppercase; color:#888; letter-spacing:2px; margin-bottom:2px; }
   .quote-number { font-size:26px; font-weight:900; color:var(--green); line-height:1; letter-spacing:-0.5px; }
   .status-badge { background:var(--gold); color:white; padding:2px 10px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block; margin-top:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
 
-  /* --- BARRA CENTRAL: MARCAS + QR --- */
+  /* BARRA CENTRAL */
   .middle-strip {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex; justify-content: space-between; align-items: center;
     background: linear-gradient(to right, #fcfcfc, #fff);
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--gold);
-    border-radius: 6px;
-    padding: 4mm 6mm;
-    margin-bottom: 8mm;
-    min-height: 60px;
+    border: 1px solid var(--border-color); border-left: 4px solid var(--gold);
+    border-radius: 6px; padding: 4mm 6mm; margin-bottom: 8mm; min-height: 60px;
   }
+  .brands-container { display: flex; align-items: center; gap: 15px; flex: 1; }
+  .brand-logo { height: 55px; object-fit: contain; filter: grayscale(20%); transition: filter 0.3s; }
+  .qr-container { display: flex; align-items: center; gap: 10px; border-left: 1px dashed #ccc; padding-left: 15px; margin-left: 15px; }
+  .qr-text { text-align: right; font-size: 8px; color: #666; line-height: 1.2; }
+  .qr-img { width: 70px; height: 70px; border-radius: 4px; border: 1px solid #eee; padding: 2px; background: white; }
 
-  .brands-container {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex: 1;
-  }
-  
-  .brand-logo { 
-    height: 55px;
-    object-fit: contain;
-    filter: grayscale(20%);
-    transition: filter 0.3s;
-  }
-
-  .qr-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-left: 1px dashed #ccc;
-    padding-left: 15px;
-    margin-left: 15px;
-  }
-
-  .qr-text {
-    text-align: right;
-    font-size: 8px;
-    color: #666;
-    line-height: 1.2;
-  }
-  
-  .qr-img {
-    width: 70px;
-    height: 70px;
-    border-radius: 4px;
-    border: 1px solid #eee;
-    padding: 2px;
-    background: white;
-  }
-
-  /* --- INFO CLIENTE --- */
+  /* INFO CLIENTE */
   .info-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10mm; margin-bottom: 8mm; }
-  
-  .info-block h3 {
-    font-size: 10px;
-    color: var(--green);
-    text-transform: uppercase;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 2px;
-    margin: 0 0 8px 0;
-  }
-
+  .info-block h3 { font-size: 10px; color: var(--green); text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 2px; margin: 0 0 8px 0; }
   .data-line { display: flex; margin-bottom: 3px; font-size: 10px; }
   .label { width: 85px; color: #777; font-weight: 500; flex-shrink: 0; }
   .value { color: #222; font-weight: 600; }
 
-  /* --- TABLA --- */
+  /* TABLA */
   .table-wrapper { margin-bottom: 6mm; border-radius: 8px 8px 0 0; overflow: hidden; border: 1px solid var(--border-color); border-top: none; }
-  
   .table-prod thead { background: var(--green); color: white; }
   .table-prod th { padding: 4mm; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
   .table-prod tbody tr:nth-child(even) { background-color: var(--gray-light); }
   .table-prod td { padding: 4mm; border-bottom: 1px solid var(--border-color); vertical-align: middle; color: #444; }
-  
   .desc-main { font-weight: 700; color: #222; font-size: 10.5px; display: block; margin-bottom: 2px; }
   .desc-sub { color: #666; font-size: 9px; line-height: 1.3; }
 
-  /* --- FOOTER --- */
+  /* FOOTER */
   .footer-area { display: flex; gap: 8mm; }
   
   .bank-box { 
@@ -320,23 +265,24 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     border-radius: 6px; 
     padding: 4mm; 
     border-left: 3px solid var(--green);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .contact-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+    font-size: 9px;
   }
   
   .totals-box { flex: 1; }
-  
-  .total-row { display: flex; justify-content: space-between; padding: 2mm 0; border-bottom: 1px solid #eee; font-size: 12px; }
+  .total-row { display: flex; justify-content: space-between; padding: 2mm 0; border-bottom: 1px solid #eee; font-size: 10px; }
   .total-final { 
-    background: var(--green); 
-    color: white; 
-    padding: 3mm 4mm; 
-    border-radius: 4px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-top: 2mm;
-    font-weight: 800;
-    font-size: 13px;
-    box-shadow: 0 4px 6px rgba(0,111,61,0.2);
+    background: var(--green); color: white; padding: 3mm 4mm; border-radius: 4px; 
+    display: flex; justify-content: space-between; align-items: center; 
+    margin-top: 2mm; font-weight: 800; font-size: 12px; box-shadow: 0 4px 6px rgba(0,111,61,0.2); 
   }
 
   .legal-text { font-size: 8px; color: #999; margin-top: 10mm; text-align: center; border-top: 1px solid #eee; padding-top: 3mm; }
@@ -354,10 +300,11 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     <div class="header">
       <div class="logo-main">
         ${data.companyLogoUrl ? `<img src="${data.companyLogoUrl}">` : ''}
-        <div style="font-size:18px; font-weight:800; color:var(--green); margin-top:5px; line-height:1;">
-          ${data.companyName}
+        <div class="company-details">
+          <div class="company-name">${data.companyName}</div>
+          <div class="company-ruc">RUC: ${data.companyRuc}</div>
+          <div class="company-address">${fiscalAddress}</div>
         </div>
-        <div style="font-size:10px; color:#666;">RUC: ${data.companyRuc}</div>
       </div>
       
       <div class="header-info">
@@ -377,8 +324,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 
       <div class="qr-container">
         <div class="qr-text">
-          Validación<br>
-          <strong>Digital</strong>
+          Validación<br><strong>Digital</strong>
         </div>
         ${data.qrCodeBase64 
           ? `<img src="${data.qrCodeBase64}" class="qr-img">` 
@@ -395,7 +341,6 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
         <div class="data-line"><span class="label">Dirección:</span> <span class="value" style="font-size:9px;">${data.clientFiscalAddress || data.clientAddress || '-'}</span></div>
         <div class="data-line"><span class="label">Atención:</span> <span class="value">${data.contactPerson || '-'}</span></div>
       </div>
-
       <div class="info-block">
         <h3>Condiciones</h3>
         <div class="data-line"><span class="label">Emisión:</span> <span class="value">${fechaCotizacion}</span></div>
@@ -429,7 +374,7 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
                 </div>
               </td>
               <td class="text-center fw-bold">${p.quantity}</td>
-              <td class="text-center" style="font-size:10px;">${p.unit}</td>
+              <td class="text-center" style="font-size:9px;">${p.unit}</td>
               <td class="text-right">${simbolo} ${p.unitPrice.toFixed(2)}</td>
               <td class="text-right fw-bold" style="color:#222;">${simbolo} ${p.totalPrice.toFixed(2)}</td>
             </tr>
@@ -441,21 +386,36 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
     <div class="footer-area">
       
       <div class="bank-box">
-        <h3 style="margin:0 0 5px 0; font-size:12px; color:var(--green);">INFORMACIÓN BANCARIA</h3>
-        ${data.bankingInfo?.bankAccount ? `
-          <div style="margin-bottom:4px;">
-            <strong>${data.bankingInfo.bankAccount.bank}</strong><br>
-            <span style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span>
-          </div>
-          <div style="font-size:9px; color:#666;">CCI: ${data.bankingInfo.bankAccount.cci}</div>
-          
-          ${data.bankingInfo.detractionAccount ? `
-            <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
-              <strong>Banco de la Nación</strong> (Detracciones)<br>
-              <span style="font-family:monospace;">${data.bankingInfo.detractionAccount.accountNumber}</span>
+        <div>
+          <h3 style="margin:0 0 5px 0; font-size:10px; color:var(--green);">INFORMACIÓN BANCARIA</h3>
+          ${data.bankingInfo?.bankAccount ? `
+            <div style="margin-bottom:4px;">
+              <strong>${data.bankingInfo.bankAccount.bank}</strong> ${data.bankingInfo.bankAccount.currency} <br>
+              <span style="font-family:monospace;">${data.bankingInfo.bankAccount.accountNumber}</span>
             </div>
-          ` : ''}
-        ` : '<em>Consulte con su asesor comercial.</em>'}
+            <div style="font-size:9px; color:#666;">CCI: ${data.bankingInfo.bankAccount.cci}</div>
+            
+            ${data.bankingInfo.detractionAccount ? `
+              <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
+                <strong>Banco de la Nación</strong> (Detracciones)<br>
+                <span style="font-family:monospace;">${data.bankingInfo.detractionAccount.accountNumber}</span>
+              </div>
+            ` : ''}
+          ` : '<em>Consulte con su asesor comercial.</em>'}
+        </div>
+
+        ${contactInfo ? `
+          <div class="contact-section">
+            <h3 style="margin:0 0 3px 0; font-size:9px; color:var(--green);">CONTACTO</h3>
+            ${contactInfo.phone ? `<div><span style="color:#666;">Central:</span> <strong>${contactInfo.phone}</strong></div>` : ''}
+            ${contactInfo.mobile ? `<div><span style="color:#666;">Celular:</span> <strong>${contactInfo.mobile}</strong></div>` : ''}
+            ${contactInfo.email && contactInfo.email.length > 0 ? `
+              <div style="margin-top:2px;">
+                <span style="color:#666;">Email:</span> ${contactInfo.email.map(e => `<br><a href="mailto:${e}" style="color:#333;text-decoration:none;">${e}</a>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
       </div>
 
       <div class="totals-box">
