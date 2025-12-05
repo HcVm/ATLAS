@@ -143,16 +143,17 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 
   const simbolo = data.currency === "USD" ? "US$" : "S/"
 
-  // QR con fallback seguro
+  // QR con fallback 100% seguro
   const qrSrc = data.qrCodeBase64 ||
     `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('COT-' + data.quotationNumber)}`
 
-  const uniqueBrands = data.products
-    .products.filter(p => p.brand && p.brandLogoUrl)
-    .reduce((acc: any[], p) => {
-      if (!acc.find(b => b.name === p.brand)) acc.push({ name: p.brand!, logoUrl: p.brandLogoUrl! })
-      return acc
-    }, [])
+  // CORREGIDO: ya no hay .products.products
+    const uniqueBrands = Array.isArray(data.products) 
+    ? data.products
+        .filter((p): p is { brand?: string; brandLogoUrl?: string } => !!p?.brand && !!p?.brandLogoUrl)
+        .filter((p, i, arr) => arr.findIndex(x => x.brand === p.brand) === i)
+        .map(p => ({ name: p.brand!, logoUrl: p.brandLogoUrl! }))
+    : []
 
   return `
 <!DOCTYPE html>
