@@ -632,7 +632,7 @@ export default function EquipmentByDepartmentPage() {
               .select("id, serial_number, status, current_location, condition")
               .eq("product_id", product.id)
               .eq("company_id", companyId)
-              .in("status", ["in_stock", "assigned"])
+              .in("status", ["in_stock", "out_of_stock"])
               .order("created_at")
 
             return (serialsData || []).map((serial) => ({
