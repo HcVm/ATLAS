@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Laptop, Printer, LibraryBig } from "lucide-react"
+import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Printer } from "lucide-react"
 import Link from "next/link"
 
 interface Department {
@@ -55,6 +55,40 @@ interface Equipment {
 interface EquipmentWithDept extends Equipment {
   departmentId?: string
   departmentName?: string
+  equipmentType?: EquipmentType
+  status?: string
+  assignedTo?: string
+}
+
+type EquipmentType =
+  | "escritorio"
+  | "silla"
+  | "cpu"
+  | "monitor"
+  | "mouse"
+  | "teclado"
+  | "telefono"
+  | "porta_cpu"
+  | "ventilador"
+  | "lector_dni"
+  | "impresora"
+  | "estante"
+  | "laptop"
+  | "otro"
+
+interface Workstation {
+  id: string
+  hasDesk: boolean
+  hasChair: boolean
+  hasCpu: boolean
+  hasMonitor: boolean
+  hasMouse: boolean
+  hasKeyboard: boolean
+  phones: number
+  hasCpuHolder: boolean
+  hasFan: boolean
+  hasDniReader: boolean
+  hasLaptop: boolean
 }
 
 interface DepartmentStats {
@@ -65,163 +99,378 @@ interface DepartmentStats {
   furnitureCount: number
   equipmentCount: number
   value: number
+  // Nuevos campos para conteo detallado
+  desks: number
+  chairs: number
+  cpus: number
+  monitors: number
+  mice: number
+  keyboards: number
+  phones: number
+  cpuHolders: number
+  fans: number
+  dniReaders: number
+  printers: number
+  shelves: number
+  laptops: number
+  workstations: Workstation[]
 }
 
-// Definición de tipos de espacios en el plano
-type LayoutItemType = 'desk' | 'shelf' | 'printer';
+function detectEquipmentType(name: string): EquipmentType {
+  const lowerName = name.toLowerCase()
 
-interface LayoutItem {
-  type: LayoutItemType;
-  x: number;
-  y: number;
-  rotation: number;
+  // Escritorio / Mesa
+  if (lowerName.includes("escritorio") || lowerName.includes("mesa") || lowerName.includes("desk")) {
+    return "escritorio"
+  }
+
+  // Silla
+  if (lowerName.includes("silla") || lowerName.includes("chair") || lowerName.includes("asiento")) {
+    return "silla"
+  }
+
+  // CPU / Computadora / Torre
+  if (
+    lowerName.includes("cpu") ||
+    lowerName.includes("torre") ||
+    lowerName.includes("computador") ||
+    lowerName.includes("pc") ||
+    lowerName.includes("desktop")
+  ) {
+    return "cpu"
+  }
+
+  // Monitor / Pantalla
+  if (
+    lowerName.includes("monitor") ||
+    lowerName.includes("pantalla") ||
+    lowerName.includes("display") ||
+    lowerName.includes("screen")
+  ) {
+    return "monitor"
+  }
+
+  // Mouse / Ratón
+  if (lowerName.includes("mouse") || lowerName.includes("raton") || lowerName.includes("ratón")) {
+    return "mouse"
+  }
+
+  // Teclado
+  if (lowerName.includes("teclado") || lowerName.includes("keyboard")) {
+    return "teclado"
+  }
+
+  // Teléfono
+  if (
+    lowerName.includes("telefono") ||
+    lowerName.includes("teléfono") ||
+    lowerName.includes("phone") ||
+    lowerName.includes("anexo")
+  ) {
+    return "telefono"
+  }
+
+  // Porta CPU
+  if (
+    lowerName.includes("porta cpu") ||
+    lowerName.includes("portacpu") ||
+    lowerName.includes("soporte cpu") ||
+    lowerName.includes("cpu holder")
+  ) {
+    return "porta_cpu"
+  }
+
+  // Ventilador
+  if (lowerName.includes("ventilador") || lowerName.includes("fan") || lowerName.includes("cooler")) {
+    return "ventilador"
+  }
+
+  // Lector DNI
+  if (
+    lowerName.includes("lector") ||
+    lowerName.includes("dni") ||
+    lowerName.includes("card reader") ||
+    lowerName.includes("biometrico") ||
+    lowerName.includes("biométrico")
+  ) {
+    return "lector_dni"
+  }
+
+  // Impresora
+  if (
+    lowerName.includes("impresora") ||
+    lowerName.includes("printer") ||
+    lowerName.includes("multifuncional") ||
+    lowerName.includes("fotocopiadora") ||
+    lowerName.includes("scanner") ||
+    lowerName.includes("escaner")
+  ) {
+    return "impresora"
+  }
+
+  // Estante / Estantería
+  if (
+    lowerName.includes("estante") ||
+    lowerName.includes("estanteria") ||
+    lowerName.includes("estantería") ||
+    lowerName.includes("shelf") ||
+    lowerName.includes("archivador") ||
+    lowerName.includes("mueble")
+  ) {
+    return "estante"
+  }
+
+  // Laptop
+  if (
+    lowerName.includes("laptop") ||
+    lowerName.includes("notebook") ||
+    lowerName.includes("portatil") ||
+    lowerName.includes("portátil")
+  ) {
+    return "laptop"
+  }
+
+  return "otro"
 }
 
 function FloorPlanVisualization({
   department,
-  furnitureCount,
-  equipmentCount,
+  stats,
   maxCount = 50,
 }: {
   department: Department
-  furnitureCount: number
-  equipmentCount: number
+  stats: DepartmentStats
   maxCount?: number
 }) {
-  // Calculamos el porcentaje basado en la mayor cantidad de items (no la suma)
-  // para que la barra de progreso tenga sentido con la superposición.
-  const maxItems = Math.max(furnitureCount, equipmentCount);
-  const fillPercentage = Math.min((maxItems / maxCount) * 100, 100);
-  
-  const deptColor = department.color || "#3b82f6";
-  const wallColor = "currentColor"; 
-  const machineColor = "#334155"; 
+  const deptColor = department.color || "#3b82f6"
+  const wallColor = "currentColor"
+  const machineColor = "#334155"
 
-  // LAYOUT (Mismas coordenadas)
-  const officeLayout: LayoutItem[] = [
-    // Isleta Izquierda
-    { type: 'desk', x: 20, y: 25, rotation: 0 }, { type: 'desk', x: 50, y: 25, rotation: 0 },
-    { type: 'desk', x: 20, y: 75, rotation: 0 }, { type: 'desk', x: 50, y: 75, rotation: 0 },
-    // Estantería superior (Solo mobiliario)
-    { type: 'shelf', x: 90, y: 15, rotation: 0 }, 
-    { type: 'shelf', x: 125, y: 15, rotation: 0 },
-    // Isleta Derecha
-    { type: 'desk', x: 100, y: 60, rotation: -90 },
-    { type: 'desk', x: 100, y: 90, rotation: -90 },
-    { type: 'desk', x: 160, y: 70, rotation: 90 },
-    // Impresora
-    { type: 'printer', x: 160, y: 105, rotation: 0 },
-  ];
+  // Calcular el número de filas necesarias para los escritorios (máximo 6 por fila)
+  const desksPerRow = 6
+  const numDesks = stats.desks
+  const numRows = Math.ceil(numDesks / desksPerRow)
+
+  // Calcular dimensiones dinámicas del SVG
+  const deskWidth = 28
+  const deskHeight = 22
+  const deskSpacingX = 32
+  const deskSpacingY = 35
+  const startX = 15
+  const startY = 20
+
+  // Área para impresoras (derecha)
+  const printerAreaX = startX + Math.min(desksPerRow, numDesks) * deskSpacingX + 20
+  const printerWidth = 20
+  const printerSpacing = 25
+
+  // Área para estantes (superior)
+  const shelfAreaY = 8
+  const shelfWidth = 35
+  const shelfSpacing = 40
+
+  // Calcular viewBox dinámico
+  const viewBoxWidth = Math.max(200, printerAreaX + (stats.printers > 0 ? 50 : 10))
+  const viewBoxHeight = Math.max(120, startY + numRows * deskSpacingY + 30)
+
+  // Crear workstations virtuales basadas en los equipos disponibles
+  const workstations: Workstation[] = useMemo(() => {
+    const ws: Workstation[] = []
+    const numWorkstations = Math.max(stats.desks, stats.chairs, Math.ceil(stats.monitors / 1))
+
+    for (let i = 0; i < Math.min(numWorkstations, 50); i++) {
+      ws.push({
+        id: `ws-${i}`,
+        hasDesk: i < stats.desks,
+        hasChair: i < stats.chairs,
+        hasCpu: i < stats.cpus,
+        hasMonitor: i < stats.monitors,
+        hasMouse: i < stats.mice,
+        hasKeyboard: i < stats.keyboards,
+        phones: i < stats.phones ? 1 : 0,
+        hasCpuHolder: i < stats.cpuHolders,
+        hasFan: i < stats.fans,
+        hasDniReader: i < stats.dniReaders,
+        hasLaptop: i < stats.laptops,
+      })
+    }
+    return ws
+  }, [stats])
+
+  const totalItems = stats.count
+  const fillPercentage = Math.min((totalItems / maxCount) * 100, 100)
 
   return (
     <div className="flex flex-col gap-2">
       <div className="relative bg-white dark:bg-slate-950 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-2 aspect-[4/3] w-full overflow-hidden">
-        
-        <svg viewBox="0 0 190 150" className="w-full h-full text-slate-400 dark:text-slate-600">
-          
-          {/* ARQUITECTURA */}
+        <svg
+          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          className="w-full h-full text-slate-400 dark:text-slate-600"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* ARQUITECTURA - Paredes */}
           <g fill="none" stroke={wallColor} strokeWidth="2" strokeLinecap="square">
-            <path d="M 10 10 L 180 10 L 180 40" /> 
-            <path d="M 180 60 L 180 140 L 10 140 L 10 10" /> 
-            <path d="M 180 40 Q 160 40 160 60 L 180 60" strokeWidth="1" strokeDasharray="2,2" opacity="0.5" />
-            <line x1="180" y1="40" x2="180" y2="60" strokeWidth="1" opacity="0.3" />
-            <text x="185" y="50" fontSize="5" stroke="none" fill="currentColor" opacity="0.5" transform="rotate(90 185 50)">ENTRADA</text>
+            <rect x="5" y="5" width={viewBoxWidth - 10} height={viewBoxHeight - 10} rx="2" />
           </g>
 
-          {/* RENDERIZADO DE ÍTEMS */}
-          {officeLayout.map((item, index) => {
-            // --- NUEVA LÓGICA DE SUPERPOSICIÓN ---
-            
-            // 1. ¿Tiene silla/mueble este puesto?
-            // Comparamos el índice actual directamente con la cantidad de mobiliario
-            const hasFurniture = index < furnitureCount;
+          {/* ESTANTES (Superior) */}
+          {Array.from({ length: Math.min(stats.shelves, 4) }).map((_, idx) => (
+            <g key={`shelf-${idx}`} transform={`translate(${startX + idx * shelfSpacing}, ${shelfAreaY})`}>
+              <rect x="0" y="0" width={shelfWidth} height="8" fill="none" stroke={deptColor} strokeWidth="1.5" />
+              <g stroke={deptColor} strokeWidth="0.5" fill={deptColor} opacity="0.6">
+                <line x1="2" y1="4" x2={shelfWidth - 2} y2="4" />
+                <rect x="4" y="1" width="4" height="3" />
+                <rect x="12" y="1" width="6" height="3" />
+                <rect x="24" y="5" width="5" height="2" />
+              </g>
+            </g>
+          ))}
 
-            // 2. ¿Tiene equipo este puesto?
-            // Comparamos el índice actual directamente con la cantidad de equipos
-            // (Nota: Los equipos se asignan primero a escritorios, ignorando estantes si se prefiere, 
-            // pero para simplificar visualmente usamos el índice general)
-            let hasEquipment = false;
-            
-            if (item.type === 'printer') {
-               // La impresora es el último ítem (índice 11). Solo se enciende si tenemos muchos equipos
-               // O podemos hacer que se encienda si hay AL MENOS 1 equipo en la sala.
-               // Vamos a hacer que se encienda si el equipmentCount llega hasta su índice.
-               hasEquipment = index < equipmentCount;
-            } else if (item.type === 'desk') {
-               hasEquipment = index < equipmentCount;
-            }
+          {/* ESCRITORIOS / PUESTOS DE TRABAJO */}
+          {workstations.map((ws, idx) => {
+            const row = Math.floor(idx / desksPerRow)
+            const col = idx % desksPerRow
+            const x = startX + col * deskSpacingX
+            const y = startY + (stats.shelves > 0 ? 15 : 0) + row * deskSpacingY
 
-            // ¿El puesto está activo (tiene algo)?
-            const isActive = hasFurniture || hasEquipment;
-
-            // Estilos
-            const baseOpacity = isActive ? 1 : 0.3;
-            const highlightStroke = isActive ? deptColor : wallColor;
+            const isActive = ws.hasDesk || ws.hasChair || ws.hasMonitor || ws.hasCpu || ws.hasLaptop
+            const baseOpacity = isActive ? 1 : 0.2
 
             return (
-              <g 
-                key={index} 
-                transform={`translate(${item.x}, ${item.y}) rotate(${item.rotation})`}
+              <g
+                key={ws.id}
+                transform={`translate(${x}, ${y})`}
                 className="transition-all duration-500"
                 opacity={baseOpacity}
               >
-                {/* === ESCRITORIO === */}
-                {item.type === 'desk' && (
-                  <>
-                    {/* Mesa */}
-                    <rect x="0" y="0" width="24" height="14" rx="1" 
-                          fill="white" className="dark:fill-slate-900" 
-                          stroke={highlightStroke} strokeWidth="1" />
-                    
-                    {/* Silla (Solo si hasFurniture es true) */}
-                    <path d="M 6 16 L 18 16 Q 18 20 12 20 Q 6 20 6 16" 
-                          fill={hasFurniture ? deptColor : "none"} 
-                          opacity={hasFurniture ? 0.5 : 0} 
-                          stroke={hasFurniture ? highlightStroke : "none"} 
-                          strokeWidth="1" />
-                    
-                    {/* Monitor (Solo si hasEquipment es true) - SE DIBUJA ENCIMA */}
-                    {hasEquipment && (
-                      <g transform="translate(5, 1)">
-                        <line x1="7" y1="9" x2="7" y2="11" stroke={machineColor} strokeWidth="2" />
-                        <line x1="4" y1="11" x2="10" y2="11" stroke={machineColor} strokeWidth="2" />
-                        <rect x="0" y="0" width="14" height="9" rx="0.5" fill={machineColor} stroke={machineColor} strokeWidth="0.5" />
-                        <rect x="1" y="1" width="12" height="7" rx="0" fill={deptColor} stroke="none" />
-                      </g>
-                    )}
-                  </>
-                )}
+                {/* Mesa / Escritorio */}
+                <rect
+                  x="0"
+                  y="0"
+                  width={deskWidth}
+                  height={deskHeight - 8}
+                  rx="1"
+                  fill={ws.hasDesk ? "white" : "transparent"}
+                  className="dark:fill-slate-900"
+                  stroke={ws.hasDesk ? deptColor : wallColor}
+                  strokeWidth={ws.hasDesk ? "1.5" : "0.5"}
+                  strokeDasharray={ws.hasDesk ? "none" : "2,2"}
+                />
 
-                {/* === ESTANTERÍA === */}
-                {item.type === 'shelf' && (
-                  <>
-                    <rect x="0" y="0" width="30" height="8" fill="none" stroke={highlightStroke} strokeWidth="1.5" />
-                    {/* Los estantes solo reaccionan a Mobiliario */}
-                    {hasFurniture && (
-                        <g stroke={deptColor} strokeWidth="1" fill={deptColor}>
-                            <line x1="2" y1="4" x2="28" y2="4" opacity="0.5" />
-                            <rect x="4" y="1" width="4" height="3" />
-                            <rect x="10" y="1" width="6" height="3" />
-                            <rect x="22" y="5" width="5" height="3" />
-                        </g>
-                    )}
-                  </>
-                )}
-
-                {/* === IMPRESORA === */}
-                {item.type === 'printer' && (
-                  <g transform="translate(-2, -2)">
-                    <rect x="0" y="4" width="20" height="12" rx="1" fill={machineColor} stroke={machineColor} strokeWidth="1" />
-                    <rect x="2" y="0" width="16" height="4" rx="0.5" fill={machineColor} opacity="0.8" />
-                    {/* Solo se ilumina si le toca turno por conteo de equipos */}
-                    {hasEquipment && (
-                      <>
-                        <line x1="5" y1="16" x2="15" y2="16" stroke="white" strokeWidth="2" />
-                        <circle cx="17" cy="7" r="1.5" fill={deptColor} stroke="white" strokeWidth="0.5" />
-                      </>
-                    )}
+                {/* Silla */}
+                {ws.hasChair && (
+                  <g transform={`translate(${deskWidth / 2 - 6}, ${deskHeight - 6})`}>
+                    <ellipse cx="6" cy="3" rx="6" ry="3" fill={deptColor} opacity="0.4" />
+                    <rect x="2" y="0" width="8" height="4" rx="2" fill={deptColor} opacity="0.6" />
                   </g>
                 )}
+
+                {/* Monitor */}
+                {ws.hasMonitor && !ws.hasLaptop && (
+                  <g transform="translate(7, 1)">
+                    <rect x="0" y="0" width="14" height="9" rx="0.5" fill={machineColor} />
+                    <rect x="1" y="1" width="12" height="7" rx="0.5" fill={deptColor} opacity="0.8" />
+                    <line x1="7" y1="9" x2="7" y2="11" stroke={machineColor} strokeWidth="2" />
+                    <line x1="4" y1="11" x2="10" y2="11" stroke={machineColor} strokeWidth="1.5" />
+                  </g>
+                )}
+
+                {/* Laptop (alternativa al monitor) */}
+                {ws.hasLaptop && (
+                  <g transform="translate(5, 2)">
+                    <rect x="0" y="4" width="18" height="8" rx="0.5" fill={machineColor} />
+                    <rect x="0" y="0" width="18" height="5" rx="0.5" fill={deptColor} opacity="0.9" />
+                    <rect x="1" y="1" width="16" height="3" fill="white" opacity="0.3" />
+                  </g>
+                )}
+
+                {/* CPU (al lado del escritorio) */}
+                {ws.hasCpu && (
+                  <g transform={`translate(${deskWidth + 1}, 2)`}>
+                    <rect x="0" y="0" width="5" height="10" rx="0.5" fill={machineColor} />
+                    <circle cx="2.5" cy="2" r="1" fill={deptColor} />
+                    <rect x="1" y="5" width="3" height="0.5" fill="#666" />
+                    <rect x="1" y="7" width="3" height="0.5" fill="#666" />
+                  </g>
+                )}
+
+                {/* Teclado */}
+                {ws.hasKeyboard && (
+                  <g transform="translate(6, 10)">
+                    <rect x="0" y="0" width="16" height="3" rx="0.5" fill="#444" />
+                    {[...Array(8)].map((_, i) => (
+                      <rect key={i} x={1 + i * 1.8} y="0.5" width="1.2" height="0.8" rx="0.2" fill="#666" />
+                    ))}
+                    {[...Array(7)].map((_, i) => (
+                      <rect key={i} x={1.5 + i * 1.8} y="1.8" width="1.2" height="0.8" rx="0.2" fill="#666" />
+                    ))}
+                  </g>
+                )}
+
+                {/* Mouse */}
+                {ws.hasMouse && (
+                  <g transform="translate(23, 10)">
+                    <ellipse cx="2" cy="1.5" rx="2" ry="1.5" fill="#444" />
+                    <line x1="2" y1="0.5" x2="2" y2="1" stroke="#666" strokeWidth="0.5" />
+                  </g>
+                )}
+
+                {/* Teléfono */}
+                {ws.phones > 0 && (
+                  <g transform="translate(1, 1)">
+                    <rect x="0" y="0" width="5" height="4" rx="0.5" fill="#1e293b" />
+                    <rect x="0.5" y="0.5" width="4" height="2" fill="#0ea5e9" opacity="0.6" />
+                    <rect x="1" y="3" width="3" height="0.5" fill="#666" />
+                  </g>
+                )}
+
+                {/* Lector DNI */}
+                {ws.hasDniReader && (
+                  <g transform="translate(1, 6)">
+                    <rect x="0" y="0" width="4" height="3" rx="0.3" fill="#059669" />
+                    <rect x="0.5" y="0.5" width="3" height="1" fill="#34d399" opacity="0.6" />
+                  </g>
+                )}
+
+                {/* Ventilador */}
+                {ws.hasFan && (
+                  <g transform={`translate(${deskWidth - 4}, 0)`}>
+                    <circle cx="2" cy="2" r="2" fill="none" stroke="#64748b" strokeWidth="0.5" />
+                    <circle cx="2" cy="2" r="0.5" fill="#64748b" />
+                    <line x1="2" y1="0.5" x2="2" y2="1.5" stroke="#64748b" strokeWidth="0.3" />
+                    <line x1="0.5" y1="2" x2="1.5" y2="2" stroke="#64748b" strokeWidth="0.3" />
+                    <line x1="2" y1="2.5" x2="2" y2="3.5" stroke="#64748b" strokeWidth="0.3" />
+                    <line x1="2.5" y1="2" x2="3.5" y2="2" stroke="#64748b" strokeWidth="0.3" />
+                  </g>
+                )}
+
+                {/* Porta CPU */}
+                {ws.hasCpuHolder && ws.hasCpu && (
+                  <g transform={`translate(${deskWidth}, 11)`}>
+                    <rect x="0" y="0" width="7" height="2" rx="0.3" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
+                  </g>
+                )}
+              </g>
+            )
+          })}
+
+          {/* IMPRESORAS (Área lateral) */}
+          {Array.from({ length: Math.min(stats.printers, 6) }).map((_, idx) => {
+            const printerX = viewBoxWidth - 30
+            const printerY = startY + (stats.shelves > 0 ? 15 : 0) + idx * printerSpacing
+
+            return (
+              <g key={`printer-${idx}`} transform={`translate(${printerX}, ${printerY})`}>
+                <rect x="0" y="4" width={printerWidth} height="12" rx="1" fill={machineColor} />
+                <rect x="2" y="0" width={printerWidth - 4} height="4" rx="0.5" fill={machineColor} opacity="0.8" />
+                {/* Bandeja de papel */}
+                <line x1="5" y1="16" x2="15" y2="16" stroke="white" strokeWidth="2" />
+                {/* LED de estado */}
+                <circle cx={printerWidth - 3} cy="7" r="1.5" fill={deptColor} />
+                {/* Etiqueta */}
+                <text x={printerWidth / 2} y="22" fontSize="3" fill="currentColor" textAnchor="middle" opacity="0.6">
+                  IMP {idx + 1}
+                </text>
               </g>
             )
           })}
@@ -229,33 +478,34 @@ function FloorPlanVisualization({
 
         {/* Etiqueta de Porcentaje */}
         <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-[10px] px-2 py-0.5 rounded shadow-sm font-mono flex items-center gap-1 z-10">
-          <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: deptColor }}/>
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: deptColor }} />
           {Math.round(fillPercentage)}% cap.
         </div>
       </div>
 
-      {/* Barra de progreso */}
+      {/* Barra de progreso con detalles */}
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
           <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <span className="flex items-center text-slate-500"><Armchair className="w-3 h-3 mr-0.5 inline"/> {furnitureCount}</span>
+            <span className="flex items-center text-slate-500">
+              <Armchair className="w-3 h-3 mr-0.5 inline" /> {stats.furnitureCount}
+            </span>
             <span className="text-slate-300">|</span>
-            <span className="flex items-center text-slate-700 dark:text-slate-200 font-bold"><Monitor className="w-3 h-3 mr-0.5 inline"/> {equipmentCount}</span>
+            <span className="flex items-center text-slate-700 dark:text-slate-200 font-bold">
+              <Monitor className="w-3 h-3 mr-0.5 inline" /> {stats.equipmentCount}
+            </span>
           </span>
-          <span className="text-slate-400 text-[10px]">{maxCount} total</span>
+          <span className="text-slate-400 text-[10px]">{maxCount} máx</span>
         </div>
-        
-        {/* Barra Visual: Ahora usamos superposición visual también */}
+
         <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden relative">
-          {/* Fondo para Mobiliario (Opacidad baja) */}
-          <div 
+          <div
             className="absolute top-0 left-0 h-full transition-all duration-500"
-            style={{ width: `${(furnitureCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 0.3 }} 
+            style={{ width: `${(stats.furnitureCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 0.3 }}
           />
-          {/* Barra para Equipos (Color sólido, se dibuja encima) */}
-          <div 
+          <div
             className="absolute top-0 left-0 h-full transition-all duration-500"
-            style={{ width: `${(equipmentCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 1 }} 
+            style={{ width: `${(stats.equipmentCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 1 }}
           />
         </div>
       </div>
@@ -265,52 +515,47 @@ function FloorPlanVisualization({
 
 function EquipmentCounter({
   department,
-  furnitureCount,
-  equipmentCount,
+  stats,
 }: {
   department: Department
-  furnitureCount: number
-  equipmentCount: number
+  stats: DepartmentStats
 }) {
   return (
-    <div className="flex gap-6 p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+    <div className="flex gap-4 p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
       {/* Furniture Counter */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 rounded-lg" style={{ backgroundColor: `${department.color || "#3b82f6"}20` }}>
-          <svg
-            className="w-6 h-6"
-            style={{ color: department.color || "#3b82f6" }}
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {/* Chair/Furniture Icon */}
-            <path d="M5 3h14v4H5V3zm0 6h14v8H5V9zm2 2v4h10v-4H7zm-2 6h14v2H5v-2z" />
-          </svg>
+      <div className="flex items-center gap-2">
+        <div className="p-2 rounded-lg" style={{ backgroundColor: `${department.color || "#3b82f6"}20` }}>
+          <Armchair className="w-4 h-4" style={{ color: department.color || "#3b82f6" }} />
         </div>
         <div className="flex flex-col">
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Mobiliario</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{furnitureCount}</span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Mobiliario</span>
+          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.furnitureCount}</span>
         </div>
       </div>
 
       {/* Equipment Counter */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 rounded-lg" style={{ backgroundColor: `${department.color || "#3b82f6"}20` }}>
-          <svg
-            className="w-6 h-6"
-            style={{ color: department.color || "#3b82f6" }}
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {/* Desktop/Equipment Icon */}
-            <path d="M4 3h16v12H4V3zm0 13h16v2H4v-2zm2 3h12v1H6v-1z" />
-          </svg>
+      <div className="flex items-center gap-2">
+        <div className="p-2 rounded-lg" style={{ backgroundColor: `${department.color || "#3b82f6"}20` }}>
+          <Monitor className="w-4 h-4" style={{ color: department.color || "#3b82f6" }} />
         </div>
         <div className="flex flex-col">
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Equipos</span>
-          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{equipmentCount}</span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Equipos</span>
+          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.equipmentCount}</span>
         </div>
       </div>
+
+      {/* Printers Counter (if any) */}
+      {stats.printers > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg" style={{ backgroundColor: `${department.color || "#3b82f6"}20` }}>
+            <Printer className="w-4 h-4" style={{ color: department.color || "#3b82f6" }} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Impresoras</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.printers}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -342,7 +587,6 @@ export default function EquipmentByDepartmentPage() {
     try {
       setLoading(true)
 
-      // Obtener departamentos
       const { data: deptsData, error: deptsError } = await supabase
         .from("departments")
         .select("id, name, color")
@@ -351,7 +595,6 @@ export default function EquipmentByDepartmentPage() {
 
       if (deptsError) throw deptsError
 
-      // Obtener equipos - filtramos por categoría "Mobiliario y Equipos"
       const { data: productsData, error: productsError } = await supabase
         .from("internal_products")
         .select(
@@ -365,21 +608,31 @@ export default function EquipmentByDepartmentPage() {
         )
         .eq("company_id", companyId)
         .eq("is_active", true)
-        .ilike("internal_product_categories.name", "%Mobiliario%")
         .order("name")
 
       if (productsError) throw productsError
 
-      // Obtener seriales para equipos
+      const relevantProducts = (productsData || []).filter((product) => {
+        const categoryName = product.internal_product_categories?.name?.toLowerCase() || ""
+        return (
+          categoryName.includes("mobiliario") ||
+          categoryName.includes("tecnolog") ||
+          categoryName.includes("equipo") ||
+          categoryName.includes("oficina") ||
+          categoryName.includes("computo") ||
+          categoryName.includes("cómputo")
+        )
+      })
+
       const equipmentWithSerials = await Promise.all(
-        (productsData || []).map(async (product) => {
+        relevantProducts.map(async (product) => {
           if (product.is_serialized) {
             const { data: serialsData } = await supabase
               .from("internal_product_serials")
               .select("id, serial_number, status, current_location, condition")
               .eq("product_id", product.id)
-              .eq("status", "in_stock")
               .eq("company_id", companyId)
+              .in("status", ["in_stock", "assigned"])
               .order("created_at")
 
             return (serialsData || []).map((serial) => ({
@@ -392,6 +645,8 @@ export default function EquipmentByDepartmentPage() {
               condition: serial.condition,
               is_serialized: true,
               internal_product_categories: product.internal_product_categories,
+              equipmentType: detectEquipmentType(product.name),
+              status: serial.status,
             }))
           }
           return []
@@ -400,7 +655,6 @@ export default function EquipmentByDepartmentPage() {
 
       const flatEquipment = equipmentWithSerials.flat()
 
-      // Enriquecer con información de departamento
       const enrichedEquipment = flatEquipment.map((eq) => {
         const dept = deptsData?.find((d) => d.id === eq.current_location)
         return {
@@ -458,17 +712,54 @@ export default function EquipmentByDepartmentPage() {
     }
   }
 
-  const departmentStats = useMemo(() => {
+  const departmentStats = useMemo((): DepartmentStats[] => {
     return departments.map((dept) => {
       const deptEquipment = equipment.filter((eq) => eq.current_location === dept.id)
-      const furnitureCount = deptEquipment.filter(
-        (eq) =>
-          eq.internal_product_categories?.name?.toLowerCase().includes("mobiliario") ||
-          eq.internal_product_categories?.name?.toLowerCase().includes("furniture") ||
-          eq.internal_product_categories?.name?.toLowerCase().includes("muebles"),
-      ).length
-      const equipmentCount = deptEquipment.length - furnitureCount
+
+      // Contar por tipo de equipo
+      const countByType = (type: EquipmentType) => deptEquipment.filter((eq) => eq.equipmentType === type).length
+
+      const desks = countByType("escritorio")
+      const chairs = countByType("silla")
+      const cpus = countByType("cpu")
+      const monitors = countByType("monitor")
+      const mice = countByType("mouse")
+      const keyboards = countByType("teclado")
+      const phones = countByType("telefono")
+      const cpuHolders = countByType("porta_cpu")
+      const fans = countByType("ventilador")
+      const dniReaders = countByType("lector_dni")
+      const printers = countByType("impresora")
+      const shelves = countByType("estante")
+      const laptops = countByType("laptop")
+
+      // Mobiliario = escritorios + sillas + estantes
+      const furnitureCount = desks + chairs + shelves
+
+      const equipmentCount = cpus + monitors + mice + keyboards + phones + cpuHolders + fans + dniReaders + laptops
+
       const value = deptEquipment.reduce((sum, eq) => sum + (eq.cost_price || 0), 0)
+
+      // Crear workstations virtuales
+      const numWorkstations = Math.max(desks, chairs, monitors, laptops)
+      const workstations: Workstation[] = []
+
+      for (let i = 0; i < numWorkstations; i++) {
+        workstations.push({
+          id: `${dept.id}-ws-${i}`,
+          hasDesk: i < desks,
+          hasChair: i < chairs,
+          hasCpu: i < cpus,
+          hasMonitor: i < monitors,
+          hasMouse: i < mice,
+          hasKeyboard: i < keyboards,
+          phones: i < phones ? 1 : 0,
+          hasCpuHolder: i < cpuHolders,
+          hasFan: i < fans,
+          hasDniReader: i < dniReaders,
+          hasLaptop: i < laptops,
+        })
+      }
 
       return {
         id: dept.id,
@@ -478,6 +769,20 @@ export default function EquipmentByDepartmentPage() {
         furnitureCount,
         equipmentCount,
         value,
+        desks,
+        chairs,
+        cpus,
+        monitors,
+        mice,
+        keyboards,
+        phones,
+        cpuHolders,
+        fans,
+        dniReaders,
+        printers,
+        shelves,
+        laptops,
+        workstations,
       }
     })
   }, [departments, equipment])
@@ -520,7 +825,6 @@ export default function EquipmentByDepartmentPage() {
         </Button>
       </div>
 
-      {/* Department Visualization Grid - More compact */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {departmentStats.map((dept) => (
           <Card
@@ -537,18 +841,9 @@ export default function EquipmentByDepartmentPage() {
                 <CardDescription className="text-xs">S/ {dept.value.toFixed(2)}</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="pb-3">
-              <FloorPlanVisualization 
-                department={dept} 
-                furnitureCount={dept.furnitureCount} 
-                equipmentCount={dept.equipmentCount}
-                maxCount={12} 
-              />
-              <EquipmentCounter
-                department={dept}
-                furnitureCount={dept.furnitureCount}
-                equipmentCount={dept.equipmentCount}
-              />
+            <CardContent className="pb-3 space-y-3">
+              <FloorPlanVisualization department={dept} stats={dept} maxCount={50} />
+              <EquipmentCounter department={dept} stats={dept} />
             </CardContent>
           </Card>
         ))}
@@ -629,6 +924,7 @@ export default function EquipmentByDepartmentPage() {
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Equipo</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Serial</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead>Condición</TableHead>
@@ -639,7 +935,7 @@ export default function EquipmentByDepartmentPage() {
               <TableBody>
                 {filteredEquipment.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="text-muted-foreground">
                         <Package className="h-8 w-8 mx-auto mb-2" />
                         <p>No se encontraron equipos</p>
@@ -657,6 +953,11 @@ export default function EquipmentByDepartmentPage() {
                             <div className="text-xs text-muted-foreground">{eq.internal_product_categories.name}</div>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {eq.equipmentType?.replace("_", " ") || "otro"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{eq.serial_number || "-"}</TableCell>
                       <TableCell>
