@@ -63,7 +63,7 @@
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.454.0",
     "merge-images": "^2.0.0",
-    "next": "15.2.4",
+    "next": "15.2.6",
     "next-themes": "latest",
     "node-fetch": "^3.3.2",
     "pdf-lib": "latest",
