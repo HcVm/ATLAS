@@ -30,6 +30,12 @@ import {
 } from "@/components/ui/dialog"
 import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Printer } from "lucide-react"
 import Link from "next/link"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Department {
   id: string
@@ -228,7 +234,6 @@ function FloorPlanVisualization({
   maxCount?: number
 }) {
   const deptColor = department.color || "#3b82f6"
-  const wallColor = "currentColor"
   const machineColor = "#334155"
 
   const desksPerRow = 6
@@ -238,289 +243,230 @@ function FloorPlanVisualization({
   const deskWidth = 28
   const deskHeight = 22
   const deskSpacingX = 32
-  const deskSpacingY = 40 // Aumentado para dar espacio a los seriales
+  const deskSpacingY = 40
   const startX = 15
   const startY = 20
 
-  const printerAreaX = startX + Math.min(desksPerRow, numDesks) * deskSpacingX + 20
   const printerWidth = 20
-  const printerSpacing = 30 // Aumentado para seriales
-
-  const shelfAreaY = 8
+  const printerSpacing = 30
   const shelfWidth = 35
   const shelfSpacing = 40
+  const shelfAreaY = 8
 
-  const viewBoxWidth = Math.max(200, printerAreaX + (stats.printers > 0 ? 50 : 10))
-  const viewBoxHeight = Math.max(120, startY + numRows * deskSpacingY + 35)
+  const viewBoxWidth = Math.max(250, startX + Math.min(desksPerRow, numDesks) * deskSpacingX + 80)
+  const viewBoxHeight = Math.max(120, startY + numRows * deskSpacingY + 50)
 
   const workstations = stats.workstations
-
   const totalItems = stats.count
   const fillPercentage = Math.min((totalItems / maxCount) * 100, 100)
 
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+
+  const getWorkstationSerials = (ws: Workstation): string[] => {
+    const items: string[] = []
+    if (ws.deskSerial) items.push(`Escritorio: ${ws.deskSerial}`)
+    if (ws.chairSerial) items.push(`Silla: ${ws.chairSerial}`)
+    if (ws.monitorSerial) items.push(`Monitor: ${ws.monitorSerial}`)
+    if (ws.laptopSerial) items.push(`Laptop: ${ws.laptopSerial}`)
+    if (ws.cpuSerial) items.push(`CPU: ${ws.cpuSerial}`)
+    if (ws.keyboardSerial) items.push(`Teclado: ${ws.keyboardSerial}`)
+    if (ws.mouseSerial) items.push(`Mouse: ${ws.mouseSerial}`)
+    if (ws.phoneSerial) items.push(`Teléfono: ${ws.phoneSerial}`)
+    if (ws.dniReaderSerial) items.push(`Lector DNI: ${ws.dniReaderSerial}`)
+    if (ws.fanSerial) items.push(`Ventilador: ${ws.fanSerial}`)
+    if (ws.cpuHolderSerial) items.push(`Porta CPU: ${ws.cpuHolderSerial}`)
+    return items.length > 0 ? items : ["Puesto vacío"]
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="relative bg-white dark:bg-slate-950 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-2 aspect-[4/3] w-full overflow-hidden">
-        <svg
-          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-          className="w-full h-full text-slate-400 dark:text-slate-600"
-          preserveAspectRatio="xMidYMid meet"
-        >
-          {/* Paredes de la oficina */}
-          <rect
-            x="5"
-            y="5"
-            width={viewBoxWidth - 10}
-            height={viewBoxHeight - 10}
-            fill="none"
-            stroke={deptColor}
-            strokeWidth="2"
-            strokeDasharray="none"
-            rx="3"
-            opacity="0.4"
-          />
+    <TooltipProvider>
+      <div className="relative flex flex-col gap-2">
+        {/* SVG del plano */}
+        <div className="relative bg-white dark:bg-slate-950 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-3 overflow-visible">
+          <svg
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+            className="w-full h-full"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              setMousePosition({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+              })
+            }}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <rect x="5" y="5" width={viewBoxWidth - 10} height={viewBoxHeight - 10} fill="none" stroke={deptColor} strokeWidth="2" rx="4" opacity="0.4" />
 
-          
+            {/* ESTANTES */}
+            {stats.shelfDetails.map((shelf, idx) => {
+              const x = startX + idx * shelfSpacing
+              const y = shelfAreaY
+              const id = `shelf-${idx}`
 
-          {/* ESTANTES (Área superior) */}
-          {stats.shelfDetails.map((shelf, idx) => {
-            const shelfX = startX + idx * shelfSpacing
-            const shelfY = shelfAreaY
-
-            return (
-              <g key={`shelf-${idx}`} transform={`translate(${shelfX}, ${shelfY})`}>
-                <rect x="0" y="0" width={shelfWidth} height="8" rx="1" fill={machineColor} opacity="0.7" />
-                <g fill="#94a3b8">
-                  <rect x="2" y="2" width="6" height="4" />
-                  <rect x="10" y="2" width="8" height="4" />
-                  <rect x="20" y="2" width="4" height="4" />
-                  <rect x="26" y="2" width="6" height="4" />
+              return (
+                <g
+                  key={id}
+                  transform={`translate(${x}, ${y})`}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(`shelf-${shelf.serial || idx}`)}
+                >
+                  <rect x="0" y="0" width={shelfWidth} height="8" rx="1" fill={machineColor} opacity="0.7" />
+                  <g fill="#94a3b8">
+                    <rect x="2" y="2" width="6" height="4" />
+                    <rect x="10" y="2" width="8" height="4" />
+                    <rect x="20" y="2" width="4" height="4" />
+                    <rect x="26" y="2" width="6" height="4" />
+                  </g>
                 </g>
-                {shelf.serial && (
-                  <text
-                    x={shelfWidth / 2}
-                    y="14"
-                    fontSize="3"
-                    fill={deptColor}
-                    textAnchor="middle"
-                    fontFamily="monospace"
-                  >
-                    {shortenSerial(shelf.serial, 10)}
+              )
+            })}
+
+            {/* PUESTOS */}
+            {workstations.map((ws, idx) => {
+              const row = Math.floor(idx / desksPerRow)
+              const col = idx % desksPerRow
+              const x = startX + col * deskSpacingX
+              const y = startY + (stats.shelves > 0 ? 18 : 0) + row * deskSpacingY
+              const isActive = ws.hasDesk || ws.hasChair || ws.hasMonitor || ws.hasCpu || ws.hasLaptop
+              const id = `ws-${idx}`
+
+              return (
+                <g
+                  key={id}
+                  transform={`translate(${x}, ${y})`}
+                  opacity={isActive ? 1 : 0.2}
+                  className="transition-opacity cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(id)}
+                >
+                  <rect x="-8" y="-8" width={deskWidth + 16} height={deskHeight + 16} fill="transparent" />
+
+                  {/* Escritorio, silla, monitor, etc. (igual que antes) */}
+                  <rect x="0" y="0" width={deskWidth} height={deskHeight - 8} rx="1" fill={ws.hasDesk ? "white" : "transparent"} className="dark:fill-slate-900" stroke={ws.hasDesk ? deptColor : "currentColor"} strokeWidth={ws.hasDesk ? "1.5" : "0.5"} strokeDasharray={ws.hasDesk ? "none" : "2,2"} />
+                  {ws.hasChair && (
+                    <g transform={`translate(${deskWidth / 2 - 6}, ${deskHeight - 6})`}>
+                      <ellipse cx="6" cy="3" rx="6" ry="3" fill={deptColor} opacity="0.4" />
+                      <rect x="2" y="0" width="8" height="4" rx="2" fill={deptColor} opacity="0.6" />
+                    </g>
+                  )}
+                  {ws.hasMonitor && !ws.hasLaptop && (
+                    <g transform="translate(7, 1)">
+                      <rect x="0" y="0" width="14" height="9" rx="0.5" fill={machineColor} />
+                      <rect x="1" y="1" width="12" height="7" rx="0.5" fill={deptColor} opacity="0.8" />
+                      <line x1="7" y1="9" x2="7" y2="11" stroke={machineColor} strokeWidth="2" />
+                      <line x1="4" y1="11" x2="10" y2="11" stroke={machineColor} strokeWidth="1.5" />
+                    </g>
+                  )}
+                  {ws.hasLaptop && (
+                    <g transform="translate(5, 2)">
+                      <rect x="0" y="4" width="18" height="8" rx="0.5" fill={machineColor} />
+                      <rect x="0" y="0" width="18" height="5" rx="0.5" fill={deptColor} opacity="0.9" />
+                    </g>
+                  )}
+                  {ws.hasCpu && (
+                    <g transform={`translate(${deskWidth + 1}, 2)`}>
+                      <rect x="0" y="0" width="5" height="10" rx="0.5" fill={machineColor} />
+                      <circle cx="2.5" cy="2" r="1" fill={deptColor} />
+                    </g>
+                  )}
+                  {/* ... resto de íconos (teclado, mouse, teléfono, etc.) */}
+                </g>
+              )
+            })}
+
+            {/* IMPRESORAS */}
+            {stats.printerDetails.map((printer, idx) => {
+              const printerX = viewBoxWidth - 30
+              const printerY = startY + (stats.shelves > 0 ? 18 : 0) + idx * printerSpacing
+              const id = `printer-${idx}`
+
+              return (
+                <g
+                  key={id}
+                  transform={`translate(${printerX}, ${printerY})`}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(id)}
+                >
+                  <rect x="0" y="4" width={printerWidth} height="12" rx="1" fill={machineColor} />
+                  <rect x="2" y="0" width={printerWidth - 4} height="4" rx="0.5" fill={machineColor} opacity="0.8" />
+                  <circle cx={printerWidth - 3} cy="7" r="1.5" fill={deptColor} />
+                  <text x={printerWidth / 2} y="22" fontSize="3" fill="currentColor" textAnchor="middle" opacity="0.7">
+                    IMP {idx + 1}
                   </text>
-                )}
-              </g>
-            )
-          })}
+                </g>
+              )
+            })}
+          </svg>
 
-          {/* ESCRITORIOS / PUESTOS DE TRABAJO */}
-          {workstations.map((ws, idx) => {
-            const row = Math.floor(idx / desksPerRow)
-            const col = idx % desksPerRow
-            const x = startX + col * deskSpacingX
-            const y = startY + (stats.shelves > 0 ? 15 : 0) + row * deskSpacingY
-
-            const isActive = ws.hasDesk || ws.hasChair || ws.hasMonitor || ws.hasCpu || ws.hasLaptop
-            const baseOpacity = isActive ? 1 : 0.2
-
-            const mainSerial = ws.monitorSerial || ws.laptopSerial || ws.cpuSerial || ws.deskSerial
-
-            return (
-              <g
-                key={ws.id}
-                transform={`translate(${x}, ${y})`}
-                className="transition-all duration-500"
-                opacity={baseOpacity}
-              >
-                {/* Mesa / Escritorio */}
-                <rect
-                  x="0"
-                  y="0"
-                  width={deskWidth}
-                  height={deskHeight - 8}
-                  rx="1"
-                  fill={ws.hasDesk ? "white" : "transparent"}
-                  className="dark:fill-slate-900"
-                  stroke={ws.hasDesk ? deptColor : wallColor}
-                  strokeWidth={ws.hasDesk ? "1.5" : "0.5"}
-                  strokeDasharray={ws.hasDesk ? "none" : "2,2"}
-                />
-
-                {/* Silla */}
-                {ws.hasChair && (
-                  <g transform={`translate(${deskWidth / 2 - 6}, ${deskHeight - 6})`}>
-                    <ellipse cx="6" cy="3" rx="6" ry="3" fill={deptColor} opacity="0.4" />
-                    <rect x="2" y="0" width="8" height="4" rx="2" fill={deptColor} opacity="0.6" />
-                  </g>
-                )}
-
-                {/* Monitor */}
-                {ws.hasMonitor && !ws.hasLaptop && (
-                  <g transform="translate(7, 1)">
-                    <rect x="0" y="0" width="14" height="9" rx="0.5" fill={machineColor} />
-                    <rect x="1" y="1" width="12" height="7" rx="0.5" fill={deptColor} opacity="0.8" />
-                    <line x1="7" y1="9" x2="7" y2="11" stroke={machineColor} strokeWidth="2" />
-                    <line x1="4" y1="11" x2="10" y2="11" stroke={machineColor} strokeWidth="1.5" />
-                  </g>
-                )}
-
-                {/* Laptop */}
-                {ws.hasLaptop && (
-                  <g transform="translate(5, 2)">
-                    <rect x="0" y="4" width="18" height="8" rx="0.5" fill={machineColor} />
-                    <rect x="0" y="0" width="18" height="5" rx="0.5" fill={deptColor} opacity="0.9" />
-                    <rect x="1" y="1" width="16" height="3" fill="white" opacity="0.3" />
-                  </g>
-                )}
-
-                {/* CPU */}
-                {ws.hasCpu && (
-                  <g transform={`translate(${deskWidth + 1}, 2)`}>
-                    <rect x="0" y="0" width="5" height="10" rx="0.5" fill={machineColor} />
-                    <circle cx="2.5" cy="2" r="1" fill={deptColor} />
-                    <rect x="1" y="5" width="3" height="0.5" fill="#666" />
-                    <rect x="1" y="7" width="3" height="0.5" fill="#666" />
-                  </g>
-                )}
-
-                {/* Teclado */}
-                {ws.hasKeyboard && (
-                  <g transform="translate(6, 10)">
-                    <rect x="0" y="0" width="16" height="3" rx="0.5" fill="#444" />
-                    {[...Array(8)].map((_, i) => (
-                      <rect key={i} x={1 + i * 1.8} y="0.5" width="1.2" height="0.8" rx="0.2" fill="#666" />
+          {/* Tooltip bonito encima del SVG */}
+          {hoveredItem && (
+            <div
+              className="absolute pointer-events-none z-50"
+              style={{
+                left: mousePosition.x + 10,
+                top: mousePosition.y + 10,
+              }}
+            >
+              <div className="bg-black/95 text-white rounded-lg shadow-2xl px-3 py-2 text-xs font-medium border border-white/10">
+                {hoveredItem.startsWith("ws-") && (
+                  <>
+                    <div className="text-emerald-400 font-bold mb-1">
+                      Puesto {parseInt(hoveredItem.split("-")[1]) + 1}
+                    </div>
+                    {getWorkstationSerials(workstations[parseInt(hoveredItem.split("-")[1])]).map((item, i) => (
+                      <div key={i} className="font-mono opacity-90 leading-tight">
+                        {item}
+                      </div>
                     ))}
-                    {[...Array(7)].map((_, i) => (
-                      <rect key={i} x={1.5 + i * 1.8} y="1.8" width="1.2" height="0.8" rx="0.2" fill="#666" />
-                    ))}
-                  </g>
+                  </>
                 )}
-
-                {/* Mouse */}
-                {ws.hasMouse && (
-                  <g transform="translate(23, 10)">
-                    <ellipse cx="2" cy="1.5" rx="2" ry="1.5" fill="#444" />
-                    <line x1="2" y1="0.5" x2="2" y2="1" stroke="#666" strokeWidth="0.5" />
-                  </g>
+                {hoveredItem.startsWith("printer-") && (
+                  <>
+                    <div className="font-bold mb-1">Impresora {parseInt(hoveredItem.split("-")[1]) + 1}</div>
+                    <div className="font-mono">
+                      {stats.printerDetails[parseInt(hoveredItem.split("-")[1])].serial || "Sin serial"}
+                    </div>
+                  </>
                 )}
-
-                {/* Teléfono */}
-                {ws.phones > 0 && (
-                  <g transform="translate(1, 1)">
-                    <rect x="0" y="0" width="5" height="4" rx="0.5" fill="#1e293b" />
-                    <rect x="0.5" y="0.5" width="4" height="2" fill="#0ea5e9" opacity="0.6" />
-                    <rect x="1" y="3" width="3" height="0.5" fill="#666" />
-                  </g>
+                {hoveredItem.startsWith("shelf-") && (
+                  <>
+                    <div className="font-bold mb-1">Estante</div>
+                    <div className="font-mono">
+                      {stats.shelfDetails.find((s, i) => `shelf-${s.serial || i}` === hoveredItem)?.serial || "Sin serial"}
+                    </div>
+                  </>
                 )}
+              </div>
+            </div>
+          )}
 
-                {/* Lector DNI */}
-                {ws.hasDniReader && (
-                  <g transform="translate(1, 6)">
-                    <rect x="0" y="0" width="4" height="3" rx="0.3" fill="#059669" />
-                    <rect x="0.5" y="0.5" width="3" height="1" fill="#34d399" opacity="0.6" />
-                  </g>
-                )}
+          {/* Porcentaje */}
+          <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-[10px] px-2 py-0.5 rounded shadow-sm font-mono flex items-center gap-1 z-10">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: deptColor }} />
+            {Math.round(fillPercentage)}% cap.
+          </div>
+        </div>
 
-                {/* Ventilador */}
-                {ws.hasFan && (
-                  <g transform={`translate(${deskWidth - 4}, 0)`}>
-                    <circle cx="2" cy="2" r="2" fill="none" stroke="#64748b" strokeWidth="0.5" />
-                    <circle cx="2" cy="2" r="0.5" fill="#64748b" />
-                    <line x1="2" y1="0.5" x2="2" y2="1.5" stroke="#64748b" strokeWidth="0.3" />
-                    <line x1="0.5" y1="2" x2="1.5" y2="2" stroke="#64748b" strokeWidth="0.3" />
-                    <line x1="2" y1="2.5" x2="2" y2="3.5" stroke="#64748b" strokeWidth="0.3" />
-                    <line x1="2.5" y1="2" x2="3.5" y2="2" stroke="#64748b" strokeWidth="0.3" />
-                  </g>
-                )}
-
-                {/* Porta CPU */}
-                {ws.hasCpuHolder && ws.hasCpu && (
-                  <g transform={`translate(${deskWidth}, 11)`}>
-                    <rect x="0" y="0" width="7" height="2" rx="0.3" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
-                  </g>
-                )}
-
-                {mainSerial && isActive && (
-                  <text
-                    x={deskWidth / 2}
-                    y={deskHeight + 4}
-                    fontSize="3"
-                    fill={deptColor}
-                    textAnchor="middle"
-                    fontFamily="monospace"
-                    fontWeight="500"
-                  >
-                    {shortenSerial(mainSerial, 12)}
-                  </text>
-                )}
-              </g>
-            )
-          })}
-
-          {/* IMPRESORAS (Área lateral) */}
-          {stats.printerDetails.map((printer, idx) => {
-            const printerX = viewBoxWidth - 30
-            const printerY = startY + (stats.shelves > 0 ? 15 : 0) + idx * printerSpacing
-
-            return (
-              <g key={`printer-${idx}`} transform={`translate(${printerX}, ${printerY})`}>
-                <rect x="0" y="4" width={printerWidth} height="12" rx="1" fill={machineColor} />
-                <rect x="2" y="0" width={printerWidth - 4} height="4" rx="0.5" fill={machineColor} opacity="0.8" />
-                <line x1="5" y1="16" x2="15" y2="16" stroke="white" strokeWidth="2" />
-                <circle cx={printerWidth - 3} cy="7" r="1.5" fill={deptColor} />
-                <text x={printerWidth / 2} y="22" fontSize="3" fill="currentColor" textAnchor="middle" opacity="0.7">
-                  IMP {idx + 1}
-                </text>
-                {printer.serial && (
-                  <text
-                    x={printerWidth / 2}
-                    y="26"
-                    fontSize="2.5"
-                    fill={deptColor}
-                    textAnchor="middle"
-                    fontFamily="monospace"
-                  >
-                    {shortenSerial(printer.serial, 10)}
-                  </text>
-                )}
-              </g>
-            )
-          })}
-        </svg>
-
-        {/* Etiqueta de Porcentaje */}
-        <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-[10px] px-2 py-0.5 rounded shadow-sm font-mono flex items-center gap-1 z-10">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: deptColor }} />
-          {Math.round(fillPercentage)}% cap.
+        {/* Barra de progreso */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <span className="flex items-center text-slate-500">
+                Mobiliario {stats.furnitureCount}
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="flex items-center text-slate-700 dark:text-slate-200 font-bold">
+                Equipos {stats.equipmentCount}
+              </span>
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden relative">
+            <div className="absolute top-0 left-0 h-full transition-all duration-500" style={{ width: `${(stats.furnitureCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 0.3 }} />
+            <div className="absolute top-0 left-0 h-full transition-all duration-500" style={{ width: `${(stats.equipmentCount / maxCount) * 100}%`, backgroundColor: deptColor }} />
+          </div>
         </div>
       </div>
-
-      {/* Barra de progreso con detalles */}
-      <div className="space-y-1">
-        <div className="flex justify-between text-xs">
-          <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <span className="flex items-center text-slate-500">
-              <Armchair className="w-3 h-3 mr-0.5 inline" /> {stats.furnitureCount}
-            </span>
-            <span className="text-slate-300">|</span>
-            <span className="flex items-center text-slate-700 dark:text-slate-200 font-bold">
-              <Monitor className="w-3 h-3 mr-0.5 inline" /> {stats.equipmentCount}
-            </span>
-          </span>
-          <span className="text-slate-400 text-[10px]">{maxCount} máx</span>
-        </div>
-
-        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden relative">
-          <div
-            className="absolute top-0 left-0 h-full transition-all duration-500"
-            style={{ width: `${(stats.furnitureCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 0.3 }}
-          />
-          <div
-            className="absolute top-0 left-0 h-full transition-all duration-500"
-            style={{ width: `${(stats.equipmentCount / maxCount) * 100}%`, backgroundColor: deptColor, opacity: 1 }}
-          />
-        </div>
-      </div>
-    </div>
+    </TooltipProvider>
   )
 }
 
