@@ -7,6 +7,8 @@ import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
 
+export const dynamic = "force-dynamic"
+
 // Definir los 3 acuerdos marco específicos
 const ACUERDOS_MARCO = [
   {
