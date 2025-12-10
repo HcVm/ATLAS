@@ -1,13 +1,30 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Package, AlertTriangle, Edit, Calendar, MapPin, ArrowUp, ArrowDown, RotateCcw, User, Eye, QrCode, Tag, ListOrdered, Printer, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Package,
+  AlertTriangle,
+  Edit,
+  Calendar,
+  MapPin,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  User,
+  Eye,
+  QrCode,
+  Tag,
+  ListOrdered,
+  Printer,
+  Trash2,
+} from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -15,7 +32,6 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { QRDisplayDialog } from "@/components/qr-code-display"
-import JsBarcode from "jsbarcode"
 import QRCodeLib from "qrcode"
 
 interface Product {
@@ -43,7 +59,7 @@ interface Product {
 
 interface Movement {
   id: string
-  movement_type: "entrada" | "salida" | "ajuste"
+  movement_type: "entrada" | "salida" | "ajuste" | "baja"
   quantity: number
   cost_price: number
   total_amount: number
@@ -203,28 +219,12 @@ export default function InternalProductDetailPage() {
       const companyName = companyData?.name || "EMPRESA"
       const currentYear = new Date().getFullYear()
 
-      const barcodeCanvas = document.createElement("canvas")
-      barcodeCanvas.width = 1200
-      barcodeCanvas.height = 200
-
-      JsBarcode(barcodeCanvas, serial.serial_number, {
-        format: "CODE128",
-        width: 3,
-        height: 120,
-        displayValue: false,
-        margin: 4,
-        background: "#ffffff",
-        lineColor: "#000000",
-      })
-
-      const barcodeUrl = barcodeCanvas.toDataURL("image/png")
-
       let qrCodeUrl = ""
       if (serial.qr_code_hash) {
         const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
         qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
           errorCorrectionLevel: "H",
-          width: 200,
+          width: 300,
           margin: 1,
           color: {
             dark: "#000000",
@@ -243,7 +243,7 @@ export default function InternalProductDetailPage() {
               <meta charset="UTF-8">
               <style>
                 @page {
-                  size: 62mm 37mm;
+                  size: 50mm 25mm;
                   margin: 0;
                 }
                 * {
@@ -257,114 +257,115 @@ export default function InternalProductDetailPage() {
                   padding: 0;
                   background: white;
                 }
+                /* Eliminar borde negro del sticker */
                 .sticker {
-                  width: 62mm;
-                  height: 37mm;
-                  border: 2px solid #000;
-                  border-radius: 8px;
-                  padding: 2mm;
+                  width: 50mm;
+                  height: 25mm;
+                  border: none;
                   background: white;
                   display: flex;
-                  flex-direction: column;
-                  gap: 0.5mm;
+                  flex-direction: row;
                   box-sizing: border-box;
+                  overflow: hidden;
                 }
-                .header-text {
-                  text-align: center;
-                  font-size: 6pt;
-                  font-weight: 700;
-                  color: #000;
-                  line-height: 1.1;
-                  margin-bottom: 0.5mm;
-                  text-transform: uppercase;
-                  letter-spacing: 0.3px;
-                }
-                .barcode-section {
-                  width: 100%;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                }
-                .barcode-section img {
-                  width: 100%;
-                  max-width: 58mm;
-                  height: auto;
-                  max-height: 9mm;
-                  display: block;
-                  object-fit: contain;
-                }
-                .bottom-section {
-                  flex: 1;
-                  display: flex;
-                  gap: 2mm;
-                  align-items: flex-start;
-                }
-                .info-column {
+                .main-content {
                   flex: 1;
                   display: flex;
                   flex-direction: column;
-                  justify-content: flex-start;
-                  gap: 0.5mm;
+                  padding: 3mm 2mm;
                   min-width: 0;
+                  overflow: hidden;
+                }
+                .header-row {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding-bottom: 1mm;
+                  border-bottom: 0.5px solid #ccc;
+                  margin-bottom: 1mm;
+                }
+                .company-text {
+                  font-size: 5pt;
+                  font-weight: 750;
+                  color: #000;
+                  line-height: 1;
+                  text-transform: uppercase;
+                  letter-spacing: 0.2px;
+                }
+                .atlas-badge {
+                  font-size: 5pt;
+                  font-weight: 800;
+                  color: #fff;
+                  background: #000;
+                  padding: 0.5mm 1.5mm;
+                  border-radius: 3px;
+                  letter-spacing: 0.5px;
+                }
+                .serial {
+                  font-weight: 700;
+                  font-size: 7pt;
+                  font-family: 'Courier New', monospace;
+                  line-height: 1;
+                  color: #000;
+                  letter-spacing: -0.3px;
+                  margin-bottom: 1mm;
+                }
+                .product-name {
+                  font-weight: 700;
+                  font-size: 6pt;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  color: #000;
+                  margin-bottom: 0.8mm;
+                }
+                .info-grid {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0.5mm;
+                }
+                .info-row {
+                  display: flex;
+                  gap: 1mm;
+                  font-size: 7pt;
+                  color: #000;
+                  line-height: 1.2;
+                }
+                .info-label {
+                  font-weight: 700;
+                  flex-shrink: 0;
+                }
+                .info-value {
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
                 }
                 .qr-column {
                   display: flex;
                   flex-direction: column;
                   align-items: center;
-                  justify-content: flex-start;
-                  gap: 0.5mm;
+                  justify-content: center;
                   flex-shrink: 0;
+                  width: 14mm;
+                  background: #fff;
+                  padding-right: 2mm;
                 }
+                /* Mejorar rendering del QR con image-rendering para impresión nítida */
                 .qr-column img {
-                  width: 50px;
-                  height: 50px;
+                  width: 14mm;
+                  height: 14mm;
                   display: block;
-                }
-                .serial {
-                  font-weight: 700;
-                  font-size: 7.5pt;
-                  margin: 0.3mm 0;
-                  font-family: 'Courier New', monospace;
-                  word-break: break-all;
-                  line-height: 1.15;
-                  color: #000;
-                  letter-spacing: -0.2px;
-                }
-                .location {
-                  font-size: 6.5pt;
-                  color: #000;
-                  font-family: Arial, sans-serif;
-                  margin: 0.3mm 0;
-                  line-height: 1.1;
-                  font-weight: 600;
-                }
-                .product {
-                  margin-top: 0.3mm;
-                  line-height: 1.1;
-                }
-                .product-name {
-                  font-weight: 700;
-                  font-size: 5.5pt;
-                  margin-bottom: 0.3mm;
-                  color: #000;
-                  font-family: Arial, sans-serif;
-                  line-height: 1.1;
-                }
-                .product-code {
-                  color: #000;
-                  font-size: 5.5pt;
-                  font-family: Arial, sans-serif;
-                  font-weight: 600;
-                  line-height: 1.1;
+                  image-rendering: -webkit-optimize-contrast;
+                  image-rendering: crisp-edges;
+                  image-rendering: pixelated;
                 }
                 .qr-label {
-                  font-size: 5pt;
+                  font-size: 6pt;
                   text-align: center;
-                  color: #000;
-                  line-height: 1.1;
-                  max-width: 50px;
-                  font-weight: 500;
-                  font-family: Arial, sans-serif;
+                  color: #444;
+                  line-height: 1;
+                  margin-top: 0.5mm;
+                  font-weight: 600;
                 }
                 @media print {
                   body {
@@ -372,38 +373,42 @@ export default function InternalProductDetailPage() {
                     padding: 0;
                   }
                   .sticker {
-                    border: 2px solid #000 !important;
-                    border-radius: 8px !important;
+                    border: none !important;
                   }
                 }
               </style>
             </head>
             <body>
+              <!-- Nueva estructura sin código de barras, con badge ATLAS visible -->
               <div class="sticker">
-                <div class="header-text">INVENTARIO ${companyName} ${currentYear}</div>
-                <div class="barcode-section">
-                  <img src="${barcodeUrl}" alt="${serial.serial_number}" />
-                </div>
-                <div class="bottom-section">
-                  <div class="info-column">
-                    <div class="serial">${serial.serial_number}</div>
-                    <div class="location">Ubicación: ${serial.current_location || "N/A"}</div>
-                    <div class="product">
-                      <div class="product-name">${product?.name || ""}</div>
-                      <div class="product-code">${product?.code || ""}</div>
+                <div class="main-content">
+                  <div class="header-row">
+                    <span class="company-text">${companyName} INV ${currentYear}</span>
+                    <span class="atlas-badge">ATLAS</span>
+                  </div>
+                  <div class="serial">${serial.serial_number}</div>
+                  <div class="product-name">${product?.name || ""}</div>
+                  <div class="info-grid">
+                    <div class="info-row">
+                      <span class="info-label">Ubic:</span>
+                      <span class="info-value">${serial.current_location || "N/A"}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Ref:</span>
+                      <span class="info-value">${product?.code || ""}</span>
                     </div>
                   </div>
-                  ${
-                    qrCodeUrl
-                      ? `
-                  <div class="qr-column">
-                    <img src="${qrCodeUrl}" alt="QR Code" />
-                    <div class="qr-label">Info del producto</div>
-                  </div>
-                  `
-                      : ""
-                  }
                 </div>
+                ${
+                  qrCodeUrl
+                    ? `
+                <div class="qr-column">
+                  <img src="${qrCodeUrl}" alt="QR" />
+                  <div class="qr-label">Escanear</div>
+                </div>
+                `
+                    : ""
+                }
               </div>
             </body>
           </html>
@@ -699,12 +704,15 @@ export default function InternalProductDetailPage() {
                           if (movement.internal_product_serials?.serial_number) {
                             // Salidas, bajas, ajustes → tienen serial_id
                             serialDisplay = movement.internal_product_serials.serial_number
-                          } else if (movement.movement_type === "entrada" && movement.notes?.includes("Series generadas:")) {
+                          } else if (
+                            movement.movement_type === "entrada" &&
+                            movement.notes?.includes("Series generadas:")
+                          ) {
                             // Entradas → extraemos de las notas
                             const match = movement.notes.match(/Series generadas: (.*?)( - |$)/)
                             if (match && match[1]) {
                               fullSerialsList = match[1].trim()
-                              const seriales = fullSerialsList.split(", ").map(s => s.trim())
+                              const seriales = fullSerialsList.split(", ").map((s) => s.trim())
 
                               if (seriales.length === 1) {
                                 serialDisplay = seriales[0]
@@ -754,20 +762,21 @@ export default function InternalProductDetailPage() {
                                   <span className="text-muted-foreground">N/A</span>
                                 ) : showTooltip ? (
                                   // TOOLTIP QUE NUNCA SE CORTA (usa Portal implícito con posicionamiento fijo relativo)
-                                  <div 
-                                    className="group cursor-help inline-block"
-                                    data-tooltip={fullSerialsList}
-                                  >
+                                  <div className="group cursor-help inline-block" data-tooltip={fullSerialsList}>
                                     <span className="text-blue-600 border-b border-dotted border-blue-400">
                                       {serialDisplay}
                                     </span>
 
                                     {/* Tooltip que aparece por encima de todo */}
                                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 shadow-2xl">
-                                      <div className="font-semibold mb-2 text-green-400">Series generadas ({fullSerialsList.split(", ").length}):</div>
+                                      <div className="font-semibold mb-2 text-green-400">
+                                        Series generadas ({fullSerialsList.split(", ").length}):
+                                      </div>
                                       <div className="space-y-1 max-h-64 overflow-y-auto">
                                         {fullSerialsList.split(", ").map((s, i) => (
-                                          <div key={i} className="font-mono">{s.trim()}</div>
+                                          <div key={i} className="font-mono">
+                                            {s.trim()}
+                                          </div>
                                         ))}
                                       </div>
                                       {/* Flechita */}
