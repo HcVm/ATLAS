@@ -1,10 +1,45 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from 'next/navigation'
+import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { LayoutDashboard, FileText, Plus, Bell, BarChart3, Users, Building2, Newspaper, User, Settings, LogOut, AlertTriangle, MapPin, Package, PackageOpen, Activity, Box, ClipboardList, Headphones, ShoppingCart, CalendarDays, BookText, Database, CheckSquare, Eye, ChevronDown, ChevronRight, Clock, FileCheck, UserCheck, Barcode, Wrench, DollarSign } from 'lucide-react'
+import {
+  LayoutDashboard,
+  FileText,
+  Plus,
+  Bell,
+  BarChart3,
+  Users,
+  Building2,
+  Newspaper,
+  User,
+  Settings,
+  LogOut,
+  AlertTriangle,
+  MapPin,
+  Package,
+  PackageOpen,
+  Activity,
+  Box,
+  ClipboardList,
+  Headphones,
+  ShoppingCart,
+  CalendarDays,
+  BookText,
+  Database,
+  CheckSquare,
+  Eye,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  FileCheck,
+  UserCheck,
+  Barcode,
+  Wrench,
+  DollarSign,
+  Landmark,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -17,7 +52,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
@@ -271,21 +305,28 @@ const menuSections = {
         url: "/warehouse/internal",
         icon: PackageOpen,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "administración", "administracion", "operaciones", "contabilidad"],
       },
       {
         title: "Productos Internos",
         url: "/warehouse/internal/products",
         icon: Package,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "administración", "administracion", "operaciones", "contabilidad"],
       },
       {
         title: "Movimientos Internos",
         url: "/warehouse/internal/movements",
         icon: Activity,
         roles: ["admin", "supervisor", "user"],
-        departments: ["almacén", "almacen", "administración", "administracion", "operaciones"],
+        departments: ["almacén", "almacen", "administración", "administracion", "operaciones", "contabilidad"],
+      },
+      {
+        title: "Activos Fijos",
+        url: "/warehouse/internal/fixed-assets",
+        icon: Landmark,
+        roles: ["admin", "supervisor"],
+        departments: ["contabilidad", "administración", "administracion", "gerencia"],
       },
     ],
   },
@@ -505,7 +546,9 @@ export function AppSidebar() {
                                   >
                                     <item.icon className="h-4 w-4" />
                                   </div>
-                                  <span className="font-medium transition-colors duration-300 truncate">{item.title}</span>
+                                  <span className="font-medium transition-colors duration-300 truncate">
+                                    {item.title}
+                                  </span>
                                   {item.title === "Notificaciones" && (
                                     <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 dark:bg-slate-600 text-[10px] font-medium text-white shadow-sm">
                                       <Bell className="h-3 w-3" />
