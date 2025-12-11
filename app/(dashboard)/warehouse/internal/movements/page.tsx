@@ -3,12 +3,26 @@
 import type React from "react"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Trash, Package, ArrowUp, ArrowDown, RotateCcw, User, Search, Check, Loader2, Eye, PlusCircle, FileText } from 'lucide-react'
+import {
+  ArrowLeft,
+  Trash,
+  Package,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  User,
+  Search,
+  Check,
+  Loader2,
+  Eye,
+  PlusCircle,
+  FileText,
+} from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -32,6 +46,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface InternalProduct {
   id: string
@@ -315,23 +330,23 @@ export default function InternalMovementsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (formData.movement_type === "baja") {
       const quantity = selectedProductModel?.is_serialized ? formData.selected_serials.length : formData.quantity
       const itemDetails = `${quantity} ${selectedProductModel?.unit_of_measure}`
       const productInfo = `${selectedProductModel?.name} (${selectedProductModel?.code})`
-      
+
       // Show confirmation before proceeding
       const confirmed = window.confirm(
         `Confirmación de Baja del Sistema\n\n` +
-        `Estás a punto de dar de baja: ${itemDetails} de ${productInfo}\n\n` +
-        `Esta acción:\n` +
-        `- Disminuirá el stock disponible\n` +
-        `- Marcará los productos como retirados del sistema\n` +
-        `- Generará un movimiento de salida permanente\n\n` +
-        `¿Deseas continuar?`
+          `Estás a punto de dar de baja: ${itemDetails} de ${productInfo}\n\n` +
+          `Esta acción:\n` +
+          `- Disminuirá el stock disponible\n` +
+          `- Marcará los productos como retirados del sistema\n` +
+          `- Generará un movimiento de salida permanente\n\n` +
+          `¿Deseas continuar?`,
       )
-      
+
       if (!confirmed) {
         return
       }
@@ -400,12 +415,12 @@ export default function InternalMovementsPage() {
         throw new Error(errorData.error || "Error al registrar el movimiento.")
       }
 
-      const successMessage = 
-        formData.movement_type === "baja" 
+      const successMessage =
+        formData.movement_type === "baja"
           ? "Productos dados de baja exitosamente. El movimiento ha sido registrado."
           : formData.movement_type === "entrada"
-          ? "Movimiento registrado exitosamente. Los números de serie se generaron automáticamente."
-          : "Movimiento registrado exitosamente."
+            ? "Movimiento registrado exitosamente. Los números de serie se generaron automáticamente."
+            : "Movimiento registrado exitosamente."
 
       toast.success(successMessage)
 
@@ -642,7 +657,9 @@ export default function InternalMovementsPage() {
                     <Select
                       name="condition"
                       value={formData.condition}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, condition: value as "nuevo" | "usado" }))}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, condition: value as "nuevo" | "usado" }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona el estado" />
@@ -678,10 +695,14 @@ export default function InternalMovementsPage() {
                       </div>
                     )}
 
-                    {(formData.movement_type === "salida" || formData.movement_type === "ajuste" || formData.movement_type === "baja") && (
+                    {(formData.movement_type === "salida" ||
+                      formData.movement_type === "ajuste" ||
+                      formData.movement_type === "baja") && (
                       <div className="space-y-2">
                         <Label htmlFor="selected_serials">
-                          {formData.movement_type === "baja" ? "Seleccionar Números de Serie para Baja" : "Seleccionar Números de Serie"}
+                          {formData.movement_type === "baja"
+                            ? "Seleccionar Números de Serie para Baja"
+                            : "Seleccionar Números de Serie"}
                         </Label>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -692,7 +713,7 @@ export default function InternalMovementsPage() {
                               <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                               <CommandInput placeholder="Buscar número de serie..." />
                               <CommandList>
@@ -753,16 +774,14 @@ export default function InternalMovementsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reason">
-                    {formData.movement_type === "baja" ? "Motivo de la Baja" : "Motivo"}
-                  </Label>
+                  <Label htmlFor="reason">{formData.movement_type === "baja" ? "Motivo de la Baja" : "Motivo"}</Label>
                   <Input
                     id="reason"
                     name="reason"
                     value={formData.reason}
                     onChange={handleChange}
                     placeholder={
-                      formData.movement_type === "baja" 
+                      formData.movement_type === "baja"
                         ? "Ej: Consumido, Dañado, Vencido, etc."
                         : "Ej: Venta, Consumo interno, Devolución, etc."
                     }
@@ -887,10 +906,38 @@ export default function InternalMovementsPage() {
                   {movements.map((movement) => {
                     const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
                     const Icon = movementType?.icon || Package
-                    const generatedSerials = movement.movement_type === "entrada" && movement.notes
-                      ? movement.notes.split("Series generadas: ")[1]?.split(" - Series")[0] || ""
-                      : ""
-                    const displaySerial = generatedSerials || movement.internal_product_serials?.serial_number || "N/A"
+
+                    let serialsArray: string[] = []
+
+                    if (movement.movement_type === "entrada" && movement.notes) {
+                      // Try new delimited format first (from fixed assets)
+                      const newFormatMatch = movement.notes.match(
+                        /---SERIALES_GENERADOS---\n([\s\S]*?)\n---FIN_SERIALES---/,
+                      )
+                      if (newFormatMatch) {
+                        serialsArray = newFormatMatch[1]
+                          .trim()
+                          .split("\n")
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                      } else {
+                        // Try old format: "Series generadas: serial1, serial2, serial3" (at end of notes)
+                        const oldFormatMatch = movement.notes.match(/Series generadas:\s*(.+)$/i)
+                        if (oldFormatMatch) {
+                          serialsArray = oldFormatMatch[1]
+                            .split(",")
+                            .map((s: string) => s.trim())
+                            .filter(Boolean)
+                        }
+                      }
+                    }
+
+                    // Fallback to direct serial_number if no serials found in notes
+                    const directSerial = movement.internal_product_serials?.serial_number || ""
+                    const hasGeneratedSerials = serialsArray.length > 0
+                    const hasDirectSerial = directSerial.length > 0
+                    const hasSerials = hasGeneratedSerials || hasDirectSerial
+
                     return (
                       <TableRow key={movement.id}>
                         <TableCell>
@@ -924,22 +971,47 @@ export default function InternalMovementsPage() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[250px] truncate" title={displaySerial}>
+                        <TableCell className="max-w-[300px]">
                           <div className="text-sm">
-                            {generatedSerials ? (
-                              <div className="space-y-1">
-                                <span className="text-xs text-muted-foreground">Generados:</span>
-                                <div className="text-xs font-mono">{displaySerial}</div>
-                              </div>
-                            ) : movement.internal_product_serials?.serial_number ? (
-                              <span className="font-mono">{displaySerial}</span>
-                            ) : (
+                            {!hasSerials ? (
                               <span className="text-muted-foreground">N/A</span>
+                            ) : hasGeneratedSerials ? (
+                              serialsArray.length > 1 ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-sm font-mono text-primary cursor-pointer underline decoration-dotted">
+                                        {serialsArray[0]} y +{serialsArray.length - 1} más
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-sm max-h-64 overflow-y-auto">
+                                      <div className="text-xs font-medium mb-1">
+                                        Series generadas ({serialsArray.length}):
+                                      </div>
+                                      <div className="font-mono text-xs space-y-0.5">
+                                        {serialsArray.map((serial, idx) => (
+                                          <div key={idx}>{serial}</div>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <span className="text-sm font-mono">{serialsArray[0]}</span>
+                              )
+                            ) : (
+                              <span className="text-sm font-mono">{directSerial}</span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate" title={movement.reason}>
-                          {movement.reason}
+                          {movement.reason === "compra_activo_fijo" ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Compra Activo Fijo
+                            </Badge>
+                          ) : (
+                            movement.reason
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

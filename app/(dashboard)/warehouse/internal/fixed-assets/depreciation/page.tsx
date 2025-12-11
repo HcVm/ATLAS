@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
-import { ChevronLeft, Calculator, Building2, CheckCircle, AlertCircle, FileSpreadsheet } from "lucide-react"
+import { ChevronLeft, Calculator, Building2, CheckCircle, AlertCircle, FileSpreadsheet, Info } from "lucide-react"
 import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 
 interface FixedAssetAccount {
   id: string
@@ -21,19 +22,40 @@ interface FixedAssetAccount {
 }
 
 const MONTHS = [
-  { value: 1, label: "Enero" },
-  { value: 2, label: "Febrero" },
-  { value: 3, label: "Marzo" },
-  { value: 4, label: "Abril" },
-  { value: 5, label: "Mayo" },
-  { value: 6, label: "Junio" },
-  { value: 7, label: "Julio" },
-  { value: 8, label: "Agosto" },
-  { value: 9, label: "Septiembre" },
-  { value: 10, label: "Octubre" },
-  { value: 11, label: "Noviembre" },
-  { value: 12, label: "Diciembre" },
+  { value: 1, label: "Enero", days: 31 },
+  { value: 2, label: "Febrero", days: 28 },
+  { value: 3, label: "Marzo", days: 31 },
+  { value: 4, label: "Abril", days: 30 },
+  { value: 5, label: "Mayo", days: 31 },
+  { value: 6, label: "Junio", days: 30 },
+  { value: 7, label: "Julio", days: 31 },
+  { value: 8, label: "Agosto", days: 31 },
+  { value: 9, label: "Septiembre", days: 30 },
+  { value: 10, label: "Octubre", days: 31 },
+  { value: 11, label: "Noviembre", days: 30 },
+  { value: 12, label: "Diciembre", days: 31 },
 ]
+
+const CALCULATION_METHODS = [
+  {
+    value: "monthly",
+    label: "Mensual (÷12)",
+    description: "Depreciación anual dividida entre 12 meses",
+  },
+  {
+    value: "daily",
+    label: "Diaria (÷días del mes)",
+    description: "Depreciación anual ÷ días del año × días del mes",
+  },
+]
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
 
 export default function DepreciationCalculatorPage() {
   const router = useRouter()
@@ -48,6 +70,7 @@ export default function DepreciationCalculatorPage() {
   const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString())
   const [selectedMonth, setSelectedMonth] = useState<string>(currentDate.getMonth().toString())
   const [selectedAccount, setSelectedAccount] = useState<string>("all")
+  const [calculationMethod, setCalculationMethod] = useState<string>("monthly")
 
   const companyId = useMemo(() => {
     return user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -57,6 +80,16 @@ export default function DepreciationCalculatorPage() {
     const current = new Date().getFullYear()
     return Array.from({ length: 10 }, (_, i) => (current - i).toString())
   }, [])
+
+  const daysInSelectedMonth = useMemo(() => {
+    const year = Number.parseInt(selectedYear)
+    const month = Number.parseInt(selectedMonth) + 1
+    return getDaysInMonth(year, month)
+  }, [selectedYear, selectedMonth])
+
+  const daysInSelectedYear = useMemo(() => {
+    return isLeapYear(Number.parseInt(selectedYear)) ? 366 : 365
+  }, [selectedYear])
 
   useEffect(() => {
     if (companyId) {
@@ -96,7 +129,8 @@ export default function DepreciationCalculatorPage() {
         body: JSON.stringify({
           company_id: companyId,
           year: Number.parseInt(selectedYear),
-          month: Number.parseInt(selectedMonth) + 1, // Ajustar porque el select usa índice 0-11
+          month: Number.parseInt(selectedMonth) + 1,
+          calculation_method: calculationMethod, // Send calculation method
         }),
       })
 
@@ -154,10 +188,10 @@ export default function DepreciationCalculatorPage() {
         <CardHeader>
           <CardTitle>Configuración del Cálculo</CardTitle>
           <CardDescription>
-            Selecciona el período para calcular la depreciación mensual de los activos fijos
+            Selecciona el período y método para calcular la depreciación mensual de los activos fijos
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium">Año</label>
@@ -205,31 +239,75 @@ export default function DepreciationCalculatorPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleCalculateDepreciation} disabled={calculating}>
-              {calculating ? (
-                <>
-                  <Building2 className="h-4 w-4 mr-2 animate-spin" />
-                  Calculando...
-                </>
-              ) : (
-                <>
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Calcular Depreciación
-                </>
-              )}
-            </Button>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Método de Cálculo</label>
+            <Select value={calculationMethod} onValueChange={setCalculationMethod}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Selecciona método" />
+              </SelectTrigger>
+              <SelectContent>
+                {CALCULATION_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>
+                    <div className="flex flex-col">
+                      <span>{method.label}</span>
+                      <span className="text-xs text-muted-foreground">{method.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+            <Info className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div className="text-sm">
+              {calculationMethod === "monthly" ? (
+                <span>
+                  <strong>Fórmula:</strong> Depreciación Anual ÷ 12 meses
+                </span>
+              ) : (
+                <span>
+                  <strong>Fórmula:</strong> Depreciación Anual ÷ {daysInSelectedYear} días ×{" "}
+                  <Badge variant="secondary" className="mx-1">
+                    {daysInSelectedMonth} días
+                  </Badge>
+                  ({MONTHS[Number.parseInt(selectedMonth)].label} {selectedYear})
+                </span>
+              )}
+            </div>
+          </div>
+
+          <Button onClick={handleCalculateDepreciation} disabled={calculating} className="mt-2">
+            {calculating ? (
+              <>
+                <Building2 className="h-4 w-4 mr-2 animate-spin" />
+                Calculando...
+              </>
+            ) : (
+              <>
+                <Calculator className="h-4 w-4 mr-2" />
+                Calcular Depreciación
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
       {/* Información */}
       <Alert>
         <FileSpreadsheet className="h-4 w-4" />
-        <AlertTitle>Método de Depreciación</AlertTitle>
-        <AlertDescription>
-          Se utiliza el método de depreciación lineal según la normativa peruana. La depreciación mensual se calcula
-          dividiendo la depreciación anual entre 12 meses. Los activos que ya han alcanzado su depreciación total no
-          generarán más registros.
+        <AlertTitle>Métodos de Depreciación</AlertTitle>
+        <AlertDescription className="space-y-2">
+          <p>
+            <strong>Mensual (÷12):</strong> Divide la depreciación anual entre 12 meses iguales. Es el método más común
+            y simplificado.
+          </p>
+          <p>
+            <strong>Diaria (÷días):</strong> Calcula la depreciación diaria (anual ÷ 365 o 366) y la multiplica por los
+            días del mes. Proporciona mayor precisión considerando meses con diferente cantidad de días.
+          </p>
         </AlertDescription>
       </Alert>
 
@@ -275,6 +353,16 @@ export default function DepreciationCalculatorPage() {
             </Card>
           </div>
 
+          {results.calculation_info && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Período: {MONTHS[results.calculation_info.month - 1]?.label} {results.calculation_info.year} | Días del
+                mes: {results.calculation_info.days_in_month} | Días del año: {results.calculation_info.days_in_year}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Tabla de resultados */}
           {results.results && results.results.length > 0 && (
             <Card>
@@ -289,6 +377,7 @@ export default function DepreciationCalculatorPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Activo</TableHead>
+                      <TableHead>Método</TableHead>
                       <TableHead className="text-right">Depreciación Mensual</TableHead>
                       <TableHead className="text-right">Depre. Acumulada</TableHead>
                       <TableHead className="text-right">Saldo Neto</TableHead>
@@ -298,6 +387,11 @@ export default function DepreciationCalculatorPage() {
                     {results.results.map((result: any) => (
                       <TableRow key={result.asset_id}>
                         <TableCell className="font-medium">{result.asset_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {result.calculation_method === "daily" ? `Diario (${result.days_in_month}d)` : "Mensual"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right font-mono">
                           S/ {result.depreciation_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
@@ -311,6 +405,7 @@ export default function DepreciationCalculatorPage() {
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
                       <TableCell>TOTAL</TableCell>
+                      <TableCell />
                       <TableCell className="text-right font-mono">
                         S/ {totalDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </TableCell>

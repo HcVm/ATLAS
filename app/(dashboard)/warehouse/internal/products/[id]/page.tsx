@@ -695,31 +695,53 @@ export default function InternalProductDetailPage() {
                         const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
                         const Icon = movementType?.icon || Package
 
-                        // LÓGICA INTELIGENTE PARA MOSTRAR SERIALES (incluyendo entradas múltiples)
                         let serialDisplay = "N/A"
                         let fullSerialsList = ""
+                        let serialsArray: string[] = []
                         let showTooltip = false
 
                         if (product.is_serialized) {
                           if (movement.internal_product_serials?.serial_number) {
                             // Salidas, bajas, ajustes → tienen serial_id
                             serialDisplay = movement.internal_product_serials.serial_number
-                          } else if (
-                            movement.movement_type === "entrada" &&
-                            movement.notes?.includes("Series generadas:")
-                          ) {
-                            // Entradas → extraemos de las notas
-                            const match = movement.notes.match(/Series generadas: (.*?)( - |$)/)
-                            if (match && match[1]) {
-                              fullSerialsList = match[1].trim()
-                              const seriales = fullSerialsList.split(", ").map((s) => s.trim())
+                          } else if (movement.movement_type === "entrada" && movement.notes) {
+                            // Entradas → extraemos de las notas (soportar múltiples formatos)
 
-                              if (seriales.length === 1) {
-                                serialDisplay = seriales[0]
+                            // Try new delimited format first (from fixed assets)
+                            const newFormatMatch = movement.notes.match(
+                              /---SERIALES_GENERADOS---\s*([\s\S]*?)\s*---FIN_SERIALES---/,
+                            )
+                            if (newFormatMatch) {
+                              fullSerialsList = newFormatMatch[1].trim()
+                              // Handle both comma-separated and newline-separated formats
+                              if (fullSerialsList.includes(",")) {
+                                serialsArray = fullSerialsList
+                                  .split(",")
+                                  .map((s: string) => s.trim())
+                                  .filter(Boolean)
                               } else {
-                                serialDisplay = `${seriales[0]} y +${seriales.length - 1} más`
-                                showTooltip = true
+                                serialsArray = fullSerialsList
+                                  .split("\n")
+                                  .map((s: string) => s.trim())
+                                  .filter(Boolean)
                               }
+                            } else {
+                              // Try old format: "Series generadas: serial1, serial2, serial3" (greedy match to end)
+                              const oldFormatMatch = movement.notes.match(/Series generadas:\s*(.+)$/i)
+                              if (oldFormatMatch) {
+                                fullSerialsList = oldFormatMatch[1].trim()
+                                serialsArray = fullSerialsList
+                                  .split(",")
+                                  .map((s: string) => s.trim())
+                                  .filter(Boolean)
+                              }
+                            }
+
+                            if (serialsArray.length === 1) {
+                              serialDisplay = serialsArray[0]
+                            } else if (serialsArray.length > 1) {
+                              serialDisplay = `${serialsArray[0]} y +${serialsArray.length - 1} más`
+                              showTooltip = true
                             }
                           }
                         }
@@ -762,7 +784,7 @@ export default function InternalProductDetailPage() {
                                   <span className="text-muted-foreground">N/A</span>
                                 ) : showTooltip ? (
                                   // TOOLTIP QUE NUNCA SE CORTA (usa Portal implícito con posicionamiento fijo relativo)
-                                  <div className="group cursor-help inline-block" data-tooltip={fullSerialsList}>
+                                  <div className="group cursor-help inline-block">
                                     <span className="text-blue-600 border-b border-dotted border-blue-400">
                                       {serialDisplay}
                                     </span>
@@ -770,12 +792,12 @@ export default function InternalProductDetailPage() {
                                     {/* Tooltip que aparece por encima de todo */}
                                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 shadow-2xl">
                                       <div className="font-semibold mb-2 text-green-400">
-                                        Series generadas ({fullSerialsList.split(", ").length}):
+                                        Series generadas ({serialsArray.length}):
                                       </div>
                                       <div className="space-y-1 max-h-64 overflow-y-auto">
-                                        {fullSerialsList.split(", ").map((s, i) => (
+                                        {serialsArray.map((s, i) => (
                                           <div key={i} className="font-mono">
-                                            {s.trim()}
+                                            {s}
                                           </div>
                                         ))}
                                       </div>

@@ -17,6 +17,14 @@ async function getSupabaseServerClient() {
   })
 }
 
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function getDaysInYear(year: number): number {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365
+}
+
 // Calcular depreciación para un período específico
 export async function POST(request: NextRequest) {
   try {
@@ -32,14 +40,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { company_id, year, month, asset_ids } = body
+    const { company_id, year, month, asset_ids, calculation_method } = body
 
     if (!company_id || !year || !month) {
       return NextResponse.json({ error: "Faltan campos requeridos (company_id, year, month)" }, { status: 400 })
     }
 
-    // Obtener activos a procesar
-    let assetsQuery = supabase.from("fixed_assets").select("*").eq("company_id", company_id).eq("status", "active")
+    // Obtener activos a procesar con información de cuenta
+    let assetsQuery = supabase
+      .from("fixed_assets")
+      .select(`
+        *,
+        fixed_asset_accounts (
+          depreciation_calculation_method
+        )
+      `)
+      .eq("company_id", company_id)
+      .eq("status", "active")
 
     if (asset_ids && asset_ids.length > 0) {
       assetsQuery = assetsQuery.in("id", asset_ids)
@@ -58,6 +75,9 @@ export async function POST(request: NextRequest) {
 
     const results: any[] = []
     const errors: any[] = []
+
+    const daysInMonth = getDaysInMonth(year, month)
+    const daysInYear = getDaysInYear(year)
 
     for (const asset of assets) {
       try {
@@ -85,10 +105,23 @@ export async function POST(request: NextRequest) {
           .limit(1)
           .single()
 
-        // Calcular depreciación mensual
+        // Calcular depreciación
         const depreciableBase = asset.acquisition_cost - (asset.salvage_value || 0)
         const annualDepreciation = depreciableBase * (asset.depreciation_rate / 100)
-        const monthlyDepreciation = Math.round((annualDepreciation / 12) * 100) / 100
+
+        const methodToUse =
+          calculation_method || asset.fixed_asset_accounts?.depreciation_calculation_method || "monthly"
+
+        let monthlyDepreciation: number
+
+        if (methodToUse === "daily") {
+          // Daily method: annual depreciation / days in year * days in month
+          const dailyDepreciation = annualDepreciation / daysInYear
+          monthlyDepreciation = Math.round(dailyDepreciation * daysInMonth * 100) / 100
+        } else {
+          // Monthly method: annual depreciation / 12
+          monthlyDepreciation = Math.round((annualDepreciation / 12) * 100) / 100
+        }
 
         // Determinar saldos
         const previousAccumulated = lastRecord ? lastRecord.accumulated_depreciation : 0
@@ -114,6 +147,7 @@ export async function POST(request: NextRequest) {
             closing_balance: closingBalance,
             company_id,
             calculated_by: user.id,
+            notes: `Método: ${methodToUse === "daily" ? `Diario (${daysInMonth} días)` : "Mensual (/12)"}`,
           })
           .select()
           .single()
@@ -135,6 +169,8 @@ export async function POST(request: NextRequest) {
         results.push({
           asset_id: asset.id,
           asset_name: asset.name,
+          calculation_method: methodToUse,
+          days_in_month: methodToUse === "daily" ? daysInMonth : null,
           depreciation_amount: actualDepreciation,
           accumulated_depreciation: newAccumulated,
           closing_balance: closingBalance,
@@ -148,6 +184,12 @@ export async function POST(request: NextRequest) {
       success: true,
       processed: results.length,
       errors: errors.length,
+      calculation_info: {
+        year,
+        month,
+        days_in_month: daysInMonth,
+        days_in_year: daysInYear,
+      },
       results,
       errorDetails: errors,
     })

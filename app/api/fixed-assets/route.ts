@@ -18,12 +18,9 @@ async function getSupabaseServerClient() {
   })
 }
 
-function generateSerialNumber(productCode: string, correlative: number, assetCode: string): string {
-  // Format: PRODUCTCODE-AF[ASSET_CODE_SUFFIX]-S0001
-  // This identifies the serial as coming from a fixed asset purchase
-  const productCodeClean = productCode.replace(/-/g, "")
-  const assetSuffix = assetCode.split("-").slice(-2).join("") // Get year and correlative
-  return `${productCodeClean}-AF${assetSuffix}-S${String(correlative).padStart(4, "0")}`
+function generateSerialNumber(productCode: string, correlative: number): string {
+  // Format: PRODUCTCODE-S0001 (serial number only, asset code goes in description)
+  return `${productCode}-S${String(correlative).padStart(4, "0")}`
 }
 
 export async function GET(request: NextRequest) {
@@ -143,9 +140,9 @@ export async function POST(request: NextRequest) {
       current_location,
       assigned_department_id,
       company_id,
-      quantity, // Cantidad de unidades del activo
-      category_id, // Categoría del producto interno
-      create_inventory_product, // Flag para crear producto en inventario
+      quantity,
+      category_id,
+      create_inventory_product,
       unit_of_measure,
     } = body
 
@@ -156,7 +153,7 @@ export async function POST(request: NextRequest) {
     // Obtener código de cuenta para generar código del activo
     const { data: accountData, error: accountError } = await supabase
       .from("fixed_asset_accounts")
-      .select("code, depreciation_rate")
+      .select("code, depreciation_rate, depreciation_calculation_method")
       .eq("id", account_id)
       .single()
 
@@ -240,12 +237,12 @@ export async function POST(request: NextRequest) {
       // Calcular costo unitario
       const unitCost = totalCost / assetQuantity
 
-      // Crear producto interno
+      // Create internal product with original description only
       const { data: newProduct, error: productError } = await supabase
         .from("internal_products")
         .insert({
           name: `${name} (Activo Fijo)`,
-          description: `${description || ""}\n\nActivo Fijo: ${assetCode}\nFactura: ${invoice_number || "N/A"}\nProveedor: ${supplier_name || "N/A"}`,
+          description: description || "", // Only original description, no asset info
           code: productCode,
           category_id,
           current_stock: assetQuantity,
@@ -294,7 +291,7 @@ export async function POST(request: NextRequest) {
           company_id,
           created_by: user.id,
           internal_product_id: internalProductId,
-          quantity: assetQuantity, // Store quantity in the asset
+          quantity: assetQuantity,
         })
         .select()
         .single()
@@ -309,7 +306,7 @@ export async function POST(request: NextRequest) {
       }
 
       for (let i = 0; i < assetQuantity; i++) {
-        const serialNumber = generateSerialNumber(productCode, i + 1, assetCode)
+        const serialNumber = generateSerialNumber(productCode, i + 1)
         const serialQrCodeHash = crypto.randomBytes(16).toString("hex")
 
         const { data: newSerial, error: serialError } = await supabase
@@ -323,21 +320,36 @@ export async function POST(request: NextRequest) {
             created_by: user.id,
             qr_code_hash: serialQrCodeHash,
             condition: "nuevo",
-            fixed_asset_id: newAsset.id, // Reference to the fixed asset
+            fixed_asset_id: newAsset.id,
           })
           .select()
           .single()
 
         if (serialError) {
           console.error(`Error creating serial ${i + 1}:`, serialError)
-          // Continue with other serials even if one fails
         } else {
           createdSerialIds.push(newSerial.id)
           generatedSerialNumbers.push(serialNumber)
         }
       }
 
-      const notesWithSerials = `Entrada por registro de Activo Fijo: ${assetCode}. Factura: ${invoice_number || "N/A"}. Series: ${generatedSerialNumbers.join(", ")}`
+      const movementNotes = [
+        `══════════════════════════════════`,
+        `ENTRADA POR COMPRA DE ACTIVO FIJO`,
+        `══════════════════════════════════`,
+        `Código Activo: ${assetCode}`,
+        `Factura: ${invoice_number || "N/A"}`,
+        `Proveedor: ${supplier_name || "N/A"}`,
+        `RUC Proveedor: ${supplier_ruc || "N/A"}`,
+        `Fecha de Adquisición: ${acquisition_date}`,
+        `Costo Total: S/ ${totalCost.toFixed(2)}`,
+        `Costo Unitario: S/ ${unitCost.toFixed(2)}`,
+        `Cantidad: ${assetQuantity} unidad(es)`,
+        `══════════════════════════════════`,
+        `---SERIALES_GENERADOS---`,
+        generatedSerialNumbers.join(", "),
+        `---FIN_SERIALES---`,
+      ].join("\n")
 
       await supabase.from("internal_inventory_movements").insert({
         product_id: internalProductId,
@@ -346,7 +358,7 @@ export async function POST(request: NextRequest) {
         cost_price: unitCost,
         total_amount: totalCost,
         reason: "compra_activo_fijo",
-        notes: notesWithSerials,
+        notes: movementNotes,
         supplier: supplier_name,
         movement_date: acquisition_date,
         company_id,
@@ -363,6 +375,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // If not creating inventory product, just create the fixed asset
     const { data: newAsset, error: insertError } = await supabase
       .from("fixed_assets")
       .insert({
