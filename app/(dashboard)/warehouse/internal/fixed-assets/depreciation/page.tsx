@@ -130,7 +130,8 @@ export default function DepreciationCalculatorPage() {
           company_id: companyId,
           year: Number.parseInt(selectedYear),
           month: Number.parseInt(selectedMonth) + 1,
-          calculation_method: calculationMethod, // Send calculation method
+          calculation_method: calculationMethod,
+          account_id: selectedAccount !== "all" ? selectedAccount : null,
         }),
       })
 
@@ -338,7 +339,20 @@ export default function DepreciationCalculatorPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="md:col-span-2">
+            {results.skipped > 0 && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Omitidos</p>
+                      <p className="text-2xl font-bold text-yellow-600">{results.skipped}</p>
+                    </div>
+                    <Info className="h-8 w-8 text-yellow-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card className={results.skipped > 0 ? "" : "md:col-span-2"}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -359,6 +373,14 @@ export default function DepreciationCalculatorPage() {
               <AlertDescription>
                 Período: {MONTHS[results.calculation_info.month - 1]?.label} {results.calculation_info.year} | Días del
                 mes: {results.calculation_info.days_in_month} | Días del año: {results.calculation_info.days_in_year}
+                {results.calculation_info.account_filter && results.calculation_info.account_filter !== "all" && (
+                  <>
+                    {" "}
+                    | Cuenta filtrada:{" "}
+                    {accounts.find((a) => a.id === results.calculation_info.account_filter)?.code ||
+                      results.calculation_info.account_filter}
+                  </>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -386,10 +408,23 @@ export default function DepreciationCalculatorPage() {
                   <TableBody>
                     {results.results.map((result: any) => (
                       <TableRow key={result.asset_id}>
-                        <TableCell className="font-medium">{result.asset_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {result.asset_name}
+                          {result.is_first_month && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              1er mes
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {result.calculation_method === "daily" ? `Diario (${result.days_in_month}d)` : "Mensual"}
+                            {result.calculation_method === "daily"
+                              ? result.is_first_month
+                                ? `Diario (${result.days_in_month}/${result.total_days_in_month}d)`
+                                : `Diario (${result.days_in_month}d)`
+                              : result.is_first_month
+                                ? `Mensual (${result.days_in_month}/${result.total_days_in_month}d)`
+                                : "Mensual"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
@@ -414,6 +449,30 @@ export default function DepreciationCalculatorPage() {
                     </TableRow>
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Activos Omitidos */}
+          {results.skippedDetails && results.skippedDetails.length > 0 && (
+            <Card className="border-yellow-200">
+              <CardHeader>
+                <CardTitle className="text-yellow-600">Activos Omitidos</CardTitle>
+                <CardDescription>
+                  Activos que no se depreciaron porque fueron adquiridos después del período seleccionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {results.skippedDetails.map((item: any, index: number) => (
+                    <Alert key={index} className="border-yellow-200 bg-yellow-50">
+                      <Info className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription>
+                        <strong>{item.asset_name}:</strong> {item.reason}
+                      </AlertDescription>
+                    </Alert>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}

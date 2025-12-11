@@ -25,6 +25,36 @@ function getDaysInYear(year: number): number {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365
 }
 
+function getDepreciableDaysInMonth(
+  acquisitionDate: Date,
+  year: number,
+  month: number,
+): { days: number; isFirstMonth: boolean; totalDaysInMonth: number } {
+  const totalDaysInMonth = getDaysInMonth(year, month)
+  const acqYear = acquisitionDate.getFullYear()
+  const acqMonth = acquisitionDate.getMonth() + 1 // getMonth() es 0-indexed
+  const acqDay = acquisitionDate.getDate()
+
+  // Si el año/mes de adquisición es el mismo que el período, calcular días restantes
+  if (acqYear === year && acqMonth === month) {
+    // Días desde el día de adquisición hasta fin de mes (incluyendo el día de adquisición)
+    const daysRemaining = totalDaysInMonth - acqDay + 1
+    return { days: daysRemaining, isFirstMonth: true, totalDaysInMonth }
+  }
+
+  // Si no es el primer mes, usar todos los días del mes
+  return { days: totalDaysInMonth, isFirstMonth: false, totalDaysInMonth }
+}
+
+function shouldDepreciateInPeriod(acquisitionDate: Date, year: number, month: number): boolean {
+  const periodStart = new Date(year, month - 1, 1) // Primer día del mes del período
+  const periodEnd = new Date(year, month, 0) // Último día del mes del período
+
+  // El activo debe haberse adquirido antes o durante el período
+  // (no después del último día del mes del período)
+  return acquisitionDate <= periodEnd
+}
+
 // Calcular depreciación para un período específico
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { company_id, year, month, asset_ids, calculation_method } = body
+    const { company_id, year, month, asset_ids, calculation_method, account_id } = body
 
     if (!company_id || !year || !month) {
       return NextResponse.json({ error: "Faltan campos requeridos (company_id, year, month)" }, { status: 400 })
@@ -62,6 +92,10 @@ export async function POST(request: NextRequest) {
       assetsQuery = assetsQuery.in("id", asset_ids)
     }
 
+    if (account_id) {
+      assetsQuery = assetsQuery.eq("account_id", account_id)
+    }
+
     const { data: assets, error: assetsError } = await assetsQuery
 
     if (assetsError) {
@@ -75,12 +109,24 @@ export async function POST(request: NextRequest) {
 
     const results: any[] = []
     const errors: any[] = []
+    const skipped: any[] = []
 
     const daysInMonth = getDaysInMonth(year, month)
     const daysInYear = getDaysInYear(year)
 
     for (const asset of assets) {
       try {
+        const acquisitionDate = new Date(asset.acquisition_date)
+
+        if (!shouldDepreciateInPeriod(acquisitionDate, year, month)) {
+          skipped.push({
+            asset_id: asset.id,
+            asset_name: asset.name,
+            reason: `Adquirido el ${acquisitionDate.toLocaleDateString("es-PE")} - posterior al período seleccionado`,
+          })
+          continue
+        }
+
         // Verificar si ya existe registro para este período
         const { data: existingRecord } = await supabase
           .from("depreciation_records")
@@ -113,14 +159,32 @@ export async function POST(request: NextRequest) {
           calculation_method || asset.fixed_asset_accounts?.depreciation_calculation_method || "monthly"
 
         let monthlyDepreciation: number
+        let actualDaysUsed: number = daysInMonth
+        let isFirstMonth = false
 
         if (methodToUse === "daily") {
-          // Daily method: annual depreciation / days in year * days in month
+          const depreciableDaysInfo = getDepreciableDaysInMonth(acquisitionDate, year, month)
+          actualDaysUsed = depreciableDaysInfo.days
+          isFirstMonth = depreciableDaysInfo.isFirstMonth
+
+          // Daily method: annual depreciation / days in year * actual depreciable days
           const dailyDepreciation = annualDepreciation / daysInYear
-          monthlyDepreciation = Math.round(dailyDepreciation * daysInMonth * 100) / 100
+          monthlyDepreciation = Math.round(dailyDepreciation * actualDaysUsed * 100) / 100
         } else {
-          // Monthly method: annual depreciation / 12
-          monthlyDepreciation = Math.round((annualDepreciation / 12) * 100) / 100
+          const depreciableDaysInfo = getDepreciableDaysInMonth(acquisitionDate, year, month)
+          isFirstMonth = depreciableDaysInfo.isFirstMonth
+          actualDaysUsed = depreciableDaysInfo.days
+
+          if (isFirstMonth) {
+            // Proporcionar la depreciación mensual según los días del primer mes
+            const fullMonthlyDepreciation = annualDepreciation / 12
+            monthlyDepreciation =
+              Math.round(((fullMonthlyDepreciation * actualDaysUsed) / depreciableDaysInfo.totalDaysInMonth) * 100) /
+              100
+          } else {
+            // Monthly method: annual depreciation / 12
+            monthlyDepreciation = Math.round((annualDepreciation / 12) * 100) / 100
+          }
         }
 
         // Determinar saldos
@@ -133,6 +197,10 @@ export async function POST(request: NextRequest) {
 
         const newAccumulated = previousAccumulated + actualDepreciation
         const closingBalance = asset.acquisition_cost - newAccumulated
+
+        const noteText = isFirstMonth
+          ? `Método: ${methodToUse === "daily" ? "Diario" : "Mensual"} - Primer mes: ${actualDaysUsed}/${getDaysInMonth(year, month)} días (desde ${acquisitionDate.toLocaleDateString("es-PE")})`
+          : `Método: ${methodToUse === "daily" ? `Diario (${actualDaysUsed} días)` : "Mensual (/12)"}`
 
         // Insertar registro de depreciación
         const { data: newRecord, error: insertError } = await supabase
@@ -147,7 +215,7 @@ export async function POST(request: NextRequest) {
             closing_balance: closingBalance,
             company_id,
             calculated_by: user.id,
-            notes: `Método: ${methodToUse === "daily" ? `Diario (${daysInMonth} días)` : "Mensual (/12)"}`,
+            notes: noteText,
           })
           .select()
           .single()
@@ -170,7 +238,10 @@ export async function POST(request: NextRequest) {
           asset_id: asset.id,
           asset_name: asset.name,
           calculation_method: methodToUse,
-          days_in_month: methodToUse === "daily" ? daysInMonth : null,
+          days_in_month: actualDaysUsed,
+          total_days_in_month: daysInMonth,
+          is_first_month: isFirstMonth,
+          acquisition_date: asset.acquisition_date,
           depreciation_amount: actualDepreciation,
           accumulated_depreciation: newAccumulated,
           closing_balance: closingBalance,
@@ -184,14 +255,17 @@ export async function POST(request: NextRequest) {
       success: true,
       processed: results.length,
       errors: errors.length,
+      skipped: skipped.length,
       calculation_info: {
         year,
         month,
         days_in_month: daysInMonth,
         days_in_year: daysInYear,
+        account_filter: account_id || "all",
       },
       results,
       errorDetails: errors,
+      skippedDetails: skipped,
     })
   } catch (error: any) {
     console.error("Unexpected error in POST /api/fixed-assets/depreciation:", error)
@@ -254,7 +328,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Filtrar por cuenta si se especifica
     let filteredRecords = records || []
     if (accountId && accountId !== "all") {
       filteredRecords = filteredRecords.filter((record: any) => record.fixed_assets?.account_id === accountId)
