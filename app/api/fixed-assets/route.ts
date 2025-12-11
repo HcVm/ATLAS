@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
         if (!isNaN(lastNumber)) nextProductNumber = lastNumber + 1
       }
 
-      const productCode = `${companyData.code}-${categoryAbbr}-${currentYear}-${String(nextProductNumber).padStart(3, "0")}`
+      const productCode = `${companyData.code}${categoryAbbr}${currentYear}-${String(nextProductNumber).padStart(3, "0")}`
       const productQrCodeHash = crypto.randomBytes(16).toString("hex")
 
       // Calcular costo unitario
