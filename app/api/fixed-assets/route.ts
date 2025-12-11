@@ -19,8 +19,14 @@ async function getSupabaseServerClient() {
 }
 
 function generateSerialNumber(productCode: string, correlative: number): string {
-  // Format: PRODUCTCODE-S0001 (serial number only, asset code goes in description)
-  return `${productCode}-S${String(correlative).padStart(4, "0")}`
+  // Product code format: COMPANY-CATEGORY-YEAR-NUM (e.g., ARM-TEC-2024-001)
+  // Serial format: ARMTEC2024001-S0001 (product code without hyphens + -S + correlative)
+
+  // Remove all hyphens from product code
+  const productCodeWithoutHyphens = productCode.replace(/-/g, "")
+
+  // Add -S prefix to correlative
+  return `${productCodeWithoutHyphens}-S${String(correlative).padStart(4, "0")}`
 }
 
 export async function GET(request: NextRequest) {
@@ -231,7 +237,7 @@ export async function POST(request: NextRequest) {
         if (!isNaN(lastNumber)) nextProductNumber = lastNumber + 1
       }
 
-      const productCode = `${companyData.code}${categoryAbbr}${currentYear}${String(nextProductNumber).padStart(3, "0")}`
+      const productCode = `${companyData.code}-${categoryAbbr}-${currentYear}-${String(nextProductNumber).padStart(3, "0")}`
       const productQrCodeHash = crypto.randomBytes(16).toString("hex")
 
       // Calcular costo unitario

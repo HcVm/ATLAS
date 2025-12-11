@@ -88,6 +88,11 @@ interface SerializedProduct {
   condition?: "nuevo" | "usado"
 }
 
+interface Department {
+  id: string
+  name: string
+}
+
 const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
   { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
@@ -107,6 +112,7 @@ export default function InternalProductDetailPage() {
   const [qrData, setQrData] = useState("")
   const [qrTitle, setQrTitle] = useState("")
   const printRef = useRef<HTMLDivElement>(null)
+  const [departments, setDepartments] = useState<Department[]>([])
 
   useEffect(() => {
     if (params.id && user?.company_id) {
@@ -117,6 +123,13 @@ export default function InternalProductDetailPage() {
   const fetchProductDetails = async () => {
     try {
       setLoading(true)
+
+      const { data: deptsData } = await supabase
+        .from("departments")
+        .select("id, name")
+        .eq("company_id", user?.company_id)
+
+      setDepartments(deptsData || [])
 
       const { data: productData, error: productError } = await supabase
         .from("internal_products")
@@ -193,6 +206,19 @@ export default function InternalProductDetailPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const resolveLocation = (location: string | null): string => {
+    if (!location) return "N/A"
+
+    // Check if it's a UUID (department ID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (uuidRegex.test(location)) {
+      const dept = departments.find((d) => d.id === location)
+      return dept?.name || location
+    }
+
+    return location
   }
 
   const handleGenerateQR = (type: "product" | "serial", item: Product | SerializedProduct) => {
@@ -549,7 +575,7 @@ export default function InternalProductDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">Ubicación</label>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-sm">{product.location}</span>
+                      <span className="text-sm">{resolveLocation(product.location)}</span>
                     </div>
                   </div>
                 )}
@@ -637,7 +663,7 @@ export default function InternalProductDetailPage() {
                                 </Badge>
                               )}
                             </TableCell>
-                            <TableCell>{serial.current_location || "N/A"}</TableCell>
+                            <TableCell>{resolveLocation(serial.current_location)}</TableCell>
                             <TableCell>
                               {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                             </TableCell>
