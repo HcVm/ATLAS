@@ -35,14 +35,32 @@ function getDepreciableDaysInMonth(
   const acqMonth = acquisitionDate.getMonth() + 1 // getMonth() es 0-indexed
   const acqDay = acquisitionDate.getDate()
 
+  console.log("[v0] getDepreciableDaysInMonth called:")
+  console.log("[v0] - acquisitionDate raw:", acquisitionDate)
+  console.log("[v0] - acquisitionDate ISO:", acquisitionDate.toISOString())
+  console.log("[v0] - acqYear:", acqYear, "acqMonth:", acqMonth, "acqDay:", acqDay)
+  console.log("[v0] - period year:", year, "period month:", month)
+  console.log("[v0] - totalDaysInMonth:", totalDaysInMonth)
+
   // Si el año/mes de adquisición es el mismo que el período, calcular días restantes
   if (acqYear === year && acqMonth === month) {
     // Días desde el día de adquisición hasta fin de mes (incluyendo el día de adquisición)
+    // Ejemplo: día 22 de agosto (31 días) = 31 - 22 + 1 = 10 días (22,23,24,25,26,27,28,29,30,31)
     const daysRemaining = totalDaysInMonth - acqDay + 1
+
+    console.log(
+      "[v0] - First month calculation: totalDaysInMonth - acqDay + 1 =",
+      totalDaysInMonth,
+      "-",
+      acqDay,
+      "+ 1 =",
+      daysRemaining,
+    )
+
     return { days: daysRemaining, isFirstMonth: true, totalDaysInMonth }
   }
 
-  // Si no es el primer mes, usar todos los días del mes
+  console.log("[v0] - Not first month, using full month days:", totalDaysInMonth)
   return { days: totalDaysInMonth, isFirstMonth: false, totalDaysInMonth }
 }
 
@@ -53,6 +71,14 @@ function shouldDepreciateInPeriod(acquisitionDate: Date, year: number, month: nu
   // El activo debe haberse adquirido antes o durante el período
   // (no después del último día del mes del período)
   return acquisitionDate <= periodEnd
+}
+
+function parseLocalDate(dateString: string): Date {
+  // Si es una fecha ISO o string de DB, extraer solo la parte de fecha
+  const datePart = dateString.split("T")[0]
+  const [year, month, day] = datePart.split("-").map(Number)
+  // Crear fecha usando componentes locales (evita conversión UTC)
+  return new Date(year, month - 1, day)
 }
 
 // Calcular depreciación para un período específico
@@ -116,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     for (const asset of assets) {
       try {
-        const acquisitionDate = new Date(asset.acquisition_date)
+        const acquisitionDate = parseLocalDate(asset.acquisition_date)
 
         if (!shouldDepreciateInPeriod(acquisitionDate, year, month)) {
           skipped.push({
