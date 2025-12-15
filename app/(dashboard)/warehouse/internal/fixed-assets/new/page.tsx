@@ -18,6 +18,7 @@ import { ChevronLeft, Save, Building2, Info, Package, AlertCircle } from "lucide
 import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { InternalCategoryCreatorDialog } from "@/components/ui/internal-category-creator-dialog"
+import { ProductSimilarityDialog } from "@/components/product-similarity-dialog"
 
 interface FixedAssetAccount {
   id: string
@@ -49,6 +50,10 @@ export default function NewFixedAssetPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<FixedAssetAccount | null>(null)
   const [categorySelectOpen, setCategorySelectOpen] = useState(false)
+
+  const [similarProducts, setSimilarProducts] = useState<any[]>([])
+  const [showSimilarityDialog, setShowSimilarityDialog] = useState(false)
+  const [selectedExistingProductId, setSelectedExistingProductId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -167,34 +172,80 @@ export default function NewFixedAssetPage() {
     return annual / 12
   }, [totalCost, formData.depreciation_rate, formData.salvage_value])
 
+  const checkSimilarProducts = async () => {
+    if (!formData.name.trim() || !formData.category_id || !companyId) {
+      return false
+    }
+
+    try {
+      const response = await fetch("/api/internal-products/find-similar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          category_id: formData.category_id,
+          company_id: companyId,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error("Error checking similar products")
+        return false
+      }
+
+      const data = await response.json()
+
+      if (data.similar_products && data.similar_products.length > 0) {
+        setSimilarProducts(data.similar_products)
+        setShowSimilarityDialog(true)
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error("Error checking similar products:", error)
+      return false
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     if (!companyId) {
       toast.error("No hay empresa seleccionada")
-      setIsSubmitting(false)
       return
     }
 
     if (!formData.name.trim() || !formData.account_id || !formData.acquisition_date) {
       toast.error("Por favor, completa todos los campos requeridos")
-      setIsSubmitting(false)
       return
     }
 
     if (formData.create_inventory_product && !formData.category_id) {
       toast.error("Selecciona una categoría de producto para el inventario")
-      setIsSubmitting(false)
       return
     }
 
     const quantity = Number.parseInt(formData.quantity) || 1
     if (quantity < 1) {
       toast.error("La cantidad debe ser al menos 1")
-      setIsSubmitting(false)
       return
     }
+
+    if (formData.create_inventory_product && !selectedExistingProductId) {
+      const foundSimilar = await checkSimilarProducts()
+      if (foundSimilar) {
+        // Dialog will handle the rest
+        return
+      }
+    }
+
+    // Proceed with creation
+    await createFixedAsset()
+  }
+
+  const createFixedAsset = async () => {
+    setIsSubmitting(true)
 
     try {
       const response = await fetch("/api/fixed-assets", {
@@ -203,7 +254,9 @@ export default function NewFixedAssetPage() {
         body: JSON.stringify({
           ...formData,
           company_id: companyId,
-          quantity,
+          quantity: Number.parseInt(formData.quantity) || 1,
+          use_existing_product_id: selectedExistingProductId,
+          master_product_name: formData.name, // Use asset name as master product name
         }),
       })
 
@@ -213,7 +266,12 @@ export default function NewFixedAssetPage() {
         throw new Error(result.error || "Error al crear el activo fijo")
       }
 
-      if (result.serials && result.serials.length > 0) {
+      if (result.product_updated) {
+        toast.success(
+          `Activo fijo creado exitosamente. Stock agregado al producto existente. Costo promedio actualizado de S/ ${result.old_cost.toFixed(2)} a S/ ${result.new_cost.toFixed(2)}.`,
+          { duration: 6000 },
+        )
+      } else if (result.serials && result.serials.length > 0) {
         toast.success(
           `Activo fijo creado exitosamente. Se generaron ${result.serials.length} unidades en el inventario interno.`,
           { duration: 5000 },
@@ -229,6 +287,20 @@ export default function NewFixedAssetPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCreateNewProduct = () => {
+    setShowSimilarityDialog(false)
+    setSelectedExistingProductId(null)
+    createFixedAsset()
+  }
+
+  const handleUseExistingProduct = (productId: string) => {
+    setShowSimilarityDialog(false)
+    setSelectedExistingProductId(productId)
+    setTimeout(() => {
+      createFixedAsset()
+    }, 100)
   }
 
   if (loading) {
@@ -251,6 +323,16 @@ export default function NewFixedAssetPage() {
         <h1 className="text-3xl font-bold tracking-tight">Nuevo Activo Fijo</h1>
         <div />
       </div>
+
+      <ProductSimilarityDialog
+        open={showSimilarityDialog}
+        onOpenChange={setShowSimilarityDialog}
+        similarProducts={similarProducts}
+        newProductName={formData.name}
+        newProductPrice={unitCost}
+        onCreateNew={handleCreateNewProduct}
+        onUseExisting={handleUseExistingProduct}
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -466,11 +548,10 @@ export default function NewFixedAssetPage() {
             <CardContent className="pt-6">
               <Alert className="mb-6">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Vinculación Automática</AlertTitle>
+                <AlertTitle>Detección Inteligente de Duplicados</AlertTitle>
                 <AlertDescription>
-                  Al crear el activo fijo, se generará automáticamente un producto en el inventario interno con{" "}
-                  <strong>{formData.quantity}</strong> número(s) de serie. Cada serial contendrá una referencia al
-                  código del activo fijo para su trazabilidad.
+                  El sistema verificará si existe un producto similar antes de crear uno nuevo. Podrás elegir agregar
+                  stock al producto existente o crear uno independiente.
                 </AlertDescription>
               </Alert>
 
@@ -514,6 +595,11 @@ export default function NewFixedAssetPage() {
                           <InternalCategoryCreatorDialog
                             companyId={companyId}
                             onCategoryCreated={handleCategoryCreated}
+                            trigger={
+                              <Button variant="ghost" size="sm" className="w-full justify-start">
+                                + Crear Nueva Categoría
+                              </Button>
+                            }
                           />
                         </div>
                       )}
@@ -523,21 +609,12 @@ export default function NewFixedAssetPage() {
                 </div>
                 <div>
                   <Label htmlFor="unit_of_measure">Unidad de Medida</Label>
-                  <Select
+                  <Input
+                    id="unit_of_measure"
                     value={formData.unit_of_measure}
-                    onValueChange={(value) => handleSelectChange("unit_of_measure", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona una unidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["unidad", "caja", "juego", "set", "kit"].map((unit) => (
-                        <SelectItem key={unit} value={unit}>
-                          {unit.charAt(0).toUpperCase() + unit.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={handleChange}
+                    placeholder="unidad"
+                  />
                 </div>
               </div>
 
@@ -660,8 +737,17 @@ export default function NewFixedAssetPage() {
             Cancelar
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Guardando..." : "Crear Activo Fijo"}
-            <Save className="h-4 w-4 ml-2" />
+            {isSubmitting ? (
+              <>
+                <Building2 className="mr-2 h-4 w-4 animate-spin" />
+                Creando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Crear Activo Fijo
+              </>
+            )}
           </Button>
         </div>
       </form>

@@ -19,13 +19,7 @@ async function getSupabaseServerClient() {
 }
 
 function generateSerialNumber(productCode: string, correlative: number): string {
-  // Product code format: COMPANY-CATEGORY-YEAR-NUM (e.g., ARM-TEC-2024-001)
-  // Serial format: ARMTEC2024001-S0001 (product code without hyphens + -S + correlative)
-
-  // Remove all hyphens from product code
   const productCodeWithoutHyphens = productCode.replace(/-/g, "")
-
-  // Add -S prefix to correlative
   return `${productCodeWithoutHyphens}-S${String(correlative).padStart(4, "0")}`
 }
 
@@ -98,7 +92,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Filtrar registros de depreciación por año si se especifica
     const filteredAssets = assets?.map((asset) => {
       if (year && asset.depreciation_records) {
         asset.depreciation_records = asset.depreciation_records.filter(
@@ -150,13 +143,14 @@ export async function POST(request: NextRequest) {
       category_id,
       create_inventory_product,
       unit_of_measure,
+      use_existing_product_id,
+      master_product_name,
     } = body
 
     if (!name || !account_id || !acquisition_date || !company_id) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
-    // Obtener código de cuenta para generar código del activo
     const { data: accountData, error: accountError } = await supabase
       .from("fixed_asset_accounts")
       .select("code, depreciation_rate, depreciation_calculation_method")
@@ -167,7 +161,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cuenta contable no encontrada" }, { status: 404 })
     }
 
-    // Generar código único para el activo
     const currentYear = new Date().getFullYear()
     const { count, error: countError } = await supabase
       .from("fixed_assets")
@@ -178,7 +171,6 @@ export async function POST(request: NextRequest) {
     const correlative = (count || 0) + 1
     const assetCode = `AF-${accountData.code}-${currentYear}-${String(correlative).padStart(4, "0")}`
 
-    // Calcular valor en libros inicial
     const totalCost =
       (Number.parseFloat(initial_balance) || 0) +
       (Number.parseFloat(purchases) || 0) +
@@ -189,196 +181,400 @@ export async function POST(request: NextRequest) {
     const createdSerialIds: string[] = []
     const generatedSerialNumbers: string[] = []
     const assetQuantity = Number.parseInt(quantity) || 1
+    const unitCost = totalCost / assetQuantity
 
     if (create_inventory_product && category_id) {
-      // Obtener código de la empresa
-      const { data: companyData, error: companyError } = await supabase
-        .from("companies")
-        .select("code")
-        .eq("id", company_id)
-        .single()
+      if (use_existing_product_id) {
+        // Add stock to existing product
+        internalProductId = use_existing_product_id
 
-      if (companyError || !companyData?.code) {
-        return NextResponse.json({ error: "No se pudo obtener el código de la empresa" }, { status: 500 })
-      }
+        const { data: existingProduct, error: productError } = await supabase
+          .from("internal_products")
+          .select("code, current_stock, cost_price")
+          .eq("id", use_existing_product_id)
+          .single()
 
-      // Obtener nombre de categoría
-      const { data: categoryData, error: categoryError } = await supabase
-        .from("internal_product_categories")
-        .select("name")
-        .eq("id", category_id)
-        .single()
-
-      if (categoryError || !categoryData?.name) {
-        return NextResponse.json({ error: "No se pudo obtener la categoría" }, { status: 500 })
-      }
-
-      const categoryAbbr = categoryData.name
-        .substring(0, 3)
-        .toUpperCase()
-        .replace(/[^A-Z]/g, "")
-        .padEnd(3, "X")
-
-      // Generar código del producto
-      const codePattern = `${companyData.code}-${categoryAbbr}-${currentYear}-%`
-      const { data: latestProduct } = await supabase
-        .from("internal_products")
-        .select("code")
-        .eq("company_id", company_id)
-        .like("code", codePattern)
-        .order("code", { ascending: false })
-        .limit(1)
-        .single()
-
-      let nextProductNumber = 1
-      if (latestProduct?.code) {
-        const parts = latestProduct.code.split("-")
-        const lastNumber = Number.parseInt(parts[parts.length - 1], 10)
-        if (!isNaN(lastNumber)) nextProductNumber = lastNumber + 1
-      }
-
-      const productCode = `${companyData.code}-${categoryAbbr}-${currentYear}-${String(nextProductNumber).padStart(3, "0")}`
-      const productQrCodeHash = crypto.randomBytes(16).toString("hex")
-
-      // Calcular costo unitario
-      const unitCost = totalCost / assetQuantity
-
-      // Create internal product with original description only
-      const { data: newProduct, error: productError } = await supabase
-        .from("internal_products")
-        .insert({
-          name: `${name} (Activo Fijo)`,
-          description: description || "", // Only original description, no asset info
-          code: productCode,
-          category_id,
-          current_stock: assetQuantity,
-          minimum_stock: 0,
-          unit_of_measure: unit_of_measure || "unidad",
-          cost_price: unitCost,
-          location: current_location,
-          company_id,
-          created_by: user.id,
-          is_active: true,
-          is_serialized: true,
-          qr_code_hash: productQrCodeHash,
-        })
-        .select()
-        .single()
-
-      if (productError) {
-        console.error("Error creating internal product:", productError)
-        return NextResponse.json({ error: `Error al crear producto interno: ${productError.message}` }, { status: 500 })
-      }
-
-      internalProductId = newProduct.id
-
-      const { data: newAsset, error: insertError } = await supabase
-        .from("fixed_assets")
-        .insert({
-          name,
-          description,
-          code: assetCode,
-          account_id,
-          acquisition_date,
-          invoice_number,
-          supplier_ruc,
-          supplier_name,
-          acquisition_cost: totalCost,
-          initial_balance: Number.parseFloat(initial_balance) || 0,
-          purchases: Number.parseFloat(purchases) || 0,
-          salvage_value: Number.parseFloat(salvage_value) || 0,
-          depreciation_rate: depreciation_rate || accountData.depreciation_rate,
-          depreciation_method: depreciation_method || "linear",
-          accumulated_depreciation: 0,
-          book_value: bookValue,
-          status: "active",
-          current_location,
-          assigned_department_id,
-          company_id,
-          created_by: user.id,
-          internal_product_id: internalProductId,
-          quantity: assetQuantity,
-        })
-        .select()
-        .single()
-
-      if (insertError) {
-        // Rollback: delete the product if asset creation fails
-        if (internalProductId) {
-          await supabase.from("internal_products").delete().eq("id", internalProductId)
+        if (productError || !existingProduct) {
+          return NextResponse.json({ error: "Producto existente no encontrado" }, { status: 404 })
         }
-        console.error("Error creating fixed asset:", insertError)
-        return NextResponse.json({ error: insertError.message }, { status: 500 })
-      }
 
-      for (let i = 0; i < assetQuantity; i++) {
-        const serialNumber = generateSerialNumber(productCode, i + 1)
-        const serialQrCodeHash = crypto.randomBytes(16).toString("hex")
+        await supabase.from("internal_product_price_history").insert({
+          product_id: use_existing_product_id,
+          cost_price: unitCost,
+          effective_date: acquisition_date,
+          source_type: "fixed_asset_purchase",
+          source_id: null, // Will be updated with asset ID after creation
+          quantity: assetQuantity,
+          invoice_number: invoice_number || null,
+          supplier_name: supplier_name || null,
+          notes: `Compra de activo fijo - ${assetCode}`,
+          company_id,
+          created_by: user.id,
+        })
 
-        const { data: newSerial, error: serialError } = await supabase
+        const oldStock = existingProduct.current_stock || 0
+        const oldCost = Number.parseFloat(existingProduct.cost_price as any) || 0
+        const newStock = oldStock + assetQuantity
+        const weightedAvgCost = newStock > 0 ? (oldStock * oldCost + assetQuantity * unitCost) / newStock : unitCost
+
+        await supabase
+          .from("internal_products")
+          .update({
+            cost_price: weightedAvgCost,
+            current_stock: newStock,
+          })
+          .eq("id", use_existing_product_id)
+
+        // Generate serials for existing product
+        const { data: lastSerial } = await supabase
           .from("internal_product_serials")
+          .select("serial_number")
+          .eq("product_id", use_existing_product_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single()
+
+        let nextCorrelative = 1
+        if (lastSerial) {
+          const parts = lastSerial.serial_number.split("-")
+          const lastCorrelativeStr = parts[parts.length - 1].replace("S", "")
+          const lastCorrelative = Number.parseInt(lastCorrelativeStr, 10)
+          if (!isNaN(lastCorrelative)) {
+            nextCorrelative = lastCorrelative + 1
+          }
+        }
+
+        // Create new fixed asset
+        const { data: newAsset, error: insertError } = await supabase
+          .from("fixed_assets")
           .insert({
-            product_id: internalProductId,
-            serial_number: serialNumber,
-            status: "in_stock",
-            current_location: current_location || "Almacén Principal",
+            name,
+            description,
+            code: assetCode,
+            account_id,
+            acquisition_date,
+            invoice_number,
+            supplier_ruc,
+            supplier_name,
+            acquisition_cost: totalCost,
+            initial_balance: Number.parseFloat(initial_balance) || 0,
+            purchases: Number.parseFloat(purchases) || 0,
+            salvage_value: Number.parseFloat(salvage_value) || 0,
+            depreciation_rate: depreciation_rate || accountData.depreciation_rate,
+            depreciation_method: depreciation_method || "linear",
+            accumulated_depreciation: 0,
+            book_value: bookValue,
+            status: "active",
+            current_location,
+            assigned_department_id,
             company_id,
             created_by: user.id,
-            qr_code_hash: serialQrCodeHash,
-            condition: "nuevo",
-            fixed_asset_id: newAsset.id,
+            internal_product_id: internalProductId,
+            quantity: assetQuantity,
           })
           .select()
           .single()
 
-        if (serialError) {
-          console.error(`Error creating serial ${i + 1}:`, serialError)
-        } else {
-          createdSerialIds.push(newSerial.id)
-          generatedSerialNumbers.push(serialNumber)
+        if (insertError) {
+          console.error("Error creating fixed asset:", insertError)
+          return NextResponse.json({ error: insertError.message }, { status: 500 })
         }
+
+        await supabase
+          .from("internal_product_price_history")
+          .update({ source_id: newAsset.id })
+          .eq("product_id", use_existing_product_id)
+          .is("source_id", null)
+          .eq("company_id", company_id)
+
+        // Generate serials linked to this asset
+        for (let i = 0; i < assetQuantity; i++) {
+          const serialNumber = generateSerialNumber(existingProduct.code, nextCorrelative + i)
+          const serialQrCodeHash = crypto.randomBytes(16).toString("hex")
+
+          const { data: newSerial, error: serialError } = await supabase
+            .from("internal_product_serials")
+            .insert({
+              product_id: internalProductId,
+              serial_number: serialNumber,
+              status: "in_stock",
+              current_location: current_location || "Almacén Principal",
+              company_id,
+              created_by: user.id,
+              qr_code_hash: serialQrCodeHash,
+              condition: "nuevo",
+              fixed_asset_id: newAsset.id,
+            })
+            .select()
+            .single()
+
+          if (serialError) {
+            console.error(`Error creating serial ${i + 1}:`, serialError)
+          } else {
+            createdSerialIds.push(newSerial.id)
+            generatedSerialNumbers.push(serialNumber)
+          }
+        }
+
+        const movementNotes = [
+          `══════════════════════════════════`,
+          `ENTRADA POR COMPRA DE ACTIVO FIJO`,
+          `STOCK AGREGADO A PRODUCTO EXISTENTE`,
+          `══════════════════════════════════`,
+          `Código Activo: ${assetCode}`,
+          `Factura: ${invoice_number || "N/A"}`,
+          `Proveedor: ${supplier_name || "N/A"}`,
+          `RUC Proveedor: ${supplier_ruc || "N/A"}`,
+          `Fecha de Adquisición: ${acquisition_date}`,
+          `Costo Total: S/ ${totalCost.toFixed(2)}`,
+          `Costo Unitario: S/ ${unitCost.toFixed(2)}`,
+          `Costo Promedio Actualizado: S/ ${weightedAvgCost.toFixed(2)}`,
+          `Cantidad: ${assetQuantity} unidad(es)`,
+          `Stock Anterior: ${oldStock}`,
+          `Stock Actual: ${newStock}`,
+          `══════════════════════════════════`,
+          `---SERIALES_GENERADOS---`,
+          generatedSerialNumbers.join(", "),
+          `---FIN_SERIALES---`,
+        ].join("\n")
+
+        await supabase.from("internal_inventory_movements").insert({
+          product_id: internalProductId,
+          movement_type: "entrada",
+          quantity: assetQuantity,
+          cost_price: unitCost,
+          total_amount: totalCost,
+          reason: "compra_activo_fijo",
+          notes: movementNotes,
+          supplier: supplier_name,
+          movement_date: acquisition_date,
+          company_id,
+          serial_id: null,
+          created_by: user.id,
+        })
+
+        return NextResponse.json({
+          success: true,
+          asset: newAsset,
+          product_updated: true,
+          product_id: internalProductId,
+          serials: generatedSerialNumbers,
+          old_cost: oldCost,
+          new_cost: weightedAvgCost,
+          old_stock: oldStock,
+          new_stock: newStock,
+          message: `Activo fijo creado y stock agregado al producto existente. Costo promedio actualizado.`,
+        })
+      } else {
+        const { data: companyData, error: companyError } = await supabase
+          .from("companies")
+          .select("code")
+          .eq("id", company_id)
+          .single()
+
+        if (companyError || !companyData?.code) {
+          return NextResponse.json({ error: "No se pudo obtener el código de la empresa" }, { status: 500 })
+        }
+
+        const { data: categoryData, error: categoryError } = await supabase
+          .from("internal_product_categories")
+          .select("name")
+          .eq("id", category_id)
+          .single()
+
+        if (categoryError || !categoryData?.name) {
+          return NextResponse.json({ error: "No se pudo obtener la categoría" }, { status: 500 })
+        }
+
+        const categoryAbbr = categoryData.name
+          .substring(0, 3)
+          .toUpperCase()
+          .replace(/[^A-Z]/g, "")
+          .padEnd(3, "X")
+
+        const codePattern = `${companyData.code}-${categoryAbbr}-${currentYear}-%`
+        const { data: latestProduct } = await supabase
+          .from("internal_products")
+          .select("code")
+          .eq("company_id", company_id)
+          .like("code", codePattern)
+          .order("code", { ascending: false })
+          .limit(1)
+          .single()
+
+        let nextProductNumber = 1
+        if (latestProduct?.code) {
+          const parts = latestProduct.code.split("-")
+          const lastNumber = Number.parseInt(parts[parts.length - 1], 10)
+          if (!isNaN(lastNumber)) nextProductNumber = lastNumber + 1
+        }
+
+        const productCode = `${companyData.code}-${categoryAbbr}-${currentYear}-${String(nextProductNumber).padStart(3, "0")}`
+        const productQrCodeHash = crypto.randomBytes(16).toString("hex")
+
+        const variantDesc = `Compra ${new Date(acquisition_date).toLocaleDateString("es-PE")} - ${invoice_number || "Sin factura"}`
+
+        const { data: newProduct, error: productError } = await supabase
+          .from("internal_products")
+          .insert({
+            name: `${name} (Activo Fijo)`,
+            description: description || "",
+            code: productCode,
+            category_id,
+            current_stock: assetQuantity,
+            minimum_stock: 0,
+            unit_of_measure: unit_of_measure || "unidad",
+            cost_price: unitCost,
+            location: current_location,
+            company_id,
+            created_by: user.id,
+            is_active: true,
+            is_serialized: true,
+            qr_code_hash: productQrCodeHash,
+            master_product_name: master_product_name || name,
+            variant_description: variantDesc,
+          })
+          .select()
+          .single()
+
+        if (productError) {
+          console.error("Error creating internal product:", productError)
+          return NextResponse.json(
+            { error: `Error al crear producto interno: ${productError.message}` },
+            { status: 500 },
+          )
+        }
+
+        internalProductId = newProduct.id
+
+        await supabase.from("internal_product_price_history").insert({
+          product_id: internalProductId,
+          cost_price: unitCost,
+          effective_date: acquisition_date,
+          source_type: "fixed_asset_purchase",
+          source_id: null, // Will be updated with asset ID
+          quantity: assetQuantity,
+          invoice_number: invoice_number || null,
+          supplier_name: supplier_name || null,
+          notes: `Compra inicial - ${assetCode}`,
+          company_id,
+          created_by: user.id,
+        })
+
+        const { data: newAsset, error: insertError } = await supabase
+          .from("fixed_assets")
+          .insert({
+            name,
+            description,
+            code: assetCode,
+            account_id,
+            acquisition_date,
+            invoice_number,
+            supplier_ruc,
+            supplier_name,
+            acquisition_cost: totalCost,
+            initial_balance: Number.parseFloat(initial_balance) || 0,
+            purchases: Number.parseFloat(purchases) || 0,
+            salvage_value: Number.parseFloat(salvage_value) || 0,
+            depreciation_rate: depreciation_rate || accountData.depreciation_rate,
+            depreciation_method: depreciation_method || "linear",
+            accumulated_depreciation: 0,
+            book_value: bookValue,
+            status: "active",
+            current_location,
+            assigned_department_id,
+            company_id,
+            created_by: user.id,
+            internal_product_id: internalProductId,
+            quantity: assetQuantity,
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          if (internalProductId) {
+            await supabase.from("internal_products").delete().eq("id", internalProductId)
+          }
+          console.error("Error creating fixed asset:", insertError)
+          return NextResponse.json({ error: insertError.message }, { status: 500 })
+        }
+
+        await supabase
+          .from("internal_product_price_history")
+          .update({ source_id: newAsset.id })
+          .eq("product_id", internalProductId)
+          .is("source_id", null)
+          .eq("company_id", company_id)
+
+        for (let i = 0; i < assetQuantity; i++) {
+          const serialNumber = generateSerialNumber(productCode, i + 1)
+          const serialQrCodeHash = crypto.randomBytes(16).toString("hex")
+
+          const { data: newSerial, error: serialError } = await supabase
+            .from("internal_product_serials")
+            .insert({
+              product_id: internalProductId,
+              serial_number: serialNumber,
+              status: "in_stock",
+              current_location: current_location || "Almacén Principal",
+              company_id,
+              created_by: user.id,
+              qr_code_hash: serialQrCodeHash,
+              condition: "nuevo",
+              fixed_asset_id: newAsset.id,
+            })
+            .select()
+            .single()
+
+          if (serialError) {
+            console.error(`Error creating serial ${i + 1}:`, serialError)
+          } else {
+            createdSerialIds.push(newSerial.id)
+            generatedSerialNumbers.push(serialNumber)
+          }
+        }
+
+        const movementNotes = [
+          `══════════════════════════════════`,
+          `ENTRADA POR COMPRA DE ACTIVO FIJO`,
+          `══════════════════════════════════`,
+          `Código Activo: ${assetCode}`,
+          `Factura: ${invoice_number || "N/A"}`,
+          `Proveedor: ${supplier_name || "N/A"}`,
+          `RUC Proveedor: ${supplier_ruc || "N/A"}`,
+          `Fecha de Adquisición: ${acquisition_date}`,
+          `Costo Total: S/ ${totalCost.toFixed(2)}`,
+          `Costo Unitario: S/ ${unitCost.toFixed(2)}`,
+          `Cantidad: ${assetQuantity} unidad(es)`,
+          `══════════════════════════════════`,
+          `---SERIALES_GENERADOS---`,
+          generatedSerialNumbers.join(", "),
+          `---FIN_SERIALES---`,
+        ].join("\n")
+
+        await supabase.from("internal_inventory_movements").insert({
+          product_id: internalProductId,
+          movement_type: "entrada",
+          quantity: assetQuantity,
+          cost_price: unitCost,
+          total_amount: totalCost,
+          reason: "compra_activo_fijo",
+          notes: movementNotes,
+          supplier: supplier_name,
+          movement_date: acquisition_date,
+          company_id,
+          serial_id: null,
+          created_by: user.id,
+        })
+
+        return NextResponse.json({
+          success: true,
+          asset: newAsset,
+          product: newProduct,
+          serials: generatedSerialNumbers,
+          message: `Activo fijo creado con ${assetQuantity} unidades en inventario`,
+        })
       }
-
-      const movementNotes = [
-        `══════════════════════════════════`,
-        `ENTRADA POR COMPRA DE ACTIVO FIJO`,
-        `══════════════════════════════════`,
-        `Código Activo: ${assetCode}`,
-        `Factura: ${invoice_number || "N/A"}`,
-        `Proveedor: ${supplier_name || "N/A"}`,
-        `RUC Proveedor: ${supplier_ruc || "N/A"}`,
-        `Fecha de Adquisición: ${acquisition_date}`,
-        `Costo Total: S/ ${totalCost.toFixed(2)}`,
-        `Costo Unitario: S/ ${unitCost.toFixed(2)}`,
-        `Cantidad: ${assetQuantity} unidad(es)`,
-        `══════════════════════════════════`,
-        `---SERIALES_GENERADOS---`,
-        generatedSerialNumbers.join(", "),
-        `---FIN_SERIALES---`,
-      ].join("\n")
-
-      await supabase.from("internal_inventory_movements").insert({
-        product_id: internalProductId,
-        movement_type: "entrada",
-        quantity: assetQuantity,
-        cost_price: unitCost,
-        total_amount: totalCost,
-        reason: "compra_activo_fijo",
-        notes: movementNotes,
-        supplier: supplier_name,
-        movement_date: acquisition_date,
-        company_id,
-        serial_id: null,
-        created_by: user.id,
-      })
-
-      return NextResponse.json({
-        success: true,
-        asset: newAsset,
-        product: newProduct,
-        serials: generatedSerialNumbers,
-        message: `Activo fijo creado con ${assetQuantity} unidades en inventario`,
-      })
     }
 
     // If not creating inventory product, just create the fixed asset
