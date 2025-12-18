@@ -7,7 +7,7 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "gen:types": "npx supabase gen types typescript --project-id zcqvxaxyzgrzegonbsao --schema public > lib/database.types.ts"
+    "gen:types": "supabase gen types typescript --project-id zcqvxaxyzgrzegonbsao --schema public > lib/database.types.ts"
   },
   "dependencies": {
     "@google/genai": "^1.24.0",
