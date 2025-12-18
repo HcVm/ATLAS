@@ -283,48 +283,63 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!user) return null
 
       try {
+        console.log("[v0] Creating conversation via API with participants:", participantIds)
+
         // Verificar si ya existe una conversación 1:1
         if (participantIds.length === 1) {
           const existingConv = conversations.find(
             (c) =>
               !c.is_group && c.participants.length === 2 && c.participants.some((p) => p.user_id === participantIds[0]),
           )
-          if (existingConv) return existingConv
+          if (existingConv) {
+            console.log("[v0] Found existing conversation locally:", existingConv.id)
+            return existingConv
+          }
         }
 
-        // Crear nueva conversación
-        const { data: convData, error: convError } = await supabase
-          .from("chat_conversations")
-          .insert({
+        // Usar el API endpoint para crear la conversación (bypass RLS con admin client)
+        const response = await fetch("/api/chat/conversations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            participant_ids: participantIds,
             name: name || null,
-            is_group: participantIds.length > 1,
-            company_id: user.company_id,
-            created_by: user.id,
-          })
-          .select()
-          .single()
+          }),
+        })
 
-        if (convError) throw convError
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error("[v0] API error:", errorData)
+          throw new Error(errorData.error || "Error al crear conversación")
+        }
 
-        // Agregar participantes (incluir al creador)
-        const allParticipants = [...new Set([user.id, ...participantIds])]
-        const { error: partError } = await supabase.from("chat_participants").insert(
-          allParticipants.map((userId) => ({
-            conversation_id: convData.id,
-            user_id: userId,
-          })),
-        )
+        const { conversation, existing } = await response.json()
+        console.log("[v0] Conversation created/found:", conversation.id, "existing:", existing)
 
-        if (partError) throw partError
-
-        // Recargar conversaciones
+        // Recargar conversaciones para obtener la nueva
         await loadConversations()
 
-        // Retornar la nueva conversación
-        const newConv = conversations.find((c) => c.id === convData.id)
-        return newConv || null
+        // Encontrar y retornar la conversación creada/encontrada
+        const newConv = conversations.find((c) => c.id === conversation.id)
+        if (newConv) {
+          return newConv
+        }
+
+        // Si no está en la lista local aún, recargar y buscar nuevamente
+        const { conversations: freshConversations } = await fetch("/api/chat/conversations").then((r) => r.json())
+        const foundConv = freshConversations.find((c: any) => c.id === conversation.id)
+
+        if (foundConv) {
+          // Agregar a la lista local
+          setConversations((prev) => [foundConv, ...prev])
+          return foundConv
+        }
+
+        return null
       } catch (error) {
-        console.error("Error creating conversation:", error)
+        console.error("[v0] Error creating conversation:", error)
         return null
       }
     },

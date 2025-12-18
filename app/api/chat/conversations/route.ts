@@ -2,6 +2,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { cookies } from "next/headers"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
       const otherUserId = participant_ids[0]
 
       // Buscar conversaciones del usuario actual
-      const { data: myParticipations } = await supabase
+      const { data: myParticipations } = await supabaseAdmin
         .from("chat_participants")
         .select("conversation_id")
         .eq("user_id", user.id)
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
         const myConversationIds = myParticipations.map((p) => p.conversation_id)
 
         // Verificar cuales de esas conversaciones son 1:1
-        const { data: conversations } = await supabase
+        const { data: conversations } = await supabaseAdmin
           .from("chat_conversations")
           .select("id, is_group")
           .in("id", myConversationIds)
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
         if (conversations) {
           // Para cada conversación 1:1, verificar si el otro participante es el usuario objetivo
           for (const conv of conversations) {
-            const { data: participants } = await supabase
+            const { data: participants } = await supabaseAdmin
               .from("chat_participants")
               .select("user_id")
               .eq("conversation_id", conv.id)
@@ -200,10 +201,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("[v0] Creating new conversation")
+    console.log("[v0] Creating new conversation with admin client")
 
-    // Crear nueva conversación
-    const { data: conversation, error: convError } = await supabase
+    const { data: conversation, error: convError } = await supabaseAdmin
       .from("chat_conversations")
       .insert({
         name: name || null,
@@ -221,9 +221,8 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Conversation created:", conversation.id)
 
-    // Agregar participantes (sin depender de RLS)
     const allParticipants = [...new Set([user.id, ...participant_ids])]
-    const { error: partError } = await supabase.from("chat_participants").insert(
+    const { error: partError } = await supabaseAdmin.from("chat_participants").insert(
       allParticipants.map((userId) => ({
         conversation_id: conversation.id,
         user_id: userId,
