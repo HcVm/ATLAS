@@ -17,6 +17,8 @@ import {
   LogOut,
   AlertTriangle,
   RefreshCw,
+  Paperclip,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +50,7 @@ import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow, format } from "date-fns"
 import { es } from "date-fns/locale"
+import { toast } from "@/components/ui/use-toast"
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -66,6 +69,10 @@ export default function ChatPage() {
   } = useChat()
 
   const [messageInput, setMessageInput] = useState("")
+  const [attachedFile, setAttachedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [userSearchQuery, setUserSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<ChatParticipant[]>([])
@@ -75,6 +82,8 @@ export default function ChatPage() {
   const [showNewChatDialog, setShowNewChatDialog] = useState(false)
   const [showInfoDialog, setShowInfoDialog] = useState(false)
   const [groupName, setGroupName] = useState("")
+  // Estado para controlar si el panel de chat está abierto
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -108,17 +117,50 @@ export default function ChatPage() {
     return name.includes(searchQuery.toLowerCase())
   })
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAttachedFile(file)
+
+      // Crear preview para imágenes
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setFilePreview(e.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        setFilePreview(null)
+      }
+    }
+  }
+
+  const clearAttachedFile = () => {
+    setAttachedFile(null)
+    setFilePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
   // Manejar envío de mensaje
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || isSending) return
+    // Verificar si hay mensaje o archivo adjunto y si la conversación está seleccionada
+    if ((!messageInput.trim() && !attachedFile) || !currentConversation || isSending) return
 
+    setIsSending(true)
     try {
-      setIsSending(true)
-      await sendMessage(messageInput)
+      await sendMessage(messageInput, "text", attachedFile || undefined)
       setMessageInput("")
+      clearAttachedFile()
       inputRef.current?.focus()
     } catch (error) {
-      console.error("Error sending message:", error)
+      console.error("Error enviando mensaje:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el mensaje",
+        variant: "destructive",
+      })
     } finally {
       setIsSending(false)
     }
@@ -136,17 +178,33 @@ export default function ChatPage() {
   const handleCreateConversation = async () => {
     if (selectedUsers.length === 0) return
 
-    const conv = await createConversation(
-      selectedUsers.map((u) => u.user_id),
-      selectedUsers.length > 1 ? groupName || `Grupo (${selectedUsers.length + 1})` : undefined,
-    )
+    try {
+      const participantIds = selectedUsers.map((u) => u.user_id)
+      const conversationName = selectedUsers.length > 1 ? groupName || undefined : undefined
 
-    if (conv) {
-      selectConversation(conv)
-      setShowNewChatDialog(false)
-      setSelectedUsers([])
-      setUserSearchQuery("")
-      setGroupName("")
+      const newConv = await createConversation(participantIds, conversationName)
+
+      if (newConv) {
+        setShowNewChatDialog(false)
+        setSelectedUsers([])
+        setGroupName("")
+        setUserSearchQuery("")
+        await selectConversation(newConv)
+        setIsChatOpen(true) // Abrir panel de chat después de crear
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo crear la conversación",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error al crear conversación:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al crear la conversación",
+        variant: "destructive",
+      })
     }
   }
 
@@ -279,7 +337,7 @@ export default function ChatPage() {
                         >
                           <div className="relative">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={getConversationAvatar(conv) || ""} />
+                              <AvatarImage src={getConversationAvatar(conv) || undefined} />
                               <AvatarFallback className="text-xs bg-primary/10">
                                 {conv.is_group ? <Users className="h-5 w-5" /> : getInitials(getConversationName(conv))}
                               </AvatarFallback>
@@ -346,7 +404,7 @@ export default function ChatPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={getConversationAvatar(currentConversation) || ""} />
+                        <AvatarImage src={getConversationAvatar(currentConversation) || undefined} />
                         <AvatarFallback className="text-xs bg-primary/10">
                           {currentConversation.is_group ? (
                             <Users className="h-5 w-5" />
@@ -462,7 +520,7 @@ export default function ChatPage() {
                                   <div className="w-8">
                                     {showAvatar && (
                                       <Avatar className="h-8 w-8">
-                                        <AvatarImage src={message.sender?.avatar_url || ""} />
+                                        <AvatarImage src={message.sender?.avatar_url || undefined} />
                                         <AvatarFallback className="text-[10px] bg-primary/10">
                                           {getInitials(message.sender?.full_name || "?")}
                                         </AvatarFallback>
@@ -483,7 +541,38 @@ export default function ChatPage() {
                                       {message.sender?.full_name}
                                     </p>
                                   )}
-                                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                  {message.message_type === "image" && message.file_url ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={message.file_url || "/placeholder.svg"}
+                                        alt={message.file_name || "Imagen"}
+                                        className="rounded-lg max-w-full max-h-96 object-cover"
+                                      />
+                                      {message.content && message.content !== message.file_name && (
+                                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                      )}
+                                    </div>
+                                  ) : message.message_type === "file" && message.file_url ? (
+                                    <div className="space-y-2">
+                                      <a
+                                        href={message.file_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(
+                                          "flex items-center gap-2 p-2 rounded border",
+                                          isOwn ? "border-primary-foreground/20" : "border-border",
+                                        )}
+                                      >
+                                        <Paperclip className="h-4 w-4 shrink-0" />
+                                        <span className="text-sm font-medium truncate">{message.file_name}</span>
+                                      </a>
+                                      {message.content && message.content !== message.file_name && (
+                                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                  )}
                                   <div
                                     className={cn(
                                       "flex items-center gap-1 mt-1",
@@ -505,9 +594,50 @@ export default function ChatPage() {
                   </ScrollArea>
                 </CardContent>
 
+                {attachedFile && (
+                  <div className="px-4 py-2 border-t bg-muted/50">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-background">
+                      {filePreview ? (
+                        <img
+                          src={filePreview || "/placeholder.svg"}
+                          alt="Preview"
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
+                          <Paperclip className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{attachedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(attachedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={clearAttachedFile}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Input de mensaje */}
                 <div className="shrink-0 p-4 border-t bg-muted/30">
                   <div className="flex items-end gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 bg-transparent"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSending}
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
                     <Textarea
                       ref={inputRef}
                       value={messageInput}
@@ -521,7 +651,7 @@ export default function ChatPage() {
                       size="icon"
                       className="h-11 w-11 shrink-0"
                       onClick={handleSendMessage}
-                      disabled={!messageInput.trim() || isSending}
+                      disabled={(!messageInput.trim() && !attachedFile) || isSending}
                     >
                       <Send className="h-5 w-5" />
                     </Button>
@@ -552,7 +682,9 @@ export default function ChatPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nueva conversación</DialogTitle>
-            <DialogDescription>Busca usuarios para iniciar una conversación o crear un grupo.</DialogDescription>
+            <DialogDescription>
+              Busca usuarios de cualquier empresa ATLAS para iniciar una conversación.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -575,10 +707,21 @@ export default function ChatPage() {
                   {selectedUsers.map((u) => (
                     <Badge key={u.user_id} variant="secondary" className="flex items-center gap-1 pr-1">
                       <Avatar className="h-4 w-4">
-                        <AvatarImage src={u.avatar_url || ""} />
+                        <AvatarImage src={u.avatar_url || undefined} />
                         <AvatarFallback className="text-[8px]">{getInitials(u.full_name)}</AvatarFallback>
                       </Avatar>
                       {u.full_name}
+                      {u.company_code && (
+                        <span
+                          className="text-[10px] px-1 rounded"
+                          style={{
+                            backgroundColor: u.company_color || "#666",
+                            color: "#fff",
+                          }}
+                        >
+                          {u.company_code}
+                        </span>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -623,11 +766,25 @@ export default function ChatPage() {
                       className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                     >
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={u.avatar_url || ""} />
+                        <AvatarImage src={u.avatar_url || undefined} />
                         <AvatarFallback className="text-xs bg-primary/10">{getInitials(u.full_name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{u.full_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{u.full_name}</p>
+                          {u.company_code && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0"
+                              style={{
+                                borderColor: u.company_color || "#666",
+                                color: u.company_color || "#666",
+                              }}
+                            >
+                              {u.company_code}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                       </div>
                       <Circle
@@ -680,7 +837,7 @@ export default function ChatPage() {
               {/* Avatar y nombre */}
               <div className="flex items-center gap-3">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={getConversationAvatar(currentConversation) || ""} />
+                  <AvatarImage src={getConversationAvatar(currentConversation) || undefined} />
                   <AvatarFallback className="text-lg bg-primary/10">
                     {currentConversation.is_group ? (
                       <Users className="h-8 w-8" />
@@ -708,7 +865,7 @@ export default function ChatPage() {
                   {currentConversation.participants.map((p) => (
                     <div key={p.user_id} className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={p.avatar_url || ""} />
+                        <AvatarImage src={p.avatar_url || undefined} />
                         <AvatarFallback className="text-xs bg-primary/10">{getInitials(p.full_name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">

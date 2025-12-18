@@ -1,26 +1,11 @@
 // API para manejar presencia de usuarios
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: () => {},
-      remove: () => {},
-    },
-  })
-}
+import { createAuthenticatedServerClient } from "@/lib/supabase-server"
 
 // GET: Obtener usuarios online
 export async function GET(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },
@@ -72,7 +57,7 @@ export async function GET(request: NextRequest) {
 
 // POST: Actualizar presencia del usuario
 export async function POST(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },

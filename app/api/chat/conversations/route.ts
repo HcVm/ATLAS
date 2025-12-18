@@ -1,27 +1,12 @@
 // API para manejar conversaciones de chat
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createAuthenticatedServerClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { cookies } from "next/headers"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: () => {},
-      remove: () => {},
-    },
-  })
-}
 
 // GET: Obtener conversaciones del usuario
 export async function GET(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },
@@ -78,10 +63,9 @@ export async function GET(request: NextRequest) {
 
         const participantIds = participants?.map((p) => p.user_id) || []
 
-        // Obtener perfiles de participantes
         const { data: profiles } = await supabaseAdmin
           .from("profiles")
-          .select("id, full_name, avatar_url, email")
+          .select("id, full_name, avatar_url, email, company_id, companies(name, code, color)")
           .in("id", participantIds)
 
         const lastReadAt = lastReadMap.get(conv.id) || conv.created_at
@@ -125,6 +109,8 @@ export async function GET(request: NextRequest) {
               full_name: p.full_name,
               avatar_url: p.avatar_url,
               email: p.email,
+              company_id: p.company_id,
+              company: p.companies,
             })) || [],
           unread_count: unreadCount || 0,
           last_message: lastMessageWithSender,
@@ -141,7 +127,7 @@ export async function GET(request: NextRequest) {
 
 // POST: Crear nueva conversación
 export async function POST(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },
@@ -168,7 +154,20 @@ export async function POST(request: NextRequest) {
     if (participant_ids.length === 1) {
       const otherUserId = participant_ids[0]
 
-      // Buscar conversaciones del usuario actual
+      // Buscar conversaciones 1:1 existentes con una sola query optimizada
+      const { data: existingConv } = await supabaseAdmin.rpc("find_existing_conversation", {
+        p_user1_id: user.id,
+        p_user2_id: otherUserId,
+      })
+
+      if (existingConv && existingConv.length > 0) {
+        console.log("[v0] Found existing 1:1 conversation via RPC:", existingConv[0].id)
+        return NextResponse.json({
+          conversation: { id: existingConv[0].id },
+          existing: true,
+        })
+      }
+
       const { data: myParticipations } = await supabaseAdmin
         .from("chat_participants")
         .select("conversation_id")
@@ -178,7 +177,6 @@ export async function POST(request: NextRequest) {
       if (myParticipations && myParticipations.length > 0) {
         const myConversationIds = myParticipations.map((p) => p.conversation_id)
 
-        // Verificar cuales de esas conversaciones son 1:1
         const { data: conversations } = await supabaseAdmin
           .from("chat_conversations")
           .select("id, is_group")
@@ -186,7 +184,6 @@ export async function POST(request: NextRequest) {
           .eq("is_group", false)
 
         if (conversations) {
-          // Para cada conversación 1:1, verificar si el otro participante es el usuario objetivo
           for (const conv of conversations) {
             const { data: participants } = await supabaseAdmin
               .from("chat_participants")

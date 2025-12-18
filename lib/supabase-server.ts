@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
+import { createServerClient as createSSRClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 // Cliente para uso en API routes (server-side)
 export function createServiceClient() {
@@ -28,6 +30,32 @@ export function createServerClient() {
   }
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey)
+}
+
+export async function createAuthenticatedServerClient() {
+  const cookieStore = await cookies()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  return createSSRClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get: (name: string) => cookieStore.get(name)?.value,
+      set: (name: string, value: string, options: any) => {
+        try {
+          cookieStore.set(name, value, options)
+        } catch (error) {
+          // Cookie setting might fail in API routes
+        }
+      },
+      remove: (name: string, options: any) => {
+        try {
+          cookieStore.delete(name)
+        } catch (error) {
+          // Cookie removal might fail in API routes
+        }
+      },
+    },
+  })
 }
 
 export { createServerClient as createClient }

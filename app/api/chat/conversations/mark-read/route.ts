@@ -1,25 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createAuthenticatedServerClient } from "@/lib/supabase-server"
 import { createAdminClient } from "@/lib/supabase-admin"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: () => {},
-      remove: () => {},
-    },
-  })
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await getSupabaseServerClient()
+    const supabase = await createAuthenticatedServerClient()
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -28,9 +14,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    const { conversation_id } = await request.json()
+    const body = await request.json()
+    console.log("[v0] Mark read request body:", body)
+    console.log("[v0] User ID:", user.id)
+
+    const { conversation_id } = body
 
     if (!conversation_id) {
+      console.log("[v0] Missing conversation_id in body")
       return NextResponse.json({ error: "conversation_id es requerido" }, { status: 400 })
     }
 
@@ -44,13 +35,14 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
 
     if (error) {
-      console.error("[API] Error marking as read:", error)
+      console.error("[v0] Error marking as read:", error)
       throw error
     }
 
+    console.log("[v0] Successfully marked conversation as read:", conversation_id)
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("[API] Mark read error:", error)
+    console.error("[v0] Mark read error:", error)
     return NextResponse.json({ error: error.message || "Error al marcar como leído" }, { status: 500 })
   }
 }

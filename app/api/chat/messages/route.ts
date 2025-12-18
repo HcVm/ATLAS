@@ -1,27 +1,12 @@
 // API para manejar mensajes de chat
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createAuthenticatedServerClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: () => {},
-      remove: () => {},
-    },
-  })
-}
 
 // GET: Obtener mensajes de una conversación
 export async function GET(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },
@@ -101,7 +86,7 @@ export async function GET(request: NextRequest) {
 
 // POST: Enviar un mensaje
 export async function POST(request: NextRequest) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = await createAuthenticatedServerClient()
 
   const {
     data: { user },

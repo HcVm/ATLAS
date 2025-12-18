@@ -30,6 +30,10 @@ export interface ChatParticipant {
   full_name: string
   avatar_url?: string
   email: string
+  company_id?: string
+  company_name?: string
+  company_code?: string
+  company_color?: string
 }
 
 export interface ChatConversation {
@@ -62,7 +66,7 @@ interface ChatContextType {
   unreadTotal: number
   setIsChatOpen: (open: boolean) => void
   selectConversation: (conversation: ChatConversation | null) => void
-  sendMessage: (content: string, messageType?: string) => Promise<void>
+  sendMessage: (content: string, messageType?: string, file?: File) => Promise<void>
   createConversation: (participantIds: string[], name?: string) => Promise<ChatConversation | null>
   loadMoreMessages: () => Promise<void>
   markAsRead: (conversationId: string) => Promise<void>
@@ -173,16 +177,53 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   )
 
   const sendMessage = useCallback(
-    async (content: string, messageType = "text") => {
-      if (!user || !currentConversation || !content.trim()) return
+    async (content: string, messageType = "text", file?: File) => {
+      if (!user || !currentConversation) return
 
       try {
-        const { error } = await supabase.from("chat_messages").insert({
+        let fileUrl: string | undefined
+        let fileName: string | undefined
+
+        if (file) {
+          const formData = new FormData()
+          formData.append("file", file)
+          formData.append("conversationId", currentConversation.id)
+
+          const uploadResponse = await fetch("/api/chat/upload", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json()
+            throw new Error(errorData.error || "Error al subir archivo")
+          }
+
+          const uploadData = await uploadResponse.json()
+          fileUrl = uploadData.url
+          fileName = uploadData.name
+
+          // Detectar si es imagen
+          if (file.type.startsWith("image/")) {
+            messageType = "image"
+          } else {
+            messageType = "file"
+          }
+        }
+
+        const messageData: any = {
           conversation_id: currentConversation.id,
           sender_id: user.id,
-          content: content.trim(),
+          content: content.trim() || fileName || "Archivo adjunto",
           message_type: messageType,
-        })
+        }
+
+        if (fileUrl) {
+          messageData.file_url = fileUrl
+          messageData.file_name = fileName
+        }
+
+        const { error } = await supabase.from("chat_messages").insert(messageData)
 
         if (error) throw error
       } catch (error) {
@@ -204,9 +245,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               !c.is_group && c.participants.length === 2 && c.participants.some((p) => p.user_id === participantIds[0]),
           )
           if (existingConv) {
+            console.log("[v0] Found existing 1:1 conversation in cache:", existingConv.id)
             return existingConv
           }
         }
+
+        console.log("[v0] Creating conversation via API with participants:", participantIds)
 
         const response = await fetch("/api/chat/conversations", {
           method: "POST",
@@ -221,34 +265,40 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         if (!response.ok) {
           const errorData = await response.json()
-          console.error("API error:", errorData)
+          console.error("[v0] API error:", errorData)
           throw new Error(errorData.error || "Error al crear conversación")
         }
 
         const { conversation, existing } = await response.json()
 
+        console.log("[v0] API returned conversation:", conversation.id, "existing:", existing)
+
+        if (existing) {
+          const existingConv = conversations.find((c) => c.id === conversation.id)
+          if (existingConv) {
+            console.log("[v0] Found existing conversation in state")
+            return existingConv
+          }
+        }
+
         await loadConversations()
 
-        const newConv = conversations.find((c) => c.id === conversation.id)
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        const newConv = conversationsRef.current.find((c) => c.id === conversation.id)
         if (newConv) {
+          console.log("[v0] Found newly created conversation in state")
           return newConv
         }
 
-        const { conversations: freshConversations } = await fetch("/api/chat/conversations").then((r) => r.json())
-        const foundConv = freshConversations.find((c: any) => c.id === conversation.id)
-
-        if (foundConv) {
-          setConversations((prev) => [foundConv, ...prev])
-          return foundConv
-        }
-
+        console.error("[v0] Could not find conversation after creation")
         return null
       } catch (error) {
-        console.error("Error creating conversation:", error)
+        console.error("[v0] Error creating conversation:", error)
         return null
       }
     },
-    [user, conversations],
+    [user, conversations, loadConversations],
   )
 
   const loadMoreMessages = useCallback(async () => {
@@ -303,6 +353,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           full_name: u.full_name,
           avatar_url: u.avatar_url,
           email: u.email,
+          company_id: u.company_id,
+          company_name: u.companies?.name,
+          company_code: u.companies?.code,
+          company_color: u.companies?.color,
         }))
       } catch (error) {
         console.error("Error searching users:", error)
