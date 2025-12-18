@@ -44,10 +44,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    const { data: messages, error: msgError } = await supabaseAdmin
-      .from("chat_messages")
-      .select("*")
+    const { data: deletion } = await supabaseAdmin
+      .from("chat_conversation_deletions")
+      .select("deleted_at")
       .eq("conversation_id", conversationId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    // Build query to get messages
+    let query = supabaseAdmin.from("chat_messages").select("*").eq("conversation_id", conversationId)
+
+    if (deletion?.deleted_at) {
+      query = query.gt("created_at", deletion.deleted_at)
+      console.log("[v0] Filtering messages after deletion date:", deletion.deleted_at)
+    }
+
+    const { data: messages, error: msgError } = await query
       .order("created_at", { ascending: true })
       .range(offset, offset + limit - 1)
 

@@ -16,6 +16,7 @@ import {
   MoreVertical,
   Trash2,
   Info,
+  Minimize2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,6 +69,7 @@ export function ChatWidget() {
   const [isSearching, setIsSearching] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false) // Added delete dialog state
+  const [isMobile, setIsMobile] = useState(false) // Added state to detect mobile
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -122,6 +124,9 @@ export function ChatWidget() {
   const handleOpenConversation = (conv: ChatConversation) => {
     selectConversation(conv)
     setView("chat")
+    if (isMobile && !isChatOpen) {
+      setIsChatOpen(true)
+    }
   }
 
   // Crear nueva conversación
@@ -201,13 +206,37 @@ export function ChatWidget() {
     }
   }
 
+  const handleMinimize = () => {
+    setIsChatOpen(false)
+    if (isMobile) {
+      selectConversation(null)
+      setView("list")
+    }
+  }
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile && currentConversation && !isChatOpen) {
+      setIsChatOpen(true)
+      setView("chat")
+    }
+  }, [currentConversation, isMobile, isChatOpen, setIsChatOpen])
+
   if (!user) return null
 
   return (
     <TooltipProvider>
       {/* Botón flotante */}
       <motion.div
-        className="fixed bottom-24 right-6 z-50"
+        className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
@@ -217,7 +246,7 @@ export function ChatWidget() {
             <Button
               size="lg"
               className={cn(
-                "h-14 w-14 rounded-full shadow-lg transition-all duration-300",
+                "h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg transition-all duration-300",
                 isChatOpen ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90",
               )}
               onClick={() => setIsChatOpen(!isChatOpen)}
@@ -231,7 +260,7 @@ export function ChatWidget() {
                     exit={{ rotate: 90, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <X className="h-6 w-6" />
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -242,7 +271,7 @@ export function ChatWidget() {
                     transition={{ duration: 0.2 }}
                     className="relative"
                   >
-                    <MessageCircle className="h-6 w-6" />
+                    <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
                     {unreadTotal > 0 && (
                       <motion.span
                         initial={{ scale: 0 }}
@@ -271,7 +300,10 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-44 right-6 z-50 w-[380px] h-[520px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className={cn(
+              "fixed z-50 bg-background border border-border rounded-lg shadow-2xl overflow-hidden flex flex-col",
+              "bottom-0 left-0 right-0 top-20 sm:top-auto sm:bottom-24 sm:left-auto sm:right-6 sm:w-[400px] sm:h-[600px] sm:rounded-2xl",
+            )}
           >
             {/* Header */}
             <div className="shrink-0 px-4 py-3 border-b border-border bg-muted/50">
@@ -287,8 +319,16 @@ export function ChatWidget() {
                     <MessageCircle className="h-5 w-5 text-primary" />
                     <div className="flex-1">
                       <h3 className="font-semibold text-sm">Chat ATLAS</h3>
-                      <p className="text-xs text-muted-foreground">Mensajes temporales (7 días)</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Mensajes temporales (7 días)</p>
                     </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMinimize}>
+                          <Minimize2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Minimizar</TooltipContent>
+                    </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setView("new")}>
@@ -327,11 +367,13 @@ export function ChatWidget() {
                                   : "text-muted-foreground",
                               )}
                             />
-                            {isUserOnline(
-                              currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "",
-                            )
-                              ? "En línea"
-                              : "Desconectado"}
+                            <span className="hidden sm:inline">
+                              {isUserOnline(
+                                currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "",
+                              )
+                                ? "En línea"
+                                : "Desconectado"}
+                            </span>
                           </>
                         )}
                         {currentConversation.is_group && (
@@ -339,6 +381,14 @@ export function ChatWidget() {
                         )}
                       </p>
                     </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMinimize}>
+                          <Minimize2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Minimizar</TooltipContent>
+                    </Tooltip>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -360,10 +410,20 @@ export function ChatWidget() {
                 )}
 
                 {view === "new" && (
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-sm">Nueva conversación</h3>
-                    <p className="text-xs text-muted-foreground">Selecciona usuarios para chatear</p>
-                  </div>
+                  <>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-sm">Nueva conversación</h3>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Selecciona usuarios para chatear</p>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMinimize}>
+                          <Minimize2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Minimizar</TooltipContent>
+                    </Tooltip>
+                  </>
                 )}
               </div>
             </div>
@@ -430,7 +490,7 @@ export function ChatWidget() {
                                 )}
                               </div>
                               <div className="flex items-center justify-between">
-                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                <p className="text-xs text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
                                   {conv.last_message ? (
                                     <>
                                       {conv.last_message.sender_id === user.id && (
@@ -489,7 +549,7 @@ export function ChatWidget() {
                             )}
                             <div
                               className={cn(
-                                "max-w-[70%] px-3 py-2 rounded-2xl",
+                                "max-w-[80%] sm:max-w-[70%] px-3 py-2 rounded-2xl",
                                 isOwn ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md",
                               )}
                             >
@@ -525,7 +585,7 @@ export function ChatWidget() {
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Escribe un mensaje..."
-                        className="min-h-[40px] max-h-[120px] resize-none rounded-xl"
+                        className="min-h-[40px] max-h-[120px] resize-none rounded-xl text-sm"
                         rows={1}
                       />
                       <Button
@@ -563,7 +623,7 @@ export function ChatWidget() {
                       <div className="flex flex-wrap gap-2 mt-3">
                         {selectedUsers.map((u) => (
                           <Badge key={u.user_id} variant="secondary" className="flex items-center gap-1 pr-1">
-                            {u.full_name}
+                            <span className="truncate max-w-[120px]">{u.full_name}</span>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -601,7 +661,7 @@ export function ChatWidget() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{u.full_name}</p>
+                              <p className="font-medium text-sm truncate">{u.full_name}</p>
                               <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                             </div>
                             <div className="relative">
@@ -631,7 +691,7 @@ export function ChatWidget() {
                   {/* Botón de crear */}
                   {selectedUsers.length > 0 && (
                     <div className="shrink-0 p-3 border-t border-border">
-                      <Button className="w-full rounded-xl" onClick={handleCreateConversation}>
+                      <Button className="w-full rounded-xl text-sm" onClick={handleCreateConversation}>
                         {selectedUsers.length === 1
                           ? `Chatear con ${selectedUsers[0].full_name}`
                           : `Crear grupo (${selectedUsers.length} personas)`}

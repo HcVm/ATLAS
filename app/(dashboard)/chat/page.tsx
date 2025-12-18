@@ -23,6 +23,7 @@ import {
   Edit2,
   Check,
   Trash2,
+  ArrowLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -381,13 +382,13 @@ export default function ChatPage() {
     <TooltipProvider>
       <div className="h-[calc(100vh-8rem)] flex flex-col pt-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <MessageCircle className="h-6 w-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               Chat ATLAS
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Mensajes temporales entre usuarios (se eliminan después de 7 días)
             </p>
           </div>
@@ -400,17 +401,20 @@ export default function ChatPage() {
               </TooltipTrigger>
               <TooltipContent>Actualizar conversaciones</TooltipContent>
             </Tooltip>
-            <Button onClick={() => setShowNewChatDialog(true)}>
+            <Button onClick={() => setShowNewChatDialog(true)} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              Nueva conversación
+              <span className="hidden sm:inline">Nueva conversación</span>
+              <span className="sm:hidden">Nueva</span>
             </Button>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
           {/* Lista de conversaciones */}
-          <Card className="w-80 shrink-0 flex flex-col">
+          <Card
+            className={cn("w-full lg:w-80 lg:shrink-0 flex flex-col", currentConversation ? "hidden lg:flex" : "flex")}
+          >
             <CardHeader className="pb-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -517,13 +521,21 @@ export default function ChatPage() {
           </Card>
 
           {/* Área de chat */}
-          <Card className="flex-1 flex flex-col overflow-hidden">
+          <Card className={cn("flex-1 flex flex-col overflow-hidden", currentConversation ? "flex" : "hidden lg:flex")}>
             {currentConversation ? (
               <>
                 {/* Header del chat */}
                 <CardHeader className="pb-3 border-b shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="lg:hidden shrink-0"
+                        onClick={() => selectConversation(null as any)}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={getConversationAvatar(currentConversation) || undefined} />
                         <AvatarFallback className="text-xs bg-primary/10">
@@ -571,7 +583,7 @@ export default function ChatPage() {
                         ) : (
                           <>
                             <div className="flex items-center gap-2">
-                              <CardTitle className="text-base truncate">
+                              <CardTitle className="text-sm sm:text-base truncate">
                                 {getConversationName(currentConversation)}
                               </CardTitle>
                               {currentConversation.is_group && (
@@ -588,7 +600,7 @@ export default function ChatPage() {
                                 </Button>
                               )}
                             </div>
-                            <CardDescription className="flex items-center gap-1">
+                            <CardDescription className="flex items-center gap-1 text-xs">
                               {!currentConversation.is_group && (
                                 <>
                                   <Circle
@@ -709,7 +721,7 @@ export default function ChatPage() {
                                 )}
                                 <div
                                   className={cn(
-                                    "max-w-[60%] px-4 py-2 rounded-2xl shadow-sm",
+                                    "max-w-[75%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm",
                                     isOwn
                                       ? "bg-primary text-primary-foreground rounded-br-md"
                                       : "bg-muted text-foreground rounded-bl-md",

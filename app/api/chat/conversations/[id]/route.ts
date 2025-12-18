@@ -84,11 +84,17 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    // Add deletion record for this user
-    const { error: deleteError } = await supabaseAdmin.from("chat_conversation_deletions").upsert({
-      conversation_id: conversationId,
-      user_id: user.id,
-    })
+    // This will record the exact moment when user deleted the chat
+    const { error: deleteError } = await supabaseAdmin.from("chat_conversation_deletions").upsert(
+      {
+        conversation_id: conversationId,
+        user_id: user.id,
+        deleted_at: new Date().toISOString(), // This will be stored in UTC
+      },
+      {
+        onConflict: "conversation_id,user_id",
+      },
+    )
 
     if (deleteError) {
       console.error("Error marking conversation as deleted:", deleteError)
