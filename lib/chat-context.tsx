@@ -93,107 +93,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const presenceChannelRef = useRef<RealtimeChannel | null>(null)
 
-  // Cargar conversaciones
   const loadConversations = useCallback(async () => {
     if (!user) return
 
     try {
       setIsLoading(true)
 
-      // Obtener conversaciones donde el usuario participa
-      const { data: participations, error: partError } = await supabase
-        .from("chat_participants")
-        .select("conversation_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
+      const response = await fetch("/api/chat/conversations")
 
-      if (partError) throw partError
-
-      if (!participations || participations.length === 0) {
-        setConversations([])
-        return
+      if (!response.ok) {
+        throw new Error("Failed to load conversations")
       }
 
-      const conversationIds = participations.map((p) => p.conversation_id)
+      const { conversations: data } = await response.json()
 
-      // Obtener detalles de las conversaciones
-      const { data: convData, error: convError } = await supabase
-        .from("chat_conversations")
-        .select(`
-          *,
-          chat_participants (
-            user_id,
-            last_read_at,
-            profiles (
-              id,
-              full_name,
-              avatar_url,
-              email
-            )
-          )
-        `)
-        .in("id", conversationIds)
-        .order("last_message_at", { ascending: false })
-
-      if (convError) throw convError
-
-      // Procesar conversaciones con participantes y conteo de no leídos
-      const processedConversations: ChatConversation[] = await Promise.all(
-        (convData || []).map(async (conv) => {
-          const participants =
-            conv.chat_participants
-              ?.filter((p: any) => p.profiles)
-              .map((p: any) => ({
-                user_id: p.profiles.id,
-                full_name: p.profiles.full_name,
-                avatar_url: p.profiles.avatar_url,
-                email: p.profiles.email,
-              })) || []
-
-          // Obtener último mensaje
-          const { data: lastMsg } = await supabase
-            .from("chat_messages")
-            .select("*, profiles:sender_id(id, full_name, avatar_url, email)")
-            .eq("conversation_id", conv.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single()
-
-          // Contar mensajes no leídos
-          const userParticipation = conv.chat_participants?.find((p: any) => p.user_id === user.id)
-          const lastReadAt = userParticipation?.last_read_at || conv.created_at
-
-          const { count: unreadCount } = await supabase
-            .from("chat_messages")
-            .select("id", { count: "exact", head: true })
-            .eq("conversation_id", conv.id)
-            .neq("sender_id", user.id)
-            .gt("created_at", lastReadAt)
-
-          return {
-            id: conv.id,
-            name: conv.name,
-            is_group: conv.is_group,
-            company_id: conv.company_id,
-            created_by: conv.created_by,
-            created_at: conv.created_at,
-            last_message_at: conv.last_message_at,
-            participants,
-            unread_count: unreadCount || 0,
-            last_message: lastMsg
-              ? {
-                  ...lastMsg,
-                  sender: lastMsg.profiles,
-                }
-              : undefined,
-          }
-        }),
-      )
-
-      setConversations(processedConversations)
-      setUnreadTotal(processedConversations.reduce((sum, c) => sum + (c.unread_count || 0), 0))
+      setConversations(data || [])
+      setUnreadTotal((data || []).reduce((sum: number, c: ChatConversation) => sum + (c.unread_count || 0), 0))
     } catch (error) {
       console.error("Error loading conversations:", error)
+      setConversations([])
     } finally {
       setIsLoading(false)
     }
@@ -344,11 +262,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
 
       try {
-        await supabase
-          .from("chat_participants")
-          .update({ last_read_at: new Date().toISOString() })
-          .eq("conversation_id", conversationId)
-          .eq("user_id", user.id)
+        const response = await fetch("/api/chat/conversations/mark-read", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to mark as read")
+        }
 
         // Actualizar conteo local
         setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
@@ -363,29 +287,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user, conversations],
   )
 
-  // Buscar usuarios
   const searchUsers = useCallback(
     async (query: string): Promise<ChatParticipant[]> => {
       if (!user || !query.trim()) return []
 
       try {
-        let queryBuilder = supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url, email")
-          .neq("id", user.id)
-          .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-          .limit(20)
+        const response = await fetch(`/api/chat/users/search?q=${encodeURIComponent(query)}`)
 
-        // Si no es admin, solo buscar usuarios de la misma empresa
-        if (user.role !== "admin" && user.company_id) {
-          queryBuilder = queryBuilder.eq("company_id", user.company_id)
+        if (!response.ok) {
+          throw new Error("Failed to search users")
         }
 
-        const { data, error } = await queryBuilder
+        const { users } = await response.json()
 
-        if (error) throw error
-
-        return (data || []).map((u) => ({
+        return (users || []).map((u: any) => ({
           user_id: u.id,
           full_name: u.full_name,
           avatar_url: u.avatar_url,
@@ -399,17 +314,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
-  // Actualizar presencia
   const updatePresence = useCallback(
     async (isOnline: boolean) => {
       if (!user) return
 
       try {
-        await supabase.from("chat_user_presence").upsert({
-          user_id: user.id,
-          is_online: isOnline,
-          last_seen: new Date().toISOString(),
-          status: "available",
+        await fetch("/api/chat/presence", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ is_online: isOnline }),
         })
       } catch (error) {
         console.error("Error updating presence:", error)
@@ -422,7 +337,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return
 
-    // Suscripción a nuevos mensajes
     channelRef.current = supabase
       .channel(`chat_messages_${user.id}`)
       .on(
@@ -443,16 +357,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             return
           }
 
-          // Obtener información del remitente
-          const { data: senderData } = await supabase
-            .from("profiles")
-            .select("id, full_name, avatar_url, email")
-            .eq("id", newMessage.sender_id)
-            .single()
+          const senderResponse = await fetch(`/api/users/${newMessage.sender_id}`)
+          const senderData = senderResponse.ok ? await senderResponse.json() : null
 
           const messageWithSender = {
             ...newMessage,
-            sender: senderData,
+            sender: senderData
+              ? {
+                  id: senderData.id,
+                  full_name: senderData.full_name,
+                  avatar_url: senderData.avatar_url,
+                  email: senderData.email,
+                }
+              : undefined,
           }
 
           // Si es la conversación actual, agregar mensaje

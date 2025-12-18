@@ -29,3 +29,5 @@ export function createServerClient() {
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey)
 }
+
+export { createServerClient as createClient }
