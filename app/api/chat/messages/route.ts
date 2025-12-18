@@ -3,6 +3,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -41,47 +42,59 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Verificar que el usuario es participante
-    const { data: participation, error: partError } = await supabase
+    const { data: participation, error: partError } = await supabaseAdmin
       .from("chat_participants")
       .select("id")
       .eq("conversation_id", conversationId)
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
-    if (partError || !participation) {
+    if (partError) {
+      console.error("[v0] Error checking participation:", partError)
+      return NextResponse.json({ error: "Error verificando participación" }, { status: 500 })
+    }
+
+    if (!participation) {
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    // Obtener mensajes
-    const { data: messages, error: msgError } = await supabase
+    const { data: messages, error: msgError } = await supabaseAdmin
       .from("chat_messages")
-      .select(`
-        *,
-        profiles:sender_id (
-          id,
-          full_name,
-          avatar_url,
-          email
-        )
-      `)
+      .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (msgError) throw msgError
+    if (msgError) {
+      console.error("[v0] Error fetching messages:", msgError)
+      throw msgError
+    }
+
+    const senderIds = [...new Set(messages?.map((m) => m.sender_id) || [])]
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, avatar_url, email")
+      .in("id", senderIds)
+
+    if (profilesError) {
+      console.error("[v0] Error fetching profiles:", profilesError)
+    }
+
+    const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
     const processedMessages = (messages || [])
       .map((msg) => ({
         ...msg,
-        sender: msg.profiles,
+        sender: profilesMap.get(msg.sender_id) || null,
       }))
       .reverse()
 
+    console.log("[v0] Loaded", processedMessages.length, "messages for conversation", conversationId)
+
     return NextResponse.json({ messages: processedMessages })
   } catch (error: any) {
-    console.error("Error fetching messages:", error)
+    console.error("[v0] Error in GET /api/chat/messages:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -107,21 +120,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Se requiere conversation_id y content" }, { status: 400 })
     }
 
-    // Verificar participación
-    const { data: participation, error: partError } = await supabase
+    const { data: participation, error: partError } = await supabaseAdmin
       .from("chat_participants")
       .select("id")
       .eq("conversation_id", conversation_id)
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (partError || !participation) {
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    // Crear mensaje
-    const { data: message, error: msgError } = await supabase
+    const { data: message, error: msgError } = await supabaseAdmin
       .from("chat_messages")
       .insert({
         conversation_id,
@@ -129,27 +140,35 @@ export async function POST(request: NextRequest) {
         content: content.trim(),
         message_type,
       })
-      .select(`
-        *,
-        profiles:sender_id (
-          id,
-          full_name,
-          avatar_url,
-          email
-        )
-      `)
+      .select("*")
       .single()
 
-    if (msgError) throw msgError
+    if (msgError) {
+      console.error("[v0] Error creating message:", msgError)
+      throw msgError
+    }
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, avatar_url, email")
+      .eq("id", user.id)
+      .single()
+
+    await supabaseAdmin
+      .from("chat_conversations")
+      .update({ last_message_at: message.created_at })
+      .eq("id", conversation_id)
+
+    console.log("[v0] Message sent successfully:", message.id)
 
     return NextResponse.json({
       message: {
         ...message,
-        sender: message.profiles,
+        sender: profile,
       },
     })
   } catch (error: any) {
-    console.error("Error sending message:", error)
+    console.error("[v0] Error in POST /api/chat/messages:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

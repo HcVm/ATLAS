@@ -205,29 +205,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
 
       try {
-        const { data, error } = await supabase
-          .from("chat_messages")
-          .select(`
-          *,
-          profiles:sender_id (
-            id,
-            full_name,
-            avatar_url,
-            email
-          )
-        `)
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: false })
-          .range(offset, offset + 49)
+        const response = await fetch(`/api/chat/messages?conversation_id=${conversationId}&offset=${offset}&limit=50`)
 
-        if (error) throw error
+        if (!response.ok) {
+          throw new Error("Failed to load messages")
+        }
 
-        const processedMessages = (data || [])
-          .map((msg) => ({
-            ...msg,
-            sender: msg.profiles,
-          }))
-          .reverse()
+        const { messages: data } = await response.json()
+
+        const processedMessages = (data || []).reverse()
 
         if (offset === 0) {
           setMessages(processedMessages)
