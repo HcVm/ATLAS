@@ -84,12 +84,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    // This will record the exact moment when user deleted the chat
+    const deletionTime = new Date().toISOString()
+    console.log("[v0] Deleting conversation at (UTC):", deletionTime)
+
     const { error: deleteError } = await supabaseAdmin.from("chat_conversation_deletions").upsert(
       {
         conversation_id: conversationId,
         user_id: user.id,
-        deleted_at: new Date().toISOString(), // This will be stored in UTC
+        deleted_at: deletionTime,
       },
       {
         onConflict: "conversation_id,user_id",
@@ -97,7 +99,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     )
 
     if (deleteError) {
-      console.error("Error marking conversation as deleted:", deleteError)
+      console.error("[v0] Error marking conversation as deleted:", deleteError)
       throw deleteError
     }
 
@@ -120,7 +122,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       permanently_deleted: permanentlyDeleted,
     })
   } catch (error: any) {
-    console.error("Error in DELETE conversation:", error)
+    console.error("[v0] Error in DELETE conversation:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

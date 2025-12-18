@@ -44,19 +44,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No tienes acceso a esta conversación" }, { status: 403 })
     }
 
-    const { data: deletion } = await supabaseAdmin
+    const { data: deletion, error: deletionError } = await supabaseAdmin
       .from("chat_conversation_deletions")
       .select("deleted_at")
       .eq("conversation_id", conversationId)
       .eq("user_id", user.id)
       .maybeSingle()
 
+    if (deletionError) {
+      console.error("[v0] Error checking deletion:", deletionError)
+    }
+
     // Build query to get messages
     let query = supabaseAdmin.from("chat_messages").select("*").eq("conversation_id", conversationId)
 
     if (deletion?.deleted_at) {
       query = query.gt("created_at", deletion.deleted_at)
-      console.log("[v0] Filtering messages after deletion date:", deletion.deleted_at)
+      console.log("[v0] User", user.id, "deleted conversation at:", deletion.deleted_at)
+      console.log("[v0] Filtering messages created STRICTLY AFTER deletion time (includes milliseconds)")
     }
 
     const { data: messages, error: msgError } = await query
@@ -67,6 +72,8 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching messages:", msgError)
       throw msgError
     }
+
+    console.log("[v0] Found", messages?.length || 0, "messages after deletion filter for conversation:", conversationId)
 
     const senderIds = [...new Set(messages?.map((m) => m.sender_id) || [])]
     const { data: profiles, error: profilesError } = await supabaseAdmin
@@ -84,8 +91,6 @@ export async function GET(request: NextRequest) {
       ...msg,
       sender: profilesMap.get(msg.sender_id) || null,
     }))
-
-    console.log("[v0] Loaded", processedMessages.length, "messages for conversation", conversationId)
 
     return NextResponse.json({ messages: processedMessages })
   } catch (error: any) {
