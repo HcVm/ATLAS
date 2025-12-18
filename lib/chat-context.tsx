@@ -337,6 +337,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return
 
+    // Suscripción a chat_participants para detectar nuevas conversaciones
+    const participantsChannel = supabase
+      .channel(`chat_participants_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_participants",
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log("[v0] New participant record detected, reloading conversations")
+          // Nueva conversación donde el usuario fue agregado
+          await loadConversations()
+        },
+      )
+      .subscribe()
+
     channelRef.current = supabase
       .channel(`chat_messages_${user.id}`)
       .on(
@@ -352,6 +371,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           // Verificar si el usuario es participante de esta conversación
           const isParticipant = conversations.some((c) => c.id === newMessage.conversation_id)
           if (!isParticipant) {
+            console.log("[v0] Message from unknown conversation, reloading...")
             // Puede ser una nueva conversación, recargar
             await loadConversations()
             return
@@ -442,6 +462,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // Limpiar al desmontar
     return () => {
+      participantsChannel?.unsubscribe()
       channelRef.current?.unsubscribe()
       presenceChannelRef.current?.unsubscribe()
       updatePresence(false)

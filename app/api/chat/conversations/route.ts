@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { data: participations, error: partError } = await supabase
+    const { data: participations, error: partError } = await supabaseAdmin
       .from("chat_participants")
       .select("conversation_id, last_read_at")
       .eq("user_id", user.id)
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const conversationIds = participations.map((p) => p.conversation_id)
     const lastReadMap = new Map(participations.map((p) => [p.conversation_id, p.last_read_at]))
 
-    const { data: conversations, error: convError } = await supabase
+    const { data: conversations, error: convError } = await supabaseAdmin
       .from("chat_conversations")
       .select("*")
       .in("id", conversationIds)
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const processedConversations = await Promise.all(
       (conversations || []).map(async (conv) => {
         // Obtener participantes de esta conversación
-        const { data: participants } = await supabase
+        const { data: participants } = await supabaseAdmin
           .from("chat_participants")
           .select("user_id")
           .eq("conversation_id", conv.id)
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         const participantIds = participants?.map((p) => p.user_id) || []
 
         // Obtener perfiles de participantes
-        const { data: profiles } = await supabase
+        const { data: profiles } = await supabaseAdmin
           .from("profiles")
           .select("id, full_name, avatar_url, email")
           .in("id", participantIds)
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         const lastReadAt = lastReadMap.get(conv.id) || conv.created_at
 
         // Contar mensajes no leídos
-        const { count: unreadCount } = await supabase
+        const { count: unreadCount } = await supabaseAdmin
           .from("chat_messages")
           .select("id", { count: "exact", head: true })
           .eq("conversation_id", conv.id)
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
           .gt("created_at", lastReadAt)
 
         // Obtener último mensaje
-        const { data: lastMessage } = await supabase
+        const { data: lastMessage } = await supabaseAdmin
           .from("chat_messages")
           .select("*")
           .eq("conversation_id", conv.id)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
         let lastMessageWithSender = null
         if (lastMessage) {
-          const { data: senderProfile } = await supabase
+          const { data: senderProfile } = await supabaseAdmin
             .from("profiles")
             .select("id, full_name, avatar_url")
             .eq("id", lastMessage.sender_id)
