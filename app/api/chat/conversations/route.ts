@@ -176,9 +176,27 @@ export async function POST(request: NextRequest) {
       })
 
       if (existingConv && existingConv.length > 0) {
-        console.log("[v0] Found existing 1:1 conversation via RPC:", existingConv[0].id)
+        const conversationId = existingConv[0].id
+        console.log("[v0] Found existing 1:1 conversation via RPC:", conversationId)
+
+        const { data: deletion } = await supabaseAdmin
+          .from("chat_conversation_deletions")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        if (deletion) {
+          console.log("[v0] User had deleted this conversation, restoring it")
+          await supabaseAdmin
+            .from("chat_conversation_deletions")
+            .delete()
+            .eq("conversation_id", conversationId)
+            .eq("user_id", user.id)
+        }
+
         return NextResponse.json({
-          conversation: { id: existingConv[0].id },
+          conversation: { id: conversationId },
           existing: true,
         })
       }
@@ -208,6 +226,23 @@ export async function POST(request: NextRequest) {
 
             if (participants?.length === 2 && participants.some((p) => p.user_id === otherUserId)) {
               console.log("[v0] Found existing 1:1 conversation:", conv.id)
+
+              const { data: deletion } = await supabaseAdmin
+                .from("chat_conversation_deletions")
+                .select("id")
+                .eq("conversation_id", conv.id)
+                .eq("user_id", user.id)
+                .maybeSingle()
+
+              if (deletion) {
+                console.log("[v0] User had deleted this conversation, restoring it")
+                await supabaseAdmin
+                  .from("chat_conversation_deletions")
+                  .delete()
+                  .eq("conversation_id", conv.id)
+                  .eq("user_id", user.id)
+              }
+
               return NextResponse.json({
                 conversation: { id: conv.id },
                 existing: true,

@@ -327,21 +327,35 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         console.log("[v0] API returned conversation:", conversation.id, "existing:", existing)
 
         if (existing) {
-          const existingConv = conversations.find((c) => c.id === conversation.id)
-          if (existingConv) {
-            console.log("[v0] Found existing conversation in state")
-            return existingConv
+          await loadConversations()
+          await new Promise((resolve) => setTimeout(resolve, 200))
+
+          const restoredConv = conversationsRef.current.find((c) => c.id === conversation.id)
+          if (restoredConv) {
+            console.log("[v0] Found restored/existing conversation in state")
+            return restoredConv
           }
-        }
 
-        await loadConversations()
+          // Si aún no aparece, puede ser que necesite más tiempo
+          console.warn("[v0] Conversation exists but not yet in state, retrying...")
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          await loadConversations()
 
-        await new Promise((resolve) => setTimeout(resolve, 100))
+          const retryConv = conversationsRef.current.find((c) => c.id === conversation.id)
+          if (retryConv) {
+            console.log("[v0] Found conversation after retry")
+            return retryConv
+          }
+        } else {
+          // Nueva conversación creada
+          await loadConversations()
+          await new Promise((resolve) => setTimeout(resolve, 100))
 
-        const newConv = conversationsRef.current.find((c) => c.id === conversation.id)
-        if (newConv) {
-          console.log("[v0] Found newly created conversation in state")
-          return newConv
+          const newConv = conversationsRef.current.find((c) => c.id === conversation.id)
+          if (newConv) {
+            console.log("[v0] Found newly created conversation in state")
+            return newConv
+          }
         }
 
         console.error("[v0] Could not find conversation after creation")
