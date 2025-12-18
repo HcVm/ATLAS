@@ -39,6 +39,7 @@ import {
   Wrench,
   DollarSign,
   Landmark,
+  MessageCircle,
 } from "lucide-react"
 
 import {
@@ -87,6 +88,12 @@ const menuSections = {
         title: "Calendario",
         url: "/calendar",
         icon: CalendarDays,
+        roles: ["admin", "supervisor", "user"],
+      },
+      {
+        title: "Chat",
+        url: "/chat",
+        icon: MessageCircle,
         roles: ["admin", "supervisor", "user"],
       },
     ],

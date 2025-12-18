@@ -34,7 +34,7 @@ import {
   Calendar,
 } from "lucide-react"
 import Link from "next/link"
-import { format } from "date-fns"
+import { formatInTimeZone } from 'date-fns-tz';
 import { es } from "date-fns/locale"
 
 interface FixedAssetAccount {
@@ -437,7 +437,7 @@ export default function FixedAssetsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {format(new Date(asset.acquisition_date), "dd/MM/yyyy", { locale: es })}
+                        {formatInTimeZone(new Date(asset.acquisition_date), 'America/Lima', 'dd/MM/yyyy', { locale: es })}
                       </TableCell>
                       <TableCell className="text-sm">{asset.invoice_number || "-"}</TableCell>
                       <TableCell className="text-right font-mono">
