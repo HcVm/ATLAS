@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -31,6 +30,17 @@ import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/components/ui/use-toast"
 
 export function ChatWidget() {
   const { user } = useAuth()
@@ -47,6 +57,7 @@ export function ChatWidget() {
     sendMessage,
     createConversation,
     searchUsers,
+    deleteConversation, // Added deleteConversation function
   } = useChat()
 
   const [view, setView] = useState<"list" | "chat" | "new">("list")
@@ -56,6 +67,7 @@ export function ChatWidget() {
   const [selectedUsers, setSelectedUsers] = useState<ChatParticipant[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false) // Added delete dialog state
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -167,13 +179,35 @@ export function ChatWidget() {
       .slice(0, 2)
   }
 
+  const handleDeleteConversation = async () => {
+    if (!currentConversation) return
+
+    try {
+      await deleteConversation(currentConversation.id)
+      setShowDeleteDialog(false)
+      handleBack()
+
+      toast({
+        title: "Conversación eliminada",
+        description: "La conversación ha sido eliminada de tu bandeja",
+      })
+    } catch (error) {
+      console.error("Error al eliminar conversación:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la conversación",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (!user) return null
 
   return (
     <TooltipProvider>
       {/* Botón flotante */}
       <motion.div
-        className="fixed bottom-6 right-6 z-50"
+        className="fixed bottom-24 right-6 z-50"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
@@ -237,7 +271,7 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-24 right-6 z-50 w-[380px] h-[520px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="fixed bottom-44 right-6 z-50 w-[380px] h-[520px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="shrink-0 px-4 py-3 border-b border-border bg-muted/50">
@@ -316,7 +350,7 @@ export function ChatWidget() {
                           <Info className="h-4 w-4 mr-2" />
                           Ver detalles
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onClick={() => setShowDeleteDialog(true)}>
                           <Trash2 className="h-4 w-4 mr-2" />
                           Eliminar chat
                         </DropdownMenuItem>
@@ -610,6 +644,24 @@ export function ChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar conversación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará la conversación de tu bandeja. Si todos los participantes eliminan el chat, se
+              borrará permanentemente de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConversation} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   )
 }

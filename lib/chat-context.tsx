@@ -74,6 +74,7 @@ interface ChatContextType {
   searchUsers: (query: string) => Promise<ChatParticipant[]>
   updateConversationName: (conversationId: string, name: string) => Promise<void>
   getAllUsers: () => Promise<ChatParticipant[]>
+  deleteConversation: (conversationId: string) => Promise<boolean>
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -450,6 +451,48 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
+  const deleteConversation = useCallback(
+    async (conversationId: string): Promise<boolean> => {
+      if (!user) return false
+
+      try {
+        const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+          method: "DELETE",
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to delete conversation")
+        }
+
+        const { permanently_deleted } = await response.json()
+
+        // Remove from local state
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+        // Clear message cache
+        messageCache.delete(conversationId)
+
+        // If this was the current conversation, clear it
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation(null)
+          setMessages([])
+        }
+
+        // Update unread count
+        const conv = conversationsRef.current.find((c) => c.id === conversationId)
+        if (conv?.unread_count) {
+          setUnreadTotal((prev) => Math.max(0, prev - conv.unread_count))
+        }
+
+        return permanently_deleted
+      } catch (error) {
+        console.error("Error deleting conversation:", error)
+        throw error
+      }
+    },
+    [user, currentConversation],
+  )
+
   useEffect(() => {
     if (!user) return
 
@@ -604,6 +647,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     searchUsers,
     updateConversationName,
     getAllUsers,
+    deleteConversation,
   }
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>

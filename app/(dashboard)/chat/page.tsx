@@ -14,7 +14,6 @@ import {
   MoreVertical,
   Info,
   UserPlus,
-  LogOut,
   AlertTriangle,
   RefreshCw,
   Paperclip,
@@ -23,6 +22,7 @@ import {
   ZoomIn,
   Edit2,
   Check,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,9 +52,19 @@ import { Separator } from "@/components/ui/separator"
 import { useChat, type ChatConversation, type ChatParticipant } from "@/lib/chat-context"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
-import { formatDistanceToNow, format } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns" // Added isToday, isYesterday
 import { es } from "date-fns/locale"
 import { toast } from "@/components/ui/use-toast"
+import {
+  AlertDialog, // Added
+  AlertDialogAction, // Added
+  AlertDialogCancel, // Added
+  AlertDialogContent, // Added
+  AlertDialogDescription, // Added
+  AlertDialogFooter, // Added
+  AlertDialogHeader, // Added
+  AlertDialogTitle, // Added
+} from "@/components/ui/alert-dialog"
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -72,6 +82,7 @@ export default function ChatPage() {
     refreshConversations,
     updateConversationName,
     getAllUsers,
+    deleteConversation, // Added deleteConversation
   } = useChat()
 
   const [messageInput, setMessageInput] = useState("")
@@ -95,6 +106,7 @@ export default function ChatPage() {
   const [editedName, setEditedName] = useState("")
   const [allUsers, setAllUsers] = useState<ChatParticipant[]>([])
   const [sidebarUsers, setSidebarUsers] = useState<ChatParticipant[]>([])
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false) // Added showDeleteDialog
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -333,6 +345,23 @@ export default function ChatPage() {
       .slice(0, 2)
   }
 
+  const handleDeleteConversation = async () => {
+    if (!currentConversation) return
+
+    try {
+      const permanentlyDeleted = await deleteConversation(currentConversation.id)
+
+      if (permanentlyDeleted) {
+        // Show feedback that it was permanently deleted
+        console.log("Conversación eliminada permanentemente")
+      }
+
+      setShowDeleteDialog(false)
+    } catch (error) {
+      console.error("Error al eliminar conversación:", error)
+    }
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
@@ -350,9 +379,9 @@ export default function ChatPage() {
 
   return (
     <TooltipProvider>
-      <div className="h-[calc(100vh-8rem)] flex flex-col">
+      <div className="h-[calc(100vh-8rem)] flex flex-col pt-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <MessageCircle className="h-6 w-6 text-primary" />
@@ -615,9 +644,12 @@ export default function ChatPage() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Salir del chat
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setShowDeleteDialog(true)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar conversación
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -627,8 +659,8 @@ export default function ChatPage() {
 
                 {/* Mensajes */}
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  <ScrollArea className="h-full p-4">
-                    <div className="space-y-4">
+                  <ScrollArea className="h-full">
+                    <div className="space-y-4 p-4">
                       {/* Info de mensajes temporales */}
                       <div className="flex justify-center">
                         <Badge variant="secondary" className="text-xs font-normal">
@@ -1203,6 +1235,27 @@ export default function ChatPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar conversación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta conversación se eliminará de tu bandeja de entrada. Si todos los participantes eliminan la
+              conversación, se borrará permanentemente junto con todos los mensajes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   )
 }

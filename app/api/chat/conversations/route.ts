@@ -41,11 +41,26 @@ export async function GET(request: NextRequest) {
     const conversationIds = participations.map((p) => p.conversation_id)
     const lastReadMap = new Map(participations.map((p) => [p.conversation_id, p.last_read_at]))
 
+    const { data: deletedConversations } = await supabaseAdmin
+      .from("chat_conversation_deletions")
+      .select("conversation_id")
+      .eq("user_id", user.id)
+      .in("conversation_id", conversationIds)
+
+    const deletedIds = new Set(deletedConversations?.map((d) => d.conversation_id) || [])
+    const activeConversationIds = conversationIds.filter((id) => !deletedIds.has(id))
+
+    if (activeConversationIds.length === 0) {
+      return NextResponse.json({ conversations: [] })
+    }
+
     const { data: conversations, error: convError } = await supabaseAdmin
       .from("chat_conversations")
       .select("*")
-      .in("id", conversationIds)
+      .in("id", activeConversationIds)
       .order("last_message_at", { ascending: false })
+
+    console.log("[v0] Found conversations:", conversations?.length || 0, "error:", convError)
 
     if (convError) {
       console.error("[v0] Error fetching conversations:", convError)
