@@ -102,6 +102,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const currentConversationRef = useRef<ChatConversation | null>(null)
   const isChatOpenRef = useRef(false)
   const conversationsRef = useRef<ChatConversation[]>([])
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    notificationAudioRef.current = new Audio("/sounds/notification.mp3")
+    notificationAudioRef.current.volume = 0.5
+  }, [])
+
+  const playNotificationSound = useCallback(() => {
+    if (notificationAudioRef.current) {
+      notificationAudioRef.current.currentTime = 0
+      notificationAudioRef.current.play().catch((error) => {
+        console.log("Error playing notification sound:", error)
+      })
+    }
+  }, [])
 
   useEffect(() => {
     currentConversationRef.current = currentConversation
@@ -466,19 +481,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const { permanently_deleted } = await response.json()
 
-        // Remove from local state
         setConversations((prev) => prev.filter((c) => c.id !== conversationId))
 
-        // Clear message cache
         messageCache.delete(conversationId)
 
-        // If this was the current conversation, clear it
         if (currentConversation?.id === conversationId) {
           setCurrentConversation(null)
           setMessages([])
         }
 
-        // Update unread count
         const conv = conversationsRef.current.find((c) => c.id === conversationId)
         if (conv?.unread_count) {
           setUnreadTotal((prev) => Math.max(0, prev - conv.unread_count))
@@ -523,6 +534,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         },
         async (payload) => {
           const newMessage = payload.new as ChatMessage
+
+          if (newMessage.sender_id !== user.id) {
+            playNotificationSound()
+          }
 
           const isParticipant = conversationsRef.current.some((c) => c.id === newMessage.conversation_id)
           if (!isParticipant) {
@@ -616,7 +631,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       presenceChannelRef.current?.unsubscribe()
       updatePresence(false)
     }
-  }, [user, loadConversations, updatePresence, markAsRead])
+  }, [user, loadConversations, updatePresence, markAsRead, playNotificationSound])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
