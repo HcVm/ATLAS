@@ -19,6 +19,10 @@ import {
   RefreshCw,
   Paperclip,
   X,
+  Download,
+  ZoomIn,
+  Edit2,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,6 +70,8 @@ export default function ChatPage() {
     createConversation,
     searchUsers,
     refreshConversations,
+    updateConversationName,
+    getAllUsers,
   } = useChat()
 
   const [messageInput, setMessageInput] = useState("")
@@ -82,13 +88,17 @@ export default function ChatPage() {
   const [showNewChatDialog, setShowNewChatDialog] = useState(false)
   const [showInfoDialog, setShowInfoDialog] = useState(false)
   const [groupName, setGroupName] = useState("")
-  // Estado para controlar si el panel de chat está abierto
-  const [isChatOpen, setIsChatOpen] = useState(false)
+
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState("")
+  const [allUsers, setAllUsers] = useState<ChatParticipant[]>([])
+  const [sidebarUsers, setSidebarUsers] = useState<ChatParticipant[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Scroll al último mensaje
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
@@ -110,12 +120,32 @@ export default function ChatPage() {
     return () => clearTimeout(debounce)
   }, [userSearchQuery, searchUsers, selectedUsers])
 
+  useEffect(() => {
+    const loadAllUsers = async () => {
+      if (!user) return
+      const users = await getAllUsers()
+      setAllUsers(users.filter((u) => u.user_id !== user.id))
+      setSidebarUsers(users.filter((u) => u.user_id !== user.id))
+    }
+    loadAllUsers()
+  }, [user, getAllUsers])
+
   // Filtrar conversaciones por búsqueda
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true
     const name = getConversationName(conv).toLowerCase()
     return name.includes(searchQuery.toLowerCase())
   })
+
+  const isUserOnline = useCallback(
+    (userId: string) => {
+      return onlineUsers.has(userId)
+    },
+    [onlineUsers],
+  )
+
+  const onlineUsersList = sidebarUsers.filter((u) => isUserOnline(u.user_id))
+  const offlineUsersList = sidebarUsers.filter((u) => !isUserOnline(u.user_id))
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -190,7 +220,6 @@ export default function ChatPage() {
         setGroupName("")
         setUserSearchQuery("")
         await selectConversation(newConv)
-        setIsChatOpen(true) // Abrir panel de chat después de crear
       } else {
         toast({
           title: "Error",
@@ -208,28 +237,91 @@ export default function ChatPage() {
     }
   }
 
+  const handleImageClick = (url: string, name: string) => {
+    setSelectedImage({ url, name })
+    setImageModalOpen(true)
+  }
+
+  const handleFileDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      console.error("Error downloading file:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo descargar el archivo",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSaveConversationName = async () => {
+    if (!currentConversation || !editedName.trim()) return
+
+    try {
+      await updateConversationName(currentConversation.id, editedName.trim())
+      setIsEditingName(false)
+      toast({
+        title: "Nombre actualizado",
+        description: "El nombre del grupo ha sido actualizado",
+      })
+      await refreshConversations()
+    } catch (error) {
+      console.error("Error updating name:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el nombre",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleStartConversationFromSidebar = async (userId: string) => {
+    const existingConv = conversations.find(
+      (c) => !c.is_group && c.participants.length === 2 && c.participants.some((p) => p.user_id === userId),
+    )
+
+    if (existingConv) {
+      await selectConversation(existingConv)
+    } else {
+      const newConv = await createConversation([userId])
+      if (newConv) {
+        await selectConversation(newConv)
+      }
+    }
+  }
+
   // Obtener nombre de la conversación
   function getConversationName(conv: ChatConversation) {
     if (conv.name) return conv.name
     if (conv.is_group) return `Grupo (${conv.participants.length})`
-    const otherParticipant = conv.participants.find((p) => p.user_id !== user?.id)
+    const otherParticipant = conv.participants.find((p) => p.user_id !== user.id)
     return otherParticipant?.full_name || "Chat"
   }
 
   // Obtener avatar de la conversación
   function getConversationAvatar(conv: ChatConversation) {
     if (conv.is_group) return null
-    const otherParticipant = conv.participants.find((p) => p.user_id !== user?.id)
+    const otherParticipant = conv.participants.find((p) => p.user_id !== user.id)
     return otherParticipant?.avatar_url
   }
 
   // Verificar si usuario está online
-  const isUserOnline = useCallback(
-    (userId: string) => {
-      return onlineUsers.has(userId)
-    },
-    [onlineUsers],
-  )
+  // const isUserOnline = useCallback(
+  //   (userId: string) => {
+  //     return onlineUsers.has(userId)
+  //   },
+  //   [onlineUsers],
+  // )
 
   // Obtener iniciales
   const getInitials = (name: string) => {
@@ -402,8 +494,8 @@ export default function ChatPage() {
                 {/* Header del chat */}
                 <CardHeader className="pb-3 border-b shrink-0">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={getConversationAvatar(currentConversation) || undefined} />
                         <AvatarFallback className="text-xs bg-primary/10">
                           {currentConversation.is_group ? (
@@ -413,35 +505,90 @@ export default function ChatPage() {
                           )}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <CardTitle className="text-base">{getConversationName(currentConversation)}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          {!currentConversation.is_group && (
-                            <>
-                              <Circle
-                                className={cn(
-                                  "h-2 w-2 fill-current",
-                                  isUserOnline(
+                      <div className="flex-1 min-w-0">
+                        {isEditingName ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder="Nombre del grupo"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleSaveConversationName()
+                                } else if (e.key === "Escape") {
+                                  setIsEditingName(false)
+                                }
+                              }}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={handleSaveConversationName}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => setIsEditingName(false)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-base truncate">
+                                {getConversationName(currentConversation)}
+                              </CardTitle>
+                              {currentConversation.is_group && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 shrink-0"
+                                  onClick={() => {
+                                    setEditedName(currentConversation.name || "")
+                                    setIsEditingName(true)
+                                  }}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <CardDescription className="flex items-center gap-1">
+                              {!currentConversation.is_group && (
+                                <>
+                                  <Circle
+                                    className={cn(
+                                      "h-2 w-2 fill-current",
+                                      isUserOnline(
+                                        currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id ||
+                                          "",
+                                      )
+                                        ? "text-green-500"
+                                        : "text-muted-foreground",
+                                    )}
+                                  />
+                                  {isUserOnline(
                                     currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "",
                                   )
-                                    ? "text-green-500"
-                                    : "text-muted-foreground",
-                                )}
-                              />
-                              {isUserOnline(
-                                currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "",
-                              )
-                                ? "En línea"
-                                : "Desconectado"}
-                            </>
-                          )}
-                          {currentConversation.is_group && (
-                            <span>{currentConversation.participants.length} participantes</span>
-                          )}
-                        </CardDescription>
+                                    ? "En línea"
+                                    : "Desconectado"}
+                                </>
+                              )}
+                              {currentConversation.is_group && (
+                                <span>{currentConversation.participants.length} participantes</span>
+                              )}
+                            </CardDescription>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => setShowInfoDialog(true)}>
@@ -517,7 +664,7 @@ export default function ChatPage() {
                               )}
                               <div className={cn("flex items-end gap-2", isOwn ? "justify-end" : "justify-start")}>
                                 {!isOwn && (
-                                  <div className="w-8">
+                                  <div className="w-8 shrink-0">
                                     {showAvatar && (
                                       <Avatar className="h-8 w-8">
                                         <AvatarImage src={message.sender?.avatar_url || undefined} />
@@ -533,7 +680,7 @@ export default function ChatPage() {
                                     "max-w-[60%] px-4 py-2 rounded-2xl shadow-sm",
                                     isOwn
                                       ? "bg-primary text-primary-foreground rounded-br-md"
-                                      : "bg-muted rounded-bl-md",
+                                      : "bg-muted text-foreground rounded-bl-md",
                                   )}
                                 >
                                   {!isOwn && currentConversation.is_group && showAvatar && (
@@ -543,29 +690,65 @@ export default function ChatPage() {
                                   )}
                                   {message.message_type === "image" && message.file_url ? (
                                     <div className="space-y-2">
-                                      <img
-                                        src={message.file_url || "/placeholder.svg"}
-                                        alt={message.file_name || "Imagen"}
-                                        className="rounded-lg max-w-full max-h-96 object-cover"
-                                      />
+                                      <div className="relative group">
+                                        <img
+                                          src={message.file_url || "/placeholder.svg"}
+                                          alt={message.file_name || "Imagen"}
+                                          className="rounded-lg max-w-full max-h-96 object-cover cursor-pointer"
+                                          onClick={() =>
+                                            handleImageClick(message.file_url!, message.file_name || "imagen.jpg")
+                                          }
+                                        />
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="h-8 w-8 rounded-full shadow-lg"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleImageClick(message.file_url!, message.file_name || "imagen.jpg")
+                                            }}
+                                          >
+                                            <ZoomIn className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="h-8 w-8 rounded-full shadow-lg"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleFileDownload(message.file_url!, message.file_name || "imagen.jpg")
+                                            }}
+                                          >
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
                                       {message.content && message.content !== message.file_name && (
                                         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                                       )}
                                     </div>
                                   ) : message.message_type === "file" && message.file_url ? (
                                     <div className="space-y-2">
-                                      <a
-                                        href={message.file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <div
                                         className={cn(
-                                          "flex items-center gap-2 p-2 rounded border",
+                                          "flex items-center gap-2 p-2 rounded border group",
                                           isOwn ? "border-primary-foreground/20" : "border-border",
                                         )}
                                       >
                                         <Paperclip className="h-4 w-4 shrink-0" />
-                                        <span className="text-sm font-medium truncate">{message.file_name}</span>
-                                      </a>
+                                        <span className="text-sm font-medium truncate flex-1">{message.file_name}</span>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 shrink-0"
+                                          onClick={() =>
+                                            handleFileDownload(message.file_url!, message.file_name || "archivo")
+                                          }
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
                                       {message.content && message.content !== message.file_name && (
                                         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                                       )}
@@ -674,8 +857,125 @@ export default function ChatPage() {
               </CardContent>
             )}
           </Card>
+
+          <Card className="w-72 shrink-0 flex flex-col">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Usuarios disponibles</CardTitle>
+              <CardDescription className="text-xs">Haz clic para iniciar chat</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                {/* Online Users */}
+                {onlineUsersList.length > 0 && (
+                  <div className="px-3 py-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase">
+                        En línea ({onlineUsersList.length})
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {onlineUsersList.map((u) => (
+                        <button
+                          key={u.user_id}
+                          onClick={() => handleStartConversationFromSidebar(u.user_id)}
+                          className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div className="relative">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={u.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px] bg-primary/10">
+                                {getInitials(u.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{u.full_name}</p>
+                            {u.company_code && (
+                              <p className="text-xs text-muted-foreground truncate">{u.company_code}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Offline Users */}
+                {offlineUsersList.length > 0 && (
+                  <div className="px-3 py-2">
+                    <div className="flex items-center gap-2 mb-2 mt-3">
+                      <Circle className="h-2 w-2 fill-muted-foreground text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase">
+                        Desconectados ({offlineUsersList.length})
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {offlineUsersList.map((u) => (
+                        <button
+                          key={u.user_id}
+                          onClick={() => handleStartConversationFromSidebar(u.user_id)}
+                          className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <Avatar className="h-8 w-8 opacity-70">
+                            <AvatarImage src={u.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px] bg-muted">{getInitials(u.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate opacity-70">{u.full_name}</p>
+                            {u.company_code && (
+                              <p className="text-xs text-muted-foreground truncate opacity-70">{u.company_code}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {sidebarUsers.length === 0 && (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <Users className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No hay usuarios disponibles</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
+        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent shadow-none">
+          <DialogTitle className="sr-only">Vista previa de imagen</DialogTitle>
+          <DialogDescription className="sr-only">Vista ampliada de la imagen {selectedImage?.name}</DialogDescription>
+          <div className="relative">
+            {selectedImage && (
+              <>
+                <img
+                  src={selectedImage.url || "/placeholder.svg"}
+                  alt={selectedImage.name}
+                  className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                />
+                <div className="absolute top-4 right-4">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="h-10 w-10 rounded-full shadow-lg"
+                    onClick={() => handleFileDownload(selectedImage.url, selectedImage.name)}
+                  >
+                    <Download className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="absolute bottom-4 left-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg p-3">
+                  <p className="text-sm font-medium truncate">{selectedImage.name}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog: Nueva conversación */}
       <Dialog open={showNewChatDialog} onOpenChange={setShowNewChatDialog}>

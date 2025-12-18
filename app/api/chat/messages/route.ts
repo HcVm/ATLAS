@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       .from("chat_messages")
       .select("*")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .range(offset, offset + limit - 1)
 
     if (msgError) {
@@ -68,12 +68,10 @@ export async function GET(request: NextRequest) {
 
     const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
-    const processedMessages = (messages || [])
-      .map((msg) => ({
-        ...msg,
-        sender: profilesMap.get(msg.sender_id) || null,
-      }))
-      .reverse()
+    const processedMessages = (messages || []).map((msg) => ({
+      ...msg,
+      sender: profilesMap.get(msg.sender_id) || null,
+    }))
 
     console.log("[v0] Loaded", processedMessages.length, "messages for conversation", conversationId)
 

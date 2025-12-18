@@ -72,6 +72,8 @@ interface ChatContextType {
   markAsRead: (conversationId: string) => Promise<void>
   refreshConversations: () => Promise<void>
   searchUsers: (query: string) => Promise<ChatParticipant[]>
+  updateConversationName: (conversationId: string, name: string) => Promise<void>
+  getAllUsers: () => Promise<ChatParticipant[]>
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -141,6 +143,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
 
       try {
+        if (offset === 0 && messageCache.has(conversationId)) {
+          const cachedMessages = messageCache.get(conversationId)!
+          setMessages(cachedMessages)
+        }
+
         const response = await fetch(`/api/chat/messages?conversation_id=${conversationId}&offset=${offset}&limit=50`)
 
         if (!response.ok) {
@@ -149,15 +156,46 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const { messages: data } = await response.json()
 
-        const processedMessages = (data || []).reverse()
+        const processedMessages = data || []
 
         if (offset === 0) {
           setMessages(processedMessages)
+          messageCache.set(conversationId, processedMessages)
         } else {
-          setMessages((prev) => [...processedMessages, ...prev])
+          setMessages((prev) => [...prev, ...processedMessages])
+          messageCache.set(conversationId, [...processedMessages, ...(messageCache.get(conversationId) || [])])
         }
       } catch (error) {
         console.error("Error loading messages:", error)
+      }
+    },
+    [user],
+  )
+
+  const markAsRead = useCallback(
+    async (conversationId: string) => {
+      if (!user) return
+
+      try {
+        const response = await fetch("/api/chat/conversations/mark-read", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to mark as read")
+        }
+
+        setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
+        setUnreadTotal((prev) => {
+          const conv = conversationsRef.current.find((c) => c.id === conversationId)
+          return Math.max(0, prev - (conv?.unread_count || 0))
+        })
+      } catch (error) {
+        console.error("Error marking as read:", error)
       }
     },
     [user],
@@ -173,7 +211,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setMessages([])
       }
     },
-    [loadMessages],
+    [loadMessages, markAsRead],
   )
 
   const sendMessage = useCallback(
@@ -203,7 +241,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           fileUrl = uploadData.url
           fileName = uploadData.name
 
-          // Detectar si es imagen
           if (file.type.startsWith("image/")) {
             messageType = "image"
           } else {
@@ -306,35 +343,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     await loadMessages(currentConversation.id, messages.length)
   }, [currentConversation, messages.length, loadMessages])
 
-  const markAsRead = useCallback(
-    async (conversationId: string) => {
-      if (!user) return
-
-      try {
-        const response = await fetch("/api/chat/conversations/mark-read", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ conversation_id: conversationId }),
-        })
-
-        if (!response.ok) {
-          throw new Error("Failed to mark as read")
-        }
-
-        setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
-        setUnreadTotal((prev) => {
-          const conv = conversationsRef.current.find((c) => c.id === conversationId)
-          return Math.max(0, prev - (conv?.unread_count || 0))
-        })
-      } catch (error) {
-        console.error("Error marking as read:", error)
-      }
-    },
-    [user],
-  )
-
   const searchUsers = useCallback(
     async (query: string): Promise<ChatParticipant[]> => {
       if (!user || !query.trim()) return []
@@ -384,6 +392,63 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     },
     [user],
   )
+
+  const updateConversationName = useCallback(
+    async (conversationId: string, name: string) => {
+      if (!user) return
+
+      try {
+        const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to update conversation name")
+        }
+
+        setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, name } : c)))
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation((prev) => (prev ? { ...prev, name } : null))
+        }
+      } catch (error) {
+        console.error("Error updating conversation name:", error)
+        throw error
+      }
+    },
+    [user, currentConversation],
+  )
+
+  const getAllUsers = useCallback(async (): Promise<ChatParticipant[]> => {
+    if (!user) return []
+
+    try {
+      const response = await fetch("/api/chat/users/all")
+
+      if (!response.ok) {
+        throw new Error("Failed to load users")
+      }
+
+      const { users } = await response.json()
+
+      return (users || []).map((u: any) => ({
+        user_id: u.id,
+        full_name: u.full_name,
+        avatar_url: u.avatar_url,
+        email: u.email,
+        company_id: u.company_id,
+        company_name: u.companies?.name,
+        company_code: u.companies?.code,
+        company_color: u.companies?.color,
+      }))
+    } catch (error) {
+      console.error("Error loading all users:", error)
+      return []
+    }
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -439,6 +504,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
           if (currentConversationRef.current?.id === newMessage.conversation_id) {
             setMessages((prev) => [...prev, messageWithSender])
+            messageCache.set(newMessage.conversation_id, [
+              ...(messageCache.get(newMessage.conversation_id) || []),
+              messageWithSender,
+            ])
             if (isChatOpenRef.current) {
               await markAsRead(newMessage.conversation_id)
             }
@@ -533,7 +602,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     markAsRead,
     refreshConversations: loadConversations,
     searchUsers,
+    updateConversationName,
+    getAllUsers,
   }
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
 }
+
+const messageCache = new Map<string, ChatMessage[]>()
