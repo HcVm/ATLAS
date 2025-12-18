@@ -32,14 +32,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Obtener conversaciones donde participa el usuario
     const { data: participations, error: partError } = await supabase
       .from("chat_participants")
       .select("conversation_id, last_read_at")
       .eq("user_id", user.id)
       .eq("is_active", true)
 
-    if (partError) throw partError
+    if (partError) {
+      console.error("[v0] Error fetching participations:", partError)
+      throw partError
+    }
 
     if (!participations || participations.length === 0) {
       return NextResponse.json({ conversations: [] })
@@ -48,29 +50,34 @@ export async function GET(request: NextRequest) {
     const conversationIds = participations.map((p) => p.conversation_id)
     const lastReadMap = new Map(participations.map((p) => [p.conversation_id, p.last_read_at]))
 
-    // Obtener detalles de conversaciones
     const { data: conversations, error: convError } = await supabase
       .from("chat_conversations")
-      .select(`
-        *,
-        chat_participants (
-          user_id,
-          profiles (
-            id,
-            full_name,
-            avatar_url,
-            email
-          )
-        )
-      `)
+      .select("*")
       .in("id", conversationIds)
       .order("last_message_at", { ascending: false })
 
-    if (convError) throw convError
+    if (convError) {
+      console.error("[v0] Error fetching conversations:", convError)
+      throw convError
+    }
 
-    // Procesar y agregar conteo de no leídos
     const processedConversations = await Promise.all(
       (conversations || []).map(async (conv) => {
+        // Obtener participantes de esta conversación
+        const { data: participants } = await supabase
+          .from("chat_participants")
+          .select("user_id")
+          .eq("conversation_id", conv.id)
+          .eq("is_active", true)
+
+        const participantIds = participants?.map((p) => p.user_id) || []
+
+        // Obtener perfiles de participantes
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, email")
+          .in("id", participantIds)
+
         const lastReadAt = lastReadMap.get(conv.id) || conv.created_at
 
         // Contar mensajes no leídos
@@ -84,31 +91,44 @@ export async function GET(request: NextRequest) {
         // Obtener último mensaje
         const { data: lastMessage } = await supabase
           .from("chat_messages")
-          .select("*, profiles:sender_id(id, full_name, avatar_url)")
+          .select("*")
           .eq("conversation_id", conv.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
+
+        let lastMessageWithSender = null
+        if (lastMessage) {
+          const { data: senderProfile } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .eq("id", lastMessage.sender_id)
+            .single()
+
+          lastMessageWithSender = {
+            ...lastMessage,
+            sender: senderProfile,
+          }
+        }
 
         return {
           ...conv,
-          participants: conv.chat_participants
-            ?.filter((p: any) => p.profiles)
-            .map((p: any) => ({
-              user_id: p.profiles.id,
-              full_name: p.profiles.full_name,
-              avatar_url: p.profiles.avatar_url,
-              email: p.profiles.email,
-            })),
+          participants:
+            profiles?.map((p) => ({
+              user_id: p.id,
+              full_name: p.full_name,
+              avatar_url: p.avatar_url,
+              email: p.email,
+            })) || [],
           unread_count: unreadCount || 0,
-          last_message: lastMessage ? { ...lastMessage, sender: lastMessage.profiles } : null,
+          last_message: lastMessageWithSender,
         }
       }),
     )
 
     return NextResponse.json({ conversations: processedConversations })
   } catch (error: any) {
-    console.error("Error fetching conversations:", error)
+    console.error("[v0] Error in GET conversations:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -130,6 +150,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { participant_ids, name } = body
 
+    console.log("[v0] Creating conversation with participants:", participant_ids)
+
     if (!participant_ids || !Array.isArray(participant_ids) || participant_ids.length === 0) {
       return NextResponse.json({ error: "Se requiere al menos un participante" }, { status: 400 })
     }
@@ -137,43 +159,48 @@ export async function POST(request: NextRequest) {
     // Obtener el perfil del usuario para company_id
     const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single()
 
-    // Para chat 1:1, verificar si ya existe
     if (participant_ids.length === 1) {
-      const { data: existingParticipations } = await supabase
+      const otherUserId = participant_ids[0]
+
+      // Buscar conversaciones del usuario actual
+      const { data: myParticipations } = await supabase
         .from("chat_participants")
         .select("conversation_id")
         .eq("user_id", user.id)
         .eq("is_active", true)
 
-      if (existingParticipations) {
-        for (const part of existingParticipations) {
-          const { data: convParticipants } = await supabase
-            .from("chat_participants")
-            .select("user_id")
-            .eq("conversation_id", part.conversation_id)
-            .eq("is_active", true)
+      if (myParticipations && myParticipations.length > 0) {
+        const myConversationIds = myParticipations.map((p) => p.conversation_id)
 
-          const { data: convData } = await supabase
-            .from("chat_conversations")
-            .select("is_group")
-            .eq("id", part.conversation_id)
-            .single()
+        // Verificar cuales de esas conversaciones son 1:1
+        const { data: conversations } = await supabase
+          .from("chat_conversations")
+          .select("id, is_group")
+          .in("id", myConversationIds)
+          .eq("is_group", false)
 
-          if (
-            convData &&
-            !convData.is_group &&
-            convParticipants?.length === 2 &&
-            convParticipants.some((p) => p.user_id === participant_ids[0])
-          ) {
-            // Ya existe una conversación 1:1
-            return NextResponse.json({
-              conversation: { id: part.conversation_id },
-              existing: true,
-            })
+        if (conversations) {
+          // Para cada conversación 1:1, verificar si el otro participante es el usuario objetivo
+          for (const conv of conversations) {
+            const { data: participants } = await supabase
+              .from("chat_participants")
+              .select("user_id")
+              .eq("conversation_id", conv.id)
+              .eq("is_active", true)
+
+            if (participants?.length === 2 && participants.some((p) => p.user_id === otherUserId)) {
+              console.log("[v0] Found existing 1:1 conversation:", conv.id)
+              return NextResponse.json({
+                conversation: { id: conv.id },
+                existing: true,
+              })
+            }
           }
         }
       }
     }
+
+    console.log("[v0] Creating new conversation")
 
     // Crear nueva conversación
     const { data: conversation, error: convError } = await supabase
@@ -187,9 +214,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (convError) throw convError
+    if (convError) {
+      console.error("[v0] Error creating conversation:", convError)
+      throw convError
+    }
 
-    // Agregar participantes
+    console.log("[v0] Conversation created:", conversation.id)
+
+    // Agregar participantes (sin depender de RLS)
     const allParticipants = [...new Set([user.id, ...participant_ids])]
     const { error: partError } = await supabase.from("chat_participants").insert(
       allParticipants.map((userId) => ({
@@ -198,11 +230,16 @@ export async function POST(request: NextRequest) {
       })),
     )
 
-    if (partError) throw partError
+    if (partError) {
+      console.error("[v0] Error adding participants:", partError)
+      throw partError
+    }
+
+    console.log("[v0] Participants added successfully")
 
     return NextResponse.json({ conversation, existing: false })
   } catch (error: any) {
-    console.error("Error creating conversation:", error)
+    console.error("[v0] Error in POST conversation:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
