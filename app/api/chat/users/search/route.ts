@@ -1,10 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase-admin"
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+async function getSupabaseServerClient() {
+  const cookieStore = await cookies()
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get: (name) => cookieStore.get(name)?.value,
+      set: () => {},
+      remove: () => {},
+    },
+  })
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await getSupabaseServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -41,13 +57,14 @@ export async function GET(request: NextRequest) {
     const { data, error } = await queryBuilder
 
     if (error) {
-      console.error("[API] Error searching users:", error)
+      console.error("[v0] Error searching users:", error)
       throw error
     }
 
+    console.log("[v0] Found users:", data?.length || 0)
     return NextResponse.json({ users: data || [] })
   } catch (error: any) {
-    console.error("[API] Search users error:", error)
+    console.error("[v0] Search users error:", error)
     return NextResponse.json({ error: error.message || "Error al buscar usuarios" }, { status: 500 })
   }
 }
