@@ -92,6 +92,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const presenceChannelRef = useRef<RealtimeChannel | null>(null)
+  const currentConversationRef = useRef<ChatConversation | null>(null)
+  const isChatOpenRef = useRef(false)
+  const conversationsRef = useRef<ChatConversation[]>([])
+
+  useEffect(() => {
+    currentConversationRef.current = currentConversation
+  }, [currentConversation])
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen
+  }, [isChatOpen])
+
+  useEffect(() => {
+    conversationsRef.current = conversations
+  }, [conversations])
 
   const loadConversations = useCallback(async () => {
     if (!user) return
@@ -117,7 +132,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // Cargar mensajes de una conversación
   const loadMessages = useCallback(
     async (conversationId: string, offset = 0) => {
       if (!user) return
@@ -145,7 +159,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
-  // Seleccionar conversación
   const selectConversation = useCallback(
     async (conversation: ChatConversation | null) => {
       setCurrentConversation(conversation)
@@ -159,7 +172,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [loadMessages],
   )
 
-  // Enviar mensaje
   const sendMessage = useCallback(
     async (content: string, messageType = "text") => {
       if (!user || !currentConversation || !content.trim()) return
@@ -181,27 +193,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user, currentConversation],
   )
 
-  // Crear conversación
   const createConversation = useCallback(
     async (participantIds: string[], name?: string): Promise<ChatConversation | null> => {
       if (!user) return null
 
       try {
-        console.log("[v0] Creating conversation via API with participants:", participantIds)
-
-        // Verificar si ya existe una conversación 1:1
         if (participantIds.length === 1) {
           const existingConv = conversations.find(
             (c) =>
               !c.is_group && c.participants.length === 2 && c.participants.some((p) => p.user_id === participantIds[0]),
           )
           if (existingConv) {
-            console.log("[v0] Found existing conversation locally:", existingConv.id)
             return existingConv
           }
         }
 
-        // Usar el API endpoint para crear la conversación (bypass RLS con admin client)
         const response = await fetch("/api/chat/conversations", {
           method: "POST",
           headers: {
@@ -215,48 +221,41 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         if (!response.ok) {
           const errorData = await response.json()
-          console.error("[v0] API error:", errorData)
+          console.error("API error:", errorData)
           throw new Error(errorData.error || "Error al crear conversación")
         }
 
         const { conversation, existing } = await response.json()
-        console.log("[v0] Conversation created/found:", conversation.id, "existing:", existing)
 
-        // Recargar conversaciones para obtener la nueva
         await loadConversations()
 
-        // Encontrar y retornar la conversación creada/encontrada
         const newConv = conversations.find((c) => c.id === conversation.id)
         if (newConv) {
           return newConv
         }
 
-        // Si no está en la lista local aún, recargar y buscar nuevamente
         const { conversations: freshConversations } = await fetch("/api/chat/conversations").then((r) => r.json())
         const foundConv = freshConversations.find((c: any) => c.id === conversation.id)
 
         if (foundConv) {
-          // Agregar a la lista local
           setConversations((prev) => [foundConv, ...prev])
           return foundConv
         }
 
         return null
       } catch (error) {
-        console.error("[v0] Error creating conversation:", error)
+        console.error("Error creating conversation:", error)
         return null
       }
     },
-    [user, conversations, loadConversations],
+    [user, conversations],
   )
 
-  // Cargar más mensajes
   const loadMoreMessages = useCallback(async () => {
     if (!currentConversation) return
     await loadMessages(currentConversation.id, messages.length)
   }, [currentConversation, messages.length, loadMessages])
 
-  // Marcar como leído
   const markAsRead = useCallback(
     async (conversationId: string) => {
       if (!user) return
@@ -274,17 +273,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           throw new Error("Failed to mark as read")
         }
 
-        // Actualizar conteo local
         setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)))
         setUnreadTotal((prev) => {
-          const conv = conversations.find((c) => c.id === conversationId)
+          const conv = conversationsRef.current.find((c) => c.id === conversationId)
           return Math.max(0, prev - (conv?.unread_count || 0))
         })
       } catch (error) {
         console.error("Error marking as read:", error)
       }
     },
-    [user, conversations],
+    [user],
   )
 
   const searchUsers = useCallback(
@@ -333,11 +331,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
-  // Configurar suscripciones en tiempo real
   useEffect(() => {
     if (!user) return
 
-    // Suscripción a chat_participants para detectar nuevas conversaciones
     const participantsChannel = supabase
       .channel(`chat_participants_${user.id}`)
       .on(
@@ -349,8 +345,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           filter: `user_id=eq.${user.id}`,
         },
         async (payload) => {
-          console.log("[v0] New participant record detected, reloading conversations")
-          // Nueva conversación donde el usuario fue agregado
           await loadConversations()
         },
       )
@@ -368,11 +362,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         async (payload) => {
           const newMessage = payload.new as ChatMessage
 
-          // Verificar si el usuario es participante de esta conversación
-          const isParticipant = conversations.some((c) => c.id === newMessage.conversation_id)
+          const isParticipant = conversationsRef.current.some((c) => c.id === newMessage.conversation_id)
           if (!isParticipant) {
-            console.log("[v0] Message from unknown conversation, reloading...")
-            // Puede ser una nueva conversación, recargar
             await loadConversations()
             return
           }
@@ -392,15 +383,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               : undefined,
           }
 
-          // Si es la conversación actual, agregar mensaje
-          if (currentConversation?.id === newMessage.conversation_id) {
+          if (currentConversationRef.current?.id === newMessage.conversation_id) {
             setMessages((prev) => [...prev, messageWithSender])
-            // Marcar como leído si el chat está abierto
-            if (isChatOpen) {
+            if (isChatOpenRef.current) {
               await markAsRead(newMessage.conversation_id)
             }
           } else {
-            // Incrementar contador de no leídos
             setConversations((prev) =>
               prev.map((c) =>
                 c.id === newMessage.conversation_id
@@ -411,7 +399,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setUnreadTotal((prev) => prev + 1)
           }
 
-          // Actualizar last_message en la conversación
           setConversations((prev) =>
             prev
               .map((c) =>
@@ -425,7 +412,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       )
       .subscribe()
 
-    // Suscripción a presencia
     presenceChannelRef.current = supabase
       .channel("online_users")
       .on("presence", { event: "sync" }, () => {
@@ -454,22 +440,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
-    // Cargar conversaciones iniciales
     loadConversations()
 
-    // Actualizar presencia como online
     updatePresence(true)
 
-    // Limpiar al desmontar
     return () => {
       participantsChannel?.unsubscribe()
       channelRef.current?.unsubscribe()
       presenceChannelRef.current?.unsubscribe()
       updatePresence(false)
     }
-  }, [user, loadConversations, currentConversation, isChatOpen, markAsRead, updatePresence])
+  }, [user, loadConversations, updatePresence, markAsRead])
 
-  // Actualizar presencia cuando la ventana pierde/gana foco
   useEffect(() => {
     const handleVisibilityChange = () => {
       updatePresence(!document.hidden)

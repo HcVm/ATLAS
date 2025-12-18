@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
     error: authError,
   } = await supabase.auth.getUser()
 
+  console.log("[v0] GET conversations - user:", user?.id, "authError:", authError)
+
   if (authError || !user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
@@ -39,12 +41,15 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
       .eq("is_active", true)
 
+    console.log("[v0] Found participations:", participations?.length || 0, "error:", partError)
+
     if (partError) {
       console.error("[v0] Error fetching participations:", partError)
       throw partError
     }
 
     if (!participations || participations.length === 0) {
+      console.log("[v0] No participations found, returning empty array")
       return NextResponse.json({ conversations: [] })
     }
 
