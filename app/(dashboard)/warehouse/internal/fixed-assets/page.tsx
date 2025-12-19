@@ -31,11 +31,8 @@ import {
   FileSpreadsheet,
   TrendingDown,
   DollarSign,
-  Calendar,
 } from "lucide-react"
 import Link from "next/link"
-import { formatInTimeZone } from 'date-fns-tz';
-import { es } from "date-fns/locale"
 
 interface FixedAssetAccount {
   id: string
@@ -301,9 +298,9 @@ export default function FixedAssetsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cuentas</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Cuentas</CardTitle>
+            <CardDescription>Categorías contables</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{accounts.length}</div>
@@ -437,7 +434,20 @@ export default function FixedAssetsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {formatInTimeZone(new Date(asset.acquisition_date), 'America/Lima', 'dd/MM/yyyy', { locale: es })}
+                        {(() => {
+                          const dateStr = asset.acquisition_date
+                          const [year, month, day] = dateStr.split("T")[0].split("-")
+                          const localDate = new Date(
+                            Number.parseInt(year),
+                            Number.parseInt(month) - 1,
+                            Number.parseInt(day),
+                          )
+                          return localDate.toLocaleDateString("es-PE", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        })()}
                       </TableCell>
                       <TableCell className="text-sm">{asset.invoice_number || "-"}</TableCell>
                       <TableCell className="text-right font-mono">

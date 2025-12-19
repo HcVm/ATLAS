@@ -17,10 +17,10 @@ async function getSupabaseServerClient() {
   })
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await getSupabaseServerClient()
-    const { id } = await params
+    const { id } = params
 
     const {
       data: { user },
@@ -72,10 +72,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await getSupabaseServerClient()
-    const { id } = await params
+    const { id } = params
 
     const {
       data: { user },
@@ -87,6 +87,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json()
+
+    if (body.acquisition_date && !body.acquisition_date.includes("T")) {
+      body.acquisition_date = `${body.acquisition_date}T00:00:00-05:00`
+    }
 
     const { data: updatedAsset, error: updateError } = await supabase
       .from("fixed_assets")
@@ -110,10 +114,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await getSupabaseServerClient()
-    const { id } = await params
+    const { id } = params
 
     const {
       data: { user },

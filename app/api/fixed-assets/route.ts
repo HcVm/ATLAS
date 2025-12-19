@@ -151,6 +151,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
     }
 
+    const acquisitionDateInPeru = `${acquisition_date}T00:00:00-05:00`
+
     const { data: accountData, error: accountError } = await supabase
       .from("fixed_asset_accounts")
       .select("code, depreciation_rate, depreciation_calculation_method")
@@ -201,7 +203,7 @@ export async function POST(request: NextRequest) {
         await supabase.from("internal_product_price_history").insert({
           product_id: use_existing_product_id,
           cost_price: unitCost,
-          effective_date: acquisition_date,
+          effective_date: acquisitionDateInPeru,
           source_type: "fixed_asset_purchase",
           source_id: null, // Will be updated with asset ID after creation
           quantity: assetQuantity,
@@ -252,7 +254,7 @@ export async function POST(request: NextRequest) {
             description,
             code: assetCode,
             account_id,
-            acquisition_date,
+            acquisition_date: acquisitionDateInPeru,
             invoice_number,
             supplier_ruc,
             supplier_name,
@@ -273,7 +275,6 @@ export async function POST(request: NextRequest) {
             quantity: assetQuantity,
           })
           .select()
-          .single()
 
         if (insertError) {
           console.error("Error creating fixed asset:", insertError)
@@ -347,7 +348,7 @@ export async function POST(request: NextRequest) {
           reason: "compra_activo_fijo",
           notes: movementNotes,
           supplier: supplier_name,
-          movement_date: acquisition_date,
+          movement_date: acquisitionDateInPeru,
           company_id,
           serial_id: null,
           created_by: user.id,
@@ -450,7 +451,7 @@ export async function POST(request: NextRequest) {
         await supabase.from("internal_product_price_history").insert({
           product_id: internalProductId,
           cost_price: unitCost,
-          effective_date: acquisition_date,
+          effective_date: acquisitionDateInPeru,
           source_type: "fixed_asset_purchase",
           source_id: null, // Will be updated with asset ID
           quantity: assetQuantity,
@@ -468,7 +469,7 @@ export async function POST(request: NextRequest) {
             description,
             code: assetCode,
             account_id,
-            acquisition_date,
+            acquisition_date: acquisitionDateInPeru,
             invoice_number,
             supplier_ruc,
             supplier_name,
@@ -489,7 +490,6 @@ export async function POST(request: NextRequest) {
             quantity: assetQuantity,
           })
           .select()
-          .single()
 
         if (insertError) {
           if (internalProductId) {
@@ -561,7 +561,7 @@ export async function POST(request: NextRequest) {
           reason: "compra_activo_fijo",
           notes: movementNotes,
           supplier: supplier_name,
-          movement_date: acquisition_date,
+          movement_date: acquisitionDateInPeru,
           company_id,
           serial_id: null,
           created_by: user.id,
@@ -585,7 +585,7 @@ export async function POST(request: NextRequest) {
         description,
         code: assetCode,
         account_id,
-        acquisition_date,
+        acquisition_date: acquisitionDateInPeru,
         invoice_number,
         supplier_ruc,
         supplier_name,
@@ -605,7 +605,6 @@ export async function POST(request: NextRequest) {
         quantity: assetQuantity,
       })
       .select()
-      .single()
 
     if (insertError) {
       console.error("Error creating fixed asset:", insertError)
