@@ -239,177 +239,246 @@ export default function InternalProductDetailPage() {
   }
 
   const handlePrintSticker = async (serial: SerializedProduct) => {
-  try {
-    const { data: companyData } = await supabase
-      .from("companies")
-      .select("name")
-      .eq("id", user?.company_id)
-      .single()
+    try {
+      const { data: companyData } = await supabase.from("companies").select("name").eq("id", user?.company_id).single()
 
-    const companyName = companyData?.name || "EMPRESA"
-    const currentYear = new Date().getFullYear()
+      const companyName = companyData?.name || "EMPRESA"
+      const currentYear = new Date().getFullYear()
 
-    // ← NUEVO: Resolver la ubicación usando la misma lógica que en resolveLocation
-    const resolvedLocation = resolveLocation(serial.current_location)
+      // ← NUEVO: Resolver la ubicación usando la misma lógica que en resolveLocation
+      const resolvedLocation = resolveLocation(serial.current_location)
 
-    let qrCodeUrl = ""
-    if (serial.qr_code_hash) {
-      const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
-      qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
-        errorCorrectionLevel: "H",
-        width: 300,
-        margin: 1,
-        color: {
-          dark: "#000000",
-          light: "#ffffff",
-        },
-      })
-    }
+      let qrCodeUrl = ""
+      if (serial.qr_code_hash) {
+        const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
+        qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
+          errorCorrectionLevel: "H",
+          width: 300,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#ffffff",
+          },
+        })
+      }
 
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Etiqueta - ${serial.serial_number}</title>
-            <meta charset="UTF-8">
-            <style>
-              @page {
-                size: 50mm 25mm;
-                margin: 0;
-              }
-              * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background: white;
-              }
-              .sticker {
-                width: 50mm;
-                height: 25mm;
-                border: none;
-                background: white;
-                display: flex;
-                flex-direction: row;
-                box-sizing: border-box;
-                overflow: hidden;
-              }
-              .main-content {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                padding: 3mm 2mm;
-                min-width: 0;
-                overflow: hidden;
-              }
-              .header-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding-bottom: 1mm;
-                border-bottom: 0.5px solid #ccc;
-                margin-bottom: 1mm;
-              }
-              .company-text {
-                font-size: 5pt;
-                font-weight: 750;
-                color: #000;
-                line-height: 1;
-                text-transform: uppercase;
-                letter-spacing: 0.2px;
-              }
-              .atlas-badge {
-                font-size: 5pt;
-                font-weight: 800;
-                color: #fff;
-                background: #000;
-                padding: 0.5mm 1.5mm;
-                border-radius: 3px;
-                letter-spacing: 0.5px;
-              }
-              .serial {
-                font-weight: 700;
-                font-size: 7pt;
-                font-family: 'Courier New', monospace;
-                line-height: 1;
-                color: #000;
-                letter-spacing: -0.3px;
-                margin-bottom: 1mm;
-              }
-              .product-name {
-                font-weight: 700;
-                font-size: 6pt;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                color: #000;
-                margin-bottom: 0.8mm;
-              }
-              .info-grid {
-                display: flex;
-                flex-direction: column;
-                gap: 0.5mm;
-              }
-              .info-row {
-                display: flex;
-                gap: 1mm;
-                font-size: 7pt;
-                color: #000;
-                line-height: 1.2;
-              }
-              .info-label {
-                font-weight: 700;
-                flex-shrink: 0;
-              }
-              .info-value {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-              .qr-column {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-                width: 14mm;
-                background: #fff;
-                padding-right: 2mm;
-              }
-              .qr-column img {
-                width: 14mm;
-                height: 14mm;
-                display: block;
-                image-rendering: -webkit-optimize-contrast;
-                image-rendering: crisp-edges;
-                image-rendering: pixelated;
-              }
-              .qr-label {
-                font-size: 6pt;
-                text-align: center;
-                color: #444;
-                line-height: 1;
-                margin-top: 0.5mm;
-                font-weight: 600;
-              }
-              @media print {
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Etiqueta - ${serial.serial_number}</title>
+              <meta charset="UTF-8">
+              <style>
+                @page {
+                  size: 50mm 25mm;
+                  margin: 0;
+                }
+                * {
+                  box-sizing: border-box;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
                 body {
+                  font-family: Arial, sans-serif;
                   margin: 0;
                   padding: 0;
+                  background: white;
                 }
                 .sticker {
-                  border: none !important;
+                  width: 50mm;
+                  height: 25mm;
+                  border: none;
+                  background: white;
+                  display: flex;
+                  flex-direction: row;
+                  box-sizing: border-box;
+                  overflow: hidden;
                 }
-              }
-            </style>
-          </head>
-          <body>
+                .main-content {
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  padding: 3mm 2mm;
+                  min-width: 0;
+                  overflow: hidden;
+                }
+                .header-row {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding-bottom: 1mm;
+                  border-bottom: 0.5px solid #ccc;
+                  margin-bottom: 1mm;
+                }
+                .company-text {
+                  font-size: 5pt;
+                  font-weight: 750;
+                  color: #000;
+                  line-height: 1;
+                  text-transform: uppercase;
+                  letter-spacing: 0.2px;
+                }
+                .atlas-badge {
+                  font-size: 5pt;
+                  font-weight: 800;
+                  color: #fff;
+                  background: #000;
+                  padding: 0.5mm 1.5mm;
+                  border-radius: 3px;
+                  letter-spacing: 0.5px;
+                }
+                .serial {
+                  font-weight: 700;
+                  font-size: 7pt;
+                  font-family: 'Courier New', monospace;
+                  line-height: 1;
+                  color: #000;
+                  letter-spacing: -0.3px;
+                  margin-bottom: 1mm;
+                }
+                .product-name {
+                  font-weight: 700;
+                  font-size: 6pt;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  color: #000;
+                  margin-bottom: 0.8mm;
+                }
+                .info-grid {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0.5mm;
+                }
+                .info-row {
+                  display: flex;
+                  gap: 1mm;
+                  font-size: 7pt;
+                  color: #000;
+                  line-height: 1.2;
+                }
+                .info-label {
+                  font-weight: 700;
+                  flex-shrink: 0;
+                }
+                .info-value {
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                }
+                .qr-column {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  flex-shrink: 0;
+                  width: 14mm;
+                  background: #fff;
+                  padding-right: 2mm;
+                }
+                .qr-column img {
+                  width: 14mm;
+                  height: 14mm;
+                  display: block;
+                  image-rendering: -webkit-optimize-contrast;
+                  image-rendering: crisp-edges;
+                  image-rendering: pixelated;
+                }
+                .qr-label {
+                  font-size: 6pt;
+                  text-align: center;
+                  color: #444;
+                  line-height: 1;
+                  margin-top: 0.5mm;
+                  font-weight: 600;
+                }
+                @media print {
+                  body {
+                    margin: 0;
+                    padding: 0;
+                  }
+                  .sticker {
+                    border: none !important;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="sticker">
+                <div class="main-content">
+                  <div class="header-row">
+                    <span class="company-text">${companyName} INV ${currentYear}</span>
+                    <span class="atlas-badge">ATLAS</span>
+                  </div>
+                  <div class="serial">${serial.serial_number}</div>
+                  <div class="product-name">${product?.name || ""}</div>
+                  <div class="info-grid">
+                    <div class="info-row">
+                      <span class="info-label">Ubic:</span>
+                      <span class="info-value">${resolvedLocation}</span>  <!-- ← AQUÍ AHORA SALE EL NOMBRE -->
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Ref:</span>
+                      <span class="info-value">${product?.code || ""}</span>
+                    </div>
+                  </div>
+                </div>
+                ${
+                  qrCodeUrl
+                    ? `
+                <div class="qr-column">
+                  <img src="${qrCodeUrl}" alt="QR" />
+                  <div class="qr-label">Escanear</div>
+                </div>
+                `
+                    : ""
+                }
+              </div>
+            </body>
+          </html>
+        `)
+        printWindow.document.close()
+        setTimeout(() => {
+          printWindow.print()
+        }, 250)
+      }
+    } catch (error) {
+      console.error("Error generating sticker:", error)
+      toast.error("Error al generar la etiqueta")
+    }
+  }
+
+  const handlePrintAllStickers = async () => {
+    if (!product || serials.length === 0) return
+
+    try {
+      const { data: companyData } = await supabase.from("companies").select("name").eq("id", user?.company_id).single()
+      const companyName = companyData?.name || "EMPRESA"
+      const currentYear = new Date().getFullYear()
+
+      const inStockSerials = serials.filter((s) => s.status === "in_stock")
+      if (inStockSerials.length === 0) {
+        toast.error("No hay productos en stock para imprimir etiquetas")
+        return
+      }
+
+      const stickersHtml = await Promise.all(
+        inStockSerials.map(async (serial) => {
+          let qrCodeUrl = ""
+          if (serial.qr_code_hash) {
+            const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
+            qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
+              errorCorrectionLevel: "H",
+              width: 300,
+              margin: 1,
+            })
+          }
+
+          const resolvedLocation = resolveLocation(serial.current_location)
+
+          return `
             <div class="sticker">
               <div class="main-content">
                 <div class="header-row">
@@ -417,42 +486,57 @@ export default function InternalProductDetailPage() {
                   <span class="atlas-badge">ATLAS</span>
                 </div>
                 <div class="serial">${serial.serial_number}</div>
-                <div class="product-name">${product?.name || ""}</div>
+                <div class="product-name">${product.name}</div>
                 <div class="info-grid">
-                  <div class="info-row">
-                    <span class="info-label">Ubic:</span>
-                    <span class="info-value">${resolvedLocation}</span>  <!-- ← AQUÍ AHORA SALE EL NOMBRE -->
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Ref:</span>
-                    <span class="info-value">${product?.code || ""}</span>
-                  </div>
+                  <div class="info-row"><span class="info-label">Ubic:</span><span class="info-value">${resolvedLocation}</span></div>
+                  <div class="info-row"><span class="info-label">Ref:</span><span class="info-value">${product.code}</span></div>
                 </div>
               </div>
-              ${
-                qrCodeUrl
-                  ? `
-              <div class="qr-column">
-                <img src="${qrCodeUrl}" alt="QR" />
-                <div class="qr-label">Escanear</div>
-              </div>
-              `
-                  : ""
-              }
+              ${qrCodeUrl ? `<div class="qr-column"><img src="${qrCodeUrl}" alt="QR" /><div class="qr-label">Escanear</div></div>` : ""}
             </div>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
+          `
+        }),
+      )
+
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Etiquetas - ${product.name}</title>
+              <style>
+                @page { size: 50mm 25mm; margin: 0; }
+                body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+                .sticker { width: 50mm; height: 25mm; display: flex; flex-direction: row; padding: 0; overflow: hidden; page-break-after: always; }
+                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm; min-width: 0; }
+                .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
+                .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
+                .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
+                .serial { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
+                .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
+                .info-row { display: flex; gap: 1mm; font-size: 6pt; }
+                .info-label { font-weight: 700; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 14mm; padding-right: 2mm; }
+                .qr-column img { width: 13mm; height: 13mm; }
+                .qr-label { font-size: 5pt; text-align: center; margin-top: 0.5mm; font-weight: 600; }
+              </style>
+            </head>
+            <body>${stickersHtml.join("")}</body>
+          </html>
+        `)
+        printWindow.document.close()
+        setTimeout(() => {
+          printWindow.print()
+          printWindow.close()
+        }, 500)
+      }
+    } catch (error) {
+      console.error("Error printing stickers:", error)
+      toast.error("Error al generar las etiquetas")
     }
-  } catch (error) {
-    console.error("Error generating sticker:", error)
-    toast.error("Error al generar la etiqueta")
   }
-}
 
   if (loading) {
     return (
@@ -608,9 +692,15 @@ export default function InternalProductDetailPage() {
           {/* Serialized Units Table (if applicable) */}
           {product.is_serialized && (
             <Card>
-              <CardHeader>
-                <CardTitle>Unidades Serializadas</CardTitle>
-                <CardDescription>{serials.length} unidades registradas</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Unidades Serializadas</CardTitle>
+                  <CardDescription>{serials.length} unidades registradas</CardDescription>
+                </div>
+                <Button variant="outline" onClick={handlePrintAllStickers}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir Todos ({serials.filter((s) => s.status === "in_stock").length})
+                </Button>
               </CardHeader>
               <CardContent>
                 {serials.length === 0 ? (

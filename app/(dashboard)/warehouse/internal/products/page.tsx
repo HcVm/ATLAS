@@ -20,9 +20,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Package, AlertTriangle, Edit, Eye, MoreHorizontal, QrCode, Trash2 } from "lucide-react"
+import {
+  Plus,
+  Search,
+  Package,
+  AlertTriangle,
+  Edit,
+  Eye,
+  MoreHorizontal,
+  QrCode,
+  Trash2,
+  Printer,
+  CheckSquare,
+  Square,
+} from "lucide-react"
 import Link from "next/link"
 import { deleteInternalProduct } from "@/app/actions/internal-products"
+import QRCodeLib from "qrcode"
 
 interface Category {
   id: string
@@ -62,6 +76,8 @@ export default function InternalProductsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
+  const [isBulkPrinting, setIsBulkPrinting] = useState(false)
 
   const companyId = useMemo(() => {
     return user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -162,6 +178,130 @@ export default function InternalProductsPage() {
     }
   }
 
+  const handleBulkPrintStickers = async () => {
+    try {
+      setIsBulkPrinting(true)
+      const { data: companyData } = await supabase.from("companies").select("name").eq("id", companyId).single()
+      const companyName = companyData?.name || "EMPRESA"
+      const currentYear = new Date().getFullYear()
+
+      const { data: serials, error: serialsError } = await supabase
+        .from("internal_product_serials")
+        .select(`
+          id,
+          serial_number,
+          current_location,
+          qr_code_hash,
+          product_id,
+          internal_products (
+            name,
+            code
+          )
+        `)
+        .in("product_id", selectedProductIds)
+        .eq("status", "in_stock")
+        .eq("company_id", companyId)
+
+      if (serialsError) throw serialsError
+      if (!serials || serials.length === 0) {
+        toast.error("No se encontraron seriales en stock para los productos seleccionados")
+        return
+      }
+
+      const stickersHtml = await Promise.all(
+        serials.map(async (serial: any) => {
+          let qrCodeUrl = ""
+          if (serial.qr_code_hash) {
+            const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
+            qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
+              errorCorrectionLevel: "H",
+              width: 300,
+              margin: 1,
+            })
+          }
+
+          return `
+            <div class="sticker">
+              <div class="main-content">
+                <div class="header-row">
+                  <span class="company-text">${companyName} INV ${currentYear}</span>
+                  <span class="atlas-badge">ATLAS</span>
+                </div>
+                <div class="serial">${serial.serial_number}</div>
+                <div class="product-name">${serial.internal_products?.name || ""}</div>
+                <div class="info-grid">
+                  <div class="info-row">
+                    <span class="info-label">Ubic:</span>
+                    <span class="info-value">${serial.current_location || "N/A"}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Ref:</span>
+                    <span class="info-value">${serial.internal_products?.code || ""}</span>
+                  </div>
+                </div>
+              </div>
+              ${qrCodeUrl ? `<div class="qr-column"><img src="${qrCodeUrl}" alt="QR" /><div class="qr-label">Escanear</div></div>` : ""}
+            </div>
+          `
+        }),
+      )
+
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Etiquetas Masivas</title>
+              <style>
+                @page { size: 50mm 25mm; margin: 0; }
+                body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+                .sticker { width: 50mm; height: 25mm; display: flex; flex-direction: row; padding: 0; overflow: hidden; page-break-after: always; }
+                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm; min-width: 0; }
+                .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
+                .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
+                .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
+                .serial { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
+                .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
+                .info-row { display: flex; gap: 1mm; font-size: 6pt; }
+                .info-label { font-weight: 700; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 14mm; padding-right: 2mm; }
+                .qr-column img { width: 13mm; height: 13mm; }
+                .qr-label { font-size: 5pt; text-align: center; margin-top: 0.5mm; font-weight: 600; }
+              </style>
+            </head>
+            <body>${stickersHtml.join("")}</body>
+          </html>
+        `)
+        printWindow.document.close()
+        setTimeout(() => {
+          printWindow.print()
+          printWindow.close()
+        }, 500)
+      }
+    } catch (error) {
+      console.error("Error printing bulk stickers:", error)
+      toast.error("Error al imprimir etiquetas")
+    } finally {
+      setIsBulkPrinting(false)
+    }
+  }
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
+    )
+  }
+
+  const toggleAllSelection = () => {
+    if (selectedProductIds.length === filteredProducts.length) {
+      setSelectedProductIds([])
+    } else {
+      setSelectedProductIds(filteredProducts.map((p) => p.id))
+    }
+  }
+
   const stats = useMemo(() => {
     const totalValue = products.reduce((sum, p) => sum + p.current_stock * (p.cost_price ?? 0), 0)
     return {
@@ -204,12 +344,20 @@ export default function InternalProductsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Productos Internos</h1>
           <p className="text-muted-foreground">Gestiona los productos de uso interno de la empresa</p>
         </div>
-        <Button asChild>
-          <Link href="/warehouse/internal/products/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Producto
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          {selectedProductIds.length > 0 && (
+            <Button variant="outline" onClick={handleBulkPrintStickers} disabled={isBulkPrinting}>
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir Seleccionados ({selectedProductIds.length})
+            </Button>
+          )}
+          <Button asChild>
+            <Link href="/warehouse/internal/products/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Producto
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -308,17 +456,39 @@ export default function InternalProductsPage() {
 
       {/* Products Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Productos</CardTitle>
-          <CardDescription>
-            {filteredProducts.length} de {products.length} modelos de productos
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Lista de Productos</CardTitle>
+            <CardDescription>
+              {filteredProducts.length} de {products.length} modelos de productos
+            </CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" onClick={toggleAllSelection}>
+            {selectedProductIds.length === filteredProducts.length ? (
+              <CheckSquare className="h-4 w-4 mr-2" />
+            ) : (
+              <Square className="h-4 w-4 mr-2" />
+            )}
+            Seleccionar Todos
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    {filteredProducts.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={toggleAllSelection}>
+                        {selectedProductIds.length === filteredProducts.length ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        Seleccionar Todos
+                      </Button>
+                    )}
+                  </TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Categoría</TableHead>
@@ -344,6 +514,20 @@ export default function InternalProductsPage() {
                 ) : (
                   filteredProducts.map((product) => (
                     <TableRow key={product.id}>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleProductSelection(product.id)}
+                        >
+                          {selectedProductIds.includes(product.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </TableCell>
                       <TableCell className="font-mono">{product.code}</TableCell>
                       <TableCell>
                         <div>
