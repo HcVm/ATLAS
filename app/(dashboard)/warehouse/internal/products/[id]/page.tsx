@@ -87,6 +87,7 @@ interface SerializedProduct {
   updated_at: string
   product_id: string
   qr_code_hash: string | null
+  is_serialized: boolean // Added this to match Product interface if needed for specific checks
   condition?: "nuevo" | "usado"
 }
 
@@ -115,6 +116,75 @@ export default function InternalProductDetailPage() {
   const [qrTitle, setQrTitle] = useState("")
   const printRef = useRef<HTMLDivElement>(null)
   const [departments, setDepartments] = useState<Department[]>([])
+
+  // Diseñado para stickers de 50mm x 25mm con QR y badge de "A GRANEL".
+  const handlePrintBulkSticker = async () => {
+    if (!product) return
+
+    try {
+      const { data: companyData } = await supabase.from("companies").select("name").eq("id", user?.company_id).single()
+      const companyName = companyData?.name || "EMPRESA"
+      const currentYear = new Date().getFullYear()
+
+      let qrCodeUrl = ""
+      if (product.qr_code_hash) {
+        const publicUrl = `${window.location.origin}/public/internal-product/${product.qr_code_hash}`
+        qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
+          errorCorrectionLevel: "H",
+          width: 300,
+          margin: 1,
+        })
+      }
+
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Etiqueta Granel - ${product.name}</title>
+              <style>
+                @page { size: 50mm 25mm; margin: 0; }
+                body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: white; }
+                .sticker { width: 50mm; height: 25mm; display: flex; flex-direction: row; padding: 0; overflow: hidden; }
+                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm; min-width: 0; }
+                .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
+                .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
+                .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
+                .product-code { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
+                .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .bulk-badge { font-size: 6pt; font-weight: 800; background: #fef3c7; color: #92400e; padding: 0.5mm 1.5mm; border-radius: 2px; align-self: flex-start; margin-top: 1mm; }
+                .qr-column { display: flex; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; }
+                .qr-column img { width: 15mm; height: 15mm; }
+              </style>
+            </head>
+            <body>
+              <div class="sticker">
+                <div class="main-content">
+                  <div class="header-row">
+                    <span class="company-text">${companyName} INV ${currentYear}</span>
+                    <span class="atlas-badge">ATLAS</span>
+                  </div>
+                  <div class="product-code">${product.code}</div>
+                  <div class="product-name">${product.name}</div>
+                  <div class="bulk-badge">PRODUCTO A GRANEL</div>
+                </div>
+                ${qrCodeUrl ? `<div class="qr-column"><img src="${qrCodeUrl}" alt="QR" /></div>` : ""}
+              </div>
+            </body>
+          </html>
+        `)
+        printWindow.document.close()
+        setTimeout(() => {
+          printWindow.print()
+          printWindow.close()
+        }, 500)
+      }
+    } catch (error) {
+      console.error("Error printing bulk sticker:", error)
+      toast.error("Error al generar la etiqueta para granel")
+    }
+  }
 
   useEffect(() => {
     if (params.id && user?.company_id) {
@@ -1033,27 +1103,40 @@ export default function InternalProductDetailPage() {
           </Card>
 
           {/* QR Code Section */}
-          {product.qr_code_hash && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
-                  Código QR del Modelo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-center">
-                <div className="flex justify-center">
-                  <Button variant="outline" size="sm" onClick={() => handleGenerateQR("product", product)}>
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Generar QR
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Genera y escanea este código para ver la información pública del modelo de producto.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                Código QR del Modelo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
+              {/* Se habilita el botón de "Generar QR" o "Imprimir Etiqueta" para productos a granel en la sección de stock o cabecera. */}
+              {/* Añadimos el botón específicamente en el card de stock o acciones. */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-transparent"
+                  onClick={product.is_serialized ? () => handleGenerateQR("product", product) : handlePrintBulkSticker}
+                  disabled={!product.qr_code_hash && !product.is_serialized} // Disable if no QR hash and not serialized
+                >
+                  {product.is_serialized ? (
+                    <>
+                      <QrCode className="h-4 w-4" /> Generar QR
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="h-4 w-4" /> Imprimir Etiqueta Granel
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Genera y escanea este código para ver la información pública del modelo de producto.
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Movement Statistics */}
           <Card>

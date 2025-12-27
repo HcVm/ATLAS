@@ -164,14 +164,31 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear()
-    const { count, error: countError } = await supabase
-      .from("fixed_assets")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", company_id)
-      .eq("account_id", account_id)
 
-    const correlative = (count || 0) + 1
+    const codePrefix = `AF-${accountData.code}-${currentYear}-`
+
+    // Query for the last asset with this prefix to get the highest correlative
+    const { data: lastAsset, error: lastAssetError } = await supabase
+      .from("fixed_assets")
+      .select("code")
+      .eq("company_id", company_id)
+      .like("code", `${codePrefix}%`)
+      .order("code", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let correlative = 1
+    if (lastAsset && lastAsset.code) {
+      // Extract the correlative number from the last code
+      const parts = lastAsset.code.split("-")
+      const lastCorrelative = Number.parseInt(parts[parts.length - 1], 10)
+      if (!isNaN(lastCorrelative)) {
+        correlative = lastCorrelative + 1
+      }
+    }
+
     const assetCode = `AF-${accountData.code}-${currentYear}-${String(correlative).padStart(4, "0")}`
+    // </CHANGE>
 
     const totalCost =
       (Number.parseFloat(initial_balance) || 0) +

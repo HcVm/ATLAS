@@ -177,17 +177,6 @@ export async function POST(request: Request) {
             created_by: user.id,
           }),
         )
-
-        // Update product stock
-        productUpdatePromises.push(
-          supabase
-            .rpc("increment_internal_product_stock", {
-              p_product_id: product_id,
-              p_company_id: company_id,
-              p_quantity: quantity,
-            })
-            .select(),
-        )
       } else {
         // For serialized product exit/adjustment/withdrawal
         for (const serialId of selected_serials) {
@@ -220,16 +209,6 @@ export async function POST(request: Request) {
             }),
           )
         }
-        // Update product stock
-        productUpdatePromises.push(
-          supabase
-            .rpc("decrement_internal_product_stock", {
-              p_product_id: product_id,
-              p_company_id: company_id,
-              p_quantity: selected_serials.length,
-            })
-            .select(),
-        )
       }
     } else {
       const { data: movement, error: movementError } = await supabase
@@ -254,31 +233,35 @@ export async function POST(request: Request) {
 
       if (movementError) throw movementError
 
-      // Update product stock based on movement type
-      if (movement_type === "entrada") {
-        productUpdatePromises.push(
-          supabase
-            .rpc("increment_internal_product_stock", {
-              p_product_id: product_id,
-              p_company_id: company_id,
-              p_quantity: quantity,
-            })
-            .select(),
-        )
-      } else if (movement_type === "salida" || movement_type === "ajuste" || movement_type === "baja") {
-        productUpdatePromises.push(
-          supabase
-            .rpc("decrement_internal_product_stock", {
-              p_product_id: product_id,
-              p_company_id: company_id,
-              p_quantity: quantity,
-            })
-            .select(),
-        )
+      // Usamos COALESCE en el SQL o manejamos el 0 aquí para evitar problemas con valores NULL iniciales
+      const stockChange = movement_type === "entrada" || movement_type === "ajuste_positivo" ? quantity : -quantity
+
+      const { error: stockUpdateError } = await supabase.rpc("increment_internal_product_stock_v2", {
+        p_product_id: product_id,
+        p_quantity: stockChange,
+      })
+
+      // Si el RPC no existe o falla, intentamos una actualización directa como fallback
+      if (stockUpdateError) {
+        console.log("[v0] RPC failed, attempting direct update fallback for stock")
+        const { data: currentProd } = await supabase
+          .from("internal_products")
+          .select("current_stock")
+          .eq("id", product_id)
+          .single()
+
+        const newStock = (currentProd?.current_stock || 0) + stockChange
+
+        await supabase
+          .from("internal_products")
+          .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+          .eq("id", product_id)
       }
     }
 
-    await Promise.all([...productUpdatePromises, ...serialUpdatePromises, ...movementInsertPromises])
+    console.log("[v0] Movement registered and stock update attempted for product:", product_id)
+    await Promise.all([...serialUpdatePromises, ...movementInsertPromises])
+    console.log("[v0] Movement registration completed successfully")
 
     return NextResponse.json({ message: "Movement registered successfully" }, { status: 201 })
   } catch (error: any) {
@@ -327,12 +310,10 @@ export async function DELETE(request: Request) {
     // First, get the movement details to revert stock/serials
     const { data: movement, error: fetchError } = await supabase
       .from("internal_inventory_movements")
-      .select(
-        `
-        product_id, movement_type, quantity, serial_id,
-        internal_products (is_serialized)
-      `,
-      )
+      .select(`
+        product_id, movement_type, quantity, serial_id, notes,
+        internal_products (is_serialized, code)
+      `)
       .eq("id", movementId)
       .eq("company_id", companyId)
       .single()
@@ -344,68 +325,71 @@ export async function DELETE(request: Request) {
       throw fetchError
     }
 
-    let productUpdatePromise: Promise<any> | null = null
-    let serialUpdatePromise: Promise<any> | null = null
-
-    const isSerializedProduct = movement.internal_products?.is_serialized
+    const isSerializedProduct = (movement.internal_products as any)?.is_serialized
+    const quantity = movement.quantity || 0
 
     if (isSerializedProduct) {
-      if (movement.serial_id) {
-        // If it was an 'entrada', delete the serial. If 'salida'/'ajuste', revert status to 'in_stock'
-        if (movement.movement_type === "entrada") {
-          serialUpdatePromise = supabase.from("internal_product_serials").delete().eq("id", movement.serial_id)
-        } else {
-          serialUpdatePromise = supabase
+      // For serialized products
+      if (movement.movement_type === "entrada") {
+        // If it was an entry, we need to delete the serials that were created
+        // They are listed in the notes or we can find them by product and company
+        // However, if it's a grouped entry (serial_id is null), we look for serials matching the notes
+        if (movement.serial_id) {
+          await supabase.from("internal_product_serials").delete().eq("id", movement.serial_id)
+        } else if (movement.notes && movement.notes.includes("Series generadas:")) {
+          const serialNumbersMatch = movement.notes.match(/Series generadas: (.*)/)
+          if (serialNumbersMatch && serialNumbersMatch[1]) {
+            const serialNumbers = serialNumbersMatch[1].split(", ")
+            await supabase
+              .from("internal_product_serials")
+              .delete()
+              .eq("product_id", movement.product_id)
+              .in("serial_number", serialNumbers)
+          }
+        }
+      } else {
+        // For exits/withdrawals, return the serial to stock
+        if (movement.serial_id) {
+          await supabase
             .from("internal_product_serials")
             .update({ status: "in_stock", current_location: "Almacén Principal" })
             .eq("id", movement.serial_id)
         }
       }
 
-      if (movement.movement_type === "entrada") {
-        productUpdatePromise = supabase.rpc("decrement_internal_product_stock", {
-          p_product_id: movement.product_id,
-          p_company_id: companyId,
-          p_quantity: movement.quantity, // Usar la cantidad del movimiento en lugar de hardcoded 1
-        })
-      } else if (
-        movement.movement_type === "salida" ||
-        movement.movement_type === "ajuste" ||
-        movement.movement_type === "baja"
-      ) {
-        productUpdatePromise = supabase.rpc("increment_internal_product_stock", {
-          p_product_id: movement.product_id,
-          p_company_id: companyId,
-          p_quantity: movement.quantity,
-        })
-      }
+      // Update the product total stock (decrement for entry reversal, increment for exit reversal)
+      const stockChange =
+        movement.movement_type === "entrada" || movement.movement_type === "ajuste_positivo" ? -quantity : quantity
+
+      await supabase.rpc("increment_internal_product_stock_v2", {
+        p_product_id: movement.product_id,
+        p_quantity: stockChange,
+      })
     } else {
-      // For non-serialized products, revert stock
-      if (movement.movement_type === "entrada") {
-        productUpdatePromise = supabase.rpc("decrement_internal_product_stock", {
-          p_product_id: movement.product_id,
-          p_company_id: companyId,
-          p_quantity: movement.quantity,
-        })
-      } else if (
-        movement.movement_type === "salida" ||
-        movement.movement_type === "ajuste" ||
-        movement.movement_type === "baja"
-      ) {
-        productUpdatePromise = supabase.rpc("increment_internal_product_stock", {
-          p_product_id: movement.product_id,
-          p_company_id: companyId,
-          p_quantity: movement.quantity,
-        })
+      const stockChange =
+        movement.movement_type === "entrada" || movement.movement_type === "ajuste_positivo" ? -quantity : quantity
+
+      console.log(`[v0] Reversing bulk stock: ${stockChange} for product ${movement.product_id}`)
+
+      const { error: rpcError } = await supabase.rpc("increment_internal_product_stock_v2", {
+        p_product_id: movement.product_id,
+        p_quantity: stockChange,
+      })
+
+      if (rpcError) {
+        // Fallback to direct update if RPC fails
+        const { data: currentProd } = await supabase
+          .from("internal_products")
+          .select("current_stock")
+          .eq("id", movement.product_id)
+          .single()
+
+        const newStock = (currentProd?.current_stock || 0) + stockChange
+        await supabase
+          .from("internal_products")
+          .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+          .eq("id", movement.product_id)
       }
-    }
-
-    const promisesToAwait = []
-    if (productUpdatePromise) promisesToAwait.push(productUpdatePromise)
-    if (serialUpdatePromise) promisesToAwait.push(serialUpdatePromise)
-
-    if (promisesToAwait.length > 0) {
-      await Promise.all(promisesToAwait)
     }
 
     // Delete the movement record
