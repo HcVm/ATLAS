@@ -374,13 +374,13 @@ export default function InternalProductDetailPage() {
                   align-items: center;
                   justify-content: center;
                   flex-shrink: 0;
-                  width: 14mm;
+                  width: 16mm;
                   background: #fff;
                   padding-right: 2mm;
                 }
                 .qr-column img {
-                  width: 14mm;
-                  height: 14mm;
+                  width: 16mm;
+                  height: 16mm;
                   display: block;
                   image-rendering: -webkit-optimize-contrast;
                   image-rendering: crisp-edges;
