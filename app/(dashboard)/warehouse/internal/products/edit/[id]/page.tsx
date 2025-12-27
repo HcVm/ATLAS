@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Save, Trash2, Package, AlertTriangle, Activity } from "lucide-react"
+import { ArrowLeft, Save, Trash2, Package, AlertTriangle, Activity, ListChecks, Boxes } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -437,6 +437,32 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
             <CardDescription>Datos principales del producto</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tipo de Producto</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={formData.is_serialized ? "default" : "outline"}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                  onClick={() => setFormData((prev) => ({ ...prev, is_serialized: true }))}
+                >
+                  <ListChecks className="h-5 w-5" />
+                  <div className="text-xs font-bold">Activo Fijo</div>
+                  <div className="text-[10px] opacity-80">Serializado (Equipos)</div>
+                </Button>
+                <Button
+                  type="button"
+                  variant={!formData.is_serialized ? "default" : "outline"}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                  onClick={() => setFormData((prev) => ({ ...prev, is_serialized: false }))}
+                >
+                  <Boxes className="h-5 w-5" />
+                  <div className="text-xs font-bold">Consumible</div>
+                  <div className="text-[10px] opacity-80">A Granel (Pernos, etc)</div>
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Producto *</Label>
@@ -490,15 +516,11 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
                     <SelectValue placeholder="Seleccionar unidad" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unidad">Unidad</SelectItem>
-                    <SelectItem value="kg">Kilogramo</SelectItem>
-                    <SelectItem value="g">Gramo</SelectItem>
-                    <SelectItem value="l">Litro</SelectItem>
-                    <SelectItem value="ml">Mililitro</SelectItem>
-                    <SelectItem value="m">Metro</SelectItem>
-                    <SelectItem value="cm">Centímetro</SelectItem>
-                    <SelectItem value="caja">Caja</SelectItem>
-                    <SelectItem value="paquete">Paquete</SelectItem>
+                    {["unidad", "caja", "litro", "kilogramo", "metro", "galon", "paquete"].map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

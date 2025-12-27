@@ -24,6 +24,8 @@ import {
   ListOrdered,
   Printer,
   Trash2,
+  Boxes,
+  ListChecks,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -621,8 +623,17 @@ export default function InternalProductDetailPage() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Tipo de Producto</label>
                   <div className="flex items-center gap-1">
-                    <ListOrdered className="h-3 w-3 text-muted-foreground" />
-                    <Badge variant="outline">{product.is_serialized ? "Serializado" : "No Serializado"}</Badge>
+                    {product.is_serialized ? (
+                      <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200">
+                        <ListChecks className="h-3 w-3 mr-1" />
+                        Activo Fijo (Serializado)
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="bg-orange-100 text-orange-800 border-orange-200">
+                        <Boxes className="h-3 w-3 mr-1" />
+                        Consumible (A Granel)
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -680,98 +691,117 @@ export default function InternalProductDetailPage() {
             </CardContent>
           </Card>
 
+          {!product.is_serialized && (
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
+              <Boxes className="h-5 w-5 text-orange-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-900">Producto a Granel (Sin Seriales)</p>
+                <p className="text-sm text-orange-800">
+                  Este producto no utiliza etiquetas individuales. El stock se gestiona mediante conteo directo en
+                  movimientos de entrada y salida.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Serialized Units Table (if applicable) */}
           {product.is_serialized && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Unidades Serializadas</CardTitle>
-                  <CardDescription>{serials.length} unidades registradas</CardDescription>
+            <>
+              <Separator className="my-6" />
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ListOrdered className="h-5 w-5" />
+                  Números de Serie en Stock
+                </h3>
+                <div className="flex gap-2">
+                  {/* ... existing print buttons ... */}
+                  <Button variant="outline" onClick={handlePrintAllStickers}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir Todos ({serials.filter((s) => s.status === "in_stock").length})
+                  </Button>
                 </div>
-                <Button variant="outline" onClick={handlePrintAllStickers}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir Todos ({serials.filter((s) => s.status === "in_stock").length})
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {serials.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Tag className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      No hay unidades serializadas registradas para este producto.
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Genera un movimiento de entrada para agregar stock y crear series automáticamente.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>N° Serie</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Ubicación Actual</TableHead>
-                          <TableHead>Creado</TableHead>
-                          <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {serials.map((serial) => (
-                          <TableRow key={serial.id}>
-                            <TableCell className="font-medium font-mono">{serial.serial_number}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  serial.status === "in_stock"
-                                    ? "default"
-                                    : serial.status === "out_of_stock"
-                                      ? "destructive"
-                                      : serial.status === "withdrawn"
-                                        ? "secondary"
-                                        : "outline"
-                                }
-                              >
-                                {serial.status === "in_stock"
-                                  ? "En Stock"
-                                  : serial.status === "out_of_stock"
-                                    ? "Asignado"
-                                    : serial.status === "in_repair"
-                                      ? "En Reparación"
-                                      : serial.status === "withdrawn"
-                                        ? "Dado de Baja"
-                                        : "Desechado"}
-                              </Badge>
-                              {serial.condition && (
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  {serial.condition === "nuevo" ? "Nuevo" : "Usado"}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{resolveLocation(serial.current_location)}</TableCell>
-                            <TableCell>
-                              {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
-                                  <QrCode className="h-4 w-4" />
-                                  <span className="sr-only">Generar QR para serial</span>
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handlePrintSticker(serial)}>
-                                  <Printer className="h-4 w-4" />
-                                  <span className="sr-only">Imprimir etiqueta</span>
-                                </Button>
-                              </div>
-                            </TableCell>
+              </div>
+              <Card>
+                <CardContent>
+                  {serials.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Tag className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        No hay unidades serializadas registradas para este producto.
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Genera un movimiento de entrada para agregar stock y crear series automáticamente.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>N° Serie</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Ubicación Actual</TableHead>
+                            <TableHead>Creado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        </TableHeader>
+                        <TableBody>
+                          {serials.map((serial) => (
+                            <TableRow key={serial.id}>
+                              <TableCell className="font-medium font-mono">{serial.serial_number}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    serial.status === "in_stock"
+                                      ? "default"
+                                      : serial.status === "out_of_stock"
+                                        ? "destructive"
+                                        : serial.status === "withdrawn"
+                                          ? "secondary"
+                                          : "outline"
+                                  }
+                                >
+                                  {serial.status === "in_stock"
+                                    ? "En Stock"
+                                    : serial.status === "out_of_stock"
+                                      ? "Asignado"
+                                      : serial.status === "in_repair"
+                                        ? "En Reparación"
+                                        : serial.status === "withdrawn"
+                                          ? "Dado de Baja"
+                                          : "Desechado"}
+                                </Badge>
+                                {serial.condition && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    {serial.condition === "nuevo" ? "Nuevo" : "Usado"}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{resolveLocation(serial.current_location)}</TableCell>
+                              <TableCell>
+                                {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
+                                    <QrCode className="h-4 w-4" />
+                                    <span className="sr-only">Generar QR para serial</span>
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handlePrintSticker(serial)}>
+                                    <Printer className="h-4 w-4" />
+                                    <span className="sr-only">Imprimir etiqueta</span>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Movement History */}

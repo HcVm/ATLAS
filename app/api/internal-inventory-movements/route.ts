@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     supplier,
     movement_date,
     company_id,
-    is_serialized_product,
+    is_serialized_product: client_is_serialized,
     serials_to_process,
     selected_serials,
     condition,
@@ -72,15 +72,23 @@ export async function POST(request: Request) {
     const serialUpdatePromises: Promise<any>[] = []
     const movementInsertPromises: Promise<any>[] = []
 
+    const { data: productInfo, error: productInfoError } = await supabase
+      .from("internal_products")
+      .select("code, is_serialized")
+      .eq("id", product_id)
+      .single()
+
+    if (productInfoError || !productInfo) {
+      throw new Error(
+        `Error al obtener información del producto: ${productInfoError?.message || "Producto no encontrado"}`,
+      )
+    }
+
+    const is_serialized_product = productInfo.is_serialized
+
     if (is_serialized_product) {
       if (movement_type === "entrada") {
-        const { data: productData, error: productError } = await supabase
-          .from("internal_products")
-          .select("code")
-          .eq("id", product_id)
-          .single()
-
-        if (productError) throw new Error(`Error fetching product data: ${productError.message}`)
+        const productCode = productInfo.code
 
         // Get the last serial number for this product to determine the next correlative
         const { data: lastSerial, error: lastSerialError } = await supabase
@@ -101,8 +109,6 @@ export async function POST(request: Request) {
             nextCorrelative = lastCorrelative + 1
           }
         }
-
-        const productCode = productData.code
 
         const createdSerialIds: string[] = []
         const generatedSerialNumbers: string[] = []

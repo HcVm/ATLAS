@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
-import { ChevronLeft, Save, Package } from "lucide-react"
+import { ChevronLeft, Save, Package, ListChecks, Boxes } from "lucide-react"
 import Link from "next/link"
 import { useCompany } from "@/lib/company-context"
 import { InternalCategoryCreatorDialog } from "@/components/ui/internal-category-creator-dialog"
@@ -44,6 +44,7 @@ export default function NewInternalProductPage() {
     minimum_stock: "0",
     cost_price: "",
     location: "",
+    is_serialized: true,
   })
 
   useEffect(() => {
@@ -137,12 +138,14 @@ export default function NewInternalProductPage() {
         unit_of_measure: formData.unit_of_measure,
         cost_price: parsedCostPrice,
         location: formData.location,
-        is_serialized: true,
+        is_serialized: formData.is_serialized, // Explicitly include this
         minimum_stock: parsedMinimumStock,
         current_stock: 0,
         company_id: companyId,
         created_by: user.id,
       }
+
+      console.log("[v0] Creating product with payload:", payload)
 
       const response = await fetch("/api/internal-products", {
         method: "POST",
@@ -201,6 +204,31 @@ export default function NewInternalProductPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de Producto</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.is_serialized ? "default" : "outline"}
+                    className="flex flex-col items-center gap-1 h-auto py-3"
+                    onClick={() => setFormData((prev) => ({ ...prev, is_serialized: true }))}
+                  >
+                    <ListChecks className="h-5 w-5" />
+                    <div className="text-xs font-bold">Activo Fijo</div>
+                    <div className="text-[10px] opacity-80">Serializado (Equipos)</div>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={!formData.is_serialized ? "default" : "outline"}
+                    className="flex flex-col items-center gap-1 h-auto py-3"
+                    onClick={() => setFormData((prev) => ({ ...prev, is_serialized: false }))}
+                  >
+                    <Boxes className="h-5 w-5" />
+                    <div className="text-xs font-bold">Consumible</div>
+                    <div className="text-[10px] opacity-80">A Granel (Pernos, etc)</div>
+                  </Button>
+                </div>
+              </div>
               <div>
                 <Label htmlFor="name">Nombre del Producto *</Label>
                 <Input
@@ -314,10 +342,14 @@ export default function NewInternalProductPage() {
                   placeholder="Ej: Almacén Principal, Estante A1"
                 />
               </div>
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Nota:</strong> Todos los productos internos son serializados. El stock se agregará mediante
-                  movimientos de entrada, donde se generarán automáticamente los números de serie.
+              <div
+                className={`p-4 border rounded-lg ${formData.is_serialized ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}
+              >
+                <p className={`text-sm ${formData.is_serialized ? "text-blue-800" : "text-orange-800"}`}>
+                  <strong>Nota:</strong>{" "}
+                  {formData.is_serialized
+                    ? "Los productos serializados generan números de serie automáticos para cada unidad al ingresar stock."
+                    : "Los productos a granel no tienen números de serie. El stock se controla por cantidad total (unidades/cajas)."}
                 </p>
               </div>
             </div>

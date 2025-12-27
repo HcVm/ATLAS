@@ -83,16 +83,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category_id, minimum_stock, unit_of_measure, cost_price, location, company_id } = body
+    const {
+      name,
+      description,
+      category_id,
+      minimum_stock,
+      unit_of_measure,
+      cost_price,
+      location,
+      company_id,
+      is_serialized,
+    } = body
 
     if (
       !name ||
       !company_id ||
       cost_price === undefined ||
       category_id === undefined ||
-      unit_of_measure === undefined
+      unit_of_measure === undefined ||
+      is_serialized === undefined
     ) {
-      return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
+      return NextResponse.json({ error: "Faltan campos requeridos (incluyendo tipo de producto)" }, { status: 400 })
     }
 
     const { data: existingProductByName, error: existingNameError } = await supabase
@@ -140,8 +151,8 @@ export async function POST(request: NextRequest) {
     const categoryAbbr = categoryData.name
       .substring(0, 3)
       .toUpperCase()
-      .replace(/[^A-Z]/g, "") // Remove non-alphabetic characters
-      .padEnd(3, "X") // Pad with X if less than 3 characters
+      .replace(/[^A-Z]/g, "")
+      .padEnd(3, "X")
 
     const currentYear = new Date().getFullYear()
 
@@ -204,7 +215,7 @@ export async function POST(request: NextRequest) {
         company_id,
         created_by: user.id,
         is_active: true,
-        is_serialized: true,
+        is_serialized: is_serialized,
         qr_code_hash: qrCodeHash,
       })
       .select()
