@@ -169,11 +169,21 @@ export default function InternalProductsPage() {
   }, [products, searchTerm, statusFilter])
 
   const handleProductDelete = async (productId: string) => {
+    // Guardamos el estado anterior por si hay un error y necesitamos revertir
+    const previousProducts = [...products]
+
+    // Eliminamos el producto localmente de inmediato
+    setProducts((prev) => prev.filter((p) => p.id !== productId))
+    setSelectedProductIds((prev) => prev.filter((id) => id !== productId))
+
     const result = await deleteInternalProduct(productId)
+
     if (result.success) {
       toast.success(result.message)
-      fetchData()
+      // Ya no llamamos a fetchData() aquí para evitar la recarga de datos innecesaria
+      // ya que la UI ya se actualizó de forma optimista
     } else {
+      setProducts(previousProducts)
       toast.error(result.message)
     }
   }

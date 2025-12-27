@@ -185,7 +185,8 @@ export async function POST(request: Request) {
       } else {
         // For serialized product exit/adjustment/withdrawal
         for (const serialId of selected_serials) {
-          const newStatus = movement_type === "baja" ? "withdrawn" : movement_type === "salida" ? "out_of_stock" : "in_repair"
+          const newStatus =
+            movement_type === "baja" ? "withdrawn" : movement_type === "salida" ? "out_of_stock" : "in_repair"
           serialUpdatePromises.push(
             supabase
               .from("internal_product_serials")
@@ -258,7 +259,7 @@ export async function POST(request: Request) {
             })
             .select(),
         )
-      } else if (movement_type === "salida" || movement_type === "ajuste") {
+      } else if (movement_type === "salida" || movement_type === "ajuste" || movement_type === "baja") {
         productUpdatePromises.push(
           supabase
             .rpc("decrement_internal_product_stock", {
@@ -353,21 +354,24 @@ export async function DELETE(request: Request) {
             .update({ status: "in_stock", current_location: "Almacén Principal" })
             .eq("id", movement.serial_id)
         }
-        // For serialized products, stock is updated by serial status changes, so no direct product stock update here.
-        // The increment/decrement RPCs are called during POST, so we need to reverse them.
-        if (movement.movement_type === "entrada") {
-          productUpdatePromise = supabase.rpc("decrement_internal_product_stock", {
-            p_product_id: movement.product_id,
-            p_company_id: companyId,
-            p_quantity: 1, // Always 1 for serialized
-          })
-        } else if (movement.movement_type === "salida" || movement.movement_type === "ajuste") {
-          productUpdatePromise = supabase.rpc("increment_internal_product_stock", {
-            p_product_id: movement.product_id,
-            p_company_id: companyId,
-            p_quantity: 1, // Always 1 for serialized
-          })
-        }
+      }
+
+      if (movement.movement_type === "entrada") {
+        productUpdatePromise = supabase.rpc("decrement_internal_product_stock", {
+          p_product_id: movement.product_id,
+          p_company_id: companyId,
+          p_quantity: movement.quantity, // Usar la cantidad del movimiento en lugar de hardcoded 1
+        })
+      } else if (
+        movement.movement_type === "salida" ||
+        movement.movement_type === "ajuste" ||
+        movement.movement_type === "baja"
+      ) {
+        productUpdatePromise = supabase.rpc("increment_internal_product_stock", {
+          p_product_id: movement.product_id,
+          p_company_id: companyId,
+          p_quantity: movement.quantity,
+        })
       }
     } else {
       // For non-serialized products, revert stock
@@ -377,13 +381,25 @@ export async function DELETE(request: Request) {
           p_company_id: companyId,
           p_quantity: movement.quantity,
         })
-      } else if (movement.movement_type === "salida" || movement.movement_type === "ajuste") {
+      } else if (
+        movement.movement_type === "salida" ||
+        movement.movement_type === "ajuste" ||
+        movement.movement_type === "baja"
+      ) {
         productUpdatePromise = supabase.rpc("increment_internal_product_stock", {
           p_product_id: movement.product_id,
           p_company_id: companyId,
           p_quantity: movement.quantity,
         })
       }
+    }
+
+    const promisesToAwait = []
+    if (productUpdatePromise) promisesToAwait.push(productUpdatePromise)
+    if (serialUpdatePromise) promisesToAwait.push(serialUpdatePromise)
+
+    if (promisesToAwait.length > 0) {
+      await Promise.all(promisesToAwait)
     }
 
     // Delete the movement record
@@ -394,13 +410,6 @@ export async function DELETE(request: Request) {
       .eq("company_id", companyId)
 
     if (deleteError) throw deleteError
-
-    // Execute stock/serial updates after successful movement deletion
-    const promisesToAwait = []
-    if (productUpdatePromise) promisesToAwait.push(productUpdatePromise)
-    if (serialUpdatePromise) promisesToAwait.push(serialUpdatePromise)
-
-    await Promise.all(promisesToAwait)
 
     return NextResponse.json({ message: "Movement deleted successfully" }, { status: 200 })
   } catch (error: any) {

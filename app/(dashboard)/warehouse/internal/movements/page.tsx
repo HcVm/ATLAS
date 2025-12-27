@@ -125,6 +125,7 @@ export default function InternalMovementsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [movementToDelete, setMovementToDelete] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -549,6 +550,25 @@ export default function InternalMovementsPage() {
     toast.success("Historial de movimientos exportado exitosamente.")
   }
 
+  const filteredMovements = useMemo(() => {
+    return movements.filter((movement) => {
+      const search = searchTerm.toLowerCase()
+      const productName = movement.internal_products?.name?.toLowerCase() || ""
+      const productCode = movement.internal_products?.code?.toLowerCase() || ""
+      const requestedBy = movement.requested_by?.toLowerCase() || ""
+      const reason = movement.reason?.toLowerCase() || ""
+      const serial = movement.internal_product_serials?.serial_number?.toLowerCase() || ""
+
+      return (
+        productName.includes(search) ||
+        productCode.includes(search) ||
+        requestedBy.includes(search) ||
+        reason.includes(search) ||
+        serial.includes(search)
+      )
+    })
+  }, [movements, searchTerm])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -877,15 +897,33 @@ export default function InternalMovementsPage() {
       {/* Movement History Table */}
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Historial de Movimientos</CardTitle>
-          <CardDescription>Todos los movimientos de inventario registrados.</CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Historial de Movimientos</CardTitle>
+              <CardDescription>Todos los movimientos de inventario registrados.</CardDescription>
+            </div>
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por producto, serie, solicitante..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {movements.length === 0 ? (
+          {filteredMovements.length === 0 ? (
             <div className="text-center py-8">
               <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">No hay movimientos registrados</h3>
-              <p className="text-muted-foreground">Empieza registrando un nuevo movimiento.</p>
+              <h3 className="text-lg font-semibold">
+                {searchTerm ? "No se encontraron coincidencias" : "No hay movimientos registrados"}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? "Intenta con otros términos de búsqueda." : "Empieza registrando un nuevo movimiento."}
+              </p>
             </div>
           ) : (
             <div className="rounded-md border overflow-auto">
@@ -903,7 +941,7 @@ export default function InternalMovementsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {movements.map((movement) => {
+                  {filteredMovements.map((movement) => {
                     const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
                     const Icon = movementType?.icon || Package
 

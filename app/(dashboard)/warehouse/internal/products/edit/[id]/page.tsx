@@ -481,13 +481,26 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
 
               <div className="space-y-2">
                 <Label htmlFor="unit_of_measure">Unidad de Medida *</Label>
-                <Input
-                  id="unit_of_measure"
+                <Select
                   value={formData.unit_of_measure}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, unit_of_measure: e.target.value }))}
-                  placeholder="Ej: unidad, kg, litro"
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, unit_of_measure: value }))}
                   required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar unidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unidad">Unidad</SelectItem>
+                    <SelectItem value="kg">Kilogramo</SelectItem>
+                    <SelectItem value="g">Gramo</SelectItem>
+                    <SelectItem value="l">Litro</SelectItem>
+                    <SelectItem value="ml">Mililitro</SelectItem>
+                    <SelectItem value="m">Metro</SelectItem>
+                    <SelectItem value="cm">Centímetro</SelectItem>
+                    <SelectItem value="caja">Caja</SelectItem>
+                    <SelectItem value="paquete">Paquete</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
