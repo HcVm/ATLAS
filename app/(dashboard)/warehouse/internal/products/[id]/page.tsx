@@ -386,14 +386,7 @@ export default function InternalProductDetailPage() {
                   image-rendering: crisp-edges;
                   image-rendering: pixelated;
                 }
-                .qr-label {
-                  font-size: 6pt;
-                  text-align: center;
-                  color: #444;
-                  line-height: 1;
-                  margin-top: 0.5mm;
-                  font-weight: 600;
-                }
+              
                 @media print {
                   body {
                     margin: 0;
@@ -430,7 +423,6 @@ export default function InternalProductDetailPage() {
                     ? `
                 <div class="qr-column">
                   <img src="${qrCodeUrl}" alt="QR" />
-                  <div class="qr-label">Escanear</div>
                 </div>
                 `
                     : ""
@@ -518,9 +510,8 @@ export default function InternalProductDetailPage() {
                 .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 700; }
-                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 14mm; padding-right: 2mm; }
-                .qr-column img { width: 13mm; height: 13mm; }
-                .qr-label { font-size: 5pt; text-align: center; margin-top: 0.5mm; font-weight: 600; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; }
+                .qr-column img { width: 15mm; height: 15mm; }
               </style>
             </head>
             <body>${stickersHtml.join("")}</body>
