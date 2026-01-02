@@ -17,6 +17,7 @@ import {
   Trash2,
   Info,
   Minimize2,
+  CloverIcon as CloseIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,13 +53,15 @@ export function ChatWidget() {
     onlineUsers,
     isLoading,
     isChatOpen,
+    isWidgetVisible, // agregando estado de visibilidad
     unreadTotal,
     setIsChatOpen,
+    setIsWidgetVisible, // agregando setter de visibilidad
     selectConversation,
     sendMessage,
     createConversation,
     searchUsers,
-    deleteConversation, // Added deleteConversation function
+    deleteConversation,
   } = useChat()
 
   const [view, setView] = useState<"list" | "chat" | "new">("list")
@@ -230,7 +233,7 @@ export function ChatWidget() {
     }
   }, [currentConversation, isMobile, isChatOpen, setIsChatOpen])
 
-  if (!user) return null
+  if (!user || !isWidgetVisible) return null
 
   return (
     <TooltipProvider>
@@ -323,6 +326,22 @@ export function ChatWidget() {
                     </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            setIsWidgetVisible(false)
+                            setIsChatOpen(false)
+                          }}
+                        >
+                          <CloseIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Quitar widget</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMinimize}>
                           <Minimize2 className="h-4 w-4" />
                         </Button>
@@ -381,6 +400,22 @@ export function ChatWidget() {
                         )}
                       </p>
                     </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            setIsWidgetVisible(false)
+                            setIsChatOpen(false)
+                          }}
+                        >
+                          <CloseIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Quitar widget</TooltipContent>
+                    </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMinimize}>

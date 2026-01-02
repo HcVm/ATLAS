@@ -63,8 +63,10 @@ interface ChatContextType {
   onlineUsers: Map<string, UserPresence>
   isLoading: boolean
   isChatOpen: boolean
+  isWidgetVisible: boolean
   unreadTotal: number
   setIsChatOpen: (open: boolean) => void
+  setIsWidgetVisible: (visible: boolean) => void
   selectConversation: (conversation: ChatConversation | null) => void
   sendMessage: (content: string, messageType?: string, file?: File) => Promise<void>
   createConversation: (participantIds: string[], name?: string) => Promise<ChatConversation | null>
@@ -95,6 +97,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [onlineUsers, setOnlineUsers] = useState<Map<string, UserPresence>>(new Map())
   const [isLoading, setIsLoading] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isWidgetVisible, setIsWidgetVisible] = useState(true)
   const [unreadTotal, setUnreadTotal] = useState(0)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -665,8 +668,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     onlineUsers,
     isLoading,
     isChatOpen,
+    isWidgetVisible,
     unreadTotal,
     setIsChatOpen,
+    setIsWidgetVisible,
     selectConversation,
     sendMessage,
     createConversation,

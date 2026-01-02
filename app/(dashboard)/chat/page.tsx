@@ -84,6 +84,7 @@ export default function ChatPage() {
     updateConversationName,
     getAllUsers,
     deleteConversation, // Added deleteConversation
+    setIsWidgetVisible, // importado setter de visibilidad
   } = useChat()
 
   const [messageInput, setMessageInput] = useState("")
@@ -111,6 +112,10 @@ export default function ChatPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    setIsWidgetVisible(true)
+  }, [setIsWidgetVisible])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
