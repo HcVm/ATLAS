@@ -1,8 +1,9 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
+
+import type React from "react"
+import { useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ interface QuickInternalEntryDialogProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   companyId: string
-  onSuccess: () => void
+  onSuccess: (newQuantity: number) => void
 }
 
 export function QuickInternalEntryDialog({
@@ -41,15 +42,14 @@ export function QuickInternalEntryDialog({
   onSuccess,
 }: QuickInternalEntryDialogProps) {
   const [quantity, setQuantity] = useState<number>(1)
-  const [costPrice, setCostPrice] = useState<number>(product?.cost_price || 0)
+  const [costPrice, setCostPrice] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Update cost price when product changes
-  useState(() => {
-    if (product?.cost_price) {
-      setCostPrice(product.cost_price)
+  useEffect(() => {
+    if (product) {
+      setCostPrice(product.cost_price || 0)
     }
-  })
+  }, [product])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,9 +91,8 @@ export function QuickInternalEntryDialog({
       }
 
       toast.success("Entrada registrada exitosamente")
-      onSuccess()
+      onSuccess(quantity)
       onOpenChange(false)
-      // Reset form
       setQuantity(1)
     } catch (error: any) {
       console.error("Error submitting quick movement:", error)

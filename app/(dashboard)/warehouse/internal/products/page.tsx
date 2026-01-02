@@ -326,6 +326,16 @@ export default function InternalProductsPage() {
     }
   }, [products])
 
+  const handleQuickEntrySuccess = (addedQuantity: number) => {
+    if (productForQuickEntry) {
+      setProducts((prevProducts) =>
+        prevProducts.map((p) =>
+          p.id === productForQuickEntry.id ? { ...p, current_stock: (p.current_stock || 0) + addedQuantity } : p,
+        ),
+      )
+    }
+  }
+
   if (!companyId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -358,7 +368,7 @@ export default function InternalProductsPage() {
         onOpenChange={setIsQuickEntryOpen}
         product={productForQuickEntry}
         companyId={companyId || ""}
-        onSuccess={fetchData}
+        onSuccess={handleQuickEntrySuccess}
       />
 
       {/* Header */}
