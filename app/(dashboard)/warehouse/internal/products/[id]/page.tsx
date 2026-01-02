@@ -35,6 +35,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { QRDisplayDialog } from "@/components/qr-code-display"
 import QRCodeLib from "qrcode"
+import { QuickSerialMovementDialog } from "@/components/warehouse/quick-serial-movement-dialog"
 
 interface Product {
   id: string
@@ -99,7 +100,7 @@ interface Department {
 const MOVEMENT_TYPES = [
   { value: "entrada", label: "Entrada", icon: ArrowUp, color: "text-green-600", bgColor: "bg-green-50" },
   { value: "salida", label: "Asignación", icon: ArrowDown, color: "text-red-600", bgColor: "bg-red-50" },
-  { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
+  { value: "ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50", label: "Ajuste" },
   { value: "baja", label: "Baja del Sistema", icon: Trash2, color: "text-orange-600", bgColor: "bg-orange-50" }, // ← NUEVO
 ]
 
@@ -116,6 +117,10 @@ export default function InternalProductDetailPage() {
   const [qrTitle, setQrTitle] = useState("")
   const printRef = useRef<HTMLDivElement>(null)
   const [departments, setDepartments] = useState<Department[]>([])
+
+  const [quickMovementType, setQuickMovementType] = useState<"salida" | "baja">("salida")
+  const [isQuickMovementOpen, setIsQuickMovementOpen] = useState(false)
+  const [selectedSerial, setSelectedSerial] = useState<SerializedProduct | null>(null)
 
   // Diseñado para stickers de 50mm x 25mm con QR y badge de "A GRANEL".
   const handlePrintBulkSticker = async () => {
@@ -791,6 +796,15 @@ export default function InternalProductDetailPage() {
                   </Button>
                 </div>
               </div>
+              <QuickSerialMovementDialog
+                isOpen={isQuickMovementOpen}
+                onOpenChange={setIsQuickMovementOpen}
+                type={quickMovementType}
+                product={product}
+                serial={selectedSerial}
+                companyId={user?.company_id || ""}
+                onSuccess={fetchProductDetails}
+              />
               <Card>
                 <CardContent>
                   {serials.length === 0 ? (
@@ -853,6 +867,36 @@ export default function InternalProductDetailPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
+                                  {serial.status === "in_stock" && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        onClick={() => {
+                                          setQuickMovementType("salida")
+                                          setSelectedSerial(serial)
+                                          setIsQuickMovementOpen(true)
+                                        }}
+                                      >
+                                        <ArrowDown className="h-4 w-4 mr-1" />
+                                        Asignar
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                        onClick={() => {
+                                          setQuickMovementType("baja")
+                                          setSelectedSerial(serial)
+                                          setIsQuickMovementOpen(true)
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Baja
+                                      </Button>
+                                    </>
+                                  )}
                                   <Button variant="ghost" size="sm" onClick={() => handleGenerateQR("serial", serial)}>
                                     <QrCode className="h-4 w-4" />
                                     <span className="sr-only">Generar QR para serial</span>
