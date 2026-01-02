@@ -27,7 +27,7 @@ interface Category {
 export default function NewInternalProductPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { selectedCompany } = useCompany()
+  const { selectedCompany, allCompanies } = useCompany() // added allCompanies from context
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -49,14 +49,23 @@ export default function NewInternalProductPage() {
 
   useEffect(() => {
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
     if (companyId) {
+      const activeCompany = allCompanies.find((c) => c.id === companyId)
+      if (activeCompany?.code && !formData.location) {
+        setFormData((prev) => ({
+          ...prev,
+          location: `Almacén Interno ${activeCompany.code.toUpperCase()}`,
+        }))
+      }
+
       fetchCategories(companyId)
       setGeneratedCodeDisplay("Generando...")
     } else {
       setGeneratedCodeDisplay("Selecciona una empresa para generar el código.")
       setLoading(false)
     }
-  }, [user, selectedCompany])
+  }, [user, selectedCompany, allCompanies])
 
   const fetchCategories = async (companyId: string) => {
     try {
