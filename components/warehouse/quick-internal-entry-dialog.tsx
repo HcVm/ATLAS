@@ -139,7 +139,7 @@ export function QuickInternalEntryDialog({
           </div>
           <div className="pt-2 text-xs text-muted-foreground space-y-1">
             <p>
-              <strong>Motivo:</strong> Uso Interno
+              <strong>Motivo:</strong> Ingreso a Almacén
             </p>
             <p>
               <strong>Solicitado Por:</strong> Franco Quintos
