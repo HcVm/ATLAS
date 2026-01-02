@@ -33,10 +33,12 @@ import {
   Printer,
   CheckSquare,
   Square,
+  ArrowUpCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { deleteInternalProduct } from "@/app/actions/internal-products"
 import QRCodeLib from "qrcode"
+import { QuickInternalEntryDialog } from "@/components/warehouse/quick-internal-entry-dialog"
 
 interface Category {
   id: string
@@ -78,6 +80,8 @@ export default function InternalProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [isBulkPrinting, setIsBulkPrinting] = useState(false)
+  const [isQuickEntryOpen, setIsQuickEntryOpen] = useState(false)
+  const [productForQuickEntry, setProductForQuickEntry] = useState<Product | null>(null)
 
   const companyId = useMemo(() => {
     return user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -348,6 +352,15 @@ export default function InternalProductsPage() {
 
   return (
     <div className="space-y-6 mt-10">
+      {/* Quick Entry Dialog */}
+      <QuickInternalEntryDialog
+        isOpen={isQuickEntryOpen}
+        onOpenChange={setIsQuickEntryOpen}
+        product={productForQuickEntry}
+        companyId={companyId || ""}
+        onSuccess={fetchData}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -597,6 +610,14 @@ export default function InternalProductsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProductForQuickEntry(product)
+                                setIsQuickEntryOpen(true)
+                              }}
+                            >
+                              <ArrowUpCircle className="mr-2 h-4 w-4 text-green-600" /> Registrar Entrada
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/warehouse/internal/products/${product.id}`}>
                                 <Eye className="mr-2 h-4 w-4" /> Ver Detalles
