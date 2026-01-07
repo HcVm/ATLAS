@@ -4,7 +4,7 @@ import type { SalesEntity } from "@/types/sales"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, MessageSquare, Mail, User, MapPin } from "lucide-react"
+import { Edit, Trash2, MessageSquare, Mail, User, MapPin, FileText } from "lucide-react"
 
 interface ClientCardProps {
   client: SalesEntity
@@ -56,6 +56,7 @@ export function ClientCard({
   onEdit,
   onDelete,
   onFollowUp,
+  onGenerateLetter,
 }: ClientCardProps) {
   const colors = statusColors[lastFollowUpStatus] || statusColors.por_contactar
   const statusLabel = statusLabels[lastFollowUpStatus] || "Sin estado"
@@ -116,6 +117,16 @@ export function ClientCard({
           <Button size="sm" variant="ghost" onClick={() => onFollowUp(client)} className="flex-1 text-xs h-8">
             <MessageSquare className="h-3.5 w-3.5 mr-1" />
             Seguimiento
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onGenerateLetter(client)}
+            className="h-8 w-8 p-0"
+            title="Generar Carta de Presentación"
+          >
+            <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <span className="sr-only">Carta</span>
           </Button>
           <Button size="sm" variant="ghost" onClick={() => onEdit(client)} className="h-8 w-8 p-0">
             <Edit className="h-4 w-4 text-blue-600 dark:text-blue-400" />

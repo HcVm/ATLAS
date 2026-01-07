@@ -21,6 +21,7 @@ import { Search, Plus, Users } from "lucide-react"
 import { ClientForm } from "@/components/sales/client-form"
 import { ClientFollowUpDialog } from "@/components/sales/client-follow-up-dialog"
 import { ClientCard } from "@/components/sales/client-card"
+import { generatePresentationLetter } from "@/lib/presentation-letter-generator"
 
 interface SalesEntity {
   id: string
@@ -138,6 +139,66 @@ export default function CRMPage() {
       await fetchClientsAndFollowUps()
     } catch (error: any) {
       toast.error("Error al eliminar cliente: " + error.message)
+    }
+  }
+
+  const handleGenerateLetter = async (client: SalesEntity) => {
+    if (!companyToUse) {
+      toast.error("No se pudo identificar la empresa actual")
+      return
+    }
+
+    try {
+      toast.info(`Generando carta de presentación para ${client.name}...`)
+
+      // Generar número de carta simple (simulado ya que no hay secuencia en BD)
+      // Formato: CODIGO-AÑO-RANDOM
+      const currentYear = new Date().getFullYear()
+      const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0")
+      
+      // Obtener código de empresa (si companyToUse tiene code, usarlo, sino intentar derivarlo o usar default)
+      let companyCode = "ARM" // Default fallback
+      const companyName = companyToUse.name || ""
+      const userEmail = user?.email || ""
+      
+      if ('code' in companyToUse && (companyToUse as any).code) {
+         companyCode = (companyToUse as any).code
+      } else if (companyName.toUpperCase().includes("AGLE")) {
+        companyCode = "AGLE"
+      } else if (companyName.toUpperCase().includes("GALUR")) {
+        companyCode = "GALUR"
+      } else if (companyName.toUpperCase().includes("ARM")) {
+        companyCode = "ARM"
+      } else {
+        // Fallback: Check user email if company name didn't match
+        if (userEmail.toLowerCase().includes("agle")) companyCode = "AGLE"
+        else if (userEmail.toLowerCase().includes("galur")) companyCode = "GALUR"
+        else if (userEmail.toLowerCase().includes("arm")) companyCode = "ARM"
+      }
+
+      // Prefijo según empresa para el número
+      let prefix = "CARTA"
+      if (companyCode.includes("ARM")) prefix = "NºARM"
+      if (companyCode.includes("AGLE")) prefix = "N°AGLEP"
+      if (companyCode.includes("GALUR")) prefix = "GBC"
+
+      const letterNumber = `${prefix}-${randomNum}-${currentYear}`
+
+      await generatePresentationLetter({
+        companyName: companyToUse.name,
+        companyCode: companyCode,
+        // companyRuc: companyToUse.ruc, // Si estuviera disponible en companyToUse
+        letterNumber: letterNumber,
+        clientName: client.name,
+        clientRuc: client.ruc,
+        clientAddress: client.fiscal_address || "Dirección no registrada",
+        createdBy: user?.full_name || "Usuario del Sistema",
+      })
+
+      toast.success("Carta de presentación generada exitosamente")
+    } catch (error: any) {
+      console.error("Error generating presentation letter:", error)
+      toast.error("Error al generar la carta: " + error.message)
     }
   }
 
@@ -279,6 +340,7 @@ export default function CRMPage() {
                               }}
                               onDelete={(client) => setDeletingClient(client)}
                               onFollowUp={(client) => setFollowUpClient(client)}
+                              onGenerateLetter={handleGenerateLetter}
                             />
                           ))}
                         </div>
