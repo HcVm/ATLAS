@@ -1,6 +1,4 @@
 "use client"
-
-import { DialogTrigger } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -26,7 +24,6 @@ import {
   Clock,
   Users,
   Hash,
-  Loader2,
   FileCheck,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -35,9 +32,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import MultiProductSaleForm from "@/components/sales/multi-product-sale-form"
 import SaleEditForm from "@/components/sales/sale-edit-form"
-import SalesExportDialog from "@/components/sales/sales-export-dialog"
 import { Label } from "@/components/ui/label"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
 import PaymentVoucherDialog from "@/components/sales/payment-voucher-dialog"
@@ -65,6 +60,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import Link from "next/link"
 
 interface Sale {
   id: string
@@ -926,77 +922,45 @@ export default function SalesPage() {
     )
   }
 
-  return (
-    <div className="space-y-6 p-4 md:p-6">
-      {generatingLots && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-8 shadow-2xl flex flex-col items-center space-y-4 max-w-sm mx-4">
-            <Loader2 className="h-16 w-16 animate-spin text-slate-600 dark:text-slate-300" />
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
-                Generando Lotes y Series
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Por favor espera mientras se generan los lotes y números de serie...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+  const hasAccess = hasSalesAccess // near line 218
 
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
-            Módulo de Ventas
-          </h1>
-          <p className="text-muted-foreground">
-            Gestión de ventas de:{" "}
-            <span className="font-semibold text-foreground">{selectedCompany?.name || "N/A"}</span>
-            {!canViewAllSales && <span className="ml-2 text-sm text-orange-600 font-medium">(Solo tus ventas)</span>}
-            {(user?.departments?.name === "Acuerdos Marco" || user?.departments?.name === "acuerdos marco") && (
-              <span className="ml-2 text-sm text-blue-600 font-medium">(Gestión de Lotes)</span>
-            )}
-          </p>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Ventas</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">Gestión de ventas y cotizaciones</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <SalesExportDialog onExport={() => toast.success("Exportación completada")} />
-          <Button
-            className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md"
-            onClick={() => setShowSalesEntityManagementDialog(true)}
-            disabled={!hasSalesAccess}
-          >
-            <Users className="h-4 w-4 mr-2" /> Gestionar Clientes
+        <div className="flex gap-2">
+          <Button variant="outline" asChild className="border-slate-200 dark:border-slate-700 bg-transparent">
+            <Link href="/sales/crm">
+              <Users className="h-4 w-4 mr-2" />
+              CRM - Clientes
+            </Link>
           </Button>
-          {canEditSales && (
-            <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white shadow-md">
-                  <Plus className="h-4 w-4 mr-2" /> Nueva Venta
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
-                <DialogHeader>
-                  <DialogTitle className="text-slate-800 dark:text-slate-100">Registrar Nueva Venta</DialogTitle>
-                  <DialogDescription className="text-slate-600 dark:text-slate-300">
-                    Completa todos los campos para registrar una nueva venta
-                  </DialogDescription>
-                </DialogHeader>
-                <MultiProductSaleForm
-                  onSuccess={() => {
-                    setShowNewSaleDialog(false)
-                    if (companyToUse?.id) {
-                      fetchSales(companyToUse.id)
-                      fetchStats(companyToUse.id)
-                    }
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
+          {/* End CHANGE */}
+          <Button
+            onClick={() => {
+              setShowNewSaleDialog(true)
+            }}
+            className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Venta
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSalesEntityManagementDialog(true)}
+            className="border-slate-200 dark:border-slate-700"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Gestionar Entidades
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200 dark:border-slate-700 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Total Ventas</CardTitle>
