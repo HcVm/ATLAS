@@ -336,16 +336,6 @@ export default function InternalProductsPage() {
                 </div>
                 <div class="serial">${item.type === "serial" ? item.data.serial_number : "A GRANEL"}</div>
                 <div class="product-name">${item.productName}</div>
-                <div class="info-grid">
-                  <div class="info-row">
-                    <span class="info-label">Ubic:</span>
-                    <span class="info-value">${item.location || "N/A"}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Ref:</span>
-                    <span class="info-value">${item.productCode}</span>
-                  </div>
-                </div>
               </div>
               ${qrCodeUrl ? `<div class="qr-column"><img src="${qrCodeUrl}" alt="QR" /></div>` : ""}
             </div>
