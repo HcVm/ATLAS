@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { es } from "date-fns/locale"
 import { QRDisplayDialog } from "@/components/qr-code-display"
 import QRCodeLib from "qrcode"
@@ -160,6 +161,7 @@ export default function InternalProductDetailPage() {
       userId: user.id,
       companyId: user.company_id,
       quantity,
+      client: supabase,
     })
   }
 
@@ -189,8 +191,8 @@ export default function InternalProductDetailPage() {
     if (!product || !user?.company_id) return
 
     try {
-      const hasBeenPrinted = await hasStickerBeenPrinted(product.id, null, user.company_id)
-      const lastPrint = await getLastStickerPrint(product.id, null, user.company_id)
+      const hasBeenPrinted = await hasStickerBeenPrinted(product.id, null, user.company_id, supabase)
+      const lastPrint = await getLastStickerPrint(product.id, null, user.company_id, supabase)
 
       if (hasBeenPrinted && lastPrint) {
         setReprintConfirmDialog({
@@ -240,11 +242,13 @@ export default function InternalProductDetailPage() {
                 .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
                 .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
                 .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
-                .product-code { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
+                .serial { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
                 .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .bulk-badge { font-size: 6pt; font-weight: 800; background: #fef3c7; color: #92400e; padding: 0.5mm 1.5mm; border-radius: 2px; align-self: flex-start; margin-top: 1mm; }
-                .qr-column { display: flex; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; }
-                .qr-column img { width: 15mm; height: 15mm; }
+                .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
+                .info-row { display: flex; gap: 1mm; font-size: 6pt; }
+                .info-label { font-weight: 700; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17mm; padding-right: 1mm; }
+                .qr-column img { width: 16mm; height: 16mm; }
               </style>
             </head>
             <body>
@@ -254,9 +258,18 @@ export default function InternalProductDetailPage() {
                     <span class="company-text">${companyName} INV ${currentYear}</span>
                     <span class="atlas-badge">ATLAS</span>
                   </div>
-                  <div class="product-code">${product.code}</div>
+                  <div class="serial">A GRANEL</div>
                   <div class="product-name">${product.name}</div>
-                  <div class="bulk-badge">PRODUCTO A GRANEL</div>
+                  <div class="info-grid">
+                    <div class="info-row">
+                      <span class="info-label">Ubic:</span>
+                      <span class="info-value">${resolveLocation(product.location)}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Ref:</span>
+                      <span class="info-value">${product.code}</span>
+                    </div>
+                  </div>
                 </div>
                 ${qrCodeUrl ? `<div class="qr-column"><img src="${qrCodeUrl}" alt="QR" /></div>` : ""}
               </div>
@@ -635,7 +648,7 @@ export default function InternalProductDetailPage() {
       // Verificar si al menos una serie ya fue impresa
       let hasAnyBeenPrinted = false
       for (const serial of inStockSerials) {
-        const hasBeenPrinted = await hasStickerBeenPrinted(product.id, serial.id, user.company_id)
+        const hasBeenPrinted = await hasStickerBeenPrinted(product.id, serial.id, user.company_id, supabase)
         if (hasBeenPrinted) {
           hasAnyBeenPrinted = true
           break
@@ -643,7 +656,7 @@ export default function InternalProductDetailPage() {
       }
 
       if (hasAnyBeenPrinted) {
-        const lastPrint = await getLastStickerPrint(product.id, inStockSerials[0].id, user.company_id)
+        const lastPrint = await getLastStickerPrint(product.id, inStockSerials[0].id, user.company_id, supabase)
         setReprintConfirmDialog({
           open: true,
           type: "all",
@@ -891,7 +904,7 @@ export default function InternalProductDetailPage() {
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(product.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                      {formatInTimeZone(product.created_at, "America/Lima", "dd/MM/yyyy HH:mm", { locale: es })}
                     </span>
                   </div>
                 </div>
@@ -900,7 +913,7 @@ export default function InternalProductDetailPage() {
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(product.updated_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                      {formatInTimeZone(product.updated_at, "America/Lima", "dd/MM/yyyy HH:mm", { locale: es })}
                     </span>
                   </div>
                 </div>
@@ -1019,7 +1032,7 @@ export default function InternalProductDetailPage() {
                               </TableCell>
                               <TableCell>{resolveLocation(serial.current_location)}</TableCell>
                               <TableCell>
-                                {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                                {formatInTimeZone(serial.created_at, "America/Lima", "dd/MM/yyyy HH:mm", { locale: es })}
                               </TableCell>
                               <TableCell>
                                 <StickerPrintIndicator
@@ -1171,10 +1184,10 @@ export default function InternalProductDetailPage() {
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <div>
                                   <div className="font-medium">
-                                    {format(new Date(movement.movement_date), "dd/MM/yyyy", { locale: es })}
+                                    {formatInTimeZone(movement.movement_date, "America/Lima", "dd/MM/yyyy", { locale: es })}
                                   </div>
                                   <div className="text-sm text-muted-foreground">
-                                    {format(new Date(movement.created_at), "HH:mm", { locale: es })}
+                                    {formatInTimeZone(movement.created_at, "America/Lima", "HH:mm", { locale: es })}
                                   </div>
                                 </div>
                               </div>
@@ -1396,11 +1409,14 @@ export default function InternalProductDetailPage() {
                   <div className="bg-amber-50 border border-amber-200 rounded p-2 text-sm">
                     <p className="font-semibold text-amber-900">Última impresión:</p>
                     <p className="text-amber-800">
-                      {format(
-                        new Date(reprintConfirmDialog.lastPrintData.print_date),
-                        "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                        { locale: es },
-                      )}
+                      {reprintConfirmDialog.lastPrintData.printed_at
+                        ? formatInTimeZone(
+                            reprintConfirmDialog.lastPrintData.printed_at,
+                            "America/Lima",
+                            "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
+                            { locale: es },
+                          )
+                        : "Fecha desconocida"}
                     </p>
                     <p className="text-amber-800">Por: {reprintConfirmDialog.lastPrintData.printed_by_name}</p>
                     <p className="text-amber-800">Copias: {reprintConfirmDialog.lastPrintData.quantity_printed}</p>
