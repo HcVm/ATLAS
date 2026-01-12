@@ -364,7 +364,7 @@ export default function InternalProductsPage() {
                 @page { size: 50mm 25mm; margin: 0; }
                 body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
                 .sticker { width: 50mm; height: 25mm; display: flex; flex-direction: row; padding: 0; overflow: hidden; page-break-after: always; }
-                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm; min-width: 0; }
+                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm 3mm 5mm; min-width: 0; }
                 .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
                 .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
                 .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
@@ -373,7 +373,7 @@ export default function InternalProductsPage() {
                 .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 700; }
-                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17mm; padding-right: 1mm; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17mm; padding-right: 0.5mm; }
                 .qr-column img { width: 16mm; height: 16mm; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -ms-interpolation-mode: nearest-neighbor; }
               </style>
             </head>

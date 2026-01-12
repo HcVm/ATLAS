@@ -509,7 +509,7 @@ export default function InternalProductDetailPage() {
                   flex: 1;
                   display: flex;
                   flex-direction: column;
-                  padding: 3mm 2mm;
+                  padding: 3mm 2mm 3mm 5mm;
                   min-width: 0;
                   overflow: hidden;
                 }
@@ -580,7 +580,7 @@ export default function InternalProductDetailPage() {
                   align-items: center;
                   justify-content: center;
                   width: 16mm;
-                  padding-right: 2mm;
+                  padding-right: 0.5mm;
                 }
                 .qr-column img {
                   width: 15mm;
@@ -726,7 +726,7 @@ export default function InternalProductDetailPage() {
                 @page { size: 50mm 25mm; margin: 0; }
                 body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
                 .sticker { width: 50mm; height: 25mm; display: flex; flex-direction: row; padding: 0; overflow: hidden; page-break-after: always; }
-                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm; min-width: 0; }
+                .main-content { flex: 1; display: flex; flex-direction: column; padding: 3mm 2mm 3mm 5mm; min-width: 0; }
                 .header-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #ccc; margin-bottom: 1mm; padding-bottom: 0.5mm; }
                 .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
                 .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
@@ -736,7 +736,7 @@ export default function InternalProductDetailPage() {
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 600; min-width: 20px; }
                 .info-value { font-family: monospace; font-size: 5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; gap: 1mm; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 0.5mm; gap: 1mm; }
                 .qr-column img { width: 15mm; height: 15mm; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -ms-interpolation-mode: nearest-neighbor; }
                 .qr-label { font-size: 4pt; font-weight: 600; text-transform: uppercase; }
               </style>
