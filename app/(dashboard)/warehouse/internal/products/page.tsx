@@ -596,12 +596,12 @@ export default function InternalProductsPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Productos Internos</h1>
           <p className="text-muted-foreground">Gestiona los productos de uso interno de la empresa</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto">
           {selectedProductIds.length > 0 && (
             <Button variant="outline" onClick={handleBulkPrintStickers} disabled={isBulkPrinting}>
               <Printer className="h-4 w-4 mr-2" />
@@ -730,7 +730,147 @@ export default function InternalProductsPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          {/* Mobile Card View */}
+          <div className="grid grid-cols-1 gap-4 md:hidden mb-4">
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-8 border rounded-md">
+                <div className="text-muted-foreground">
+                  <Package className="h-8 w-8 mx-auto mb-2" />
+                  <p>No se encontraron productos</p>
+                  <p className="text-sm">Intenta ajustar los filtros o crear un nuevo producto</p>
+                </div>
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <div key={product.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 mt-1"
+                        onClick={() => toggleProductSelection(product.id)}
+                      >
+                        {selectedProductIds.includes(product.id) ? (
+                          <CheckSquare className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Square className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                      <div>
+                        <div className="font-medium text-base">{product.name}</div>
+                        <div className="text-sm text-muted-foreground font-mono">{product.code}</div>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setProductForQuickEntry(product)
+                            setIsQuickEntryOpen(true)
+                          }}
+                        >
+                          <ArrowUpCircle className="mr-2 h-4 w-4 text-green-600" /> Registrar Entrada
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/warehouse/internal/products/${product.id}`}>
+                            <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/warehouse/internal/products/edit/${product.id}`}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                          </Link>
+                        </DropdownMenuItem>
+                        {product.is_serialized && (
+                          <DropdownMenuItem asChild>
+                            <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
+                              <QrCode className="mr-2 h-4 w-4" /> Ver QRs
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleProductDelete(product.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {product.description && <div className="text-sm text-muted-foreground">{product.description}</div>}
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Categoría:</span>
+                      {product.internal_product_categories ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: product.internal_product_categories.color }}
+                          />
+                          <span>{product.internal_product_categories.name}</span>
+                        </div>
+                      ) : (
+                        <span className="block mt-1">-</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Stock:</span>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span
+                          className={product.current_stock <= product.minimum_stock ? "text-red-600 font-semibold" : ""}
+                        >
+                          {product.current_stock}
+                        </span>
+                        <span className="text-muted-foreground text-xs">{product.unit_of_measure}</span>
+                        {product.current_stock <= product.minimum_stock && (
+                          <AlertTriangle className="h-3 w-3 text-orange-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Estado:</span>
+                      <div className="mt-1">
+                        <Badge variant={product.is_active ? "default" : "secondary"} className="text-xs">
+                          {product.is_active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Tipo:</span>
+                      <div className="mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {product.is_serialized ? "Serializado" : "No Serial."}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t flex justify-between items-center">
+                    <div className="text-xs text-muted-foreground">
+                      Valor: S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}
+                    </div>
+                    <StickerPrintIndicator
+                      productId={product.id}
+                      serialId={null}
+                      isSerializedProduct={product.is_serialized}
+                      lastPrintInfo={stickerPrintData[product.id]?.lastPrintInfo}
+                      printStats={stickerPrintData[product.id]?.printStats}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="rounded-md border hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
