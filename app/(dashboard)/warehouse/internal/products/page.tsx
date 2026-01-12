@@ -322,7 +322,7 @@ export default function InternalProductsPage() {
             const publicUrl = `${window.location.origin}/public/internal-product/${item.qrHash}`
             qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
               errorCorrectionLevel: "H",
-              width: 300,
+              width: 1024,
               margin: 1,
             })
           }

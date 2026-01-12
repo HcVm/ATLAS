@@ -222,7 +222,7 @@ export default function InternalProductDetailPage() {
         const publicUrl = `${window.location.origin}/public/internal-product/${product.qr_code_hash}`
         qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
           errorCorrectionLevel: "H",
-          width: 300,
+          width: 1024,
           margin: 1,
         })
       }
@@ -462,7 +462,7 @@ export default function InternalProductDetailPage() {
         const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
         qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
           errorCorrectionLevel: "H",
-          width: 300,
+          width: 1024,
           margin: 1,
           color: {
             dark: "#000000",
@@ -688,7 +688,7 @@ export default function InternalProductDetailPage() {
             const publicUrl = `${window.location.origin}/public/internal-product/${serial.qr_code_hash}`
             qrCodeUrl = await QRCodeLib.toDataURL(publicUrl, {
               errorCorrectionLevel: "H",
-              width: 300,
+              width: 1024,
               margin: 1,
             })
           }
