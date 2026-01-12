@@ -39,6 +39,8 @@ import Link from "next/link"
 import { deleteInternalProduct } from "@/app/actions/internal-products"
 import QRCodeLib from "qrcode"
 import { QuickInternalEntryDialog } from "@/components/warehouse/quick-internal-entry-dialog"
+import { getLastStickerPrint } from "@/lib/sticker-print-service"
+import { StickerPrintIndicator } from "@/components/warehouse/sticker-print-indicator"
 
 interface Category {
   id: string
@@ -82,6 +84,7 @@ export default function InternalProductsPage() {
   const [isBulkPrinting, setIsBulkPrinting] = useState(false)
   const [isQuickEntryOpen, setIsQuickEntryOpen] = useState(false)
   const [productForQuickEntry, setProductForQuickEntry] = useState<Product | null>(null)
+  const [stickerPrintData, setStickerPrintData] = useState<Record<string, any>>({})
 
   const companyId = useMemo(() => {
     return user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -137,6 +140,15 @@ export default function InternalProductsPage() {
           return product
         }),
       )
+
+      const printDataMap: Record<string, any> = {}
+      await Promise.all(
+        (productsWithAggregatedStock || []).map(async (product) => {
+          const lastPrint = await getLastStickerPrint(product.id, null, companyId)
+          printDataMap[product.id] = lastPrint
+        }),
+      )
+      setStickerPrintData(printDataMap)
 
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("internal_product_categories")
@@ -530,13 +542,14 @@ export default function InternalProductsPage() {
                   <TableHead>Valor Total</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Sticker</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
+                    <TableCell colSpan={10} className="text-center py-8">
                       <div className="text-muted-foreground">
                         <Package className="h-8 w-8 mx-auto mb-2" />
                         <p>No se encontraron productos</p>
@@ -609,6 +622,14 @@ export default function InternalProductsPage() {
                         <Badge variant="outline" className="text-xs">
                           {product.is_serialized ? "Serializado" : "No Serializado"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <StickerPrintIndicator
+                          productId={product.id}
+                          serialId={null}
+                          isSerializedProduct={product.is_serialized}
+                          lastPrintInfo={stickerPrintData[product.id]}
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

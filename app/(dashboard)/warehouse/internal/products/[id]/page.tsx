@@ -36,6 +36,21 @@ import { es } from "date-fns/locale"
 import { QRDisplayDialog } from "@/components/qr-code-display"
 import QRCodeLib from "qrcode"
 import { QuickSerialMovementDialog } from "@/components/warehouse/quick-serial-movement-dialog"
+// Importar AlertDialog y sus componentes, y actualizar sticker-print-service
+import {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
+import { registerStickerPrint, getLastStickerPrint, hasStickerBeenPrinted } from "@/lib/sticker-print-service"
+import { StickerPrintIndicator } from "@/components/warehouse/sticker-print-indicator"
 
 interface Product {
   id: string
@@ -81,15 +96,16 @@ interface Movement {
 
 interface SerializedProduct {
   id: string
+  product_id: string
   serial_number: string
-  status: string
+  status: "in_stock" | "sold" | "damaged" | "lost" | "withdrawn" | "in_repair" // Added 'withdrawn' and 'in_repair' for clarity
   current_location: string | null
+  assigned_department: string | null // Added this field
+  qr_code_hash: string | null
   created_at: string
   updated_at: string
-  product_id: string
-  qr_code_hash: string | null
-  is_serialized: boolean // Added this to match Product interface if needed for specific checks
-  condition?: "nuevo" | "usado"
+  company_id: string
+  condition?: "nuevo" | "usado" // Added condition field
 }
 
 interface Department {
@@ -122,8 +138,76 @@ export default function InternalProductDetailPage() {
   const [isQuickMovementOpen, setIsQuickMovementOpen] = useState(false)
   const [selectedSerial, setSelectedSerial] = useState<SerializedProduct | null>(null)
 
+  const [serialStickerPrintData, setSerialStickerPrintData] = useState<Record<string, any>>({})
+  const [bulkStickerPrintData, setBulkStickerPrintData] = useState<any>(null)
+
+  const [reprintConfirmDialog, setReprintConfirmDialog] = useState<{
+    open: boolean
+    type: "bulk" | "serial" | "all" | null
+    serialData?: SerializedProduct | null
+    lastPrintData?: any
+  }>({
+    open: false,
+    type: null,
+  })
+
+  const logStickerPrint = async (serialId?: string | null, quantity = 1) => {
+    if (!user?.id || !user?.company_id) return
+
+    await registerStickerPrint({
+      productId: product?.id || "",
+      serialId: serialId || null,
+      userId: user.id,
+      companyId: user.company_id,
+      quantity,
+    })
+  }
+
+  const handleReprintConfirm = async () => {
+    try {
+      switch (reprintConfirmDialog.type) {
+        case "bulk":
+          await executePrintBulkSticker()
+          break
+        case "serial":
+          if (reprintConfirmDialog.serialData) {
+            await executePrintSticker(reprintConfirmDialog.serialData)
+          }
+          break
+        case "all":
+          await executePrintAllStickers()
+          break
+      }
+      setReprintConfirmDialog({ open: false, type: null })
+    } catch (error) {
+      console.error("Error in handleReprintConfirm:", error)
+    }
+  }
+
   // Diseñado para stickers de 50mm x 25mm con QR y badge de "A GRANEL".
   const handlePrintBulkSticker = async () => {
+    if (!product || !user?.company_id) return
+
+    try {
+      const hasBeenPrinted = await hasStickerBeenPrinted(product.id, null, user.company_id)
+      const lastPrint = await getLastStickerPrint(product.id, null, user.company_id)
+
+      if (hasBeenPrinted && lastPrint) {
+        setReprintConfirmDialog({
+          open: true,
+          type: "bulk",
+          lastPrintData: lastPrint,
+        })
+      } else {
+        await executePrintBulkSticker()
+      }
+    } catch (error) {
+      console.error("Error checking bulk sticker print status:", error)
+      toast.error("Error al verificar estado de impresión")
+    }
+  }
+
+  const executePrintBulkSticker = async () => {
     if (!product) return
 
     try {
@@ -184,6 +268,8 @@ export default function InternalProductDetailPage() {
           printWindow.print()
           printWindow.close()
         }, 500)
+
+        await logStickerPrint(null, 1)
       }
     } catch (error) {
       console.error("Error printing bulk sticker:", error)
@@ -232,7 +318,7 @@ export default function InternalProductDetailPage() {
           .from("internal_product_serials")
           .select("id", { count: "exact", head: true })
           .eq("product_id", params.id)
-          .eq("status", "in_stock")
+          .eq("status", "in_stock") // Only count items that are in stock
           .eq("company_id", user?.company_id)
 
         if (!serialCountError) {
@@ -245,15 +331,26 @@ export default function InternalProductDetailPage() {
       if (productData?.is_serialized) {
         const { data: serialsData, error: serialsError } = await supabase
           .from("internal_product_serials")
-          .select("*")
+          .select("*") // Select all relevant fields for SerializedProduct
           .eq("product_id", params.id)
           .eq("company_id", user?.company_id)
           .order("serial_number", { ascending: true })
 
         if (serialsError) throw serialsError
         setSerials(serialsData || [])
+
+        const printDataMap: Record<string, any> = {}
+        await Promise.all(
+          (serialsData || []).map(async (serial) => {
+            const lastPrint = await getLastStickerPrint(productData.id, serial.id, user?.company_id || "")
+            printDataMap[serial.id] = lastPrint
+          }),
+        )
+        setSerialStickerPrintData(printDataMap)
       } else {
         setSerials([])
+        const lastBulkPrint = await getLastStickerPrint(productData.id, null, user?.company_id || "")
+        setBulkStickerPrintData(lastBulkPrint)
       }
 
       const { data: movementsData, error: movementsError } = await supabase
@@ -316,13 +413,35 @@ export default function InternalProductDetailPage() {
   }
 
   const handlePrintSticker = async (serial: SerializedProduct) => {
+    if (!user?.company_id) return
+
+    try {
+      const hasBeenPrinted = await hasStickerBeenPrinted(product?.id || "", serial.id, user.company_id)
+      const lastPrint = await getLastStickerPrint(product?.id || "", serial.id, user.company_id)
+
+      if (hasBeenPrinted && lastPrint) {
+        setReprintConfirmDialog({
+          open: true,
+          type: "serial",
+          serialData: serial,
+          lastPrintData: lastPrint,
+        })
+      } else {
+        await executePrintSticker(serial)
+      }
+    } catch (error) {
+      console.error("Error checking serial sticker print status:", error)
+      toast.error("Error al verificar estado de impresión")
+    }
+  }
+
+  const executePrintSticker = async (serial: SerializedProduct) => {
     try {
       const { data: companyData } = await supabase.from("companies").select("name").eq("id", user?.company_id).single()
 
       const companyName = companyData?.name || "EMPRESA"
       const currentYear = new Date().getFullYear()
 
-      // ← NUEVO: Resolver la ubicación usando la misma lógica que en resolveLocation
       const resolvedLocation = resolveLocation(serial.current_location)
 
       let qrCodeUrl = ""
@@ -404,16 +523,14 @@ export default function InternalProductDetailPage() {
                   background: #000;
                   padding: 0.5mm 1.5mm;
                   border-radius: 3px;
-                  letter-spacing: 0.5px;
                 }
                 .serial {
                   font-weight: 700;
                   font-size: 7pt;
-                  font-family: 'Courier New', monospace;
-                  line-height: 1;
-                  color: #000;
-                  letter-spacing: -0.3px;
+                  font-family: monospace;
+                  letter-spacing: 0.1px;
                   margin-bottom: 1mm;
+                  line-height: 1;
                 }
                 .product-name {
                   font-weight: 700;
@@ -421,8 +538,7 @@ export default function InternalProductDetailPage() {
                   white-space: nowrap;
                   overflow: hidden;
                   text-overflow: ellipsis;
-                  color: #000;
-                  margin-bottom: 0.8mm;
+                  margin-bottom: 0.5mm;
                 }
                 .info-grid {
                   display: flex;
@@ -432,46 +548,30 @@ export default function InternalProductDetailPage() {
                 .info-row {
                   display: flex;
                   gap: 1mm;
-                  font-size: 7pt;
-                  color: #000;
-                  line-height: 1.2;
+                  font-size: 6pt;
+                  line-height: 1;
                 }
                 .info-label {
-                  font-weight: 700;
-                  flex-shrink: 0;
+                  font-weight: 600;
+                  min-width: 20px;
                 }
                 .info-value {
+                  font-family: monospace;
+                  font-size: 5pt;
                   white-space: nowrap;
                   overflow: hidden;
                   text-overflow: ellipsis;
                 }
                 .qr-column {
                   display: flex;
-                  flex-direction: column;
                   align-items: center;
                   justify-content: center;
-                  flex-shrink: 0;
                   width: 16mm;
-                  background: #fff;
                   padding-right: 2mm;
                 }
                 .qr-column img {
-                  width: 16mm;
-                  height: 16mm;
-                  display: block;
-                  image-rendering: -webkit-optimize-contrast;
-                  image-rendering: crisp-edges;
-                  image-rendering: pixelated;
-                }
-              
-                @media print {
-                  body {
-                    margin: 0;
-                    padding: 0;
-                  }
-                  .sticker {
-                    border: none !important;
-                  }
+                  width: 15mm;
+                  height: 15mm;
                 }
               </style>
             </head>
@@ -487,7 +587,7 @@ export default function InternalProductDetailPage() {
                   <div class="info-grid">
                     <div class="info-row">
                       <span class="info-label">Ubic:</span>
-                      <span class="info-value">${resolvedLocation}</span>  <!-- ← AQUÍ AHORA SALE EL NOMBRE -->
+                      <span class="info-value">${resolvedLocation}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Ref:</span>
@@ -498,10 +598,10 @@ export default function InternalProductDetailPage() {
                 ${
                   qrCodeUrl
                     ? `
-                <div class="qr-column">
-                  <img src="${qrCodeUrl}" alt="QR" />
-                </div>
-                `
+              <div class="qr-column">
+                <img src="${qrCodeUrl}" alt="QR" />
+              </div>
+              `
                     : ""
                 }
               </div>
@@ -512,6 +612,8 @@ export default function InternalProductDetailPage() {
         setTimeout(() => {
           printWindow.print()
         }, 250)
+
+        await logStickerPrint(serial.id, 1)
       }
     } catch (error) {
       console.error("Error generating sticker:", error)
@@ -520,6 +622,43 @@ export default function InternalProductDetailPage() {
   }
 
   const handlePrintAllStickers = async () => {
+    if (!product || serials.length === 0 || !user?.company_id) return
+
+    try {
+      // Verificar si todas las series ya han sido impresas
+      const inStockSerials = serials.filter((s) => s.status === "in_stock")
+      if (inStockSerials.length === 0) {
+        toast.error("No hay productos en stock para imprimir etiquetas")
+        return
+      }
+
+      // Verificar si al menos una serie ya fue impresa
+      let hasAnyBeenPrinted = false
+      for (const serial of inStockSerials) {
+        const hasBeenPrinted = await hasStickerBeenPrinted(product.id, serial.id, user.company_id)
+        if (hasBeenPrinted) {
+          hasAnyBeenPrinted = true
+          break
+        }
+      }
+
+      if (hasAnyBeenPrinted) {
+        const lastPrint = await getLastStickerPrint(product.id, inStockSerials[0].id, user.company_id)
+        setReprintConfirmDialog({
+          open: true,
+          type: "all",
+          lastPrintData: lastPrint,
+        })
+      } else {
+        await executePrintAllStickers()
+      }
+    } catch (error) {
+      console.error("Error checking all stickers print status:", error)
+      toast.error("Error al verificar estado de impresión")
+    }
+  }
+
+  const executePrintAllStickers = async () => {
     if (!product || serials.length === 0) return
 
     try {
@@ -528,10 +667,6 @@ export default function InternalProductDetailPage() {
       const currentYear = new Date().getFullYear()
 
       const inStockSerials = serials.filter((s) => s.status === "in_stock")
-      if (inStockSerials.length === 0) {
-        toast.error("No hay productos en stock para imprimir etiquetas")
-        return
-      }
 
       const stickersHtml = await Promise.all(
         inStockSerials.map(async (serial) => {
@@ -586,12 +721,16 @@ export default function InternalProductDetailPage() {
                 .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
-                .info-label { font-weight: 700; }
-                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; }
+                .info-label { font-weight: 600; min-width: 20px; }
+                .info-value { font-family: monospace; font-size: 5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; gap: 1mm; }
                 .qr-column img { width: 15mm; height: 15mm; }
+                .qr-label { font-size: 4pt; font-weight: 600; text-transform: uppercase; }
               </style>
             </head>
-            <body>${stickersHtml.join("")}</body>
+            <body>
+              ${stickersHtml.join("")}
+            </body>
           </html>
         `)
         printWindow.document.close()
@@ -599,9 +738,12 @@ export default function InternalProductDetailPage() {
           printWindow.print()
           printWindow.close()
         }, 500)
+
+        // Registrar todas las impresiones en paralelo
+        await Promise.all(inStockSerials.map((serial) => logStickerPrint(serial.id, 1)))
       }
     } catch (error) {
-      console.error("Error printing stickers:", error)
+      console.error("Error printing all stickers:", error)
       toast.error("Error al generar las etiquetas")
     }
   }
@@ -769,12 +911,21 @@ export default function InternalProductDetailPage() {
           {!product.is_serialized && (
             <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
               <Boxes className="h-5 w-5 text-orange-600 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-orange-900">Producto a Granel (Sin Seriales)</p>
                 <p className="text-sm text-orange-800">
                   Este producto no utiliza etiquetas individuales. El stock se gestiona mediante conteo directo en
                   movimientos de entrada y salida.
                 </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs font-medium text-orange-700">Estado del Sticker:</span>
+                  <StickerPrintIndicator
+                    productId={product.id}
+                    serialId={null}
+                    isSerializedProduct={false}
+                    lastPrintInfo={bulkStickerPrintData}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -789,7 +940,6 @@ export default function InternalProductDetailPage() {
                   Números de Serie en Stock
                 </h3>
                 <div className="flex gap-2">
-                  {/* ... existing print buttons ... */}
                   <Button variant="outline" onClick={handlePrintAllStickers}>
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir Todos ({serials.filter((s) => s.status === "in_stock").length})
@@ -826,6 +976,7 @@ export default function InternalProductDetailPage() {
                             <TableHead>Estado</TableHead>
                             <TableHead>Ubicación Actual</TableHead>
                             <TableHead>Creado</TableHead>
+                            <TableHead>Sticker</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -838,7 +989,10 @@ export default function InternalProductDetailPage() {
                                   variant={
                                     serial.status === "in_stock"
                                       ? "default"
-                                      : serial.status === "out_of_stock"
+                                      : serial.status === "out_of_stock" ||
+                                          serial.status === "sold" ||
+                                          serial.status === "lost" ||
+                                          serial.status === "damaged"
                                         ? "destructive"
                                         : serial.status === "withdrawn"
                                           ? "secondary"
@@ -847,13 +1001,15 @@ export default function InternalProductDetailPage() {
                                 >
                                   {serial.status === "in_stock"
                                     ? "En Stock"
-                                    : serial.status === "out_of_stock"
-                                      ? "Asignado"
+                                    : serial.status === "out_of_stock" || serial.status === "sold"
+                                      ? "Asignado/Vendido"
                                       : serial.status === "in_repair"
                                         ? "En Reparación"
                                         : serial.status === "withdrawn"
                                           ? "Dado de Baja"
-                                          : "Desechado"}
+                                          : serial.status === "damaged"
+                                            ? "Dañado"
+                                            : "Desconocido"}
                                 </Badge>
                                 {serial.condition && (
                                   <Badge variant="outline" className="ml-2 text-xs">
@@ -864,6 +1020,14 @@ export default function InternalProductDetailPage() {
                               <TableCell>{resolveLocation(serial.current_location)}</TableCell>
                               <TableCell>
                                 {format(new Date(serial.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                              </TableCell>
+                              <TableCell>
+                                <StickerPrintIndicator
+                                  productId={product.id}
+                                  serialId={serial.id}
+                                  isSerializedProduct={true}
+                                  lastPrintInfo={serialStickerPrintData[serial.id]}
+                                />
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
@@ -1215,6 +1379,45 @@ export default function InternalProductDetailPage() {
         </div>
       </div>
       <QRDisplayDialog open={qrDialogOpen} onOpenChange={setQrDialogOpen} qrData={qrData} title={qrTitle} />
+
+      {/* Agregar diálogo de confirmación de re-impresión al JSX */}
+      <AlertDialog
+        open={reprintConfirmDialog.open}
+        onOpenChange={(open) => !open && setReprintConfirmDialog({ open: false, type: null })}
+      >
+        <AlertDialogPortal>
+          <AlertDialogOverlay />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-amber-600">Sticker ya ha sido impreso</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 pt-2">
+                <p>Este sticker ya ha sido impreso anteriormente:</p>
+                {reprintConfirmDialog.lastPrintData && (
+                  <div className="bg-amber-50 border border-amber-200 rounded p-2 text-sm">
+                    <p className="font-semibold text-amber-900">Última impresión:</p>
+                    <p className="text-amber-800">
+                      {format(
+                        new Date(reprintConfirmDialog.lastPrintData.print_date),
+                        "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
+                        { locale: es },
+                      )}
+                    </p>
+                    <p className="text-amber-800">Por: {reprintConfirmDialog.lastPrintData.printed_by_name}</p>
+                    <p className="text-amber-800">Copias: {reprintConfirmDialog.lastPrintData.quantity_printed}</p>
+                  </div>
+                )}
+                <p className="font-semibold">¿Deseas imprimir nuevamente?</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReprintConfirm} className="bg-amber-600 hover:bg-amber-700 text-white">
+                Imprimir de todos modos
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogPortal>
+      </AlertDialog>
     </div>
   )
 }
