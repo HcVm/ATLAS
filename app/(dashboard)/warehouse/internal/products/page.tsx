@@ -374,7 +374,7 @@ export default function InternalProductsPage() {
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 700; }
                 .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17mm; padding-right: 1mm; }
-                .qr-column img { width: 16mm; height: 16mm; }
+                .qr-column img { width: 16mm; height: 16mm; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -ms-interpolation-mode: nearest-neighbor; }
               </style>
             </head>
             <body>${stickersHtml.join("")}</body>

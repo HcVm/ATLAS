@@ -248,7 +248,7 @@ export default function InternalProductDetailPage() {
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 700; }
                 .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 17mm; padding-right: 1mm; }
-                .qr-column img { width: 16mm; height: 16mm; }
+                .qr-column img { width: 16mm; height: 16mm; image-rendering: pixelated; image-rendering: -moz-crisp-edges; }
               </style>
             </head>
             <body>
@@ -737,7 +737,7 @@ export default function InternalProductDetailPage() {
                 .info-label { font-weight: 600; min-width: 20px; }
                 .info-value { font-family: monospace; font-size: 5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .qr-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 16mm; padding-right: 2mm; gap: 1mm; }
-                .qr-column img { width: 15mm; height: 15mm; }
+                .qr-column img { width: 15mm; height: 15mm; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -ms-interpolation-mode: nearest-neighbor; }
                 .qr-label { font-size: 4pt; font-weight: 600; text-transform: uppercase; }
               </style>
             </head>
