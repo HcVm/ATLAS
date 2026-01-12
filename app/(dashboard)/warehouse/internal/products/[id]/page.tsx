@@ -578,12 +578,8 @@ export default function InternalProductDetailPage() {
                   <div class="product-name">${product?.name || ""}</div>
                   <div class="info-grid">
                     <div class="info-row">
-                      <span class="info-label">Ubic:</span>
-                      <span class="info-value">${resolvedLocation}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Ref:</span>
-                      <span class="info-value">${product?.code || ""}</span>
+                      <span class="info-label">Producto:</span>
+                      <span class="info-value">${product?.name || ""}</span>
                     </div>
                   </div>
                 </div>
