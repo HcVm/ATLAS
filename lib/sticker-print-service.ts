@@ -19,10 +19,10 @@ export async function registerStickerPrint(input: RegisterPrintInput) {
     const { data, error } = await supabase.from("sticker_prints").insert({
       product_id: input.productId,
       serial_id: input.serialId || null,
-      user_id: input.userId,
+      printed_by: input.userId,
       company_id: input.companyId,
-      print_date: input.printDate?.toISOString() || new Date().toISOString(),
-      quantity: input.quantity || 1,
+      printed_at: input.printDate?.toISOString() || new Date().toISOString(),
+      quantity_printed: input.quantity || 1,
     })
 
     if (error) {
@@ -51,7 +51,7 @@ export async function getLastStickerPrint(productId: string, serialId: string | 
       .select("*")
       .eq("product_id", productId)
       .eq("company_id", companyId)
-      .order("print_date", { ascending: false })
+      .order("printed_at", { ascending: false })
       .limit(1)
 
     if (serialId) {
@@ -92,7 +92,7 @@ export async function getStickerPrintHistory(productId: string, companyId: strin
       .select("*")
       .eq("product_id", productId)
       .eq("company_id", companyId)
-      .order("print_date", { ascending: false })
+      .order("printed_at", { ascending: false })
 
     if (serialId) {
       query = query.eq("serial_id", serialId)
