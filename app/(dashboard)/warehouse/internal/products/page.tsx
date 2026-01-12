@@ -359,7 +359,16 @@ export default function InternalProductsPage() {
                 .company-text { font-size: 5pt; font-weight: 750; text-transform: uppercase; }
                 .atlas-badge { font-size: 5pt; font-weight: 800; color: #fff; background: #000; padding: 0.5mm 1.5mm; border-radius: 2px; }
                 .serial { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
-                .product-name { font-weight: 700; font-size: 6pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .product-name { 
+                  font-weight: 700; 
+                  font-size: 8pt; 
+                  line-height: 1.1;
+                  white-space: normal; 
+                  overflow: hidden; 
+                  display: -webkit-box; 
+                  -webkit-line-clamp: 4; 
+                  -webkit-box-orient: vertical; 
+                }
                 .info-grid { display: flex; flex-direction: column; gap: 0.5mm; }
                 .info-row { display: flex; gap: 1mm; font-size: 6pt; }
                 .info-label { font-weight: 700; }
