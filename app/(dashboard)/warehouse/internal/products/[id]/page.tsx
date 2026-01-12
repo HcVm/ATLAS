@@ -797,7 +797,7 @@ export default function InternalProductDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/warehouse/internal/products">
@@ -810,7 +810,7 @@ export default function InternalProductDetailPage() {
             <p className="text-muted-foreground">Código: {product.code}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <Button variant="outline" asChild>
             <Link href={`/warehouse/internal/products/edit/${product.id}`}>
               <Edit className="h-4 w-4 mr-2" />
@@ -1102,14 +1102,92 @@ export default function InternalProductDetailPage() {
               <CardDescription>{movements.length} movimientos registrados</CardDescription>
             </CardHeader>
             <CardContent>
-              {movements.length === 0 ? (
+                  {movements.length === 0 ? (
                 <div className="text-center py-8">
                   <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-muted-foreground">No hay movimientos registrados</p>
                 </div>
               ) : (
-                <div className="rounded-md border overflow-x-auto overflow-y-visible">
-                  <Table>
+                <>
+                  {/* Mobile Card View for Movements */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {movements.map((movement) => {
+                      const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
+                      const Icon = movementType?.icon || Package
+
+                      let serialDisplay = "N/A"
+                      if (product.is_serialized) {
+                        if (movement.internal_product_serials?.serial_number) {
+                          serialDisplay = movement.internal_product_serials.serial_number
+                        } else if (movement.movement_type === "entrada" && movement.notes) {
+                          // Simple logic for mobile display of generated serials (summary)
+                          if (movement.notes.includes("---SERIALES_GENERADOS---")) {
+                            serialDisplay = "Múltiples series generadas"
+                          } else if (movement.notes.includes("Series generadas:")) {
+                            serialDisplay = "Múltiples series generadas"
+                          }
+                        }
+                      }
+
+                      return (
+                        <div key={movement.id} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <div className="text-sm font-medium">
+                                {formatInTimeZone(movement.movement_date, "America/Lima", "dd/MM/yyyy", {
+                                  locale: es,
+                                })}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Icon className={`h-3 w-3 ${movementType?.color}`} />
+                              {movementType?.label}
+                            </Badge>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1 text-lg font-medium">
+                              <span className={movementType?.color}>
+                                {movement.movement_type === "salida" || movement.movement_type === "baja" ? "-" : "+"}
+                                {movement.quantity}
+                              </span>
+                              <span className="text-muted-foreground text-sm">{product.unit_of_measure}</span>
+                            </div>
+                            <div className="text-sm font-medium">S/ {movement.total_amount.toFixed(2)}</div>
+                          </div>
+
+                          {product.is_serialized && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground text-xs">Serie:</span>
+                              <div className="font-mono truncate">{serialDisplay}</div>
+                            </div>
+                          )}
+
+                          <div className="text-sm">
+                            <span className="text-muted-foreground text-xs">Motivo:</span>
+                            <div className="truncate">{movement.reason}</div>
+                          </div>
+
+                          <div className="pt-2 border-t flex justify-between items-center">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              <span>{movement.requested_by}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" asChild className="h-8 w-8 p-0">
+                              <Link href={`/warehouse/internal/movements/${movement.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="rounded-md border overflow-x-auto overflow-y-visible hidden md:block">
+                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fecha</TableHead>
@@ -1271,6 +1349,7 @@ export default function InternalProductDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
+              </>
               )}
             </CardContent>
           </Card>
