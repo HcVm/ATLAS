@@ -361,7 +361,7 @@ export default function InternalProductsPage() {
                 .serial { font-weight: 700; font-size: 7pt; font-family: monospace; margin-bottom: 1mm; }
                 .product-name { 
                   font-weight: 700; 
-                  font-size: 8pt; 
+                  font-size: 6.5pt; 
                   line-height: 1.1;
                   white-space: normal; 
                   overflow: hidden; 
