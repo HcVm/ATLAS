@@ -335,7 +335,7 @@ const createARMPresentationHTML = (data: PresentationLetterData, letterheadBase6
         </div>
 
         <!-- Despedida -->
-        <div style="position: absolute; bottom: 43mm; left: 20mm; right: 20mm;">
+        <div style="margin-top: 2mm;">
            <p style="margin: 0; font-size: 12px;">Atentamente,</p>
         </div>
       </div>
@@ -366,7 +366,7 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
         </div>
 
         <!-- Destinatario -->
-        <div style="margin-top: 5mm;">
+        <div style="margin-top: 4mm;">
           <p style="margin: 0 0 2mm 0; font-size: 12px; font-weight: 700;">ENTIDAD:</p>
           <h3 style="margin: 0 0 2mm 0; font-size: 14px; font-weight: 800;">${data.clientName}</h3>
           <p style="margin: 0 0 2mm 0; font-size: 11px;">RUC: ${data.clientRuc}</p>
@@ -374,12 +374,12 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
         </div>
 
         <!-- Asunto -->
-        <div style="margin-top: 5mm;">
+        <div style="margin-top: 3mm;">
           <p style="margin: 0; font-size: 12px; font-weight: 700;">ASUNTO: Presentación de servicios y cartera de bienes – AGLE PERUVIAN COMPANY E.I.R.L.</p>
         </div>
 
         <!-- Cuerpo -->
-        <div style="margin-top: 5mm; font-size: 12px; text-align: justify; line-height: 1.3;">
+        <div style="margin-top: 3mm; font-size: 12px; text-align: justify; line-height: 1.3;">
           <p style="margin-bottom: 3mm; font-weight: 600;">A la atención de la Oficina de Logística / Unidad de Abastecimiento:</p>
           
           <p style="margin-bottom: 3mm;">
@@ -431,7 +431,7 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
         </div>
 
         <!-- Despedida -->
-        <div style="position: absolute; bottom: 46mm; left: 40mm; right: 20mm;">
+        <div style="margin-top: 2mm; margin-left: 13mm;">
            <p style="margin: 0; font-size: 12px;">Atentamente,</p>
         </div>
       </div>
@@ -448,42 +448,42 @@ const createGALURPresentationHTML = (data: PresentationLetterData, letterheadBas
       </div>
 
       <!-- Contenido -->
-      <div style="position: relative; z-index: 2; padding: 62mm 20mm 20mm 45mm; width: 100%; height: 100%; box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 42mm 20mm 20mm 45mm; width: 100%; height: 100%; box-sizing: border-box;">
         
         <!-- Título -->
-        <div style="text-align: left;">
+        <div style="text-align: center;">
           <h1 style="margin: 0; font-size: 16px; font-weight: 800;">CARTA DE PRESENTACIÓN</h1>
           <h2 style="margin: 2mm 0 0 0; font-size: 14px; font-weight: 700;">${data.letterNumber}</h2>
         </div>
 
         <!-- Fecha -->
-        <div style="text-align: right; margin-top: -15mm;">
+        <div style="text-align: right; margin-top: 0mm;">
           <p style="margin: 0; font-size: 12px; font-weight: 600;">Lima, ${currentDate}</p>
         </div>
 
         <!-- Destinatario -->
-        <div style="margin-top: 10mm;">
+        <div style="margin-top: 5mm;">
           <p style="margin: 0 0 1mm 0; font-size: 12px; font-weight: 700;">ATENCIÓN:</p>
           <h3 style="margin: 0 0 1mm 0; font-size: 13px; font-weight: 800;">${data.clientRuc} - ${data.clientName}</h3>
-          <p style="margin: 0 0 1mm 0; font-size: 10px;">${data.clientAddress}</p>
-          <p style="margin: 0; font-size: 10px;">Unidad de Logística – Abastecimiento</p>
+          <p style="margin: 0 0 1mm 0; font-size: 12px;">${data.clientAddress}</p>
+          <p style="margin: 0; font-size: 12px;">Unidad de Logística – Abastecimiento</p>
         </div>
 
         <!-- Cuerpo -->
-        <div style="margin-top: 3mm; font-size: 10px; text-align: justify; line-height: 1.25;">
+        <div style="margin-top: 3mm; font-size: 12px; text-align: justify; line-height: 1.25;">
           <p style="margin-bottom: 2mm; font-weight: 700;">PRESENTE:</p>
           <p style="margin-bottom: 2mm;">De nuestra especial consideración:</p>
           
-          <p style="margin-bottom: 2mm;">
+          <p style="margin-bottom: 2mm; font-size: 12px;">
             Es un gusto saludarlos en representación de <strong>GALUR BUSINESS CORPORATION S.A.C.</strong>, con RUC <strong>20604486859</strong>. Nos dirigimos a su prestigiosa institución para presentar nuestro portafolio de soluciones integrales. Contamos con más de 7 años de experiencia atendiendo sectores estratégicos del ámbito público y privado, respaldados por marcas de alta gama y garantía como ZEUS, WORLDLIFE, HOPE LIFE y VALHALLA.
           </p>
           
-          <p style="margin-bottom: 2mm;">
+          <p style="margin-bottom: 2mm; font-size: 12px;">
             Nuestra empresa se distingue por su capacidad logística para el suministro de materiales críticos, especializándonos en las siguientes líneas de negocio:
           </p>
           
-          <p style="margin-bottom: 1mm; font-weight: 700;">LÍNEA DE BIENES:</p>
-          <ul style="margin: 0 0 2mm 5mm; padding: 0;">
+          <p style="margin-bottom: 1mm; font-weight: 700; font-size: 12px;">LÍNEA DE BIENES:</p>
+          <ul style="margin: 0 0 2mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Construcción y Ferretería:</strong> Suministro de materiales de construcción, agregados, herramientas eléctricas y manuales, y equipos de alta resistencia.</li>
             <li><strong>Maderas y Mobiliario:</strong> Venta de madera estructural y acabados; diseño y fabricación de mobiliario administrativo, escolar y de usos diversos bajo estándares de calidad.</li>
             <li><strong>Ayuda Humanitaria y Seguridad:</strong> Kits de emergencia, bienes de ayuda humanitaria e implementos de seguridad industrial (EPP).</li>
@@ -491,34 +491,34 @@ const createGALURPresentationHTML = (data: PresentationLetterData, letterheadBas
             <li><strong>Alimentación:</strong> Alimentos para consumo humano y bebidas no alcohólicas.</li>
           </ul>
 
-          <p style="margin-bottom: 1mm; font-weight: 700;">LÍNEA DE SERVICIOS:</p>
-          <ul style="margin: 0 0 2mm 5mm; padding: 0;">
+          <p style="margin-bottom: 1mm; font-weight: 700; font-size: 12px;">LÍNEA DE SERVICIOS:</p>
+          <ul style="margin: 0 0 2mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Infraestructura y Obras:</strong> Ejecución de proyectos de construcción, mantenimiento de instalaciones, acondicionamiento de espacios y acabados en general.</li>
             <li><strong>Logística y Transporte:</strong> Servicio de transporte de carga en seco y refrigerado a nivel nacional.</li>
             <li><strong>Comunicación y Publicidad:</strong> Servicios de imprenta, producción publicitaria y activaciones de campaña.</li>
           </ul>
           
-          <p style="margin-bottom: 2mm;">
+          <p style="margin-bottom: 2mm; font-size: 12px;">
             En <strong>GALUR BUSINESS CORPORATION S.A.C.</strong>, entendemos la importancia del cumplimiento de plazos y la normativa vigente en las contrataciones del Estado. Por ello, nos ponemos a su entera disposición para participar en sus próximos procesos de selección, garantizando eficiencia, transparencia y la mejor relación costo-beneficio.
           </p>
           
-          <p style="margin-bottom: 2mm;">
+          <p style="margin-bottom: 2mm; font-size: 12px;">
             Adjuntamos nuestros canales de contacto para cualquier consulta técnica o cotización:
           </p>
           
-          <ul style="margin: 0 0 2mm 5mm; padding: 0;">
+          <ul style="margin: 0 0 2mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Central Telefónica:</strong> 082 470 013 - Anexo 122</li>
             <li><strong>Teléfono:</strong> 915 166 406</li>
             <li><strong>Correo electrónico:</strong> galur.ventas@galurbc.com / galur.ventas2@galurbc.com</li>
           </ul>
           
-          <p style="margin-bottom: 2mm;">
-            Sin otro particular, agradecemos de antemano la atención prestada y quedamos a la espera de sus gratas noticias.
+          <p style="margin-bottom: 2mm; font-size: 12px;">
+            Sin otro particular, agradecemos de antemano la atención prestada y quedamos a la </br> espera de sus gratas noticias.
           </p>
         </div>
 
         <!-- Despedida -->
-        <div style="margin-top: 15mm;">
+        <div style="margin-top: 1mm;">
            <p style="margin: 0; font-size: 11px;">Atentamente,</p>
         </div>
       </div>
