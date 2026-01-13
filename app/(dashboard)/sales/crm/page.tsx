@@ -8,6 +8,15 @@ import { AlertDialogDescription } from "@/components/ui/alert-dialog"
 import { AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { AlertDialogHeader } from "@/components/ui/alert-dialog"
 import { AlertDialog, AlertDialogPortal, AlertDialogOverlay } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -32,6 +41,7 @@ interface SalesEntity {
   email: string | null
   contact_person: string | null
   client_type: "private" | "government" | null
+  presentation_letter_number: string | null
 }
 
 interface ClientFollowUp {
@@ -67,6 +77,10 @@ export default function CRMPage() {
   const [editingClient, setEditingClient] = useState<SalesEntity | null>(null)
   const [deletingClient, setDeletingClient] = useState<SalesEntity | null>(null)
   const [followUpClient, setFollowUpClient] = useState<SalesEntity | null>(null)
+  const [showLetterNumberDialog, setShowLetterNumberDialog] = useState(false)
+  const [clientForLetter, setClientForLetter] = useState<SalesEntity | null>(null)
+  const [letterNumberInput, setLetterNumberInput] = useState("")
+  const [isGeneratingLetter, setIsGeneratingLetter] = useState(false)
 
   const companyToUse =
     user?.role === "admin"
@@ -97,7 +111,7 @@ export default function CRMPage() {
       const [clientsResponse, followUpsResponse] = await Promise.all([
         supabase
           .from("sales_entities")
-          .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person, client_type")
+          .select("id, name, ruc, executing_unit, fiscal_address, email, contact_person, client_type, presentation_letter_number")
           .eq("company_id", companyToUse.id)
           .order("name", { ascending: true }),
         supabase
@@ -142,20 +156,12 @@ export default function CRMPage() {
     }
   }
 
-  const handleGenerateLetter = async (client: SalesEntity) => {
-    if (!companyToUse) {
-      toast.error("No se pudo identificar la empresa actual")
-      return
-    }
+  const generateLetterWithNumber = async (client: SalesEntity, letterNumber: string) => {
+    if (!companyToUse) return
 
     try {
       toast.info(`Generando carta de presentación para ${client.name}...`)
 
-      // Generar número de carta simple (simulado ya que no hay secuencia en BD)
-      // Formato: CODIGO-AÑO-RANDOM
-      const currentYear = new Date().getFullYear()
-      const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0")
-      
       // Obtener código de empresa (si companyToUse tiene code, usarlo, sino intentar derivarlo o usar default)
       let companyCode = "ARM" // Default fallback
       const companyName = companyToUse.name || ""
@@ -176,14 +182,6 @@ export default function CRMPage() {
         else if (userEmail.toLowerCase().includes("arm")) companyCode = "ARM"
       }
 
-      // Prefijo según empresa para el número
-      let prefix = "CARTA"
-      if (companyCode.includes("ARM")) prefix = "NºARM"
-      if (companyCode.includes("AGLE")) prefix = "N°AGLEP"
-      if (companyCode.includes("GALUR")) prefix = "GBC"
-
-      const letterNumber = `${prefix}-${randomNum}-${currentYear}`
-
       await generatePresentationLetter({
         companyName: companyToUse.name,
         companyCode: companyCode,
@@ -199,6 +197,73 @@ export default function CRMPage() {
     } catch (error: any) {
       console.error("Error generating presentation letter:", error)
       toast.error("Error al generar la carta: " + error.message)
+    }
+  }
+
+  const handleGenerateLetter = async (client: SalesEntity) => {
+    if (!companyToUse) {
+      toast.error("No se pudo identificar la empresa actual")
+      return
+    }
+
+    if (client.presentation_letter_number) {
+      await generateLetterWithNumber(client, client.presentation_letter_number)
+    } else {
+      // Sugerir un número basado en la lógica anterior o dejar vacío
+      const currentYear = new Date().getFullYear()
+      const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0")
+      
+      // Obtener código de empresa para el prefijo sugerido
+      let companyCode = "ARM"
+      const companyName = companyToUse.name || ""
+      if (companyName.toUpperCase().includes("AGLE")) companyCode = "AGLE"
+      else if (companyName.toUpperCase().includes("GALUR")) companyCode = "GALUR"
+      
+      let prefix = "CARTA"
+      if (companyCode.includes("ARM")) prefix = "NºARM"
+      if (companyCode.includes("AGLE")) prefix = "N°AGLEP"
+      if (companyCode.includes("GALUR")) prefix = "GBC"
+
+      const suggestedNumber = `${prefix}-${randomNum}-${currentYear}`
+      
+      setClientForLetter(client)
+      setLetterNumberInput(suggestedNumber)
+      setShowLetterNumberDialog(true)
+    }
+  }
+
+  const handleLetterNumberSubmit = async () => {
+    if (!clientForLetter || !letterNumberInput.trim()) {
+      toast.error("Por favor ingrese un número de carta")
+      return
+    }
+
+    setIsGeneratingLetter(true)
+    try {
+      // Guardar el número en la base de datos
+      const { error } = await supabase
+        .from("sales_entities")
+        .update({ presentation_letter_number: letterNumberInput })
+        .eq("id", clientForLetter.id)
+
+      if (error) throw error
+
+      // Actualizar estado local
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === clientForLetter.id ? { ...c, presentation_letter_number: letterNumberInput } : c
+        )
+      )
+
+      // Generar la carta
+      await generateLetterWithNumber(clientForLetter, letterNumberInput)
+      
+      setShowLetterNumberDialog(false)
+      setClientForLetter(null)
+    } catch (error: any) {
+      toast.error("Error al guardar el número de carta: " + error.message)
+    } finally {
+      setIsGeneratingLetter(false)
     }
   }
 
@@ -398,6 +463,36 @@ export default function CRMPage() {
           </AlertDialogContent>
         </AlertDialogPortal>
       </AlertDialog>
+
+      {/* Letter Number Input Dialog */}
+      <Dialog open={showLetterNumberDialog} onOpenChange={setShowLetterNumberDialog}>
+        <DialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-slate-50">Número de Carta</DialogTitle>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              Ingresa el número de carta para {clientForLetter?.name}. Este número se guardará y se usará para futuras impresiones.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="letter-number" className="text-slate-900 dark:text-slate-50">Número</Label>
+            <Input
+              id="letter-number"
+              value={letterNumberInput}
+              onChange={(e) => setLetterNumberInput(e.target.value)}
+              placeholder="Ej: NºARM-001-2024"
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLetterNumberDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleLetterNumberSubmit} disabled={isGeneratingLetter}>
+              {isGeneratingLetter ? "Generando..." : "Guardar y Generar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
