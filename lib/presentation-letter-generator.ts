@@ -262,7 +262,7 @@ const createARMPresentationHTML = (data: PresentationLetterData, letterheadBase6
       </div>
 
       <!-- Contenido -->
-      <div style="position: relative; z-index: 2; padding: 50mm 20mm 20mm 20mm; width: 100%; height: 100%; box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 45mm 20mm 20mm 20mm; width: 100%; height: 100%; box-sizing: border-box;">
         
         <!-- Título -->
         <div style="text-align: center;">
@@ -271,12 +271,12 @@ const createARMPresentationHTML = (data: PresentationLetterData, letterheadBase6
         </div>
 
         <!-- Fecha -->
-        <div style="text-align: right; margin-top: 5mm;">
+        <div style="text-align: right; margin-top: 2mm;">
           <p style="margin: 0; font-size: 12px; font-weight: 600;">Lima, ${currentDate}</p>
         </div>
 
         <!-- Destinatario -->
-        <div style="margin-top: 5mm;">
+        <div style="margin-top: 2mm;">
           <p style="margin: 0 0 2mm 0; font-size: 12px; font-weight: 700;">ENTIDAD:</p>
           <h3 style="margin: 0 0 2mm 0; font-size: 14px; font-weight: 800;">${data.clientName}</h3>
           <p style="margin: 0 0 2mm 0; font-size: 11px;">RUC: ${data.clientRuc}</p>
@@ -284,59 +284,59 @@ const createARMPresentationHTML = (data: PresentationLetterData, letterheadBase6
         </div>
 
         <!-- Asunto -->
-        <div style="margin-top: 5mm;">
+        <div style="margin-top: 3mm;">
           <p style="margin: 0; font-size: 12px; font-weight: 700;">ASUNTO: Presentación de empresa y propuesta de suministros para Ayuda Humanitaria y Bienes Diversos.</p>
         </div>
 
         <!-- Cuerpo -->
-        <div style="margin-top: 5mm; font-size: 11px; text-align: justify; line-height: 1.4;">
-          <p style="margin-bottom: 4mm;">De nuestra mayor consideración:</p>
+        <div style="margin-top: 3mm; font-size: 12px; text-align: justify; line-height: 1.4;">
+          <p style="margin-bottom: 3mm;">De nuestra mayor consideración:</p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Es grato dirigirnos a usted para saludarlo cordialmente y presentar a <strong>A.R.M. CORPORATIONS DEL PERÚ E.I.R.L.</strong>, identificada con RUC N.º <strong>20608878701</strong>. Somos una organización con sólida trayectoria en el mercado nacional, especializada en brindar soluciones integrales con altos estándares de calidad, cumplimiento y eficiencia operativa.
           </p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Conscientes de la importancia estratégica que tiene para su entidad la atención de emergencias y el soporte a poblaciones vulnerables, ponemos a su disposición nuestra especialidad en el suministro de:
           </p>
           
-          <p style="margin-bottom: 4mm; font-weight: 700;">Suministro Especializado: Bienes de Ayuda Humanitaria</p>
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-weight: 700; font-size: 12px;">Suministro Especializado: Bienes de Ayuda Humanitaria</p>
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Contamos con la capacidad logística para proveer kits de emergencia, frazadas, carpas, herramientas y otros insumos críticos, asegurando el cumplimiento de las especificaciones técnicas requeridas por INDECI y demás organismos rectores.
           </p>
           
-          <p style="margin-bottom: 4mm;">Asimismo, nuestra empresa se constituye como un aliado estratégico en las siguientes líneas de atención:</p>
+          <p style="margin-bottom: 3mm; font-size: 12px;">Asimismo, nuestra empresa se constituye como un aliado estratégico en las siguientes líneas de atención:</p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             <strong>Bienes:</strong> Mobiliario en general, materiales de construcción (ferretería y agregados), implementos de seguridad, vestimenta de faena, útiles de escritorio, alimentos para consumo humano y materiales de limpieza.
           </p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             <strong>Servicios:</strong> Transporte (seco y refrigerado), acondicionamiento de espacios, construcción, instalaciones, acabados y servicios de imprenta/publicidad.
           </p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             En ese sentido, solicitamos respetuosamente ser considerados como proveedores potenciales en sus próximos procesos de contratación, compras directas o requerimientos de baja cuantía, garantizando una atención oportuna y precios competitivos.
           </p>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Para mayor información, adjuntamos nuestro portafolio detallado y quedamos a su disposición a través de nuestros canales de contacto:
           </p>
           
-          <div style="margin-bottom: 4mm; margin-left: 5mm;">
-            <p style="margin: 0;"><strong>Central:</strong> (01) 748-3677 anexo 102</p>
-            <p style="margin: 0;"><strong>Celular:</strong> 940 959 514</p>
-            <p style="margin: 0;"><strong>Correos:</strong> arm-ventas@armcorporations.com / arm1-ventas@corporations.com</p>
+          <div style="margin-bottom: 3mm; margin-left: 5mm;">
+            <p style="margin: 0; font-size: 12px;"><strong>Central:</strong> (01) 748-3677 anexo 102</p>
+            <p style="margin: 0; font-size: 12px;"><strong>Celular:</strong> 940 959 514</p>
+            <p style="margin: 0; font-size: 12px;"><strong>Correos:</strong> arm-ventas@armcorporations.com / arm1-ventas@corporations.com</p>
           </div>
           
-          <p style="margin-bottom: 4mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Sin otro particular, agradecemos de antemano la atención brindada y quedamos a la espera de sus gratas noticias.
           </p>
         </div>
 
         <!-- Despedida -->
-        <div style="position: absolute; bottom: 31mm; left: 20mm; right: 20mm;">
-           <p style="margin: 0; font-size: 11px;">Atentamente,</p>
+        <div style="position: absolute; bottom: 43mm; left: 20mm; right: 20mm;">
+           <p style="margin: 0; font-size: 12px;">Atentamente,</p>
         </div>
       </div>
     </div>
@@ -352,7 +352,7 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
       </div>
 
       <!-- Contenido -->
-      <div style="position: relative; z-index: 2; padding: 50mm 20mm 20mm 20mm; width: 100%; height: 100%; box-sizing: border-box;">
+      <div style="position: relative; z-index: 2; padding: 16mm 20mm 20mm 20mm; width: 100%; height: 100%; box-sizing: border-box;">
         
         <!-- Título -->
         <div style="text-align: center;">
@@ -361,7 +361,7 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
         </div>
 
         <!-- Fecha -->
-        <div style="text-align: right; margin-top: 5mm;">
+        <div style="text-align: right; margin-top: 8mm; margin-right: 20mm;">
           <p style="margin: 0; font-size: 12px; font-weight: 600;">Lima, ${currentDate}</p>
         </div>
 
@@ -379,22 +379,22 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
         </div>
 
         <!-- Cuerpo -->
-        <div style="margin-top: 5mm; font-size: 10px; text-align: justify; line-height: 1.3;">
+        <div style="margin-top: 5mm; font-size: 12px; text-align: justify; line-height: 1.3;">
           <p style="margin-bottom: 3mm; font-weight: 600;">A la atención de la Oficina de Logística / Unidad de Abastecimiento:</p>
           
           <p style="margin-bottom: 3mm;">
             Reciban un cordial saludo a nombre de <strong>AGLE PERUVIAN COMPANY E.I.R.L.</strong>, identificada con RUC <strong>20608849891</strong>. Por intermedio de la presente, tenemos el agrado de poner a su disposición nuestra amplia experiencia como aliados estratégicos en la provisión de bienes y servicios para el sector público y privado a nivel nacional.
           </p>
           
-          <p style="margin-bottom: 3mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Nuestra empresa se distingue por su eficiencia operativa y un riguroso control de calidad, garantizando soluciones integrales que se ajustan a las normativas vigentes y requerimientos técnicos de su institución.
           </p>
           
-          <p style="margin-bottom: 2mm; font-weight: 700;">Nuestra Cartera de Soluciones</p>
-          <p style="margin-bottom: 2mm;">Contamos con una capacidad logística diversificada en los siguientes rubros:</p>
+          <p style="margin-bottom: 2mm; font-weight: 700; font-size: 12px;">Nuestra Cartera de Soluciones</p>
+          <p style="margin-bottom: 2mm; font-size: 12px;">Contamos con una capacidad logística diversificada en los siguientes rubros:</p>
           
           <p style="margin-bottom: 1mm; font-weight: 700;">1. Suministro de Bienes:</p>
-          <ul style="margin: 0 0 2mm 5mm; padding: 0;">
+          <ul style="margin: 0 0 2mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Equipamiento y Mobiliario:</strong> Mobiliario de oficina, accesorios domésticos y de usos diversos.</li>
             <li><strong>Tecnología:</strong> Computadoras, periféricos y suministros de cómputo.</li>
             <li><strong>Seguridad y Textil:</strong> Implementos de seguridad (EPP), vestimenta formal, deportiva y de faena.</li>
@@ -403,8 +403,8 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
             <li><strong>Maquinaria:</strong> Herramientas y equipos para jardinería.</li>
           </ul>
 
-          <p style="margin-bottom: 1mm; font-weight: 700;">2. Servicios Especializados:</p>
-          <ul style="margin: 0 0 2mm 5mm; padding: 0;">
+          <p style="margin-bottom: 1mm; font-weight: 700; font-size: 12px;">2. Servicios Especializados:</p>
+          <ul style="margin: 0 0 2mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Infraestructura:</strong> Construcción, acondicionamiento, instalaciones y acabados en general.</li>
             <li><strong>Logística:</strong> Transporte de carga en seco y refrigerado a nivel nacional.</li>
             <li><strong>Comunicación:</strong> Servicios de imprenta, producción y activaciones de campañas publicitarias.</li>
@@ -415,24 +415,24 @@ const createAGLEPresentationHTML = (data: PresentationLetterData, letterheadBase
             Nos caracterizamos por ofrecer ofertas competitivas y un cumplimiento estricto de los plazos de entrega. Estamos preparados para atender sus procesos de contratación, compras directas y cotizaciones con la celeridad que el servicio público exige.
           </p>
           
-          <p style="margin-bottom: 3mm;">
+          <p style="margin-bottom: 3mm; font-size: 12px;">
             Quedamos a su entera disposición para concertar una reunión técnica o remitir cotizaciones según sus necesidades actuales a través de nuestros canales oficiales:
           </p>
           
-          <ul style="margin: 0 0 3mm 5mm; padding: 0;">
+          <ul style="margin: 0 0 3mm 5mm; padding: 0; font-size: 12px;">
             <li><strong>Central Telefónica:</strong> 01-748 2242 (Anexo 112 / Anexo 119)</li>
             <li><strong>Celular área de ventas:</strong> 940 930 710 / 933 367 375</li>
             <li><strong>Correos Electrónicos:</strong> cotizaciones.lg@agleperuvianc.com / cotizaciones.eg@agleperuvianc.com</li>
           </ul>
           
-          <p style="margin-bottom: 3mm; margin-left: 13mm;">
+          <p style="margin-bottom: 3mm; margin-left: 13mm; font-size: 12px;">
             Sin otro particular, agradecemos de antemano la atención brindada y quedamos a la espera de sus gratas noticias.
           </p>
         </div>
 
         <!-- Despedida -->
-        <div style="position: absolute; bottom: 40mm; left: 40mm; right: 20mm;">
-           <p style="margin: 0; font-size: 10px;">Atentamente,</p>
+        <div style="position: absolute; bottom: 46mm; left: 40mm; right: 20mm;">
+           <p style="margin: 0; font-size: 12px;">Atentamente,</p>
         </div>
       </div>
     </div>
