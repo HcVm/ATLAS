@@ -311,8 +311,8 @@ export default function InternalProductsPage() {
     }>,
   ) => {
     try {
-      const { data: companyData } = await supabase.from("companies").select("name").eq("id", companyId).single()
-      const companyName = companyData?.name || "EMPRESA"
+      const { data: companyData } = await supabase.from("companies").select("code").eq("id", companyId).single()
+      const companyName = companyData?.code || "EMPRESA"
       const currentYear = new Date().getFullYear()
 
       const stickersHtml = await Promise.all(
