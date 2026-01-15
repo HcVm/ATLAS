@@ -1,90 +1,134 @@
 "use client"
 
+import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Building2 } from "lucide-react"
+import { ArrowLeft, Building2, Plus, PenTool, LayoutGrid } from "lucide-react"
 import Link from "next/link"
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+}
 
 export default function CreateNewDepartmentPage() {
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
-      <Link href="/documentation" className="flex items-center text-blue-600 hover:underline dark:text-blue-400">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver a Documentación
-      </Link>
+    <div className="flex flex-col gap-8 p-6 md:p-12 min-h-screen bg-slate-50/50 dark:bg-slate-950/50">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex flex-col gap-4"
+      >
+        <Link href="/documentation" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver a Documentación
+        </Link>
 
-      <div className="flex items-center gap-4">
-        <Building2 className="h-8 w-8 text-slate-600 dark:text-slate-400" />
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Crear un Nuevo Departamento</h1>
-      </div>
-      <p className="text-slate-600 dark:text-slate-300 max-w-2xl">
-        Esta guía explica cómo añadir nuevas áreas organizativas o departamentos a tu empresa dentro de la plataforma.
-      </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
+            <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              Crear Nuevo Departamento
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              Estructura tu organización definiendo áreas operativas
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
-      <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+      <Separator className="bg-slate-200 dark:bg-slate-800" />
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 1: Acceder a la Gestión de Departamentos
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Navega a la sección donde se administran los departamentos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>
-            Desde el panel de control, busca y haz clic en "Departamentos" en el menú lateral. Esto te llevará a la
-            lista de todos los departamentos existentes en tu organización.
-          </p>
-        </CardContent>
-      </Card>
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-8 max-w-5xl"
+      >
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-600 font-bold">1</div>
+                <CardTitle className="text-xl">Iniciar Registro</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="h-10 w-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
+                  <Plus className="h-6 w-6" />
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  En el módulo de Departamentos, haz clic en el botón principal <strong>"Nuevo Departamento"</strong> ubicado en la esquina superior derecha.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 2: Iniciar la Creación de un Nuevo Departamento
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Haz clic en el botón para añadir un nuevo departamento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>
-            En la página de gestión de departamentos, busca y haz clic en el botón "Nuevo Departamento" o un icono
-            similar (usualmente un signo `+`).
-          </p>
-          <p>Esto abrirá un formulario o un diálogo donde podrás ingresar los detalles del nuevo departamento.</p>
-        </CardContent>
-      </Card>
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 font-bold">2</div>
+                <CardTitle className="text-xl">Información Clave</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <PenTool className="h-5 w-5 text-amber-500 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-slate-700 dark:text-slate-200">Nombre del Departamento</h4>
+                    <p className="text-sm text-slate-500">
+                      Ej. "Recursos Humanos", "Logística", "TI". Este nombre será visible en todos los selectores del sistema.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <LayoutGrid className="h-5 w-5 text-amber-500 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-slate-700 dark:text-slate-200">Descripción</h4>
+                    <p className="text-sm text-slate-500">
+                      Opcional. Breve resumen de las funciones o responsabilidades del área.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 3: Rellenar los Datos del Departamento
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Completa la información requerida para el nuevo departamento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>Ingresa la siguiente información obligatoria:</p>
-          <ul className="list-disc list-inside ml-4 space-y-1">
-            <li>
-              <strong>Nombre del Departamento:</strong> Un nombre claro y descriptivo para el departamento (ej.
-              "Recursos Humanos", "Contabilidad", "Ventas").
-            </li>
-            <li>
-              <strong>Descripción (Opcional):</strong> Una breve descripción de las funciones o responsabilidades del
-              departamento.
-            </li>
-          </ul>
-          <p>
-            Una vez que hayas rellenado los campos, haz clic en "Guardar" o "Crear Departamento". El nuevo departamento
-            será añadido a la lista y estará disponible para ser asignado a usuarios y documentos.
-          </p>
-        </CardContent>
-      </Card>
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-yellow-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center text-yellow-600 font-bold">3</div>
+                <CardTitle className="text-xl">Activación</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Al guardar, el departamento estará inmediatamente disponible para asignar usuarios, crear documentos y gestionar solicitudes.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }
