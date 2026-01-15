@@ -142,21 +142,41 @@ export default function InternalProductsPage() {
         productsQuery = productsQuery.eq("category_id", selectedCategory)
       }
 
+      const fetchAll = async (queryBuilder: any) => {
+        let allData: any[] = []
+        let page = 0
+        const pageSize = 1000
+        
+        while (true) {
+          const { data, error } = await queryBuilder.range(page * pageSize, (page + 1) * pageSize - 1)
+          if (error) throw error
+          if (!data || data.length === 0) break
+          
+          allData = [...allData, ...data]
+          if (data.length < pageSize) break
+          page++
+        }
+        return { data: allData }
+      }
+
       // Fetch all necessary data in parallel
       const [productsResponse, serialsResponse, printsResponse, categoriesResponse] = await Promise.all([
-        productsQuery.range(0, 9999),
-        supabase
-          .from("internal_product_serials")
-          .select("id, product_id")
-          .eq("status", "in_stock")
-          .eq("company_id", companyId)
-          .range(0, 9999),
-        supabase
-          .from("sticker_prints")
-          .select("product_id, serial_id, printed_at, quantity_printed, printed_by")
-          .eq("company_id", companyId)
-          .order("printed_at", { ascending: false })
-          .range(0, 9999),
+        fetchAll(productsQuery),
+        fetchAll(
+          supabase
+            .from("internal_product_serials")
+            .select("id, product_id")
+            .eq("status", "in_stock")
+            .eq("company_id", companyId)
+            .order("id")
+        ),
+        fetchAll(
+          supabase
+            .from("sticker_prints")
+            .select("product_id, serial_id, printed_at, quantity_printed, printed_by")
+            .eq("company_id", companyId)
+            .order("printed_at", { ascending: false })
+        ),
         supabase
           .from("internal_product_categories")
           .select("id, name, color")
