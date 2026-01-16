@@ -1,95 +1,142 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { motion } from "framer-motion"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, BarChart } from "lucide-react"
+import { ArrowLeft, BarChart2, PieChart, Activity, MousePointer, Calendar } from "lucide-react"
 import Link from "next/link"
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+}
 
 export default function ViewDashboardStatisticsPage() {
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
-      <Link href="/documentation" className="flex items-center text-blue-600 hover:underline dark:text-blue-400">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver a Documentación
-      </Link>
+    <div className="flex flex-col gap-8 p-6 md:p-12 min-h-screen bg-slate-50/50 dark:bg-slate-950/50">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex flex-col gap-4"
+      >
+        <Link href="/documentation" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver a Documentación
+        </Link>
 
-      <div className="flex items-center gap-4">
-        <BarChart className="h-8 w-8 text-slate-600 dark:text-slate-400" />
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Visualizar Estadísticas del Panel</h1>
-      </div>
-      <p className="text-slate-600 dark:text-slate-300 max-w-2xl">
-        Esta guía te ayudará a acceder y comprender las métricas clave y el rendimiento general del sistema a través del
-        panel de estadísticas.
-      </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+            <BarChart2 className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              Estadísticas del Panel
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              Guía para interpretar métricas clave y el rendimiento del sistema
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
-      <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+      <Separator className="bg-slate-200 dark:bg-slate-800" />
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 1: Acceder a la Sección de Estadísticas
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Navega al panel de estadísticas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>
-            Desde el panel de control, haz clic en "Estadísticas" en el menú lateral. Esto te llevará a un panel
-            interactivo que muestra diversas métricas y gráficos.
-          </p>
-        </CardContent>
-      </Card>
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-8 max-w-5xl"
+      >
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-indigo-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 font-bold">1</div>
+                <CardTitle className="text-xl">Acceso al Panel</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="flex items-start gap-4 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <MousePointer className="h-6 w-6 text-indigo-500 mt-1" />
+                <div>
+                  <h4 className="font-semibold text-slate-700 dark:text-slate-200">Navegación</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    En el menú lateral principal, selecciona la opción <strong>"Estadísticas"</strong> o <strong>"Dashboard"</strong>. Esto cargará la vista general con los indicadores más relevantes de tu área.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 2: Interpretar los Gráficos y Métricas
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Comprende la información presentada en el panel.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>El panel de estadísticas puede incluir:</p>
-          <ul className="list-disc list-inside ml-4 space-y-1">
-            <li>
-              <strong>Gráficos de Uso:</strong> Muestran la actividad de la plataforma a lo largo del tiempo (ej. número
-              de documentos creados, eventos registrados).
-            </li>
-            <li>
-              <strong>Métricas Clave:</strong> Resúmenes numéricos importantes (ej. total de usuarios, documentos
-              activos, tickets resueltos).
-            </li>
-            <li>
-              <strong>Distribuciones:</strong> Gráficos de pastel o barras que muestran la distribución de datos (ej.
-              documentos por departamento, eventos por categoría).
-            </li>
-          </ul>
-          <p>
-            Cada gráfico y métrica estará etiquetado para indicar qué información representa. Pasa el ratón sobre los
-            elementos para ver detalles adicionales.
-          </p>
-        </CardContent>
-      </Card>
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-violet-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center text-violet-600 font-bold">2</div>
+                <CardTitle className="text-xl">Interpretación de Datos</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800 text-center">
+                  <Activity className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+                  <h5 className="font-medium text-slate-800 dark:text-slate-200 text-sm">Actividad Reciente</h5>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Gráficos de línea o área que muestran tendencias temporales (ej. ventas del mes).
+                  </p>
+                </div>
+                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800 text-center">
+                  <PieChart className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+                  <h5 className="font-medium text-slate-800 dark:text-slate-200 text-sm">Distribución</h5>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Gráficos circulares para ver proporciones (ej. inventario por categoría).
+                  </p>
+                </div>
+                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800 text-center">
+                  <div className="h-6 w-6 flex items-center justify-center font-bold text-violet-600 mx-auto mb-2 text-lg">123</div>
+                  <h5 className="font-medium text-slate-800 dark:text-slate-200 text-sm">KPIs</h5>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tarjetas con números grandes que indican totales actuales (ej. Total Usuarios).
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <Card className="bg-white dark:bg-slate-850 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            Paso 3: Filtrar Datos (si aplica)
-          </CardTitle>
-          <CardDescription className="text-slate-500 dark:text-slate-400">
-            Ajusta el rango de fechas o los filtros para un análisis más específico.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-slate-600 dark:text-slate-300 space-y-4">
-          <p>
-            Algunos paneles de estadísticas permiten filtrar los datos por rango de fechas (ej. Últimos 7 días, Este
-            mes, Personalizado) o por otros criterios (ej. por departamento).
-          </p>
-          <p>Utiliza estos filtros para obtener una vista más granular de las estadísticas que te interesan.</p>
-        </CardContent>
-      </Card>
+        <motion.div variants={item}>
+          <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 font-bold">3</div>
+                <CardTitle className="text-xl">Filtros y Segmentación</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="ml-11">
+              <div className="flex items-start gap-4 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <Calendar className="h-6 w-6 text-purple-500 mt-1" />
+                <div>
+                  <h4 className="font-semibold text-slate-700 dark:text-slate-200">Personalización de Vista</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Utiliza los controles en la parte superior derecha para filtrar los datos por <strong>Rango de Fechas</strong> (Hoy, Esta Semana, Este Mes) o por <strong>Departamento</strong>. Los gráficos se actualizarán automáticamente.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }
