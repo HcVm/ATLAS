@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { FileText, ArrowLeft, Loader2, X, File } from "lucide-react"
+import { FileText, ArrowLeft, Loader2, X, File, UploadCloud, Info, CheckCircle2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -21,6 +22,7 @@ import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
 import { createNotification } from "@/lib/notifications"
 import { useCompany } from "@/lib/company-context"
+import { cn } from "@/lib/utils"
 
 const formSchema = z.object({
   title: z.string().min(3, {
@@ -33,6 +35,24 @@ const formSchema = z.object({
   is_public: z.boolean().default(false),
   file: z.any().optional(),
 })
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" }
+  }
+}
+
+const formItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { duration: 0.3 }
+  }
+}
 
 export default function NewDocumentPage() {
   const [departments, setDepartments] = useState<any[]>([])
@@ -61,20 +81,15 @@ export default function NewDocumentPage() {
     const fetchDepartments = async () => {
       try {
         setLoadingDepartments(true)
-
-        // Determine which company to filter by
         let companyToFilter = null
 
         if (user?.role === "admin") {
-          // For admin: use selected company from context
           companyToFilter = selectedCompany?.id || null
         } else {
-          // For regular users: use their assigned company
           companyToFilter = user?.company_id || null
         }
 
         if (!companyToFilter) {
-          console.log("No company available for filtering departments")
           setDepartments([])
           return
         }
@@ -104,7 +119,6 @@ export default function NewDocumentPage() {
 
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      // Generate a unique filename
       const fileExt = file.name.split(".").pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `documents/${fileName}`
@@ -112,11 +126,9 @@ export default function NewDocumentPage() {
       const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file)
 
       if (uploadError) {
-        console.error("Upload error:", uploadError)
         throw new Error("Error al subir el archivo: " + uploadError.message)
       }
 
-      // Get the public URL
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(filePath)
       return urlData.publicUrl
     } catch (error: any) {
@@ -135,7 +147,6 @@ export default function NewDocumentPage() {
     if (files) {
       const newFiles = Array.from(files)
       setAttachments((prev) => [...prev, ...newFiles])
-      // Clear the input
       event.target.value = ""
     }
   }
@@ -153,39 +164,16 @@ export default function NewDocumentPage() {
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (loading || uploading || uploadingAttachments) {
-      return // Prevent duplicate submissions if already processing
-    }
+    if (loading || uploading || uploadingAttachments) return
 
     if (!user) {
-      toast({
-        title: "Error",
-        description: "Debes iniciar sesión para crear un documento.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" })
       return
     }
 
-    // Determine which company to use
-    let companyToUse = null
-
-    if (user.role === "admin") {
-      // For admin: use selected company from context
-      companyToUse = selectedCompany?.id || null
-    } else {
-      // For regular users: use their assigned company
-      companyToUse = user.company_id || null
-    }
-
+    let companyToUse = user.role === "admin" ? selectedCompany?.id : user.company_id
     if (!companyToUse) {
-      toast({
-        title: "Error",
-        description:
-          user.role === "admin"
-            ? "Debes seleccionar una empresa para crear un documento."
-            : "Debes pertenecer a una empresa para crear un documento.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Falta empresa.", variant: "destructive" })
       return
     }
 
@@ -193,7 +181,6 @@ export default function NewDocumentPage() {
     try {
       let fileUrl = null
 
-      // Upload main file if provided
       if (values.file && values.file.length > 0) {
         setUploading(true)
         const file = values.file[0]
@@ -201,41 +188,21 @@ export default function NewDocumentPage() {
         if (!fileUrl) {
           setLoading(false)
           setUploading(false)
-          return // Error already handled in uploadFile
+          return
         }
         setUploading(false)
       }
 
-      // Generate document number using RPC function
       const { data: documentNumber, error: rpcError } = await supabase.rpc("generate_document_number", {
         p_company_id: companyToUse,
-        p_department_id: values.department_id, // <-- MODIFICACIÓN CLAVE: Pasar el department_id
+        p_department_id: values.department_id,
         p_user_id: user.id,
       })
 
-      if (rpcError) {
-        console.error("Error generating document number via RPC:", rpcError)
-        throw new Error("Error al generar el número de documento: " + rpcError.message)
-      }
-
-      console.log("Generated document number:", documentNumber)
+      if (rpcError) throw new Error("Error al generar el número de documento: " + rpcError.message)
 
       const trackingHash = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 
-      console.log("Creating document with data:", {
-        title: values.title,
-        description: values.description || null,
-        document_number: documentNumber, // Include the generated document number
-        status: "pending",
-        created_by: user.id,
-        current_department_id: values.department_id,
-        file_url: fileUrl,
-        is_public: values.is_public,
-        tracking_hash: trackingHash, // Add tracking hash for public tracking
-        company_id: companyToUse,
-      })
-
-      // Crear documento
       const { data: document, error } = await supabase
         .from("documents")
         .insert({
@@ -253,12 +220,7 @@ export default function NewDocumentPage() {
         .select()
         .single()
 
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      console.log("Document created successfully:", document)
+      if (error) throw error
 
       try {
         await supabase.from("document_movements").insert({
@@ -268,12 +230,8 @@ export default function NewDocumentPage() {
           moved_by: user.id,
           notes: "Documento creado",
         })
-      } catch (movementError) {
-        console.error("Error creating initial movement:", movementError)
-        // No fallar la creación del documento si hay error en el movimiento
-      }
+      } catch (e) { console.error(e) }
 
-      // Upload attachments if any
       if (attachments.length > 0) {
         setUploadingAttachments(true)
         for (const attachment of attachments) {
@@ -289,93 +247,59 @@ export default function NewDocumentPage() {
                 uploaded_by: user.id,
               })
             }
-          } catch (attachmentError) {
-            console.error("Error uploading attachment:", attachmentError)
-            // Continue with other attachments even if one fails
-          }
+          } catch (e) { console.error(e) }
         }
         setUploadingAttachments(false)
       }
 
-      // Crear notificación para el usuario que creó el documento
       try {
         await createNotification({
           userId: user.id,
-          title: "Documento creado con éxito",
-          message: `Has creado el documento "${values.title}" con número ${document.document_number}`,
+          title: "Documento creado",
+          message: `Has creado el documento "${values.title}" (${document.document_number})`,
           type: "document_created",
           relatedId: document.id,
-          companyId: companyToUse, // Pass companyId here
+          companyId: companyToUse,
         })
-      } catch (notificationError) {
-        console.error("Error creating notification:", notificationError)
-        // No fallar la creación del documento por un error de notificación
-      }
+      } catch (e) { console.error(e) }
 
-      // NUEVA LÓGICA: Crear notificaciones para todos los usuarios en el departamento de destino
+      // Notificar al departamento destino
       try {
-        // Obtener el nombre del departamento para el mensaje de notificación
-        const { data: departmentData, error: deptError } = await supabase
-          .from("departments")
-          .select("name")
-          .eq("id", values.department_id)
-          .single()
-
-        const departmentName = departmentData?.name || "un departamento"
-
-        const { data: usersInDepartment, error: usersError } = await supabase
-          .from("profiles") // Usar 'profiles' como tu tabla de usuarios
-          .select("id")
-          .eq("department_id", values.department_id)
-          .eq("company_id", companyToUse) // Asegurar que los usuarios son de la misma empresa
-
-        if (usersError) {
-          console.error("Error fetching users for destination department:", usersError)
-        } else {
-          for (const deptUser of usersInDepartment) {
-            if (deptUser.id !== user.id) {
-              // Evitar notificar al creador dos veces
-              await createNotification({
-                userId: deptUser.id,
-                title: "Nuevo Documento Creado",
-                message: `Se ha creado un nuevo documento "${values.title}" (${document.document_number}) en tu departamento (${departmentName}).`,
-                type: "document_created",
-                relatedId: document.id,
-                companyId: companyToUse,
-              })
+         const { data: departmentData } = await supabase.from("departments").select("name").eq("id", values.department_id).single()
+         const departmentName = departmentData?.name || "un departamento"
+         const { data: usersInDepartment } = await supabase.from("profiles").select("id").eq("department_id", values.department_id).eq("company_id", companyToUse)
+         
+         if (usersInDepartment) {
+            for (const deptUser of usersInDepartment) {
+               if (deptUser.id !== user.id) {
+                  await createNotification({
+                     userId: deptUser.id,
+                     title: "Nuevo Documento Recibido",
+                     message: `Se ha creado un nuevo documento "${values.title}" en tu departamento (${departmentName}).`,
+                     type: "document_created",
+                     relatedId: document.id,
+                     companyId: companyToUse,
+                  })
+               }
             }
-          }
-        }
-      } catch (notificationError) {
-        console.error("Error creating notifications for destination department users:", notificationError)
-      }
+         }
+      } catch (e) { console.error(e) }
 
-      // Después de crear el documento y antes del router.push
-      // Generar código QR para el documento
       try {
         const { generateDocumentQR } = await import("@/lib/qr-generator")
         const qrCodeDataUrl = await generateDocumentQR(document.id)
-
-        // Actualizar el documento con el código QR
         await supabase.from("documents").update({ qr_code: qrCodeDataUrl }).eq("id", document.id)
-      } catch (qrError) {
-        console.error("Error generating QR code:", qrError)
-        // No fallar la creación del documento por un error de QR
-      }
+      } catch (e) { console.error(e) }
 
       toast({
-        title: "Documento creado",
-        description: `El documento "${document.document_number}" se ha creado correctamente${values.is_public ? " y está disponible públicamente" : ""}.`,
+        title: "¡Éxito!",
+        description: `Documento ${document.document_number} creado correctamente.`,
       })
 
       router.push(`/documents/${document.id}`)
     } catch (error: any) {
-      console.error("Error creating document:", error)
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el documento.",
-        variant: "destructive",
-      })
+      console.error(error)
+      toast({ title: "Error", description: error.message || "Error al crear el documento.", variant: "destructive" })
     } finally {
       setLoading(false)
       setUploading(false)
@@ -384,315 +308,282 @@ export default function NewDocumentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
-        {/* Header - Responsive */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants}
+      className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 flex justify-center items-start"
+    >
+      <div className="w-full max-w-4xl space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             asChild
-            className="self-start bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300"
+            className="rounded-xl h-10 w-10 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all hover:-translate-x-1"
           >
             <Link href="/documents">
-              <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             </Link>
           </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-300 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent">
-              Crear Nuevo Documento
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+              Nuevo Documento
             </h1>
-            {user?.role === "admin" && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {selectedCompany
-                  ? `Creando documento para: ${selectedCompany.name}`
-                  : "Selecciona una empresa para crear documentos"}
-              </p>
-            )}
-            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-              Completa el formulario para crear un nuevo documento. El número se generará automáticamente.
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              {user?.role === "admin" && selectedCompany
+                ? `Registrando para: ${selectedCompany.name}`
+                : "Completa la información para registrar un nuevo documento"}
             </p>
           </div>
         </div>
 
-        {/* Form Card - Responsive */}
-        <Card className="shadow-xl border-slate-200/50 dark:border-slate-700/50 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
-          <CardHeader className="p-4 sm:p-6 pb-3">
-            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg self-start">
-                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+        {/* Form Card */}
+        <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                <FileText className="h-6 w-6" />
               </div>
-              <span className="text-slate-800 dark:text-slate-200">Información del Documento</span>
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base mt-2 text-slate-600 dark:text-slate-400">
-              Ingresa los detalles del nuevo documento. El número se generará automáticamente con el formato:
-              <br />
-              <code className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded mt-1 inline-block">
-                EMPRESA-DEPARTAMENTO-INICIALES-AÑO-NÚMERO
-              </code>
-            </CardDescription>
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100">Información General</CardTitle>
+                <CardDescription>
+                  El número de documento se generará automáticamente al guardar.
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-
-          <CardContent className="p-4 sm:p-6 lg:p-8">
+          
+          <CardContent className="p-6 lg:p-8">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                {/* Title - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-slate-700 dark:text-slate-300">Título</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Título del documento"
-                          {...field}
-                          className="border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400/20 dark:focus:ring-slate-500/20 transition-all duration-300"
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Nombre descriptivo del documento.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Department - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="department_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Departamento
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400/20 dark:focus:ring-slate-500/20 transition-all duration-300">
-                            <SelectValue placeholder="Selecciona un departamento" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                          {loadingDepartments ? (
-                            <div className="flex items-center justify-center p-4">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2 text-slate-600 dark:text-slate-400" />
-                              <span className="text-sm text-slate-600 dark:text-slate-400">
-                                Cargando departamentos...
-                              </span>
-                            </div>
-                          ) : departments.length === 0 ? (
-                            <div className="p-2 text-center text-sm text-slate-500 dark:text-slate-400">
-                              No hay departamentos disponibles
-                            </div>
-                          ) : (
-                            departments.map((department) => (
-                              <SelectItem
-                                key={department.id}
-                                value={department.id}
-                                className="text-slate-900 dark:text-slate-100"
-                              >
-                                {department.name}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Departamento al que pertenece el documento. Esto afectará la numeración automática.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Description - Full Width */}
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Descripción
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descripción detallada del documento"
-                          className="min-h-[100px] sm:min-h-[120px] border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400/20 dark:focus:ring-slate-500/20 transition-all duration-300 resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Información adicional sobre el documento (opcional).
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Public Access Checkbox - Responsive */}
-                <FormField
-                  control={form.control}
-                  name="is_public"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-slate-200 dark:border-slate-600 bg-gradient-to-r from-slate-50/50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/50 p-3 sm:p-4 transition-all duration-300 hover:shadow-md">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600 mt-1"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none flex-1">
-                        <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold text-sm sm:text-base">
-                          Documento público
-                        </FormLabel>
-                        <FormDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                          Permitir acceso público a este documento mediante código QR. El documento será visible para
-                          cualquier persona que tenga el enlace.
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Main File Upload - Responsive */}
-                <FormField
-                  control={form.control}
-                  name="file"
-                  render={({ field: { onChange, value, ...field } }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Archivo Principal (Opcional)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="space-y-2">
-                          <Input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
-                            onChange={(e) => onChange(e.target.files)}
-                            className="border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400/20 dark:focus:ring-slate-500/20 transition-all duration-300 text-sm"
-                            {...field}
-                          />
-                          {uploading && (
-                            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2 sm:p-3 rounded-lg">
-                              <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
-                              <span>Subiendo archivo principal...</span>
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Archivo principal del documento (PDF, DOC, DOCX, TXT, JPG, PNG, XLSX, XLS - máximo 10MB)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Attachments Section - Responsive */}
-                <div className="space-y-3 sm:space-y-4">
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      Archivos Adjuntos (Opcional)
-                    </label>
-                    <div className="mt-2">
-                      <Input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
-                        multiple
-                        onChange={handleAttachmentAdd}
-                        className="border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400/20 dark:focus:ring-slate-500/20 transition-all duration-300 text-sm"
-                      />
-                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Puedes seleccionar múltiples archivos para adjuntar al documento
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Selected Files List - Responsive */}
-                  {attachments.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Archivos seleccionados ({attachments.length}):
-                      </h4>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {attachments.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 sm:p-3 border border-slate-200 dark:border-slate-600 rounded-lg bg-gradient-to-r from-slate-50/50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/50 transition-all duration-300 hover:shadow-md"
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="p-1 sm:p-1.5 rounded-md bg-gradient-to-br from-slate-600 to-slate-700 text-white flex-shrink-0">
-                                <File className="h-3 w-3 sm:h-4 sm:w-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-xs sm:text-sm truncate text-slate-700 dark:text-slate-300">
-                                  {file.name}
-                                </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                  {formatFileSize(file.size)}
-                                </div>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeAttachment(index)}
-                              className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-300 h-8 w-8 p-0 flex-shrink-0 border-slate-200 dark:border-slate-600"
-                            >
-                              <X className="h-3 w-3 sm:h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      {uploadingAttachments && (
-                        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2 sm:p-3 rounded-lg">
-                          <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
-                          <span>Subiendo archivos adjuntos...</span>
-                        </div>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Título */}
+                  <motion.div variants={formItemVariants} className="md:col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold">Título del Documento</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ej: Informe de Gestión 2024"
+                              className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </div>
-                  )}
+                    />
+                  </motion.div>
+
+                  {/* Departamento */}
+                  <motion.div variants={formItemVariants}>
+                    <FormField
+                      control={form.control}
+                      name="department_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold">Departamento Destino</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                                <SelectValue placeholder="Seleccionar..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl">
+                              {loadingDepartments ? (
+                                <div className="flex items-center justify-center p-4 text-sm text-slate-500">
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando...
+                                </div>
+                              ) : departments.length === 0 ? (
+                                <div className="p-4 text-sm text-slate-500 text-center">No hay departamentos</div>
+                              ) : (
+                                departments.map((dept) => (
+                                  <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </motion.div>
+
+                  {/* Visibilidad */}
+                  <motion.div variants={formItemVariants}>
+                     <FormField
+                      control={form.control}
+                      name="is_public"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold">Visibilidad</FormLabel>
+                          <div className="flex flex-row items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 px-3 bg-slate-50 dark:bg-slate-800/50 h-11">
+                            <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                              Acceso Público
+                            </span>
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                              />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </motion.div>
+
+                  {/* Descripción */}
+                  <motion.div variants={formItemVariants} className="md:col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold">Descripción</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Detalles adicionales sobre el documento..."
+                              className="min-h-[120px] rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 resize-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </motion.div>
                 </div>
 
-                {/* Action Buttons - Responsive */}
-                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">
+                <div className="h-px bg-slate-100 dark:bg-slate-800 my-6" />
+
+                {/* Archivos */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                     <UploadCloud className="h-5 w-5 text-indigo-500" />
+                     <h3 className="font-semibold text-slate-800 dark:text-slate-100">Archivos Adjuntos</h3>
+                  </div>
+
+                  {/* Archivo Principal */}
+                  <motion.div variants={formItemVariants}>
+                    <FormField
+                      control={form.control}
+                      name="file"
+                      render={({ field: { onChange, value, ...field } }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Archivo Principal</FormLabel>
+                          <FormControl>
+                             <div className="relative group">
+                                <Input
+                                  type="file"
+                                  className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
+                                  onChange={(e) => onChange(e.target.files)}
+                                  {...field}
+                                />
+                             </div>
+                          </FormControl>
+                          <FormDescription>Formato recomendado: PDF. Máx 10MB.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </motion.div>
+
+                  {/* Otros Adjuntos */}
+                  <motion.div variants={formItemVariants}>
+                     <div className="space-y-3">
+                        <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Archivos Adicionales</label>
+                        <Input
+                          type="file"
+                          multiple
+                          className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
+                          onChange={handleAttachmentAdd}
+                        />
+                     </div>
+
+                     {/* Lista de adjuntos */}
+                     <AnimatePresence>
+                        {attachments.length > 0 && (
+                           <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-4 grid gap-2"
+                           >
+                              {attachments.map((file, index) => (
+                                 <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800"
+                                 >
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                       <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600">
+                                          <File className="h-4 w-4" />
+                                       </div>
+                                       <div className="min-w-0">
+                                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{file.name}</p>
+                                          <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+                                       </div>
+                                    </div>
+                                    <Button
+                                       type="button"
+                                       variant="ghost"
+                                       size="icon"
+                                       onClick={() => removeAttachment(index)}
+                                       className="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
+                                    >
+                                       <X className="h-4 w-4" />
+                                    </Button>
+                                 </motion.div>
+                              ))}
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+                  </motion.div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    type="button"
                     asChild
-                    className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all duration-300 order-2 sm:order-1"
+                    className="rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                   >
                     <Link href="/documents">Cancelar</Link>
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading || uploading || uploadingAttachments}
-                    className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 order-1 sm:order-2"
+                    className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 min-w-[140px]"
                   >
-                    {(loading || uploading || uploadingAttachments) && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {loading || uploading || uploadingAttachments ? (
+                      <>
+                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         <span>Procesando...</span>
+                      </>
+                    ) : (
+                      <>
+                         <CheckCircle2 className="mr-2 h-4 w-4" />
+                         <span>Crear Documento</span>
+                      </>
                     )}
-                    <span className="hidden sm:inline">
-                      {uploading
-                        ? "Subiendo archivo..."
-                        : uploadingAttachments
-                          ? "Subiendo adjuntos..."
-                          : loading
-                            ? "Creando documento..."
-                            : "Crear Documento"}
-                    </span>
-                    <span className="sm:hidden">
-                      {uploading || uploadingAttachments || loading ? "Procesando..." : "Crear"}
-                    </span>
                   </Button>
-                </CardFooter>
+                </div>
               </form>
             </Form>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </motion.div>
   )
 }

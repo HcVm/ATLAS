@@ -13,7 +13,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Save, ArrowLeft, Shield, Calendar, User, FileText } from "lucide-react"
+import { Loader2, Save, ArrowLeft, Shield, Calendar, User, FileText, CheckCircle2 } from "lucide-react"
+import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { duration: 0.3 }
+  }
+}
 
 export default function EditDocumentPage() {
   const params = useParams()
@@ -22,7 +42,6 @@ export default function EditDocumentPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [document, setDocument] = useState<any>(null)
   const [departments, setDepartments] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState("general")
 
@@ -64,7 +83,6 @@ export default function EditDocumentPage() {
         if (departmentsError) throw departmentsError
 
         // Set document data
-        setDocument(document)
         setTitle(document.title || "")
         setDocumentNumber(document.document_number || "")
         setDescription(document.description || "")
@@ -76,52 +94,34 @@ export default function EditDocumentPage() {
         setCertificationType(document.certification_type || "")
         setCertificateNumber(document.certificate_number || "")
 
-        // Manejo mejorado de fechas
         if (document.issued_date) {
           try {
             setIssuedDate(new Date(document.issued_date))
-          } catch (e) {
-            console.error("Error parsing issued date:", e)
-            setIssuedDate(undefined)
-          }
+          } catch (e) { console.error(e) }
         }
-
         if (document.expiry_date) {
           try {
             setExpiryDate(new Date(document.expiry_date))
-          } catch (e) {
-            console.error("Error parsing expiry date:", e)
-            setExpiryDate(undefined)
-          }
+          } catch (e) { console.error(e) }
         }
 
         setIssuerName(document.issuer_name || "")
         setIssuerPosition(document.issuer_position || "")
         setVerificationEnabled(document.verification_enabled !== false)
-
-        // Set departments
         setDepartments(departments || [])
-
         setLoading(false)
       } catch (error: any) {
         console.error("Error fetching data:", error)
-        toast({
-          title: "Error",
-          description: "No se pudo cargar el documento",
-          variant: "destructive",
-        })
+        toast({ title: "Error", description: "No se pudo cargar el documento", variant: "destructive" })
         setLoading(false)
       }
     }
-
     fetchData()
   }, [params.id, toast])
 
   const handleSave = async () => {
     try {
       setSaving(true)
-
-      // Prepare the update object with only the fields that exist in the schema
       const updates: any = {
         title,
         description,
@@ -129,19 +129,10 @@ export default function EditDocumentPage() {
         updated_at: new Date().toISOString(),
       }
 
-      // Add optional fields only if they have values or are being cleared
-      if (documentNumber !== undefined) {
-        updates.document_number = documentNumber || null
-      }
+      if (documentNumber !== undefined) updates.document_number = documentNumber || null
+      if (departmentId !== undefined) updates.current_department_id = departmentId || null
 
-      if (departmentId !== undefined) {
-        // Try both field names to be safe
-        updates.current_department_id = departmentId || null
-      }
-
-      // Certification fields
       updates.is_certified = isCertified
-
       if (isCertified) {
         updates.certification_type = certificationType || null
         updates.certificate_number = certificateNumber || null
@@ -151,7 +142,6 @@ export default function EditDocumentPage() {
         updates.issuer_position = issuerPosition || null
         updates.verification_enabled = verificationEnabled
       } else {
-        // Clear certification fields when not certified
         updates.certification_type = null
         updates.certificate_number = null
         updates.issued_date = null
@@ -161,28 +151,14 @@ export default function EditDocumentPage() {
         updates.verification_enabled = false
       }
 
-      console.log("Updating document with:", updates)
-
       const { error } = await supabase.from("documents").update(updates).eq("id", params.id)
+      if (error) throw error
 
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      toast({
-        title: "Documento actualizado",
-        description: "Los cambios han sido guardados correctamente",
-      })
-
+      toast({ title: "¡Éxito!", description: "Documento actualizado correctamente." })
       router.push(`/documents/${params.id}`)
     } catch (error: any) {
       console.error("Error updating document:", error)
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar el documento",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: error.message || "No se pudo actualizar.", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -190,261 +166,258 @@ export default function EditDocumentPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={() => router.back()} className="mr-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
-        <h1 className="text-2xl font-bold">Editar Documento</h1>
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants}
+      className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+         <div className="flex items-center gap-4">
+            <Button 
+               variant="outline" 
+               size="icon" 
+               onClick={() => router.back()} 
+               className="rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm hover:translate-x-[-2px] transition-transform"
+            >
+               <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            </Button>
+            <div>
+               <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+                  Editar Documento
+               </h1>
+               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Actualiza la información y configuración
+               </p>
+            </div>
+         </div>
+         <Button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 min-w-[140px]"
+         >
+            {saving ? (
+               <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...
+               </>
+            ) : (
+               <>
+                  <Save className="mr-2 h-4 w-4" /> Guardar
+               </>
+            )}
+         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="general">
-            <FileText className="h-4 w-4 mr-2" />
-            Información General
+        <TabsList className="bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl w-full flex justify-start overflow-x-auto">
+          <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm px-6">
+            <FileText className="h-4 w-4 mr-2" /> Información General
           </TabsTrigger>
-          <TabsTrigger value="access">
-            <User className="h-4 w-4 mr-2" />
-            Acceso Público
+          <TabsTrigger value="access" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm px-6">
+            <User className="h-4 w-4 mr-2" /> Acceso y Visibilidad
           </TabsTrigger>
-          <TabsTrigger value="certification">
-            <Shield className="h-4 w-4 mr-2" />
-            Certificación
+          <TabsTrigger value="certification" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm px-6">
+            <Shield className="h-4 w-4 mr-2" /> Certificación
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información del Documento</CardTitle>
-              <CardDescription>Edita la información básica del documento</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Título del documento"
-                />
-              </div>
+        <div className="mt-6">
+           <TabsContent value="general">
+             <motion.div variants={itemVariants}>
+                <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+                   <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-lg font-bold">Detalles Básicos</CardTitle>
+                      <CardDescription>Información principal del documento.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-6 space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-2">
+                            <Label htmlFor="title" className="font-semibold text-slate-700 dark:text-slate-300">Título</Label>
+                            <Input
+                               id="title"
+                               value={title}
+                               onChange={(e) => setTitle(e.target.value)}
+                               className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                            />
+                         </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="documentNumber" className="font-semibold text-slate-700 dark:text-slate-300">Número de Documento</Label>
+                            <Input
+                               id="documentNumber"
+                               value={documentNumber}
+                               onChange={(e) => setDocumentNumber(e.target.value)}
+                               className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                            />
+                         </div>
+                      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="documentNumber">Número de Documento</Label>
-                <Input
-                  id="documentNumber"
-                  value={documentNumber}
-                  onChange={(e) => setDocumentNumber(e.target.value)}
-                  placeholder="Número o referencia del documento"
-                />
-              </div>
+                      <div className="space-y-2">
+                         <Label htmlFor="description" className="font-semibold text-slate-700 dark:text-slate-300">Descripción</Label>
+                         <Textarea
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="min-h-[120px] rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 resize-none"
+                         />
+                      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descripción del documento"
-                  rows={4}
-                />
-              </div>
+                      <div className="space-y-2">
+                         <Label htmlFor="department" className="font-semibold text-slate-700 dark:text-slate-300">Departamento Actual</Label>
+                         <Select value={departmentId} onValueChange={setDepartmentId}>
+                            <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                               <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                               {departments.map((dept) => (
+                                  <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                               ))}
+                            </SelectContent>
+                         </Select>
+                      </div>
+                   </CardContent>
+                </Card>
+             </motion.div>
+           </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="department">Departamento Actual</Label>
-                <Select value={departmentId} onValueChange={setDepartmentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar departamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+           <TabsContent value="access">
+             <motion.div variants={itemVariants}>
+                <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+                   <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-lg font-bold">Configuración de Visibilidad</CardTitle>
+                      <CardDescription>Controla quién puede ver este documento.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-6 space-y-6">
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                         <div className="space-y-0.5">
+                            <Label htmlFor="isPublic" className="text-base font-semibold text-slate-800 dark:text-slate-200">Acceso Público</Label>
+                            <p className="text-sm text-slate-500">Permitir acceso mediante QR sin inicio de sesión.</p>
+                         </div>
+                         <Checkbox
+                            id="isPublic"
+                            checked={isPublic}
+                            onCheckedChange={(checked) => setIsPublic(checked === true)}
+                            className="h-6 w-6 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-md"
+                         />
+                      </div>
 
-        <TabsContent value="access">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuración de Acceso Público</CardTitle>
-              <CardDescription>
-                Controla si este documento puede ser accedido públicamente mediante código QR
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isPublic"
-                  checked={isPublic}
-                  onCheckedChange={(checked) => setIsPublic(checked === true)}
-                />
-                <Label htmlFor="isPublic" className="font-medium">
-                  Permitir acceso público a este documento
-                </Label>
-              </div>
+                      {isPublic ? (
+                         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 flex gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+                            <div>
+                               <h4 className="font-semibold text-indigo-900 dark:text-indigo-100">Acceso Público Habilitado</h4>
+                               <p className="text-sm text-indigo-800 dark:text-indigo-200 mt-1">
+                                  Cualquier persona con el enlace o código QR podrá ver este documento.
+                               </p>
+                            </div>
+                         </div>
+                      ) : (
+                         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex gap-3">
+                            <Shield className="h-5 w-5 text-slate-500 dark:text-slate-400 mt-0.5" />
+                            <div>
+                               <h4 className="font-semibold text-slate-800 dark:text-slate-200">Acceso Restringido</h4>
+                               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                  Solo usuarios autenticados del sistema pueden acceder.
+                               </p>
+                            </div>
+                         </div>
+                      )}
+                   </CardContent>
+                </Card>
+             </motion.div>
+           </TabsContent>
 
-              {isPublic && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center text-blue-800 dark:text-blue-300 mb-2">
-                    <User className="h-5 w-5 mr-2" />
-                    <h4 className="font-semibold">Acceso Público Habilitado</h4>
-                  </div>
-                  <p className="text-sm text-blue-700 dark:text-blue-400">
-                    Este documento será accesible para cualquier persona que tenga el enlace o escanee el código QR. El
-                    acceso será rastreado para fines de auditoría.
-                  </p>
-                </div>
-              )}
+           <TabsContent value="certification">
+             <motion.div variants={itemVariants}>
+                <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+                   <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-lg font-bold">Datos de Certificación</CardTitle>
+                      <CardDescription>Configura este documento como certificado oficial.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-6 space-y-6">
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                         <div className="space-y-0.5">
+                            <Label htmlFor="isCertified" className="text-base font-semibold text-slate-800 dark:text-slate-200">Es un Certificado</Label>
+                            <p className="text-sm text-slate-500">Habilita campos especiales de verificación.</p>
+                         </div>
+                         <Checkbox
+                            id="isCertified"
+                            checked={isCertified}
+                            onCheckedChange={(checked) => setIsCertified(checked === true)}
+                            className="h-6 w-6 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-md"
+                         />
+                      </div>
 
-              {!isPublic && (
-                <div className="bg-gray-50 dark:bg-gray-950/30 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center text-gray-800 dark:text-gray-300 mb-2">
-                    <Shield className="h-5 w-5 mr-2" />
-                    <h4 className="font-semibold">Acceso Restringido</h4>
-                  </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-400">
-                    Este documento solo será accesible para usuarios autenticados del sistema. El código QR no
-                    funcionará para acceso público.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      {isCertified && (
+                         <div className="space-y-6 pt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-2">
+                                  <Label className="font-semibold">Tipo</Label>
+                                  <Select value={certificationType} onValueChange={setCertificationType}>
+                                     <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                     <SelectContent className="rounded-xl">
+                                        {["Calidad", "Ergonomía", "Originalidad", "Autenticidad", "Conformidad"].map(t => (
+                                           <SelectItem key={t} value={`Certificado de ${t}`}>Certificado de {t}</SelectItem>
+                                        ))}
+                                     </SelectContent>
+                                  </Select>
+                               </div>
+                               <div className="space-y-2">
+                                  <Label className="font-semibold">Número de Certificado</Label>
+                                  <Input 
+                                     value={certificateNumber} 
+                                     onChange={(e) => setCertificateNumber(e.target.value)} 
+                                     className="h-11 rounded-xl"
+                                     placeholder="Ej: CERT-2024-001" 
+                                  />
+                               </div>
+                            </div>
 
-        <TabsContent value="certification">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información de Certificación</CardTitle>
-              <CardDescription>Configura este documento como un certificado verificable</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isCertified"
-                  checked={isCertified}
-                  onCheckedChange={(checked) => setIsCertified(checked === true)}
-                />
-                <Label htmlFor="isCertified" className="font-medium">
-                  Este documento es un certificado oficial
-                </Label>
-              </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-2">
+                                  <Label className="flex items-center font-semibold"><Calendar className="h-4 w-4 mr-2" /> Emisión</Label>
+                                  <DatePickerImproved date={issuedDate} setDate={setIssuedDate} placeholder="Fecha de emisión" />
+                               </div>
+                               <div className="space-y-2">
+                                  <Label className="flex items-center font-semibold"><Calendar className="h-4 w-4 mr-2" /> Expiración</Label>
+                                  <DatePickerImproved date={expiryDate} setDate={setExpiryDate} placeholder="Fecha de expiración" />
+                               </div>
+                            </div>
 
-              {isCertified && (
-                <div className="space-y-4 border-l-2 border-primary/20 pl-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="certificationType">Tipo de Certificación</Label>
-                    <Select value={certificationType} onValueChange={setCertificationType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar tipo de certificación" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Certificado de Calidad">Certificado de Calidad</SelectItem>
-                        <SelectItem value="Certificado de Ergonomía">Certificado de Ergonomía</SelectItem>
-                        <SelectItem value="Certificado de Originalidad">Certificado de Originalidad</SelectItem>
-                        <SelectItem value="Certificado de Autenticidad">Certificado de Autenticidad</SelectItem>
-                        <SelectItem value="Certificado de Conformidad">Certificado de Conformidad</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-2">
+                                  <Label className="flex items-center font-semibold"><User className="h-4 w-4 mr-2" /> Emisor</Label>
+                                  <Input value={issuerName} onChange={(e) => setIssuerName(e.target.value)} className="h-11 rounded-xl" placeholder="Nombre completo" />
+                               </div>
+                               <div className="space-y-2">
+                                  <Label className="font-semibold">Cargo</Label>
+                                  <Input value={issuerPosition} onChange={(e) => setIssuerPosition(e.target.value)} className="h-11 rounded-xl" placeholder="Ej: Director" />
+                               </div>
+                            </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="certificateNumber">Número de Certificado</Label>
-                    <Input
-                      id="certificateNumber"
-                      value={certificateNumber}
-                      onChange={(e) => setCertificateNumber(e.target.value)}
-                      placeholder="Ej: CERT-000001"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="issuedDate" className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Fecha de Emisión
-                      </Label>
-                      <DatePickerImproved date={issuedDate} setDate={setIssuedDate} placeholder="Fecha de emisión" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="expiryDate" className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Fecha de Expiración
-                      </Label>
-                      <DatePickerImproved date={expiryDate} setDate={setExpiryDate} placeholder="Fecha de expiración" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="issuerName" className="flex items-center">
-                      <User className="h-4 w-4 mr-1" />
-                      Nombre del Emisor
-                    </Label>
-                    <Input
-                      id="issuerName"
-                      value={issuerName}
-                      onChange={(e) => setIssuerName(e.target.value)}
-                      placeholder="Nombre de la persona o entidad que emite el certificado"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="issuerPosition">Cargo del Emisor</Label>
-                    <Input
-                      id="issuerPosition"
-                      value={issuerPosition}
-                      onChange={(e) => setIssuerPosition(e.target.value)}
-                      placeholder="Ej: Director de Calidad"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2 pt-2">
-                    <Checkbox
-                      id="verificationEnabled"
-                      checked={verificationEnabled}
-                      onCheckedChange={(checked) => setVerificationEnabled(checked === true)}
-                    />
-                    <Label htmlFor="verificationEnabled">Permitir verificación pública mediante QR</Label>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                            <div className="flex items-center space-x-2 pt-2">
+                               <Checkbox
+                                  id="verificationEnabled"
+                                  checked={verificationEnabled}
+                                  onCheckedChange={(checked) => setVerificationEnabled(checked === true)}
+                               />
+                               <Label htmlFor="verificationEnabled">Permitir verificación pública mediante QR</Label>
+                            </div>
+                         </div>
+                      )}
+                   </CardContent>
+                </Card>
+             </motion.div>
+           </TabsContent>
+        </div>
       </Tabs>
-
-      <div className="flex justify-end mt-6">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Guardando...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Guardar Cambios
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+    </motion.div>
   )
 }
