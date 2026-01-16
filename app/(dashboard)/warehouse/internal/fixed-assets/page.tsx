@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { toast } from "sonner"
+import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ import {
   FileSpreadsheet,
   TrendingDown,
   DollarSign,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -74,6 +76,28 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
   retired: { label: "Retirado", variant: "secondary" },
   sold: { label: "Vendido", variant: "outline" },
   damaged: { label: "Dañado", variant: "destructive" },
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+    },
+  },
 }
 
 export default function FixedAssetsPage() {
@@ -220,62 +244,72 @@ export default function FixedAssetsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Building2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 mt-10">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 mt-10 w-full max-w-[95%] mx-auto"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Activos Fijos</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+            Activos Fijos
+          </h1>
           <p className="text-muted-foreground">Gestión de activos fijos con depreciación - Año {selectedYear}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="bg-white/50 backdrop-blur-sm border-gray-200">
             <Link href="/warehouse/internal/fixed-assets/depreciation">
               <Calculator className="h-4 w-4 mr-2" />
               Calcular Depreciación
             </Link>
           </Button>
-          <Button asChild>
+          <Button
+            asChild
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+          >
             <Link href="/warehouse/internal/fixed-assets/new">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Activo
             </Link>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card>
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-5">
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Activos</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Activos</CardTitle>
+            <Building2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
             <p className="text-xs text-muted-foreground">{stats.active} activos</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Costo Adquisición</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Costo Adquisición</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-gray-800">
               S/ {stats.totalAcquisition.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Depre. Acumulada</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Depre. Acumulada</CardTitle>
             <TrendingDown className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -285,239 +319,256 @@ export default function FixedAssetsPage() {
             <p className="text-xs text-muted-foreground">Total acumulado</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor en Libros</CardTitle>
-            <FileSpreadsheet className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Valor en Libros</CardTitle>
+            <FileSpreadsheet className="h-4 w-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-indigo-600">
               S/ {stats.totalBookValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">Saldo neto</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Cuentas</CardTitle>
-            <CardDescription>Categorías contables</CardDescription>
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Cuentas</CardTitle>
+            <CardDescription className="sr-only">Categorías contables</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{accounts.length}</div>
+            <div className="text-2xl font-bold text-gray-800">{accounts.length}</div>
             <p className="text-xs text-muted-foreground">Categorías contables</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busca y filtra activos fijos</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre o código..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+      <motion.div variants={itemVariants}>
+        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">Filtros</CardTitle>
+            <CardDescription>Busca y filtra activos fijos para encontrar lo que necesitas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre o código..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                  />
+                </div>
               </div>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[120px] bg-white/50 border-gray-200">
+                  <SelectValue placeholder="Año" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={year}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                <SelectTrigger className="w-[250px] bg-white/50 border-gray-200">
+                  <SelectValue placeholder="Todas las cuentas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las cuentas</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.code} - {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px] bg-white/50 border-gray-200">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Activos</SelectItem>
+                  <SelectItem value="retired">Retirados</SelectItem>
+                  <SelectItem value="sold">Vendidos</SelectItem>
+                  <SelectItem value="damaged">Dañados</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Año" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableYears.map((year) => (
-                  <SelectItem key={year} value={year}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Todas las cuentas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las cuentas</SelectItem>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.code} - {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Activos</SelectItem>
-                <SelectItem value="retired">Retirados</SelectItem>
-                <SelectItem value="sold">Vendidos</SelectItem>
-                <SelectItem value="damaged">Dañados</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Assets Table grouped by account */}
-      {Object.entries(groupedByAccount).map(([accountId, { account, assets: accountAssets, totals }]) => (
-        <Card key={accountId}>
-          <CardHeader className="bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">
-                  {account?.code} - {account?.name}
-                </CardTitle>
-                <CardDescription>
-                  {accountAssets.length} activo(s) | Tasa: {account?.depreciation_rate}% anual
-                </CardDescription>
-              </div>
-              <div className="text-right text-sm">
-                <div>
-                  <span className="text-muted-foreground">Total:</span>{" "}
-                  <span className="font-semibold">
-                    S/ {totals.acquisitionCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
+      <motion.div variants={containerVariants} className="space-y-6">
+        {Object.entries(groupedByAccount).map(([accountId, { account, assets: accountAssets, totals }]) => (
+          <motion.div key={accountId} variants={itemVariants}>
+            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm overflow-hidden">
+              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-bold text-gray-800">
+                      {account?.code} - {account?.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {accountAssets.length} activo(s) | Tasa: {account?.depreciation_rate}% anual
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm bg-white/50 p-2 rounded-lg border border-gray-100">
+                    <div>
+                      <span className="text-muted-foreground mr-1">Total:</span>
+                      <span className="font-semibold text-gray-900">
+                        S/ {totals.acquisitionCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="w-px h-4 bg-gray-200 my-auto hidden sm:block"></div>
+                    <div>
+                      <span className="text-muted-foreground mr-1">Depre. {selectedYear}:</span>
+                      <span className="font-semibold text-orange-600">
+                        S/ {totals.yearlyDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="w-px h-4 bg-gray-200 my-auto hidden sm:block"></div>
+                    <div>
+                      <span className="text-muted-foreground mr-1">Saldo Neto:</span>
+                      <span className="font-semibold text-green-600">
+                        S/ {totals.bookValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Depre. {selectedYear}:</span>{" "}
-                  <span className="font-semibold text-orange-600">
-                    S/ {totals.yearlyDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-[100px] font-semibold text-gray-700">Código</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Nombre</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Fecha Adq.</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Factura</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">Costo</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">% Depre.</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">Depre. Acum.</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">Saldo Neto</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accountAssets.map((asset) => (
+                        <TableRow key={asset.id} className="hover:bg-gray-50/50 transition-colors">
+                          <TableCell className="font-mono text-xs text-muted-foreground">{asset.code}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium text-gray-900">{asset.name}</div>
+                              {asset.supplier_name && (
+                                <div className="text-xs text-muted-foreground">{asset.supplier_name}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {(() => {
+                              const dateStr = asset.acquisition_date
+                              const [year, month, day] = dateStr.split("T")[0].split("-")
+                              const localDate = new Date(
+                                Number.parseInt(year),
+                                Number.parseInt(month) - 1,
+                                Number.parseInt(day),
+                              )
+                              return localDate.toLocaleDateString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-600">{asset.invoice_number || "-"}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-gray-900">
+                            S/ {asset.acquisition_cost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-gray-600">
+                            {asset.depreciation_rate}%
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm text-orange-600">
+                            S/ {asset.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm text-green-600 font-medium">
+                            S/ {asset.book_value.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusLabels[asset.status]?.variant || "default"}>
+                              {statusLabels[asset.status]?.label || asset.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                                  <span className="sr-only">Abrir menú</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/warehouse/internal/fixed-assets/${asset.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/warehouse/internal/fixed-assets/edit/${asset.id}`}>
+                                    <Edit className="mr-2 h-4 w-4" /> Editar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(asset.id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Saldo Neto:</span>{" "}
-                  <span className="font-semibold text-green-600">
-                    S/ {totals.bookValue.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="rounded-md border-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Fecha Adq.</TableHead>
-                    <TableHead>Factura</TableHead>
-                    <TableHead className="text-right">Costo</TableHead>
-                    <TableHead className="text-right">% Depre.</TableHead>
-                    <TableHead className="text-right">Depre. Acum.</TableHead>
-                    <TableHead className="text-right">Saldo Neto</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {accountAssets.map((asset) => (
-                    <TableRow key={asset.id}>
-                      <TableCell className="font-mono text-xs">{asset.code}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{asset.name}</div>
-                          {asset.supplier_name && (
-                            <div className="text-xs text-muted-foreground">{asset.supplier_name}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {(() => {
-                          const dateStr = asset.acquisition_date
-                          const [year, month, day] = dateStr.split("T")[0].split("-")
-                          const localDate = new Date(
-                            Number.parseInt(year),
-                            Number.parseInt(month) - 1,
-                            Number.parseInt(day),
-                          )
-                          return localDate.toLocaleDateString("es-PE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-sm">{asset.invoice_number || "-"}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        S/ {asset.acquisition_cost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="text-right">{asset.depreciation_rate}%</TableCell>
-                      <TableCell className="text-right font-mono text-orange-600">
-                        S/ {asset.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-green-600">
-                        S/ {asset.book_value.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusLabels[asset.status]?.variant || "default"}>
-                          {statusLabels[asset.status]?.label || asset.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/warehouse/internal/fixed-assets/${asset.id}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/warehouse/internal/fixed-assets/edit/${asset.id}`}>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(asset.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {filteredAssets.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No hay activos fijos</h3>
-            <p className="text-muted-foreground text-center mt-2">
-              Comienza agregando tu primer activo fijo para gestionar la depreciación.
-            </p>
-            <Button asChild className="mt-4">
-              <Link href="/warehouse/internal/fixed-assets/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Activo Fijo
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                <Building2 className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No hay activos fijos</h3>
+              <p className="text-muted-foreground text-center mt-2 max-w-sm">
+                Comienza agregando tu primer activo fijo para gestionar la depreciación y el inventario.
+              </p>
+              <Button
+                asChild
+                className="mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+              >
+                <Link href="/warehouse/internal/fixed-assets/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Activo Fijo
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

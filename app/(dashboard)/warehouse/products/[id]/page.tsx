@@ -19,11 +19,16 @@ import {
   ExternalLink,
   Eye,
   QrCode,
+  Calendar,
+  DollarSign,
+  Layers,
+  Tag
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
 import { QRCodeDisplay } from "@/components/qr-code-display"
+import { motion } from "framer-motion"
 
 interface Product {
   id: string
@@ -49,6 +54,23 @@ interface Product {
   product_categories?: { id: string; name: string; color: string } | null
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
+}
+
 export default function ProductDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -72,18 +94,8 @@ export default function ProductDetailPage() {
       return
     }
 
-    console.log("ProductDetail: User data:", {
-      userId: user?.id,
-      role: user?.role,
-      companyId: user?.company_id,
-      selectedCompanyId: user?.selectedCompanyId,
-      paramId: params.id,
-    })
-
     if (params.id && user) {
       fetchProduct()
-    } else {
-      console.log("ProductDetail: Missing params.id or user")
     }
   }, [params.id, user, router])
 
@@ -101,17 +113,10 @@ export default function ProductDetailPage() {
         companyId = user?.company_id || null
       }
 
-      console.log("ProductDetail: Using companyId:", companyId)
-
       if (!companyId) {
         setError("No se pudo determinar la empresa")
         return
       }
-
-      console.log("ProductDetail: Fetching product with:", {
-        productId: params.id,
-        companyId: companyId,
-      })
 
       const { data, error } = await supabase
         .from("products")
@@ -123,8 +128,6 @@ export default function ProductDetailPage() {
         .eq("id", params.id)
         .eq("company_id", companyId)
         .single()
-
-      console.log("ProductDetail: Query result:", { data, error })
 
       if (error) {
         if (error.code === "PGRST116") {
@@ -141,7 +144,6 @@ export default function ProductDetailPage() {
         return
       }
 
-      console.log("ProductDetail: Product loaded successfully:", data.name)
       setProduct(data)
     } catch (error) {
       console.error("ProductDetail: Unexpected error:", error)
@@ -169,91 +171,81 @@ export default function ProductDetailPage() {
   }
 
   const getStockStatus = (current: number, minimum: number) => {
-    if (current === 0) return { label: "Sin stock", variant: "destructive" as const, color: "text-red-600" }
-    if (current <= minimum) return { label: "Stock bajo", variant: "secondary" as const, color: "text-orange-600" }
-    return { label: "Disponible", variant: "default" as const, color: "text-green-600" }
+    if (current === 0) return { label: "Sin stock", variant: "destructive" as const, color: "text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" }
+    if (current <= minimum) return { label: "Stock bajo", variant: "secondary" as const, color: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" }
+    return { label: "Disponible", variant: "default" as const, color: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800" }
   }
 
   // Debug info
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Link href="/warehouse/products">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Link>
-            </Button>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center text-slate-600 dark:text-slate-400">Usuario no autenticado</div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] p-4">
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+          <CardHeader>
+             <div className="mx-auto p-4 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+                <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+             </div>
+             <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Acceso Restringido</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <p className="text-slate-500 dark:text-slate-400">
+                Usuario no autenticado
+             </p>
+             <Button variant="outline" className="mt-4" asChild>
+                <Link href="/login">Ir al login</Link>
+             </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Link href="/warehouse/products">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Link>
-            </Button>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="text-slate-700 dark:text-slate-300">Cargando producto...</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  Debug: User ID: {user?.id}, Company:{" "}
-                  {user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+         <div className="flex items-center gap-4 mb-8">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="space-y-2">
+               <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+               <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            </div>
+         </div>
+         <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-2 space-y-6">
+               <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+               <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+            </div>
+            <div className="space-y-6">
+               <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+               <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+            </div>
+         </div>
       </div>
     )
   }
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Link href="/warehouse/products">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Link>
-            </Button>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center text-slate-600 dark:text-slate-400">
-                <div>{error || "Producto no encontrado"}</div>
-                <div className="text-xs mt-2">
-                  Debug Info:
-                  <br />
-                  Product ID: {params.id}
-                  <br />
-                  User Role: {user?.role}
-                  <br />
-                  Company ID: {user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] p-4">
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+          <CardHeader>
+             <div className="mx-auto p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+                <Package className="h-10 w-10 text-slate-500" />
+             </div>
+             <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Producto no encontrado</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <p className="text-slate-500 dark:text-slate-400 mb-6">
+                {error || "No se pudo cargar la información del producto."}
+             </p>
+             <Button asChild>
+                <Link href="/warehouse/products">
+                   <ArrowLeft className="h-4 w-4 mr-2" />
+                   Volver al catálogo
+                </Link>
+             </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -261,27 +253,48 @@ export default function ProductDetailPage() {
   const stockStatus = getStockStatus(product.current_stock, product.minimum_stock)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="space-y-6 p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Link href="/warehouse/products">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent">
-                {product.name}
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">Detalles del producto</p>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button 
+             variant="ghost" 
+             size="icon" 
+             asChild 
+             className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Link href="/warehouse/products">
+              <ArrowLeft className="h-5 w-5 text-slate-500" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+               {product.name}
+            </h1>
+            <div className="flex items-center gap-3 mt-1 text-slate-500 dark:text-slate-400">
+               <span className="flex items-center gap-1 text-sm font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                  <Hash className="h-3 w-3" />
+                  {product.code}
+               </span>
+               {product.location && (
+                  <span className="flex items-center gap-1 text-sm">
+                     <MapPin className="h-3 w-3" />
+                     {product.location}
+                  </span>
+               )}
             </div>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
           {/* Indicador visual de solo lectura para ventas */}
           {!canEditProducts && (
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-800">
               <Eye className="h-4 w-4" />
               <span className="text-sm font-medium">Solo lectura</span>
             </div>
@@ -289,355 +302,333 @@ export default function ProductDetailPage() {
           {canEditProducts && (
             <Button
               asChild
-              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-105"
             >
               <Link href={`/warehouse/products/edit/${product.id}`}>
                 <Edit className="h-4 w-4 mr-2" />
-                Editar
+                Editar Producto
               </Link>
             </Button>
           )}
         </div>
+      </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Imagen del producto */}
-          {product.image_url && (
-            <Card className="md:col-span-1 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                  <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
-                    <ImageIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                  </div>
-                  Imagen del Producto
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <img
-                  src={product.image_url || "/placeholder.svg"}
-                  alt={product.name}
-                  className="w-full h-64 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                />
-              </CardContent>
-            </Card>
-          )}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Columna Principal (Izquierda) */}
+        <div className="lg:col-span-2 space-y-6">
+           
+           {/* Información General */}
+           <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                       <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                          <Package className="h-5 w-5" />
+                       </div>
+                       Información General
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-6">
+                    {product.description && (
+                       <div>
+                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 block">Descripción</label>
+                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                             {product.description}
+                          </p>
+                       </div>
+                    )}
 
-          {/* Información básica */}
-          <Card
-            className={`${product.image_url ? "md:col-span-2" : "md:col-span-3"} bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg`}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
-                  <Package className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                Información General
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Nombre</label>
-                <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">{product.name}</p>
-              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                       <div className="space-y-4">
+                          <div>
+                             <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-1">
+                                <Barcode className="h-4 w-4" />
+                                Código de barras
+                             </label>
+                             <p className="font-mono text-slate-700 dark:text-slate-300 text-sm">
+                                {product.barcode || "No registrado"}
+                             </p>
+                          </div>
+                          
+                          <div>
+                             <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-1">
+                                <FileText className="h-4 w-4" />
+                                Modelo
+                             </label>
+                             <p className="text-slate-700 dark:text-slate-300 text-sm">
+                                {product.modelo || "No especificado"}
+                             </p>
+                          </div>
+                       </div>
 
-              {product.description && (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Descripción</label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{product.description}</p>
-                </div>
-              )}
+                       <div className="space-y-4">
+                          <div>
+                             <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-1">
+                                <Layers className="h-4 w-4" />
+                                Unidad de medida
+                             </label>
+                             <Badge variant="outline" className="font-normal text-slate-600 dark:text-slate-300">
+                                {product.unit_of_measure}
+                             </Badge>
+                          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <Hash className="h-3 w-3" />
-                    Código
-                  </label>
-                  <Badge
-                    variant="outline"
-                    className="font-mono border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
-                  >
-                    {product.code}
-                  </Badge>
-                </div>
-
-                {product.barcode && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <Barcode className="h-3 w-3" />
-                      Código de barras
-                    </label>
-                    <p className="text-sm font-mono text-slate-700 dark:text-slate-300">{product.barcode}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Nuevos campos: Modelo y Ficha Técnica */}
-              <div className="grid grid-cols-2 gap-4">
-                {product.modelo && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <FileText className="h-3 w-3" />
-                      Modelo
-                    </label>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{product.modelo}</p>
-                  </div>
-                )}
-
-                {product.ficha_tecnica && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <ExternalLink className="h-3 w-3" />
-                      Ficha Técnica
-                    </label>
-                    <a
-                      href={product.ficha_tecnica}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex items-center gap-1"
-                    >
-                      Ver ficha técnica
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {product.manual && (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    Manual del Producto
-                  </label>
-                  <a
-                    href={product.manual}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex items-center gap-1"
-                  >
-                    Ver manual
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-
-              {product.location && (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    Ubicación
-                  </label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{product.location}</p>
-                </div>
-              )}
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Unidad de medida</label>
-                <p className="text-sm text-slate-700 dark:text-slate-300">{product.unit_of_measure}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Estado</label>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={product.is_active ? "default" : "secondary"}
-                    className={
-                      product.is_active
-                        ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600"
-                        : ""
-                    }
-                  >
-                    {product.is_active ? "Activo" : "Inactivo"}
-                  </Badge>
-                </div>
-              </div>
-
-              {product.qr_code_hash && (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <QrCode className="h-3 w-3" />
-                    Código QR del Producto
-                  </label>
-                  <div className="mt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowQRCode(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      Ver código QR
-                    </Button>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Escanea el QR para ver la información pública del producto
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Stock y precios */}
-          <Card className="md:col-span-2 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-200">Stock y Precios</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Stock actual</label>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{product.current_stock}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{product.unit_of_measure}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Stock mínimo</label>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{product.minimum_stock}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{product.unit_of_measure}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Estado del stock</label>
-                <div className="flex items-center gap-2">
-                  <Badge variant={stockStatus.variant}>{stockStatus.label}</Badge>
-                  {product.current_stock <= product.minimum_stock && (
-                    <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 text-xs">
-                      <AlertTriangle className="h-3 w-3" />
-                      Requiere reposición
+                          <div>
+                             <label className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-1">
+                                <Tag className="h-4 w-4" />
+                                Estado
+                             </label>
+                             <Badge
+                                variant={product.is_active ? "default" : "secondary"}
+                                className={
+                                   product.is_active
+                                      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+                                      : "bg-slate-100 text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                }
+                             >
+                                {product.is_active ? "Activo" : "Inactivo"}
+                             </Badge>
+                          </div>
+                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              <Separator className="bg-slate-200 dark:bg-slate-700" />
+                    {(product.ficha_tecnica || product.manual) && (
+                       <>
+                          <Separator className="bg-slate-100 dark:bg-slate-800" />
+                          <div className="flex flex-wrap gap-4">
+                             {product.ficha_tecnica && (
+                                <Button variant="outline" size="sm" asChild className="rounded-lg border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                   <a href={product.ficha_tecnica} target="_blank" rel="noopener noreferrer">
+                                      <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                                      Ficha Técnica
+                                      <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                   </a>
+                                </Button>
+                             )}
+                             {product.manual && (
+                                <Button variant="outline" size="sm" asChild className="rounded-lg border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                   <a href={product.manual} target="_blank" rel="noopener noreferrer">
+                                      <FileText className="h-4 w-4 mr-2 text-orange-500" />
+                                      Manual de Usuario
+                                      <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                   </a>
+                                </Button>
+                             )}
+                          </div>
+                       </>
+                    )}
+                 </CardContent>
+              </Card>
+           </motion.div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Precio de costo</label>
-                  <p className="text-xl font-semibold text-slate-800 dark:text-slate-200">
-                    {formatCurrency(product.cost_price)}
-                  </p>
-                </div>
+           {/* Stock y Precios */}
+           <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                       <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+                          <DollarSign className="h-5 w-5" />
+                       </div>
+                       Stock y Precios
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                       <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center justify-between mb-2">
+                             <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Stock Actual</label>
+                             <Badge className={`border-none ${stockStatus.color}`}>
+                                {stockStatus.label}
+                             </Badge>
+                          </div>
+                          <div className="flex items-end gap-2">
+                             <span className="text-3xl font-bold text-slate-800 dark:text-slate-100">{product.current_stock}</span>
+                             <span className="text-sm text-slate-500 dark:text-slate-400 mb-1">{product.unit_of_measure}</span>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-400">
+                             Mínimo requerido: <span className="font-medium text-slate-600 dark:text-slate-300">{product.minimum_stock} {product.unit_of_measure}</span>
+                          </div>
+                       </div>
 
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Precio de venta (sin IGV)
-                  </label>
-                  <p className="text-xl font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(product.sale_price)}
-                  </p>
-                  <p className="text-sm text-green-700 dark:text-green-300 font-medium">
-                    Con IGV (18%): {formatCurrency(product.sale_price * 1.18)}
-                  </p>
-                </div>
-              </div>
+                       <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 block">Precio de Venta</label>
+                          <div className="space-y-1">
+                             <div className="flex items-end gap-2">
+                                <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                                   {formatCurrency(product.sale_price)}
+                                </span>
+                                <span className="text-xs text-slate-400 mb-1">sin IGV</span>
+                             </div>
+                             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                {formatCurrency(product.sale_price * 1.18)} <span className="text-xs font-normal text-slate-400">inc. IGV</span>
+                             </p>
+                          </div>
+                       </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Margen de ganancia</label>
-                  <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                    {(((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)}%
-                  </p>
-                </div>
+                    <Separator className="bg-slate-100 dark:bg-slate-800" />
 
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">IGV (18%)</label>
-                  <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                    {formatCurrency(product.sale_price * 0.18)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Categorización */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-200">Categorización</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {product.brands ? (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Marca</label>
-                  <div className="mt-1">
-                    <Badge
-                      variant="secondary"
-                      style={{
-                        backgroundColor: `${product.brands.color}20`,
-                        color: product.brands.color,
-                      }}
-                    >
-                      {product.brands.name}
-                    </Badge>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Marca</label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Sin marca asignada</p>
-                </div>
-              )}
-
-              {product.product_categories ? (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Categoría</label>
-                  <div className="mt-1">
-                    <Badge
-                      variant="outline"
-                      style={{
-                        borderColor: product.product_categories.color,
-                        color: product.product_categories.color,
-                      }}
-                    >
-                      {product.product_categories.name}
-                    </Badge>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Categoría</label>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Sin categoría asignada</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Información del sistema */}
-          <Card className="md:col-span-3 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-slate-800 dark:text-slate-200">Información del Sistema</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Fecha de creación</label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{formatDate(product.created_at)}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Última actualización</label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{formatDate(product.updated_at)}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">ID del producto</label>
-                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{product.id}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                       <div>
+                          <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo</label>
+                          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{formatCurrency(product.cost_price)}</p>
+                       </div>
+                       <div>
+                          <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Margen</label>
+                          <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                             {product.cost_price > 0 
+                                ? (((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)
+                                : "0.0"
+                             }%
+                          </p>
+                       </div>
+                       <div>
+                          <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">IGV (18%)</label>
+                          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{formatCurrency(product.sale_price * 0.18)}</p>
+                       </div>
+                       <div>
+                          <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Utilidad</label>
+                          <p className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mt-1">{formatCurrency(product.sale_price - product.cost_price)}</p>
+                       </div>
+                    </div>
+                 </CardContent>
+              </Card>
+           </motion.div>
         </div>
 
-        {product.qr_code_hash && showQRCode && (
-          <QRCodeDisplay
-            hash={product.qr_code_hash}
-            title={`QR - ${product.name}`}
-            description="Escanea este código QR para ver la información pública del producto"
-            url={`${typeof window !== "undefined" ? window.location.origin : ""}/public/product/${product.qr_code_hash}`}
-            onClose={() => setShowQRCode(false)}
-          />
-        )}
+        {/* Columna Lateral (Derecha) */}
+        <div className="space-y-6">
+           {/* Imagen */}
+           <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                       <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+                          <ImageIcon className="h-5 w-5" />
+                       </div>
+                       Imagen
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-4">
+                    <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative group">
+                       {product.image_url ? (
+                          <img
+                             src={product.image_url}
+                             alt={product.name}
+                             className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105"
+                          />
+                       ) : (
+                          <div className="flex flex-col items-center gap-2 text-slate-400">
+                             <ImageIcon className="h-12 w-12 opacity-50" />
+                             <span className="text-sm">Sin imagen</span>
+                          </div>
+                       )}
+                    </div>
+                 </CardContent>
+              </Card>
+           </motion.div>
+
+           {/* Clasificación */}
+           <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                       <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
+                          <Tag className="h-5 w-5" />
+                       </div>
+                       Clasificación
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-6">
+                    <div>
+                       <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 block">Marca</label>
+                       {product.brands ? (
+                          <Badge
+                             variant="secondary"
+                             className="text-sm py-1 px-3"
+                             style={{
+                                backgroundColor: `${product.brands.color}15`,
+                                color: product.brands.color,
+                                border: `1px solid ${product.brands.color}30`
+                             }}
+                          >
+                             {product.brands.name}
+                          </Badge>
+                       ) : (
+                          <span className="text-sm text-slate-400 italic">Sin marca asignada</span>
+                       )}
+                    </div>
+
+                    <div>
+                       <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 block">Categoría</label>
+                       {product.product_categories ? (
+                          <Badge
+                             variant="outline"
+                             className="text-sm py-1 px-3"
+                             style={{
+                                borderColor: product.product_categories.color,
+                                color: product.product_categories.color,
+                             }}
+                          >
+                             {product.product_categories.name}
+                          </Badge>
+                       ) : (
+                          <span className="text-sm text-slate-400 italic">Sin categoría asignada</span>
+                       )}
+                    </div>
+                 </CardContent>
+              </Card>
+           </motion.div>
+
+           {/* Info Sistema */}
+           <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                       <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+                          <Calendar className="h-5 w-5" />
+                       </div>
+                       Sistema
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800/50">
+                       <span className="text-sm text-slate-500 dark:text-slate-400">Creado</span>
+                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(product.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800/50">
+                       <span className="text-sm text-slate-500 dark:text-slate-400">Actualizado</span>
+                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(product.updated_at)}</span>
+                    </div>
+                    {product.qr_code_hash && (
+                       <div className="pt-2">
+                          <Button
+                             variant="outline"
+                             className="w-full justify-between"
+                             onClick={() => setShowQRCode(true)}
+                          >
+                             <span className="flex items-center gap-2">
+                                <QrCode className="h-4 w-4" />
+                                Código QR
+                             </span>
+                             <Eye className="h-4 w-4 text-slate-400" />
+                          </Button>
+                       </div>
+                    )}
+                 </CardContent>
+              </Card>
+           </motion.div>
+        </div>
       </div>
-    </div>
+
+      {product.qr_code_hash && showQRCode && (
+        <QRCodeDisplay
+          hash={product.qr_code_hash}
+          title={`QR - ${product.name}`}
+          description="Escanea este código QR para ver la información pública del producto"
+          url={`${typeof window !== "undefined" ? window.location.origin : ""}/public/product/${product.qr_code_hash}`}
+          onClose={() => setShowQRCode(false)}
+        />
+      )}
+    </motion.div>
   )
 }

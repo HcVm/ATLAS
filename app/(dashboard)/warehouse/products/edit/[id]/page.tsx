@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,13 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, Loader2, FileText } from "lucide-react"
+import { ArrowLeft, Save, Loader2, FileText, Package, DollarSign, Layers, Box, Tag, Image as ImageIcon, Edit } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import { useToast } from "@/hooks/use-toast"
-import NextLink from "next/link"
+import { toast } from "sonner"
+import Link from "next/link"
 import { BrandCreatorDialog } from "@/components/ui/brand-creator-dialog"
 import ProductImageUpload from "@/components/warehouse/product-image-upload"
+import { motion } from "framer-motion"
 
 interface Product {
   id: string
@@ -56,11 +56,27 @@ interface Category {
   color: string
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
+}
+
 export default function EditProductPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
-  const { toast } = useToast()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
@@ -109,11 +125,7 @@ export default function EditProductPage() {
 
       if (!companyId) {
         setError("No se pudo determinar la empresa")
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la empresa",
-          variant: "destructive",
-        })
+        toast.error("No se pudo determinar la empresa")
         return
       }
 
@@ -127,18 +139,10 @@ export default function EditProductPage() {
       if (productError) {
         if (productError.code === "PGRST116") {
           setError("Producto no encontrado")
-          toast({
-            title: "Error",
-            description: "El producto no fue encontrado o no tienes permisos para verlo",
-            variant: "destructive",
-          })
+          toast.error("El producto no fue encontrado o no tienes permisos para verlo")
         } else {
           console.error("Product error:", productError)
-          toast({
-            title: "Error",
-            description: "Error al cargar el producto",
-            variant: "destructive",
-          })
+          toast.error("Error al cargar el producto")
           throw productError
         }
         return
@@ -152,11 +156,7 @@ export default function EditProductPage() {
 
       if (companyBrandsError) {
         console.error("Company brands error:", companyBrandsError)
-        toast({
-          title: "Advertencia",
-          description: "No se pudieron cargar las marcas de la empresa",
-          variant: "destructive",
-        })
+        toast.warning("No se pudieron cargar las marcas de la empresa")
       }
 
       const { data: externalBrands, error: externalBrandsError } = await supabase
@@ -167,11 +167,7 @@ export default function EditProductPage() {
 
       if (externalBrandsError) {
         console.error("External brands error:", externalBrandsError)
-        toast({
-          title: "Advertencia",
-          description: "No se pudieron cargar las marcas externas",
-          variant: "destructive",
-        })
+        toast.warning("No se pudieron cargar las marcas externas")
       }
 
       const allBrands = [
@@ -187,11 +183,7 @@ export default function EditProductPage() {
 
       if (categoriesError) {
         console.error("Categories error:", categoriesError)
-        toast({
-          title: "Advertencia",
-          description: "No se pudieron cargar las categorías",
-          variant: "destructive",
-        })
+        toast.warning("No se pudieron cargar las categorías")
       }
 
       setProduct(productData)
@@ -223,11 +215,7 @@ export default function EditProductPage() {
     } catch (error) {
       console.error("Error fetching data:", error)
       setError("Error al cargar los datos")
-      toast({
-        title: "Error",
-        description: "Error al cargar los datos del producto",
-        variant: "destructive",
-      })
+      toast.error("Error al cargar los datos del producto")
     } finally {
       setLoading(false)
     }
@@ -245,44 +233,29 @@ export default function EditProductPage() {
     })
 
     setFormData((prev) => ({ ...prev, brand_id: newBrand.id }))
+    toast.success(`Marca "${newBrand.name}" creada y seleccionada`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.name.trim() || !formData.code.trim()) {
-      toast({
-        title: "Error",
-        description: "El nombre y código son obligatorios",
-        variant: "destructive",
-      })
+      toast.error("El nombre y código son obligatorios")
       return
     }
 
     if (formData.cost_price > 0 && formData.sale_price > 0 && formData.sale_price <= formData.cost_price) {
-      toast({
-        title: "Error",
-        description: "El precio de venta debe ser mayor al precio de costo",
-        variant: "destructive",
-      })
+      toast.error("El precio de venta debe ser mayor al precio de costo")
       return
     }
 
     if (formData.minimum_stock < 0) {
-      toast({
-        title: "Error",
-        description: "El stock mínimo no puede ser negativo",
-        variant: "destructive",
-      })
+      toast.error("El stock mínimo no puede ser negativo")
       return
     }
 
     if (formData.current_stock < 0) {
-      toast({
-        title: "Error",
-        description: "El stock actual no puede ser negativo",
-        variant: "destructive",
-      })
+      toast.error("El stock actual no puede ser negativo")
       return
     }
 
@@ -292,11 +265,7 @@ export default function EditProductPage() {
       const companyId = user?.role === "admin" ? user?.selectedCompanyId || user?.company_id : user?.company_id
 
       if (!companyId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la empresa",
-          variant: "destructive",
-        })
+        toast.error("No se pudo determinar la empresa")
         return
       }
 
@@ -335,78 +304,39 @@ export default function EditProductPage() {
 
         if (error.code === "23505") {
           if (error.message.includes("products_code_company_id_key")) {
-            toast({
-              title: "Error",
-              description: "Ya existe otro producto con ese código en tu empresa",
-              variant: "destructive",
-            })
+            toast.error("Ya existe otro producto con ese código en tu empresa")
           } else if (error.message.includes("products_barcode_company_id_key")) {
-            toast({
-              title: "Error",
-              description: "Ya existe otro producto con ese código de barras en tu empresa",
-              variant: "destructive",
-            })
+            toast.error("Ya existe otro producto con ese código de barras en tu empresa")
           } else {
-            toast({
-              title: "Error",
-              description: "Ya existe otro producto con esos datos",
-              variant: "destructive",
-            })
+            toast.error("Ya existe otro producto con esos datos")
           }
           return
         } else if (error.code === "23503") {
           if (error.message.includes("brand_id")) {
-            toast({
-              title: "Error",
-              description: "La marca seleccionada no es válida",
-              variant: "destructive",
-            })
+            toast.error("La marca seleccionada no es válida")
           } else if (error.message.includes("category_id")) {
-            toast({
-              title: "Error",
-              description: "La categoría seleccionada no es válida",
-              variant: "destructive",
-            })
+            toast.error("La categoría seleccionada no es válida")
           } else {
-            toast({
-              title: "Error",
-              description: "Error de referencia en los datos",
-              variant: "destructive",
-            })
+            toast.error("Error de referencia en los datos")
           }
           return
         } else if (error.code === "23514") {
-          toast({
-            title: "Error",
-            description: "Los valores numéricos deben ser positivos",
-            variant: "destructive",
-          })
+          toast.error("Los valores numéricos deben ser positivos")
           return
         } else if (error.code === "42501") {
-          toast({
-            title: "Error",
-            description: "No tienes permisos para editar este producto",
-            variant: "destructive",
-          })
+          toast.error("No tienes permisos para editar este producto")
           return
         }
 
         throw error
       }
 
-      toast({
-        title: "Éxito",
-        description: `Producto "${formData.name}" actualizado correctamente`,
-      })
+      toast.success(`Producto "${formData.name}" actualizado correctamente`)
 
       router.push(`/warehouse/products/${params.id}`)
     } catch (error) {
       console.error("Error updating product:", error)
-      toast({
-        title: "Error",
-        description: "Error al actualizar el producto. Verifica que todos los campos estén correctos.",
-        variant: "destructive",
-      })
+      toast.error("Error al actualizar el producto. Verifica que todos los campos estén correctos.")
     } finally {
       setSaving(false)
     }
@@ -414,38 +344,38 @@ export default function EditProductPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <NextLink href="/warehouse/products">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
-            </NextLink>
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">Cargando producto...</div>
-          </CardContent>
-        </Card>
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+         <div className="flex items-center gap-4 mb-8">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="space-y-2">
+               <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+               <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            </div>
+         </div>
       </div>
     )
   }
 
   if (error || !product) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <NextLink href="/warehouse/products">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
-            </NextLink>
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center text-muted-foreground">{error || "Producto no encontrado"}</div>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] p-4">
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+          <CardHeader>
+             <div className="mx-auto p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+                <Package className="h-10 w-10 text-slate-500" />
+             </div>
+             <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Producto no encontrado</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <p className="text-slate-500 dark:text-slate-400 mb-6">
+                {error || "No se pudo cargar la información del producto."}
+             </p>
+             <Button asChild>
+                <Link href="/warehouse/products">
+                   <ArrowLeft className="h-4 w-4 mr-2" />
+                   Volver al catálogo
+                </Link>
+             </Button>
           </CardContent>
         </Card>
       </div>
@@ -453,413 +383,475 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <NextLink href={`/warehouse/products/${params.id}`}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </NextLink>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Editar Producto</h1>
-          <p className="text-muted-foreground">Modifica la información del producto</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Imagen del Producto</CardTitle>
-              <CardDescription>Sube o reemplaza la imagen del producto</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProductImageUpload
-                currentImageUrl={formData.image_url}
-                onImageChange={(imageUrl) => setFormData({ ...formData, image_url: imageUrl || "" })}
-                productCode={formData.code}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Básica</CardTitle>
-              <CardDescription>Datos principales del producto</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Nombre del producto"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descripción del producto"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Código *</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="Código del producto"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="barcode">Código de barras</Label>
-                  <Input
-                    id="barcode"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    placeholder="Código de barras"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="modelo" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Modelo
-                  </Label>
-                  <Input
-                    id="modelo"
-                    value={formData.modelo}
-                    onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
-                    placeholder="Modelo del producto"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ficha_tecnica" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Ficha Técnica (URL)
-                  </Label>
-                  <Input
-                    id="ficha_tecnica"
-                    type="url"
-                    value={formData.ficha_tecnica}
-                    onChange={(e) => setFormData({ ...formData, ficha_tecnica: e.target.value })}
-                    placeholder="https://ejemplo.com/ficha-tecnica.pdf"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="manual" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Manual del Producto (URL)
-                </Label>
-                <Input
-                  id="manual"
-                  type="url"
-                  value={formData.manual}
-                  onChange={(e) => setFormData({ ...formData, manual: e.target.value })}
-                  placeholder="https://ejemplo.com/manual-producto.pdf"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enlace al manual de usuario o instrucciones del producto
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="unit_of_measure">Unidad de medida</Label>
-                  <Select
-                    value={formData.unit_of_measure}
-                    onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unidad">Unidad</SelectItem>
-                      <SelectItem value="kg">Kilogramo</SelectItem>
-                      <SelectItem value="g">Gramo</SelectItem>
-                      <SelectItem value="l">Litro</SelectItem>
-                      <SelectItem value="ml">Mililitro</SelectItem>
-                      <SelectItem value="m">Metro</SelectItem>
-                      <SelectItem value="cm">Centímetro</SelectItem>
-                      <SelectItem value="caja">Caja</SelectItem>
-                      <SelectItem value="paquete">Paquete</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="Ubicación en almacén"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-                <Label htmlFor="is_active">Producto activo</Label>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dimensiones del Producto</CardTitle>
-              <CardDescription>Especificaciones de tamaño (opcional)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="total_height">Alto Total (cm)</Label>
-                  <Input
-                    id="total_height"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.total_height}
-                    onChange={(e) => setFormData({ ...formData, total_height: Number.parseFloat(e.target.value) || 0 })}
-                    placeholder="Altura en centímetros"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="total_width">Ancho Total (cm)</Label>
-                  <Input
-                    id="total_width"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.total_width}
-                    onChange={(e) => setFormData({ ...formData, total_width: Number.parseFloat(e.target.value) || 0 })}
-                    placeholder="Ancho en centímetros"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="depth">Profundidad (cm)</Label>
-                  <Input
-                    id="depth"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.depth}
-                    onChange={(e) => setFormData({ ...formData, depth: Number.parseFloat(e.target.value) || 0 })}
-                    placeholder="Profundidad en centímetros"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Estos campos son opcionales. Ingresa las medidas en centímetros.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock y Precios</CardTitle>
-              <CardDescription>Información de inventario y precios</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current_stock">Stock actual</Label>
-                  <Input
-                    disabled
-                    id="current_stock"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.current_stock}
-                    onChange={(e) =>
-                      setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="minimum_stock">Stock mínimo</Label>
-                  <Input
-                    id="minimum_stock"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.minimum_stock}
-                    onChange={(e) =>
-                      setFormData({ ...formData, minimum_stock: Number.parseFloat(e.target.value) || 0 })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cost_price">Precio de costo</Label>
-                  <Input
-                    id="cost_price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.cost_price}
-                    onChange={(e) => setFormData({ ...formData, cost_price: Number.parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sale_price">Precio de venta</Label>
-                  <Input
-                    id="sale_price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.sale_price}
-                    onChange={(e) => setFormData({ ...formData, sale_price: Number.parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              {formData.cost_price > 0 && formData.sale_price > 0 && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Margen de ganancia</p>
-                  <p className="text-lg font-semibold">
-                    {(((formData.sale_price - formData.cost_price) / formData.cost_price) * 100).toFixed(1)}%
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Categorización</CardTitle>
-              <CardDescription>Marca y categoría del producto</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brand_id">Marca</Label>
-                  <div className="space-y-2">
-                    <Select
-                      value={formData.brand_id}
-                      onValueChange={(value) => setFormData({ ...formData, brand_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar marca" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin marca</SelectItem>
-
-                        {brands.filter((brand) => !brand.isExternal).length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                              Marcas de la empresa
-                            </div>
-                            {brands
-                              .filter((brand) => !brand.isExternal)
-                              .map((brand) => (
-                                <SelectItem key={brand.id} value={brand.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
-                                    {brand.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </>
-                        )}
-
-                        {brands.filter((brand) => brand.isExternal).length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground border-t mt-1 pt-2">
-                              Marcas externas
-                            </div>
-                            {brands
-                              .filter((brand) => brand.isExternal)
-                              .map((brand) => (
-                                <SelectItem key={brand.id} value={brand.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
-                                    {brand.name}
-                                    <span className="text-xs text-muted-foreground ml-auto">Externa</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </>
-                        )}
-
-                        {brands.length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No hay marcas disponibles</div>
-                        )}
-                      </SelectContent>
-                    </Select>
-
-                    <BrandCreatorDialog onBrandCreated={handleBrandCreated} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category_id">Categoría</Label>
-                  <Select
-                    value={formData.category_id}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value === "none" ? "" : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" asChild>
-            <NextLink href={`/warehouse/products/${params.id}`}>Cancelar</NextLink>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button 
+             variant="ghost" 
+             size="icon" 
+             asChild 
+             className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Link href={`/warehouse/products/${params.id}`}>
+              <ArrowLeft className="h-5 w-5 text-slate-500" />
+            </Link>
           </Button>
-          <Button type="submit" disabled={saving}>
-            {saving ? (
-              <>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+               <Edit className="h-8 w-8 text-indigo-500" />
+               Editar Producto
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              {product.name}
+            </p>
+          </div>
+        </div>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={saving}
+          className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-105"
+        >
+          {saving ? (
+             <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Guardando...
-              </>
-            ) : (
-              <>
+             </>
+          ) : (
+             <>
                 <Save className="mr-2 h-4 w-4" />
-                Guardar cambios
-              </>
-            )}
-          </Button>
+                Guardar Cambios
+             </>
+          )}
+        </Button>
+      </motion.div>
+
+      <form onSubmit={handleSubmit}>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            
+            <motion.div variants={itemVariants}>
+               <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                   <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                     <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                       <Package className="h-5 w-5" />
+                     </div>
+                     Información Básica
+                   </CardTitle>
+                   <CardDescription>Datos principales del producto</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="name" className="text-slate-600 dark:text-slate-400">Nombre *</Label>
+                     <Input
+                       id="name"
+                       value={formData.name}
+                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                       placeholder="Nombre del producto"
+                       required
+                       className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                     />
+                   </div>
+
+                   <div className="space-y-2">
+                     <Label htmlFor="description" className="text-slate-600 dark:text-slate-400">Descripción</Label>
+                     <Textarea
+                       id="description"
+                       value={formData.description}
+                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                       placeholder="Descripción del producto"
+                       rows={3}
+                       className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 resize-none"
+                     />
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="code" className="text-slate-600 dark:text-slate-400">Código *</Label>
+                       <Input
+                         id="code"
+                         value={formData.code}
+                         onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                         placeholder="Código del producto"
+                         required
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 font-mono"
+                       />
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="barcode" className="text-slate-600 dark:text-slate-400">Código de barras</Label>
+                       <Input
+                         id="barcode"
+                         value={formData.barcode}
+                         onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                         placeholder="Código de barras"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 font-mono"
+                       />
+                     </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="modelo" className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                         <FileText className="h-3 w-3" />
+                         Modelo
+                       </Label>
+                       <Input
+                         id="modelo"
+                         value={formData.modelo}
+                         onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                         placeholder="Modelo del producto"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="ficha_tecnica" className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                         <FileText className="h-3 w-3" />
+                         Ficha Técnica (URL)
+                       </Label>
+                       <Input
+                         id="ficha_tecnica"
+                         type="url"
+                         value={formData.ficha_tecnica}
+                         onChange={(e) => setFormData({ ...formData, ficha_tecnica: e.target.value })}
+                         placeholder="https://ejemplo.com/ficha-tecnica.pdf"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                   </div>
+
+                   <div className="space-y-2">
+                     <Label htmlFor="manual" className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                       <FileText className="h-3 w-3" />
+                       Manual del Producto (URL)
+                     </Label>
+                     <Input
+                       id="manual"
+                       type="url"
+                       value={formData.manual}
+                       onChange={(e) => setFormData({ ...formData, manual: e.target.value })}
+                       placeholder="https://ejemplo.com/manual-producto.pdf"
+                       className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                     />
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="unit_of_measure" className="text-slate-600 dark:text-slate-400">Unidad de medida</Label>
+                       <Select
+                         value={formData.unit_of_measure}
+                         onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+                       >
+                         <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                           <SelectValue />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="unidad">Unidad</SelectItem>
+                           <SelectItem value="kg">Kilogramo</SelectItem>
+                           <SelectItem value="g">Gramo</SelectItem>
+                           <SelectItem value="l">Litro</SelectItem>
+                           <SelectItem value="ml">Mililitro</SelectItem>
+                           <SelectItem value="m">Metro</SelectItem>
+                           <SelectItem value="cm">Centímetro</SelectItem>
+                           <SelectItem value="caja">Caja</SelectItem>
+                           <SelectItem value="paquete">Paquete</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="location" className="text-slate-600 dark:text-slate-400">Ubicación</Label>
+                       <Input
+                         id="location"
+                         value={formData.location}
+                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                         placeholder="Ubicación en almacén"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+               <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                   <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                     <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+                       <Box className="h-5 w-5" />
+                     </div>
+                     Dimensiones
+                   </CardTitle>
+                   <CardDescription>Especificaciones de tamaño (opcional)</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                   <div className="grid grid-cols-3 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="total_height" className="text-slate-600 dark:text-slate-400">Alto (cm)</Label>
+                       <Input
+                         id="total_height"
+                         type="number"
+                         min="0"
+                         step="0.1"
+                         value={formData.total_height}
+                         onChange={(e) => setFormData({ ...formData, total_height: Number.parseFloat(e.target.value) || 0 })}
+                         placeholder="Altura"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <Label htmlFor="total_width" className="text-slate-600 dark:text-slate-400">Ancho (cm)</Label>
+                       <Input
+                         id="total_width"
+                         type="number"
+                         min="0"
+                         step="0.1"
+                         value={formData.total_width}
+                         onChange={(e) => setFormData({ ...formData, total_width: Number.parseFloat(e.target.value) || 0 })}
+                         placeholder="Ancho"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <Label htmlFor="depth" className="text-slate-600 dark:text-slate-400">Profundidad (cm)</Label>
+                       <Input
+                         id="depth"
+                         type="number"
+                         min="0"
+                         step="0.1"
+                         value={formData.depth}
+                         onChange={(e) => setFormData({ ...formData, depth: Number.parseFloat(e.target.value) || 0 })}
+                         placeholder="Profundidad"
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+               <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                   <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                     <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
+                       <DollarSign className="h-5 w-5" />
+                     </div>
+                     Stock y Precios
+                   </CardTitle>
+                   <CardDescription>Información de inventario y precios</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="current_stock" className="text-slate-600 dark:text-slate-400">Stock actual</Label>
+                       <Input
+                         disabled
+                         id="current_stock"
+                         type="number"
+                         min="0"
+                         step="0.01"
+                         value={formData.current_stock}
+                         onChange={(e) =>
+                           setFormData({ ...formData, current_stock: Number.parseFloat(e.target.value) || 0 })
+                         }
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/30"
+                       />
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="minimum_stock" className="text-slate-600 dark:text-slate-400">Stock mínimo</Label>
+                       <Input
+                         id="minimum_stock"
+                         type="number"
+                         min="0"
+                         step="0.01"
+                         value={formData.minimum_stock}
+                         onChange={(e) =>
+                           setFormData({ ...formData, minimum_stock: Number.parseFloat(e.target.value) || 0 })
+                         }
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="cost_price" className="text-slate-600 dark:text-slate-400">Precio de costo</Label>
+                       <Input
+                         id="cost_price"
+                         type="number"
+                         min="0"
+                         step="0.01"
+                         value={formData.cost_price}
+                         onChange={(e) => setFormData({ ...formData, cost_price: Number.parseFloat(e.target.value) || 0 })}
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="sale_price" className="text-slate-600 dark:text-slate-400">Precio de venta</Label>
+                       <Input
+                         id="sale_price"
+                         type="number"
+                         min="0"
+                         step="0.01"
+                         value={formData.sale_price}
+                         onChange={(e) => setFormData({ ...formData, sale_price: Number.parseFloat(e.target.value) || 0 })}
+                         className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                       />
+                     </div>
+                   </div>
+
+                   {formData.cost_price > 0 && formData.sale_price > 0 && (
+                     <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 flex justify-between items-center">
+                       <span className="text-sm text-indigo-700 dark:text-indigo-300">Margen estimado:</span>
+                       <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                         {(((formData.sale_price - formData.cost_price) / formData.cost_price) * 100).toFixed(1)}%
+                       </span>
+                     </div>
+                   )}
+                 </CardContent>
+               </Card>
+            </motion.div>
+          </div>
+
+          <div className="space-y-6">
+            <motion.div variants={itemVariants}>
+               <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                   <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                     <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+                       <ImageIcon className="h-5 w-5" />
+                     </div>
+                     Imagen
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6">
+                   <ProductImageUpload
+                     currentImageUrl={formData.image_url}
+                     onImageChange={(imageUrl) => setFormData({ ...formData, image_url: imageUrl || "" })}
+                     productCode={formData.code}
+                   />
+                 </CardContent>
+               </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+               <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                   <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                     <div className="p-2 bg-pink-50 dark:bg-pink-900/20 rounded-lg text-pink-600 dark:text-pink-400">
+                       <Tag className="h-5 w-5" />
+                     </div>
+                     Categorización
+                   </CardTitle>
+                   <CardDescription>Marca y categoría</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="brand_id" className="text-slate-600 dark:text-slate-400">Marca</Label>
+                     <div className="space-y-2">
+                       <Select
+                         value={formData.brand_id}
+                         onValueChange={(value) => setFormData({ ...formData, brand_id: value === "none" ? "" : value })}
+                       >
+                         <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                           <SelectValue placeholder="Seleccionar marca" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="none">Sin marca</SelectItem>
+
+                           {brands.filter((brand) => !brand.isExternal).length > 0 && (
+                             <>
+                               <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                                 Marcas de la empresa
+                               </div>
+                               {brands
+                                 .filter((brand) => !brand.isExternal)
+                                 .map((brand) => (
+                                   <SelectItem key={brand.id} value={brand.id}>
+                                     <div className="flex items-center gap-2">
+                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
+                                       {brand.name}
+                                     </div>
+                                   </SelectItem>
+                                 ))}
+                             </>
+                           )}
+
+                           {brands.filter((brand) => brand.isExternal).length > 0 && (
+                             <>
+                               <div className="px-2 py-1.5 text-sm text-muted-foreground border-t mt-1 pt-2">
+                                 Marcas externas
+                               </div>
+                               {brands
+                                 .filter((brand) => brand.isExternal)
+                                 .map((brand) => (
+                                   <SelectItem key={brand.id} value={brand.id}>
+                                     <div className="flex items-center gap-2">
+                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
+                                       {brand.name}
+                                       <span className="text-xs text-muted-foreground ml-auto">Externa</span>
+                                     </div>
+                                   </SelectItem>
+                                 ))}
+                             </>
+                           )}
+
+                           {brands.length === 0 && (
+                             <div className="px-2 py-1.5 text-sm text-muted-foreground">No hay marcas disponibles</div>
+                           )}
+                         </SelectContent>
+                       </Select>
+
+                       <BrandCreatorDialog onBrandCreated={handleBrandCreated} />
+                     </div>
+                   </div>
+
+                   <div className="space-y-2">
+                     <Label htmlFor="category_id" className="text-slate-600 dark:text-slate-400">Categoría</Label>
+                     <Select
+                       value={formData.category_id}
+                       onValueChange={(value) => setFormData({ ...formData, category_id: value === "none" ? "" : value })}
+                     >
+                       <SelectTrigger className="rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                         <SelectValue placeholder="Seleccionar categoría" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="none">Sin categoría</SelectItem>
+                         {categories.map((category) => (
+                           <SelectItem key={category.id} value={category.id}>
+                             {category.name}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   
+                   <div className="pt-2 flex items-center justify-between space-x-2 border-t border-slate-100 dark:border-slate-800 mt-4">
+                     <div className="space-y-1">
+                        <Label htmlFor="is_active" className="text-slate-700 dark:text-slate-300">Producto activo</Label>
+                     </div>
+                     <Switch
+                       id="is_active"
+                       checked={formData.is_active}
+                       onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                     />
+                   </div>
+                 </CardContent>
+               </Card>
+            </motion.div>
+          </div>
         </div>
       </form>
-    </div>
+    </motion.div>
   )
 }

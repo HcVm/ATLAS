@@ -13,9 +13,10 @@ import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
-import { ChevronLeft, Save, Building2, Info, AlertCircle } from "lucide-react"
+import { ChevronLeft, Save, Building2, Info, AlertCircle, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { motion } from "framer-motion"
 
 interface FixedAssetAccount {
   id: string
@@ -58,6 +59,23 @@ const statusOptions = [
   { value: "sold", label: "Vendido" },
   { value: "damaged", label: "Dañado" },
 ]
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
+}
 
 export default function EditFixedAssetPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -250,47 +268,57 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Building2 className="h-8 w-8 animate-spin" />
+        <Building2 className="h-8 w-8 animate-spin text-indigo-500" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 mt-10">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" asChild>
-          <Link href={`/warehouse/internal/fixed-assets/${resolvedParams.id}`}>
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Volver al Activo
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Editar Activo Fijo</h1>
-        <div />
-      </div>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-6 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="pl-0 hover:bg-transparent hover:text-indigo-600 dark:hover:text-indigo-400 mb-2">
+            <Link href={`/warehouse/internal/fixed-assets/${resolvedParams.id}`}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al Activo
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+            Editar Activo Fijo
+          </h1>
+        </div>
+      </motion.div>
 
       {originalAsset && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Código del Activo: {originalAsset.code}</AlertTitle>
-          <AlertDescription>
-            Este activo tiene una depreciación acumulada de S/{" "}
-            {originalAsset.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}. Los cambios
-            en los valores contables afectarán el valor en libros pero no la depreciación ya registrada.
-          </AlertDescription>
-        </Alert>
+        <motion.div variants={itemVariants}>
+          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="text-amber-800 dark:text-amber-300">Código del Activo: {originalAsset.code}</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-400/90">
+              Este activo tiene una depreciación acumulada de S/{" "}
+              {originalAsset.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}. Los cambios
+              en los valores contables afectarán el valor en libros pero no la depreciación ya registrada.
+            </AlertDescription>
+          </Alert>
+        </motion.div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Información básica */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
             <CardHeader>
               <CardTitle>Información del Activo</CardTitle>
               <CardDescription>Datos básicos del activo fijo</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="name">Nombre del Activo *</Label>
                   <Input
                     id="name"
@@ -298,12 +326,13 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     onChange={handleChange}
                     placeholder="Ej: Laptop HP ProBook 450 G9"
                     required
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="account_id">Cuenta Contable *</Label>
                   <Select value={formData.account_id} onValueChange={handleAccountChange} required>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50">
                       <SelectValue placeholder="Seleccionar cuenta" />
                     </SelectTrigger>
                     <SelectContent>
@@ -315,7 +344,7 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="description">Descripción</Label>
                   <Textarea
                     id="description"
@@ -323,24 +352,26 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     onChange={handleChange}
                     placeholder="Descripción detallada del activo"
                     rows={3}
+                    className="bg-white/50 dark:bg-slate-800/50 resize-none"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="current_location">Ubicación</Label>
                   <Input
                     id="current_location"
                     value={formData.current_location}
                     onChange={handleChange}
                     placeholder="Ej: Oficina Principal, Piso 2"
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="assigned_department_id">Departamento Asignado</Label>
                   <Select
                     value={formData.assigned_department_id}
                     onValueChange={(value) => handleSelectChange("assigned_department_id", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50">
                       <SelectValue placeholder="Seleccionar departamento" />
                     </SelectTrigger>
                     <SelectContent>
@@ -354,7 +385,7 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <div className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="acquisition_date">Fecha de Adquisición *</Label>
                   <Input
                     id="acquisition_date"
@@ -362,18 +393,20 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     value={formData.acquisition_date}
                     onChange={handleChange}
                     required
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="invoice_number">Número de Factura</Label>
                   <Input
                     id="invoice_number"
                     value={formData.invoice_number}
                     onChange={handleChange}
                     placeholder="Ej: F001-0944"
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="supplier_ruc">RUC Proveedor</Label>
                   <Input
                     id="supplier_ruc"
@@ -381,21 +414,23 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     onChange={handleChange}
                     placeholder="Ej: 20123456789"
                     maxLength={11}
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="supplier_name">Nombre Proveedor</Label>
                   <Input
                     id="supplier_name"
                     value={formData.supplier_name}
                     onChange={handleChange}
                     placeholder="Ej: Tech Solutions S.A.C."
+                    className="bg-white/50 dark:bg-slate-800/50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="status">Estado del Activo</Label>
                   <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50">
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
@@ -412,16 +447,16 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
           </Card>
 
           {/* Resumen de depreciación */}
-          <Card>
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md h-fit">
             <CardHeader>
               <CardTitle>Resumen de Depreciación</CardTitle>
               <CardDescription>Cálculo estimado basado en los datos ingresados</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedAccount && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert className="bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800">
+                  <Info className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  <AlertDescription className="text-indigo-800 dark:text-indigo-300 text-xs">
                     <strong>{selectedAccount.code}</strong>
                     <br />
                     Tasa: {selectedAccount.depreciation_rate}% anual
@@ -432,46 +467,46 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
               )}
 
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Costo Total:</span>
-                  <span className="font-semibold">
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground text-sm">Costo Total:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
                     S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Valor Residual:</span>
-                  <span className="font-semibold">
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground text-sm">Valor Residual:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
                     S/{" "}
                     {(Number.parseFloat(formData.salvage_value) || 0).toLocaleString("es-PE", {
                       minimumFractionDigits: 2,
                     })}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Base Depreciable:</span>
-                  <span className="font-semibold">
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground text-sm">Base Depreciable:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
                     S/{" "}
                     {(totalCost - (Number.parseFloat(formData.salvage_value) || 0)).toLocaleString("es-PE", {
                       minimumFractionDigits: 2,
                     })}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Tasa Anual:</span>
-                  <span className="font-semibold">{formData.depreciation_rate || 0}%</span>
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground text-sm">Tasa Anual:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{formData.depreciation_rate || 0}%</span>
                 </div>
                 {originalAsset && (
                   <>
-                    <div className="flex justify-between py-2 border-b">
-                      <span className="text-muted-foreground">Depre. Acumulada:</span>
-                      <span className="font-semibold text-orange-600">
+                    <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                      <span className="text-muted-foreground text-sm">Depre. Acumulada:</span>
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
                         S/{" "}
                         {originalAsset.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
-                    <div className="flex justify-between py-2 bg-green-50 dark:bg-green-950 rounded px-2">
-                      <span className="font-medium">Valor en Libros:</span>
-                      <span className="font-bold text-green-600">
+                    <div className="flex justify-between py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded px-2">
+                      <span className="font-medium text-sm text-emerald-900 dark:text-emerald-100">Valor en Libros:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
                         S/{" "}
                         {(totalCost - originalAsset.accumulated_depreciation).toLocaleString("es-PE", {
                           minimumFractionDigits: 2,
@@ -480,125 +515,133 @@ export default function EditFixedAssetPage({ params }: { params: Promise<{ id: s
                     </div>
                   </>
                 )}
-                <div className="flex justify-between py-2 bg-muted/50 rounded px-2">
-                  <span className="text-muted-foreground">Depre. Mensual Est.:</span>
-                  <span className="font-bold text-orange-600">
+                <div className="flex justify-between py-2 bg-slate-100 dark:bg-slate-800/50 rounded px-2">
+                  <span className="text-muted-foreground text-sm">Depre. Mensual Est.:</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
                     S/ {estimatedMonthlyDep.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Valores contables */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Valores Contables</CardTitle>
-            <CardDescription>
-              Ingresa los valores de adquisición del activo. El costo total se calculará automáticamente.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <Label htmlFor="initial_balance">Saldos Iniciales (S/)</Label>
-              <Input
-                id="initial_balance"
-                type="number"
-                step="0.01"
-                value={formData.initial_balance}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Valor de activos existentes</p>
-            </div>
-            <div>
-              <Label htmlFor="purchases">Compras del Período (S/)</Label>
-              <Input
-                id="purchases"
-                type="number"
-                step="0.01"
-                value={formData.purchases}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Adquisiciones nuevas</p>
-            </div>
-            <div>
-              <Label htmlFor="salvage_value">Valor Residual (S/)</Label>
-              <Input
-                id="salvage_value"
-                type="number"
-                step="0.01"
-                value={formData.salvage_value}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Valor al final de vida útil</p>
-            </div>
-            <div className="flex items-end">
-              <div className="p-4 bg-muted/50 rounded-lg w-full">
-                <p className="text-sm text-muted-foreground">Costo Total Calculado</p>
-                <p className="text-xl font-bold">
-                  S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                </p>
+        <motion.div variants={itemVariants}>
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle>Valores Contables</CardTitle>
+              <CardDescription>
+                Ingresa los valores de adquisición del activo. El costo total se calculará automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="initial_balance">Saldos Iniciales (S/)</Label>
+                <Input
+                  id="initial_balance"
+                  type="number"
+                  step="0.01"
+                  value={formData.initial_balance}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 dark:bg-slate-800/50"
+                />
+                <p className="text-xs text-muted-foreground">Valor de activos existentes</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label htmlFor="purchases">Compras del Período (S/)</Label>
+                <Input
+                  id="purchases"
+                  type="number"
+                  step="0.01"
+                  value={formData.purchases}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 dark:bg-slate-800/50"
+                />
+                <p className="text-xs text-muted-foreground">Adquisiciones nuevas</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="salvage_value">Valor Residual (S/)</Label>
+                <Input
+                  id="salvage_value"
+                  type="number"
+                  step="0.01"
+                  value={formData.salvage_value}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 dark:bg-slate-800/50"
+                />
+                <p className="text-xs text-muted-foreground">Valor al final de vida útil</p>
+              </div>
+              <div className="flex items-end">
+                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-full border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm text-muted-foreground mb-1">Costo Total Calculado</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Configuración de depreciación */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuración de Depreciación</CardTitle>
-            <CardDescription>
-              La tasa se establece automáticamente según la cuenta contable seleccionada
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="depreciation_rate">Tasa de Depreciación Anual (%)</Label>
-              <Input
-                id="depreciation_rate"
-                type="number"
-                step="0.01"
-                value={formData.depreciation_rate}
-                onChange={handleChange}
-                placeholder="10.00"
-                min="0"
-                max="100"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Según normativa peruana de la Ley del Impuesto a la Renta
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Tasas de Depreciación (Perú)</h4>
-              <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                <li>• Edificios: 5% anual (desde 01-01-2010)</li>
-                <li>• Vehículos de transporte: 20%</li>
-                <li>• Maquinaria y equipo: 10%</li>
-                <li>• Equipos de cómputo: 25%</li>
-                <li>• Muebles y enseres: 10%</li>
-                <li>• Otros bienes: 10%</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div variants={itemVariants}>
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle>Configuración de Depreciación</CardTitle>
+              <CardDescription>
+                La tasa se establece automáticamente según la cuenta contable seleccionada
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="depreciation_rate">Tasa de Depreciación Anual (%)</Label>
+                <Input
+                  id="depreciation_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.depreciation_rate}
+                  onChange={handleChange}
+                  placeholder="10.00"
+                  min="0"
+                  max="100"
+                  className="bg-white/50 dark:bg-slate-800/50"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Según normativa peruana de la Ley del Impuesto a la Renta
+                </p>
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2 text-sm">Tasas de Depreciación (Perú)</h4>
+                <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                  <li>• Edificios: 5% anual (desde 01-01-2010)</li>
+                  <li>• Vehículos de transporte: 20%</li>
+                  <li>• Maquinaria y equipo: 10%</li>
+                  <li>• Equipos de cómputo: 25%</li>
+                  <li>• Muebles y enseres: 10%</li>
+                  <li>• Otros bienes: 10%</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+        <motion.div variants={itemVariants} className="flex justify-end gap-4 pb-10">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="border-slate-200 dark:border-slate-700">
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
             {isSubmitting ? "Guardando..." : "Guardar Cambios"}
             <Save className="h-4 w-4 ml-2" />
           </Button>
-        </div>
+        </motion.div>
       </form>
-    </div>
+    </motion.div>
   )
 }

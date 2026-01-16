@@ -7,7 +7,22 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Barcode, Search, Printer, Package, Hash, ShoppingCart, ChevronDown, ChevronUp, FileText, Building2, AlertCircle, Tag } from 'lucide-react'
+import { 
+  Barcode, 
+  Search, 
+  Printer, 
+  Package, 
+  Hash, 
+  ShoppingCart, 
+  ChevronDown, 
+  ChevronUp, 
+  FileText, 
+  Building2, 
+  AlertCircle, 
+  Tag,
+  QrCode,
+  ScanBarcode
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
@@ -17,6 +32,7 @@ import QRCode from "qrcode"
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SaleStickersSection } from "./sale-stickers-section"
 import { SeriesFilterModal } from "@/components/warehouse/series-filter-modal"
+import { motion } from "framer-motion"
 
 interface SaleWithLots {
   id: string
@@ -52,6 +68,23 @@ interface BarcodeData {
   barcodeUrl: string
   qrCodeUrl: string
   productHash: string
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
 }
 
 function sortSerialsNumerically(serials: string[]): string[] {
@@ -611,120 +644,142 @@ export default function EtiquetadoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Etiquetado</h1>
-              <p className="text-muted-foreground">Generación de códigos de barras para productos</p>
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+         <div className="flex items-center gap-4 mb-8">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="space-y-2">
+               <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+               <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
             </div>
-          </div>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center text-muted-foreground">Cargando ventas...</div>
-            </CardContent>
-          </Card>
-        </div>
+         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Etiquetado</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Generación de códigos de barras para impresión de stickers
-            </p>
-          </div>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+             <ScanBarcode className="h-8 w-8 text-indigo-500" />
+             Etiquetado
+           </h1>
+           <p className="text-slate-500 dark:text-slate-400 mt-1">
+             Generación de códigos de barras y QR para impresión
+           </p>
         </div>
+      </motion.div>
 
-        <Tabs defaultValue="labeling" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="labeling" className="flex items-center gap-2">
-              <Barcode className="h-4 w-4" />
-              <span>Etiquetas de Inventario</span>
-            </TabsTrigger>
-            <TabsTrigger value="sale-stickers" className="flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              <span>Stickers de Venta</span>
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="labeling" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+          <TabsTrigger 
+             value="labeling" 
+             className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all"
+          >
+            <Barcode className="h-4 w-4" />
+            <span>Etiquetas de Inventario</span>
+          </TabsTrigger>
+          <TabsTrigger 
+             value="sale-stickers" 
+             className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all"
+          >
+            <Tag className="h-4 w-4" />
+            <span>Stickers de Venta</span>
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Inventory Labeling Tab */}
-          <TabsContent value="labeling" className="space-y-4">
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Ventas con Lotes</CardTitle>
-                  <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+        {/* Inventory Labeling Tab */}
+        <TabsContent value="labeling" className="space-y-6 mt-6">
+          <motion.div variants={itemVariants} className="grid gap-6 sm:grid-cols-3">
+             <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <ShoppingCart className="h-24 w-24 text-blue-500" />
+                </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Ventas con Lotes</CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="text-xl sm:text-2xl font-bold">{sales.length}</div>
+                <CardContent>
+                   <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{sales.length}</div>
+                   <p className="text-xs text-slate-500 mt-1">Pendientes de etiquetado</p>
                 </CardContent>
-              </Card>
+             </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Total Productos</CardTitle>
-                  <Package className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+             <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <Package className="h-24 w-24 text-emerald-500" />
+                </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Productos</CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="text-xl sm:text-2xl font-bold">
-                    {sales.reduce((total, sale) => total + sale.sale_items.length, 0)}
+                <CardContent>
+                   <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                      {sales.reduce((total, sale) => total + sale.sale_items.length, 0)}
+                   </div>
+                   <p className="text-xs text-slate-500 mt-1">En todas las ventas</p>
+                </CardContent>
+             </Card>
+
+             <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <Hash className="h-24 w-24 text-purple-500" />
+                </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Series</CardTitle>
+                </CardHeader>
+                <CardContent>
+                   <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                      {sales.reduce((total, sale) => total + getTotalSerials(sale), 0)}
+                   </div>
+                   <p className="text-xs text-slate-500 mt-1">Códigos únicos</p>
+                </CardContent>
+             </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                    <Barcode className="h-5 w-5" />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Total Series</CardTitle>
-                  <Hash className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="text-xl sm:text-2xl font-bold">
-                    {sales.reduce((total, sale) => total + getTotalSerials(sale), 0)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Barcode className="h-4 w-4 sm:h-5 sm:w-5" />
                   Ventas con Lotes y Series
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
+                <CardDescription>
                   Selecciona una venta para generar códigos de barras
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-6">
+                <div className="space-y-6">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-3 w-3 sm:h-4 sm:w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                     <Input
                       placeholder="Buscar por número de venta, cliente, RUC, OCAM..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 text-xs sm:text-sm"
+                      className="pl-10 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11"
                     />
                   </div>
 
-                  <div className="lg:hidden space-y-3">
+                  {/* Mobile View */}
+                  <div className="lg:hidden space-y-4">
                     {filteredSales.length > 0 ? (
                       filteredSales.map((sale) => (
-                        <Card key={sale.id} className="border-2">
-                          <CardHeader className="pb-3">
+                        <Card key={sale.id} className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+                          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <CardTitle className="text-sm font-bold truncate">Venta #{sale.sale_number}</CardTitle>
+                                <CardTitle className="text-sm font-bold truncate flex items-center gap-2">
+                                   Venta #{sale.sale_number}
+                                </CardTitle>
                                 {sale.ocam && (
                                   <Badge
                                     variant="outline"
-                                    className="mt-1 text-xs bg-orange-50 border-orange-200 text-orange-700"
+                                    className="mt-2 text-xs bg-orange-50 border-orange-200 text-orange-700"
                                   >
                                     OCAM: {sale.ocam}
                                   </Badge>
@@ -734,7 +789,7 @@ export default function EtiquetadoPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => toggleSaleDetails(sale.id)}
-                                className="h-8 w-8 p-0 flex-shrink-0"
+                                className="h-8 w-8 p-0 flex-shrink-0 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                               >
                                 {expandedSale === sale.id ? (
                                   <ChevronUp className="h-4 w-4" />
@@ -744,48 +799,46 @@ export default function EtiquetadoPage() {
                               </Button>
                             </div>
                           </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="flex items-start gap-2">
-                              <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <CardContent className="p-4 space-y-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                 <Building2 className="h-4 w-4 text-slate-500" />
+                              </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{sale.entity_name}</p>
-                                <p className="text-xs text-muted-foreground">RUC: {sale.entity_ruc || "-"}</p>
+                                <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">{sale.entity_name}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">RUC: {sale.entity_ruc || "-"}</p>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                              <div className="flex items-center gap-2">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                                <Badge variant="outline" className="text-xs">
-                                  {sale.sale_items.length} productos
-                                </Badge>
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                <Package className="h-4 w-4 text-slate-400" />
+                                <span className="text-xs font-medium">{sale.sale_items.length} productos</span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Hash className="h-4 w-4 text-muted-foreground" />
-                                <Badge variant="secondary" className="text-xs">
-                                  {getTotalSerials(sale)} series
-                                </Badge>
+                              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                <Hash className="h-4 w-4 text-slate-400" />
+                                <span className="text-xs font-medium">{getTotalSerials(sale)} series</span>
                               </div>
                             </div>
 
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(sale.created_at).toLocaleDateString("es-PE")}
+                            <div className="text-xs text-slate-400 text-right">
+                              {new Date(sale.created_at).toLocaleDateString("es-PE", { year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
 
                             {expandedSale === sale.id && (
-                              <div className="pt-3 border-t space-y-2">
-                                <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                                  <FileText className="h-4 w-4" />
+                              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                  <FileText className="h-4 w-4 text-indigo-500" />
                                   Productos
                                 </div>
                                 {sale.sale_items.map((item) => (
-                                  <div key={item.id} className="bg-muted/50 rounded-lg p-3 space-y-2">
+                                  <div key={item.id} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 space-y-2 border border-slate-100 dark:border-slate-800">
                                     <div>
-                                      <p className="font-medium text-sm">{item.product_name}</p>
-                                      <p className="text-xs text-muted-foreground font-mono">{item.product_code}</p>
+                                      <p className="font-medium text-sm text-slate-700 dark:text-slate-200">{item.product_name}</p>
+                                      <p className="text-xs text-slate-500 font-mono mt-0.5">{item.product_code}</p>
                                     </div>
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <Badge variant="outline" className="text-xs">
+                                      <Badge variant="outline" className="text-xs bg-white dark:bg-slate-900">
                                         Cant: {item.quantity}
                                       </Badge>
                                       {item.product_lots.map((lot) => (
@@ -793,7 +846,7 @@ export default function EtiquetadoPage() {
                                           {lot.lot_number}
                                         </Badge>
                                       ))}
-                                      <Badge variant="outline" className="text-xs">
+                                      <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800">
                                         {item.product_lots.reduce(
                                           (total, lot) => total + lot.product_serials.length,
                                           0,
@@ -807,30 +860,16 @@ export default function EtiquetadoPage() {
                             )}
 
                             {areAllSeriesDeliveredOrSold(sale) ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="w-full">
-                                      <Button size="sm" disabled className="w-full">
-                                        <AlertCircle className="h-4 w-4 mr-2" />
-                                        Todas las series entregadas
-                                      </Button>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs text-xs">
-                                      No se pueden generar stickers porque todas las series ya están entregadas o
-                                      vendidas
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm">
+                                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                 <span>Todas las series entregadas</span>
+                              </div>
                             ) : (
                               <Button
                                 size="sm"
                                 onClick={() => generateBarcodesForSale(sale)}
                                 disabled={generatingBarcodes}
-                                className="w-full"
+                                className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20"
                               >
                                 <Barcode className="h-4 w-4 mr-2" />
                                 Generar Códigos
@@ -840,105 +879,92 @@ export default function EtiquetadoPage() {
                         </Card>
                       ))
                     ) : (
-                      <Card>
-                        <CardContent className="text-center py-8">
-                          <div className="text-muted-foreground text-sm">
-                            {sales.length === 0
-                              ? "No hay ventas con lotes registrados"
-                              : "No se encontraron ventas con los filtros aplicados"}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                         <Search className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                         <p className="text-slate-500 dark:text-slate-400">No se encontraron ventas</p>
+                      </div>
                     )}
                   </div>
 
-                  {/* Desktop table layout */}
-                  <div className="hidden lg:block rounded-md border overflow-x-auto">
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                         <TableRow>
-                          <TableHead className="w-8 sm:w-12"></TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Número de Venta</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">OCAM</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Cliente</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">
-                            RUC
-                          </TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Productos</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Total Series</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">
-                            Fecha
-                          </TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Acciones</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">Venta</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">OCAM</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">Cliente</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">RUC</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">Resumen</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400 font-semibold">Fecha</TableHead>
+                          <TableHead className="text-right text-slate-600 dark:text-slate-400 font-semibold">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredSales.length > 0 ? (
                           filteredSales.map((sale) => (
                             <>
-                              <TableRow key={sale.id}>
+                              <TableRow key={sale.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                                 <TableCell>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => toggleSaleDetails(sale.id)}
-                                    className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                                    className="h-8 w-8 p-0 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                                   >
                                     {expandedSale === sale.id ? (
-                                      <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      <ChevronUp className="h-4 w-4 text-slate-500" />
                                     ) : (
-                                      <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      <ChevronDown className="h-4 w-4 text-slate-500" />
                                     )}
                                   </Button>
                                 </TableCell>
-                                <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                                <TableCell className="font-medium text-slate-700 dark:text-slate-200">
                                   {sale.sale_number}
                                 </TableCell>
                                 <TableCell>
                                   {sale.ocam ? (
-                                    <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
+                                    <Badge variant="outline" className="font-mono text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
                                       {sale.ocam}
                                     </Badge>
                                   ) : (
-                                    <span className="text-muted-foreground text-xs sm:text-sm">-</span>
+                                    <span className="text-slate-400">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-xs sm:text-sm max-w-[150px] truncate">
+                                <TableCell className="max-w-[200px] truncate text-slate-600 dark:text-slate-300" title={sale.entity_name}>
                                   {sale.entity_name}
                                 </TableCell>
-                                <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                                <TableCell className="text-slate-600 dark:text-slate-300">
                                   {sale.entity_ruc || "-"}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">
-                                    {sale.sale_items.length} productos
-                                  </Badge>
+                                  <div className="flex gap-2">
+                                     <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                                       {sale.sale_items.length} prod
+                                     </Badge>
+                                     <Badge variant="secondary" className="bg-indigo-50 text-indigo-600">
+                                       {getTotalSerials(sale)} series
+                                     </Badge>
+                                  </div>
                                 </TableCell>
-                                <TableCell>
-                                  <Badge variant="secondary" className="text-[10px] sm:text-xs whitespace-nowrap">
-                                    {getTotalSerials(sale)} series
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-xs sm:text-sm text-muted-foreground hidden md:table-cell whitespace-nowrap">
+                                <TableCell className="text-slate-500 text-sm">
                                   {new Date(sale.created_at).toLocaleDateString("es-PE")}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="text-right">
                                   {areAllSeriesDeliveredOrSold(sale) ? (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div>
-                                            <Button size="sm" disabled className="text-xs whitespace-nowrap">
-                                              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                                              <span className="hidden sm:inline">Series entregadas</span>
+                                          <div className="inline-block">
+                                            <Button size="sm" variant="ghost" disabled className="text-amber-600 bg-amber-50">
+                                              <AlertCircle className="h-4 w-4 mr-2" />
+                                              Entregado
                                             </Button>
                                           </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p className="max-w-xs text-xs">
-                                            No se pueden generar stickers porque todas las series ya están entregadas o
-                                            vendidas
-                                          </p>
+                                          <p className="text-xs">Todas las series entregadas</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
@@ -947,54 +973,54 @@ export default function EtiquetadoPage() {
                                       size="sm"
                                       onClick={() => generateBarcodesForSale(sale)}
                                       disabled={generatingBarcodes}
-                                      className="text-xs whitespace-nowrap"
+                                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20"
                                     >
-                                      <Barcode className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                                      <span className="hidden sm:inline">Generar Códigos</span>
+                                      <Barcode className="h-4 w-4 mr-2" />
+                                      Generar
                                     </Button>
                                   )}
                                 </TableCell>
                               </TableRow>
                               {expandedSale === sale.id && (
-                                <TableRow>
-                                  <TableCell colSpan={9} className="bg-muted/50 p-0">
-                                    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                                      <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
-                                        <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                                        Productos de la Venta
+                                <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                  <TableCell colSpan={8} className="p-0 border-b border-slate-200 dark:border-slate-800">
+                                    <div className="p-6 space-y-4">
+                                      <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
+                                        <FileText className="h-4 w-4 text-indigo-500" />
+                                        Detalle de Productos
                                       </div>
-                                      <div className="rounded-md border bg-background overflow-x-auto">
+                                      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
                                         <Table>
-                                          <TableHeader>
+                                          <TableHeader className="bg-slate-50 dark:bg-slate-800">
                                             <TableRow>
-                                              <TableHead className="text-xs sm:text-sm">Código</TableHead>
-                                              <TableHead className="text-xs sm:text-sm">Producto</TableHead>
-                                              <TableHead className="text-xs sm:text-sm">Cantidad</TableHead>
-                                              <TableHead className="text-xs sm:text-sm">Lotes</TableHead>
-                                              <TableHead className="text-xs sm:text-sm">Series</TableHead>
+                                              <TableHead className="text-xs font-semibold text-slate-600">Código</TableHead>
+                                              <TableHead className="text-xs font-semibold text-slate-600">Producto</TableHead>
+                                              <TableHead className="text-xs font-semibold text-slate-600">Cantidad</TableHead>
+                                              <TableHead className="text-xs font-semibold text-slate-600">Lotes</TableHead>
+                                              <TableHead className="text-xs font-semibold text-slate-600">Series</TableHead>
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
                                             {sale.sale_items.map((item) => (
-                                              <TableRow key={item.id}>
-                                                <TableCell className="font-mono font-medium text-xs sm:text-sm">
+                                              <TableRow key={item.id} className="border-slate-100 dark:border-slate-800">
+                                                <TableCell className="font-mono text-xs font-medium text-slate-600 dark:text-slate-400">
                                                   {item.product_code}
                                                 </TableCell>
-                                                <TableCell className="text-xs sm:text-sm">
+                                                <TableCell className="text-sm text-slate-700 dark:text-slate-300 font-medium">
                                                   {item.product_name}
                                                 </TableCell>
                                                 <TableCell>
-                                                  <Badge variant="outline" className="text-[10px] sm:text-xs">
+                                                  <Badge variant="outline" className="bg-slate-50">
                                                     {item.quantity}
                                                   </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                  <div className="space-y-1">
+                                                  <div className="flex gap-1 flex-wrap">
                                                     {item.product_lots.map((lot) => (
                                                       <Badge
                                                         key={lot.id}
                                                         variant="secondary"
-                                                        className="font-mono text-[10px] sm:text-xs"
+                                                        className="font-mono text-xs bg-slate-100 text-slate-600"
                                                       >
                                                         {lot.lot_number}
                                                       </Badge>
@@ -1002,7 +1028,7 @@ export default function EtiquetadoPage() {
                                                   </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                  <Badge variant="outline" className="text-[10px] sm:text-xs">
+                                                  <Badge className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
                                                     {item.product_lots.reduce(
                                                       (total, lot) => total + lot.product_serials.length,
                                                       0,
@@ -1023,11 +1049,10 @@ export default function EtiquetadoPage() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={9} className="text-center py-8">
-                              <div className="text-muted-foreground text-xs sm:text-sm">
-                                {sales.length === 0
-                                  ? "No hay ventas con lotes registrados"
-                                  : "No se encontraron ventas con los filtros aplicados"}
+                            <TableCell colSpan={8} className="text-center py-12">
+                              <div className="flex flex-col items-center justify-center text-slate-400">
+                                 <Search className="h-8 w-8 mb-2 opacity-50" />
+                                 <p>No se encontraron ventas</p>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1040,83 +1065,94 @@ export default function EtiquetadoPage() {
             </Card>
 
             {barcodes.length > 0 && selectedSale && (
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                        <Barcode className="h-4 w-4 sm:h-5 sm:w-5" />
-                        Códigos de Barras Generados
-                      </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
-                        Venta: {selectedSale.sale_number}
-                        {selectedSale.ocam && ` - OCAM: ${selectedSale.ocam}`} - {barcodes.length} etiquetas
-                      </CardDescription>
-                    </div>
-                    <Button onClick={handlePrint} size="sm" className="w-full sm:w-auto">
-                      <Printer className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                      Imprimir Etiquetas
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div ref={printRef} className="sticker-grid flex flex-col gap-3 sm:gap-4">
-                    {barcodes.map((barcode, index) => (
-                      <div
-                        key={index}
-                        className="sticker border-2 border-gray-800 rounded-lg p-2 bg-white flex flex-col gap-1 w-full max-w-[62mm] mx-auto sm:mx-0 h-[37mm]"
-                      >
-                        <div className="barcode-section w-full flex justify-center items-center">
-                          <img
-                            src={barcode.barcodeUrl || "/placeholder.svg"}
-                            alt={barcode.serialNumber}
-                            className="barcode w-full max-w-[58mm] max-h-[10mm] object-contain"
-                          />
-                        </div>
-                        <div className="bottom-section flex-1 flex gap-1.5 items-start">
-                          <div className="info-column flex-1 flex flex-col justify-start gap-0.5 min-w-0">
-                            <div className="sticker-info w-full text-left space-y-0.5">
-                              <div className="serial font-mono font-bold text-[8pt] leading-tight tracking-tight">
-                                {barcode.serialNumber}
-                              </div>
-                              <div className="lot font-mono text-[8pt] text-gray-900 leading-tight font-bold">
-                                Lote: {barcode.lotNumber}
-                              </div>
-                              <div className="product text-[6pt] mt-0.5 leading-tight">
-                                <div className="product-name font-bold leading-tight">{barcode.productName}</div>
-                                <div className="product-code text-gray-700 text-[6pt] font-semibold leading-tight">
-                                  {barcode.productCode}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          {barcode.qrCodeUrl && (
-                            <div className="qr-column flex flex-col items-center justify-start gap-0.5 flex-shrink-0">
-                              <img
-                                src={barcode.qrCodeUrl || "/placeholder.svg"}
-                                alt="QR Code"
-                                className="qr-code w-[65px] h-[65px]"
-                              />
-                              <div className="qr-label text-[5.5pt] text-center text-muted-foreground leading-tight w-[65px] font-medium">
-                                Información del producto
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="mt-6"
+              >
+                 <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden border-t-4 border-t-indigo-500">
+                   <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                       <div>
+                         <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+                           <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+                              <QrCode className="h-5 w-5" />
+                           </div>
+                           Códigos Generados
+                         </CardTitle>
+                         <CardDescription className="mt-1 flex items-center gap-2">
+                           <span className="font-medium text-slate-700 dark:text-slate-300">Venta: {selectedSale.sale_number}</span>
+                           {selectedSale.ocam && <span className="px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs font-mono border border-orange-100">OCAM: {selectedSale.ocam}</span>}
+                           <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-bold border border-indigo-100">{barcodes.length} etiquetas</span>
+                         </CardDescription>
+                       </div>
+                       <Button 
+                          onClick={handlePrint} 
+                          className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20"
+                       >
+                         <Printer className="h-4 w-4 mr-2" />
+                         Imprimir Etiquetas
+                       </Button>
+                     </div>
+                   </CardHeader>
+                   <CardContent className="p-6 bg-slate-50 dark:bg-slate-900/50">
+                     <div ref={printRef} className="sticker-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                       {barcodes.map((barcode, index) => (
+                         <div
+                           key={index}
+                           className="sticker bg-white border border-slate-200 shadow-sm rounded-lg p-3 flex flex-col gap-2 relative group hover:shadow-md transition-shadow"
+                           style={{ width: "62mm", height: "37mm", margin: "0 auto" }}
+                         >
+                           <div className="barcode-section w-full flex justify-center items-center h-[12mm] overflow-hidden">
+                             <img
+                               src={barcode.barcodeUrl || "/placeholder.svg"}
+                               alt={barcode.serialNumber}
+                               className="barcode w-full h-full object-contain"
+                             />
+                           </div>
+                           <div className="bottom-section flex-1 flex gap-2 items-start mt-1">
+                             <div className="info-column flex-1 flex flex-col justify-between h-full min-w-0">
+                               <div className="sticker-info w-full text-left space-y-0.5">
+                                 <div className="serial font-mono font-bold text-[9px] leading-tight tracking-tight text-slate-900">
+                                   {barcode.serialNumber}
+                                 </div>
+                                 <div className="lot font-mono text-[8px] text-slate-600 leading-tight font-bold">
+                                   Lote: {barcode.lotNumber}
+                                 </div>
+                                 <div className="product mt-1 leading-tight">
+                                   <div className="product-name font-bold text-[7px] text-slate-800 leading-tight line-clamp-2">{barcode.productName}</div>
+                                   <div className="product-code text-slate-500 text-[7px] font-semibold leading-tight mt-0.5">
+                                     {barcode.productCode}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                             {barcode.qrCodeUrl && (
+                               <div className="qr-column flex flex-col items-center justify-start gap-0.5 flex-shrink-0">
+                                 <img
+                                   src={barcode.qrCodeUrl || "/placeholder.svg"}
+                                   alt="QR Code"
+                                   className="qr-code w-[16mm] h-[16mm]"
+                                 />
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </CardContent>
+                 </Card>
+              </motion.div>
             )}
-          </TabsContent>
+          </motion.div>
+        </TabsContent>
 
-          {/* Sale Stickers Tab */}
-          <TabsContent value="sale-stickers">
-            <SaleStickersSection />
-          </TabsContent>
-        </Tabs>
-      </div>
+        {/* Sale Stickers Tab */}
+        <TabsContent value="sale-stickers" className="mt-6">
+          <SaleStickersSection />
+        </TabsContent>
+      </Tabs>
+
       <SeriesFilterModal
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
@@ -1124,6 +1160,6 @@ export default function EtiquetadoPage() {
         allSerials={currentSaleAllSerials}
         onApplyFilter={handleFilterApply}
       />
-    </div>
+    </motion.div>
   )
 }

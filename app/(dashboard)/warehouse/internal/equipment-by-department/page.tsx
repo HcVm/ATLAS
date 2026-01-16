@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Printer } from "lucide-react"
+import { Plus, Search, Package, MoreHorizontal, Move, Zap, Building2, Monitor, Armchair, Printer, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import {
   Tooltip,
@@ -36,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { motion } from "framer-motion"
 
 interface Department {
   id: string
@@ -139,6 +140,23 @@ interface DepartmentStats {
   workstations: Workstation[]
   printerDetails: EquipmentDetail[]
   shelfDetails: EquipmentDetail[]
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
 }
 
 function detectEquipmentType(name: string): EquipmentType {
@@ -283,7 +301,7 @@ function FloorPlanVisualization({
     <TooltipProvider>
       <div className="relative flex flex-col gap-2">
         {/* SVG del plano */}
-        <div className="relative bg-white dark:bg-slate-950 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-3 overflow-visible">
+        <div className="relative bg-white/50 dark:bg-slate-950/50 rounded-lg border-2 border-slate-200 dark:border-slate-800 p-3 overflow-visible backdrop-blur-sm">
           <svg
             viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
             className="w-full h-full"
@@ -407,7 +425,7 @@ function FloorPlanVisualization({
                 top: mousePosition.y + 10,
               }}
             >
-              <div className="bg-black/95 text-white rounded-lg shadow-2xl px-3 py-2 text-xs font-medium border border-white/10">
+              <div className="bg-black/95 text-white rounded-lg shadow-2xl px-3 py-2 text-xs font-medium border border-white/10 backdrop-blur-xl">
                 {hoveredItem.startsWith("ws-") && (
                   <>
                     <div className="text-emerald-400 font-bold mb-1">
@@ -798,29 +816,40 @@ export default function EquipmentByDepartmentPage() {
   }
 
   return (
-    <div className="space-y-6 mt-10">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-6 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="pl-0 hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 mb-2">
+            <Link href="/warehouse/internal">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al Almacén
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
             <Building2 className="h-8 w-8 text-blue-600" />
-            Mobiliario y Equipos por Departamento
+            Mobiliario y Equipos
           </h1>
-          <p className="text-muted-foreground mt-1">Visualiza y gestiona los equipos asignados a cada departamento</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Visualiza y gestiona los equipos asignados a cada departamento</p>
         </div>
-        <Button asChild>
+        <Button asChild className="shadow-lg shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white border-none">
           <Link href="/warehouse/internal/products/new">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Equipo
           </Link>
         </Button>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {departmentStats.map((dept) => (
           <Card
             key={dept.id}
-            className="hover:shadow-lg transition-shadow cursor-pointer h-fit"
+            className="group hover:shadow-xl transition-all duration-300 border-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden cursor-pointer h-fit hover:scale-[1.02]"
             onClick={() => setSelectedDept(dept.id)}
           >
             <CardHeader className="pb-3">
@@ -841,7 +870,7 @@ export default function EquipmentByDepartmentPage() {
 
         {/* Unassigned Equipment Card */}
         {unassignedCount > 0 && (
-          <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 hover:shadow-lg transition-shadow h-fit">
+          <Card className="bg-amber-50/80 dark:bg-amber-950/30 border-none hover:shadow-lg transition-shadow h-fit backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base text-amber-900 dark:text-amber-100">Sin Asignar</CardTitle>
               <CardDescription className="text-xs text-amber-800 dark:text-amber-200">
@@ -852,7 +881,7 @@ export default function EquipmentByDepartmentPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full text-xs bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800"
+                className="w-full text-xs bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-800 border-amber-200 dark:border-amber-800"
                 onClick={() => setSelectedDept("unassigned")}
               >
                 Ver Equipos
@@ -860,201 +889,207 @@ export default function EquipmentByDepartmentPage() {
             </CardContent>
           </Card>
         )}
-      </div>
+      </motion.div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Buscar y Filtrar</CardTitle>
-          <CardDescription>Encuentra equipos específicos por nombre, código o serial</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 flex-col sm:flex-row">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre, código o serial..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+          <CardHeader>
+            <CardTitle>Buscar y Filtrar</CardTitle>
+            <CardDescription>Encuentra equipos específicos por nombre, código o serial</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4 flex-col sm:flex-row">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre, código o serial..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
               </div>
+              <Select value={selectedDept} onValueChange={setSelectedDept}>
+                <SelectTrigger className="w-full sm:w-[250px] bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Todos los departamentos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los departamentos</SelectItem>
+                  {unassignedCount > 0 && <SelectItem value="unassigned">Sin asignar</SelectItem>}
+                  {departmentStats.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color || "#3b82f6" }} />
+                        {dept.name} ({dept.count})
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedDept} onValueChange={setSelectedDept}>
-              <SelectTrigger className="w-full sm:w-[250px]">
-                <SelectValue placeholder="Todos los departamentos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los departamentos</SelectItem>
-                {unassignedCount > 0 && <SelectItem value="unassigned">Sin asignar</SelectItem>}
-                {departmentStats.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color || "#3b82f6" }} />
-                      {dept.name} ({dept.count})
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Equipment Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Listado de Equipos</CardTitle>
-          <CardDescription>{filteredEquipment.length} equipos encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Equipo</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Serial</TableHead>
-                  <TableHead>Departamento</TableHead>
-                  <TableHead>Condición</TableHead>
-                  <TableHead>Costo</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEquipment.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        <Package className="h-8 w-8 mx-auto mb-2" />
-                        <p>No se encontraron equipos</p>
-                      </div>
-                    </TableCell>
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+          <CardHeader>
+            <CardTitle>Listado de Equipos</CardTitle>
+            <CardDescription>{filteredEquipment.length} equipos encontrados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border border-slate-200 dark:border-slate-700 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
+                    <TableHead>Código</TableHead>
+                    <TableHead>Equipo</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Serial</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead>Condición</TableHead>
+                    <TableHead>Costo</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ) : (
-                  filteredEquipment.map((eq) => (
-                    <TableRow key={eq.id}>
-                      <TableCell className="font-mono text-sm">{eq.code}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{eq.name}</div>
-                          {eq.internal_product_categories && (
-                            <div className="text-xs text-muted-foreground">{eq.internal_product_categories.name}</div>
-                          )}
+                </TableHeader>
+                <TableBody>
+                  {filteredEquipment.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-16">
+                        <div className="text-muted-foreground flex flex-col items-center">
+                          <Package className="h-12 w-12 mb-4 text-slate-300" />
+                          <p className="text-lg font-medium text-slate-700 dark:text-slate-300">No se encontraron equipos</p>
+                          <p className="text-sm text-slate-500">Intenta ajustar los filtros de búsqueda</p>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {eq.equipmentType?.replace("_", " ") || "otro"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{eq.serial_number || "-"}</TableCell>
-                      <TableCell>
-                        {eq.departmentName && eq.departmentId ? (
-                          <Badge variant="outline">
-                            <div
-                              className="w-2 h-2 rounded-full mr-2"
-                              style={{ backgroundColor: eq.internal_product_categories?.color || "#6B7280" }}
-                            />
-                            {eq.departmentName}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Sin asignar</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            eq.condition === "bueno"
-                              ? "default"
-                              : eq.condition === "regular"
-                                ? "secondary"
-                                : "destructive"
-                          }
-                        >
-                          {eq.condition || "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>S/ {eq.cost_price ? eq.cost_price.toFixed(2) : "N/A"}</TableCell>
-                      <TableCell className="text-right">
-                        <Dialog
-                          open={showMoveDialog && selectedEquipment?.id === eq.id}
-                          onOpenChange={setShowMoveDialog}
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Abrir menú</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedEquipment(eq)
-                                    setTargetDept(eq.departmentId || "")
-                                  }}
-                                >
-                                  <Move className="mr-2 h-4 w-4" /> Reasignar Departamento
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/warehouse/internal/products/${eq.id}`}>
-                                  <Zap className="mr-2 h-4 w-4" /> Ver Detalles
-                                </Link>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Reasignar Equipo a Departamento</DialogTitle>
-                              <DialogDescription>
-                                {selectedEquipment?.name} ({selectedEquipment?.code})
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <Select value={targetDept} onValueChange={setTargetDept}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un departamento" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {departments.map((dept) => (
-                                    <SelectItem key={dept.id} value={dept.id}>
-                                      {dept.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    setShowMoveDialog(false)
-                                    setSelectedEquipment(null)
-                                  }}
-                                >
-                                  Cancelar
-                                </Button>
-                                <Button onClick={handleMoveEquipment}>Confirmar Reasignación</Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  ) : (
+                    filteredEquipment.map((eq) => (
+                      <TableRow key={eq.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                        <TableCell className="font-mono text-sm text-slate-500">{eq.code}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{eq.name}</div>
+                            {eq.internal_product_categories && (
+                              <div className="text-xs text-muted-foreground">{eq.internal_product_categories.name}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs capitalize bg-slate-50 dark:bg-slate-900/50">
+                            {eq.equipmentType?.replace("_", " ") || "otro"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{eq.serial_number || "-"}</TableCell>
+                        <TableCell>
+                          {eq.departmentName && eq.departmentId ? (
+                            <Badge variant="outline" className="bg-white dark:bg-slate-900">
+                              <div
+                                className="w-2 h-2 rounded-full mr-2"
+                                style={{ backgroundColor: eq.internal_product_categories?.color || "#6B7280" }}
+                              />
+                              {eq.departmentName}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Sin asignar</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className="shadow-none"
+                            variant={
+                              eq.condition === "bueno"
+                                ? "default"
+                                : eq.condition === "regular"
+                                  ? "secondary"
+                                  : "destructive"
+                            }
+                          >
+                            {eq.condition || "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>S/ {eq.cost_price ? eq.cost_price.toFixed(2) : "N/A"}</TableCell>
+                        <TableCell className="text-right">
+                          <Dialog
+                            open={showMoveDialog && selectedEquipment?.id === eq.id}
+                            onOpenChange={setShowMoveDialog}
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800">
+                                  <span className="sr-only">Abrir menú</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                <DialogTrigger asChild>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedEquipment(eq)
+                                      setTargetDept(eq.departmentId || "")
+                                    }}
+                                  >
+                                    <Move className="mr-2 h-4 w-4" /> Reasignar Departamento
+                                  </DropdownMenuItem>
+                                </DialogTrigger>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/warehouse/internal/products/${eq.id}`}>
+                                    <Zap className="mr-2 h-4 w-4" /> Ver Detalles
+                                  </Link>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Reasignar Equipo a Departamento</DialogTitle>
+                                <DialogDescription>
+                                  {selectedEquipment?.name} ({selectedEquipment?.code})
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <Select value={targetDept} onValueChange={setTargetDept}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un departamento" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {departments.map((dept) => (
+                                      <SelectItem key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setShowMoveDialog(false)
+                                      setSelectedEquipment(null)
+                                    }}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button onClick={handleMoveEquipment}>Confirmar Reasignación</Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   )
 }

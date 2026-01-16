@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -14,7 +15,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { supabase } from "@/lib/supabase"
-import { ChevronLeft, Save, Building2, Info, Package, AlertCircle } from "lucide-react"
+import { ChevronLeft, Save, Building2, Info, Package, AlertCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { InternalCategoryCreatorDialog } from "@/components/ui/internal-category-creator-dialog"
@@ -37,6 +38,28 @@ interface Category {
   id: string
   name: string
   color: string
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+    },
+  },
 }
 
 export default function NewFixedAssetPage() {
@@ -306,23 +329,30 @@ export default function NewFixedAssetPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Building2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 mt-10">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" asChild>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 mt-10 w-full max-w-[95%] mx-auto"
+    >
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <Button variant="outline" asChild className="bg-white/50 backdrop-blur-sm border-gray-200">
           <Link href="/warehouse/internal/fixed-assets">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Volver a Activos Fijos
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Nuevo Activo Fijo</h1>
-        <div />
-      </div>
+        <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+          Nuevo Activo Fijo
+        </h1>
+        <div className="w-[100px]" /> {/* Spacer for centering */}
+      </motion.div>
 
       <ProductSimilarityDialog
         open={showSimilarityDialog}
@@ -337,409 +367,480 @@ export default function NewFixedAssetPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Información básica */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Información del Activo</CardTitle>
-              <CardDescription>Datos básicos del activo fijo</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Nombre del Activo *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Ej: Laptop HP ProBook 450 G9"
-                    required
-                  />
+          <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+                <CardTitle className="text-lg font-bold text-gray-800">Información del Activo</CardTitle>
+                <CardDescription>Datos básicos del activo fijo</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                      Nombre del Activo *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Ej: Laptop HP ProBook 450 G9"
+                      required
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="account_id" className="text-sm font-medium text-gray-700">
+                      Cuenta Contable *
+                    </Label>
+                    <Select value={formData.account_id} onValueChange={handleAccountChange} required>
+                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                        <SelectValue placeholder="Seleccionar cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.code} - {account.name} ({account.depreciation_rate}%)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                      Descripción
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      placeholder="Descripción detallada del activo"
+                      rows={3}
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="current_location" className="text-sm font-medium text-gray-700">
+                      Ubicación
+                    </Label>
+                    <Input
+                      id="current_location"
+                      value={formData.current_location}
+                      onChange={handleChange}
+                      placeholder="Ej: Oficina Principal, Piso 2"
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="assigned_department_id" className="text-sm font-medium text-gray-700">
+                      Departamento Asignado
+                    </Label>
+                    <Select
+                      value={formData.assigned_department_id}
+                      onValueChange={(value) => handleSelectChange("assigned_department_id", value)}
+                    >
+                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                        <SelectValue placeholder="Seleccionar departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="account_id">Cuenta Contable *</Label>
-                  <Select value={formData.account_id} onValueChange={handleAccountChange} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar cuenta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.code} - {account.name} ({account.depreciation_rate}%)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="acquisition_date" className="text-sm font-medium text-gray-700">
+                      Fecha de Adquisición *
+                    </Label>
+                    <Input
+                      id="acquisition_date"
+                      type="date"
+                      value={formData.acquisition_date}
+                      onChange={handleChange}
+                      required
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="invoice_number" className="text-sm font-medium text-gray-700">
+                      Número de Factura
+                    </Label>
+                    <Input
+                      id="invoice_number"
+                      value={formData.invoice_number}
+                      onChange={handleChange}
+                      placeholder="Ej: F001-0944"
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplier_ruc" className="text-sm font-medium text-gray-700">
+                      RUC Proveedor
+                    </Label>
+                    <Input
+                      id="supplier_ruc"
+                      value={formData.supplier_ruc}
+                      onChange={handleChange}
+                      placeholder="Ej: 20123456789"
+                      maxLength={11}
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplier_name" className="text-sm font-medium text-gray-700">
+                      Nombre Proveedor
+                    </Label>
+                    <Input
+                      id="supplier_name"
+                      value={formData.supplier_name}
+                      onChange={handleChange}
+                      placeholder="Ej: Tech Solutions S.A.C."
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Descripción detallada del activo"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="current_location">Ubicación</Label>
-                  <Input
-                    id="current_location"
-                    value={formData.current_location}
-                    onChange={handleChange}
-                    placeholder="Ej: Oficina Principal, Piso 2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="assigned_department_id">Departamento Asignado</Label>
-                  <Select
-                    value={formData.assigned_department_id}
-                    onValueChange={(value) => handleSelectChange("assigned_department_id", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar departamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="acquisition_date">Fecha de Adquisición *</Label>
-                  <Input
-                    id="acquisition_date"
-                    type="date"
-                    value={formData.acquisition_date}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="invoice_number">Número de Factura</Label>
-                  <Input
-                    id="invoice_number"
-                    value={formData.invoice_number}
-                    onChange={handleChange}
-                    placeholder="Ej: F001-0944"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="supplier_ruc">RUC Proveedor</Label>
-                  <Input
-                    id="supplier_ruc"
-                    value={formData.supplier_ruc}
-                    onChange={handleChange}
-                    placeholder="Ej: 20123456789"
-                    maxLength={11}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="supplier_name">Nombre Proveedor</Label>
-                  <Input
-                    id="supplier_name"
-                    value={formData.supplier_name}
-                    onChange={handleChange}
-                    placeholder="Ej: Tech Solutions S.A.C."
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Resumen de depreciación */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen de Depreciación</CardTitle>
-              <CardDescription>Cálculo estimado basado en los datos ingresados</CardDescription>
+          <motion.div variants={itemVariants}>
+            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm h-full">
+              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+                <CardTitle className="text-lg font-bold text-gray-800">Resumen de Depreciación</CardTitle>
+                <CardDescription>Cálculo estimado basado en los datos ingresados</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 p-6">
+                {selectedAccount && (
+                  <Alert className="bg-blue-50 border-blue-100">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      <strong>{selectedAccount.code}</strong>
+                      <br />
+                      Tasa: {selectedAccount.depreciation_rate}% anual
+                      <br />
+                      Vida útil: {selectedAccount.useful_life_years} años
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-3">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Costo Total:</span>
+                    <span className="font-semibold text-gray-900">
+                      S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Costo Unitario:</span>
+                    <span className="font-semibold text-gray-900">
+                      S/ {unitCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Cantidad:</span>
+                    <span className="font-semibold text-gray-900">{formData.quantity} unidad(es)</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Valor Residual:</span>
+                    <span className="font-semibold text-gray-900">
+                      S/{" "}
+                      {(Number.parseFloat(formData.salvage_value) || 0).toLocaleString("es-PE", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Base Depreciable:</span>
+                    <span className="font-semibold text-gray-900">
+                      S/{" "}
+                      {(totalCost - (Number.parseFloat(formData.salvage_value) || 0)).toLocaleString("es-PE", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-muted-foreground">Tasa Anual:</span>
+                    <span className="font-semibold text-gray-900">{formData.depreciation_rate || 0}%</span>
+                  </div>
+                  <div className="flex justify-between py-2 bg-orange-50 rounded-lg px-3 border border-orange-100">
+                    <span className="text-orange-700 font-medium">Depre. Mensual Est.:</span>
+                    <span className="font-bold text-orange-600">
+                      S/ {estimatedMonthlyDep.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-blue-200">
+            <CardHeader className="bg-blue-50/50 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Package className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-gray-800">Integración con Inventario Interno</CardTitle>
+                    <CardDescription>
+                      Registra automáticamente el activo en el inventario interno con números de serie únicos
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full border border-blue-100">
+                  <Label htmlFor="create_inventory_product" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    Crear en inventario
+                  </Label>
+                  <Switch
+                    id="create_inventory_product"
+                    checked={formData.create_inventory_product}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, create_inventory_product: checked }))
+                    }
+                  />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedAccount && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>{selectedAccount.code}</strong>
-                    <br />
-                    Tasa: {selectedAccount.depreciation_rate}% anual
-                    <br />
-                    Vida útil: {selectedAccount.useful_life_years} años
+            {formData.create_inventory_product && (
+              <CardContent className="pt-6">
+                <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  <AlertTitle className="font-semibold">Detección Inteligente de Duplicados</AlertTitle>
+                  <AlertDescription className="text-blue-700">
+                    El sistema verificará si existe un producto similar antes de crear uno nuevo. Podrás elegir agregar
+                    stock al producto existente o crear uno independiente.
                   </AlertDescription>
                 </Alert>
-              )}
 
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Costo Total:</span>
-                  <span className="font-semibold">
-                    S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
+                      Cantidad de Unidades *
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={formData.quantity}
+                      onChange={handleChange}
+                      placeholder="1"
+                      required={formData.create_inventory_product}
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Número de unidades según factura</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="category_id" className="text-sm font-medium text-gray-700">
+                      Categoría de Producto *
+                    </Label>
+                    <Select
+                      value={formData.category_id}
+                      onValueChange={(value) => handleSelectChange("category_id", value)}
+                      open={categorySelectOpen}
+                      onOpenChange={setCategorySelectOpen}
+                      required={formData.create_inventory_product}
+                    >
+                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5">
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {companyId && (
+                          <div className="p-1">
+                            <InternalCategoryCreatorDialog
+                              companyId={companyId}
+                              onCategoryCreated={handleCategoryCreated}
+                              trigger={
+                                <Button variant="ghost" size="sm" className="w-full justify-start">
+                                  + Crear Nueva Categoría
+                                </Button>
+                              }
+                            />
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Categoría para organizar en inventario</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="unit_of_measure" className="text-sm font-medium text-gray-700">
+                      Unidad de Medida
+                    </Label>
+                    <Input
+                      id="unit_of_measure"
+                      value={formData.unit_of_measure}
+                      onChange={handleChange}
+                      placeholder="unidad"
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Costo Unitario:</span>
-                  <span className="font-semibold">
-                    S/ {unitCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
+
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2 text-sm">Formato de Series Generadas:</h4>
+                  <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-600 block w-fit">
+                    [CÓDIGO_PRODUCTO]-AF[AÑO][CORR_ACTIVO]-S[CORR_SERIE]
+                  </code>
+                  <p className="text-xs text-muted-foreground mt-2">Ejemplo: ARMTEC2025001-AF20250001-S0001</p>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Cantidad:</span>
-                  <span className="font-semibold">{formData.quantity} unidad(es)</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Valor Residual:</span>
-                  <span className="font-semibold">
-                    S/{" "}
-                    {(Number.parseFloat(formData.salvage_value) || 0).toLocaleString("es-PE", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Base Depreciable:</span>
-                  <span className="font-semibold">
-                    S/{" "}
-                    {(totalCost - (Number.parseFloat(formData.salvage_value) || 0)).toLocaleString("es-PE", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Tasa Anual:</span>
-                  <span className="font-semibold">{formData.depreciation_rate || 0}%</span>
-                </div>
-                <div className="flex justify-between py-2 bg-muted/50 rounded px-2">
-                  <span className="text-muted-foreground">Depre. Mensual Est.:</span>
-                  <span className="font-bold text-orange-600">
-                    S/ {estimatedMonthlyDep.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
+              </CardContent>
+            )}
+          </Card>
+        </motion.div>
+
+        {/* Valores contables */}
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+              <CardTitle className="text-lg font-bold text-gray-800">Valores Contables</CardTitle>
+              <CardDescription>
+                Ingresa los valores de adquisición del activo. El costo total se calculará automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
+              <div>
+                <Label htmlFor="initial_balance" className="text-sm font-medium text-gray-700">
+                  Saldos Iniciales (S/)
+                </Label>
+                <Input
+                  id="initial_balance"
+                  type="number"
+                  step="0.01"
+                  value={formData.initial_balance}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Valor de activos existentes</p>
+              </div>
+              <div>
+                <Label htmlFor="purchases" className="text-sm font-medium text-gray-700">
+                  Compras del Período (S/)
+                </Label>
+                <Input
+                  id="purchases"
+                  type="number"
+                  step="0.01"
+                  value={formData.purchases}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Adquisiciones nuevas</p>
+              </div>
+              <div>
+                <Label htmlFor="acquisition_cost" className="text-sm font-medium text-gray-700">
+                  Costo Directo (S/)
+                </Label>
+                <Input
+                  id="acquisition_cost"
+                  type="number"
+                  step="0.01"
+                  value={formData.acquisition_cost}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Otros costos directos</p>
+              </div>
+              <div>
+                <Label htmlFor="salvage_value" className="text-sm font-medium text-gray-700">
+                  Valor Residual (S/)
+                </Label>
+                <Input
+                  id="salvage_value"
+                  type="number"
+                  step="0.01"
+                  value={formData.salvage_value}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  min="0"
+                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Valor al final de vida útil</p>
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <Card className="border-blue-200 dark:border-blue-800">
-          <CardHeader className="bg-blue-50/50 dark:bg-blue-950/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Package className="h-5 w-5 text-blue-600" />
-                <div>
-                  <CardTitle>Integración con Inventario Interno</CardTitle>
-                  <CardDescription>
-                    Registra automáticamente el activo en el inventario interno con números de serie únicos
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="create_inventory_product" className="text-sm">
-                  Crear en inventario
-                </Label>
-                <Switch
-                  id="create_inventory_product"
-                  checked={formData.create_inventory_product}
-                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, create_inventory_product: checked }))}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          {formData.create_inventory_product && (
-            <CardContent className="pt-6">
-              <Alert className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Detección Inteligente de Duplicados</AlertTitle>
-                <AlertDescription>
-                  El sistema verificará si existe un producto similar antes de crear uno nuevo. Podrás elegir agregar
-                  stock al producto existente o crear uno independiente.
-                </AlertDescription>
-              </Alert>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <Label htmlFor="quantity">Cantidad de Unidades *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    placeholder="1"
-                    required={formData.create_inventory_product}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Número de unidades según factura</p>
-                </div>
-                <div>
-                  <Label htmlFor="category_id">Categoría de Producto *</Label>
-                  <Select
-                    value={formData.category_id}
-                    onValueChange={(value) => handleSelectChange("category_id", value)}
-                    open={categorySelectOpen}
-                    onOpenChange={setCategorySelectOpen}
-                    required={formData.create_inventory_product}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                      {companyId && (
-                        <div className="p-1">
-                          <InternalCategoryCreatorDialog
-                            companyId={companyId}
-                            onCategoryCreated={handleCategoryCreated}
-                            trigger={
-                              <Button variant="ghost" size="sm" className="w-full justify-start">
-                                + Crear Nueva Categoría
-                              </Button>
-                            }
-                          />
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Categoría para organizar en inventario</p>
-                </div>
-                <div>
-                  <Label htmlFor="unit_of_measure">Unidad de Medida</Label>
-                  <Input
-                    id="unit_of_measure"
-                    value={formData.unit_of_measure}
-                    onChange={handleChange}
-                    placeholder="unidad"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-medium mb-2">Formato de Series Generadas:</h4>
-                <code className="text-sm bg-background px-2 py-1 rounded">
-                  [CÓDIGO_PRODUCTO]-AF[AÑO][CORR_ACTIVO]-S[CORR_SERIE]
-                </code>
-                <p className="text-xs text-muted-foreground mt-2">Ejemplo: ARMTEC2025001-AF20250001-S0001</p>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-
-        {/* Valores contables */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Valores Contables</CardTitle>
-            <CardDescription>
-              Ingresa los valores de adquisición del activo. El costo total se calculará automáticamente.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <Label htmlFor="initial_balance">Saldos Iniciales (S/)</Label>
-              <Input
-                id="initial_balance"
-                type="number"
-                step="0.01"
-                value={formData.initial_balance}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Valor de activos existentes</p>
-            </div>
-            <div>
-              <Label htmlFor="purchases">Compras del Período (S/)</Label>
-              <Input
-                id="purchases"
-                type="number"
-                step="0.01"
-                value={formData.purchases}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Adquisiciones nuevas</p>
-            </div>
-            <div>
-              <Label htmlFor="acquisition_cost">Costo Directo (S/)</Label>
-              <Input
-                id="acquisition_cost"
-                type="number"
-                step="0.01"
-                value={formData.acquisition_cost}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Otros costos directos</p>
-            </div>
-            <div>
-              <Label htmlFor="salvage_value">Valor Residual (S/)</Label>
-              <Input
-                id="salvage_value"
-                type="number"
-                step="0.01"
-                value={formData.salvage_value}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Valor al final de vida útil</p>
-            </div>
-          </CardContent>
-        </Card>
+        </motion.div>
 
         {/* Configuración de depreciación */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuración de Depreciación</CardTitle>
-            <CardDescription>
-              La tasa se establece automáticamente según la cuenta contable seleccionada
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="depreciation_rate">Tasa de Depreciación Anual (%)</Label>
-              <Input
-                id="depreciation_rate"
-                type="number"
-                step="0.01"
-                value={formData.depreciation_rate}
-                onChange={handleChange}
-                placeholder="10.00"
-                min="0"
-                max="100"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Según normativa peruana de la Ley del Impuesto a la Renta
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Tasas de Depreciación (Perú)</h4>
-              <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                <li>• Edificios: 5% anual (desde 01-01-2010)</li>
-                <li>• Vehículos de transporte: 20%</li>
-                <li>• Maquinaria y equipo: 10%</li>
-                <li>• Equipos de cómputo: 25%</li>
-                <li>• Muebles y enseres: 10%</li>
-                <li>• Otros bienes: 10%</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+              <CardTitle className="text-lg font-bold text-gray-800">Configuración de Depreciación</CardTitle>
+              <CardDescription>
+                La tasa se establece automáticamente según la cuenta contable seleccionada
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+              <div>
+                <Label htmlFor="depreciation_rate" className="text-sm font-medium text-gray-700">
+                  Tasa de Depreciación Anual (%)
+                </Label>
+                <Input
+                  id="depreciation_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.depreciation_rate}
+                  onChange={handleChange}
+                  placeholder="10.00"
+                  min="0"
+                  max="100"
+                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Según normativa peruana de la Ley del Impuesto a la Renta
+                </p>
+              </div>
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                <h4 className="font-semibold text-blue-900 mb-2 text-sm">Tasas de Depreciación (Perú)</h4>
+                <ul className="text-xs text-blue-800 space-y-1">
+                  <li>• Edificios: 5% anual (desde 01-01-2010)</li>
+                  <li>• Vehículos de transporte: 20%</li>
+                  <li>• Maquinaria y equipo: 10%</li>
+                  <li>• Equipos de cómputo: 25%</li>
+                  <li>• Muebles y enseres: 10%</li>
+                  <li>• Otros bienes: 10%</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+        <motion.div variants={itemVariants} className="flex justify-end gap-4 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            className="bg-white hover:bg-gray-50 border-gray-200"
+          >
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md min-w-[150px]"
+          >
             {isSubmitting ? (
               <>
-                <Building2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creando...
               </>
             ) : (
@@ -749,8 +850,8 @@ export default function NewFixedAssetPage() {
               </>
             )}
           </Button>
-        </div>
+        </motion.div>
       </form>
-    </div>
+    </motion.div>
   )
 }

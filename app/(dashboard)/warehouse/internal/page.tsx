@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Package, TrendingUp, TrendingDown, AlertTriangle, Search, Plus, FileText, BarChart3 } from "lucide-react"
+import { Package, TrendingUp, TrendingDown, AlertTriangle, Search, Plus, FileText, BarChart3, AlertCircle, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { motion } from "framer-motion"
 
 interface InternalProduct {
   id: string
@@ -56,6 +57,23 @@ interface RecentMovement {
 interface EquipmentByDepartment {
   department: string
   equipment_count: number
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
 }
 
 export default function InternalWarehousePage() {
@@ -166,13 +184,13 @@ export default function InternalWarehousePage() {
   const getMovementTypeColor = (type: string) => {
     switch (type) {
       case "entrada":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
       case "salida":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+        return "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800"
       case "ajuste":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800"
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
     }
   }
 
@@ -189,295 +207,382 @@ export default function InternalWarehousePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
           </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+          ))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto p-6 space-y-6">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Almacén Interno</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestión de artículos de uso interno</p>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Package className="h-8 w-8 text-indigo-500" />
+            Almacén Interno
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gestión de artículos de uso interno y activos</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button asChild className="flex-1 sm:flex-none shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white border-none">
             <Link href="/warehouse/internal/products/new">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="flex-1 sm:flex-none border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
             <Link href="/warehouse/internal/movements">
               <FileText className="h-4 w-4 mr-2" />
               Movimientos
             </Link>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Package className="h-16 w-16 text-indigo-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Productos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Modelos de productos activos</p>
+            <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.totalProducts}</div>
+            <p className="text-xs text-slate-500 mt-1">Modelos de productos activos</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <AlertTriangle className="h-16 w-16 text-amber-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Stock Bajo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.lowStockItems}</div>
-            <p className="text-xs text-muted-foreground">Modelos requieren atención</p>
+            <div className="text-3xl font-bold text-amber-600 dark:text-amber-500">{stats.lowStockItems}</div>
+            <p className="text-xs text-slate-500 mt-1">Modelos requieren atención</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <BarChart3 className="h-16 w-16 text-emerald-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Valor Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">S/ {stats.totalValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Inventario valorizado</p>
+            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-500">S/ {stats.totalValue.toFixed(2)}</div>
+            <p className="text-xs text-slate-500 mt-1">Inventario valorizado</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <TrendingUp className="h-16 w-16 text-blue-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Movimientos</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Movimientos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.recentMovements}</div>
-            <p className="text-xs text-muted-foreground">Últimos 10 registros</p>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-500">{stats.recentMovements}</div>
+            <p className="text-xs text-slate-500 mt-1">Últimos 10 registros</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Main Content */}
-      <Tabs defaultValue="products" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="products">Productos</TabsTrigger>
-          <TabsTrigger value="alerts">
-            Alertas de Stock
-            {stockAlerts.length > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {stockAlerts.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="equipment" asChild>
-            <Link href="/warehouse/internal/equipment-by-department">Equipos por Departamento</Link>
-          </TabsTrigger>
-          <TabsTrigger value="movements">Movimientos Recientes</TabsTrigger>
-        </TabsList>
+      <motion.div variants={itemVariants}>
+        <Tabs defaultValue="products" className="space-y-6">
+          <TabsList className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <TabsTrigger value="products" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">Productos</TabsTrigger>
+            <TabsTrigger value="alerts" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+              Alertas de Stock
+              {stockAlerts.length > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">
+                  {stockAlerts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="equipment" asChild className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+              <Link href="/warehouse/internal/equipment-by-department">Equipos por Departamento</Link>
+            </TabsTrigger>
+            <TabsTrigger value="movements" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">Movimientos Recientes</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="products" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar productos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/warehouse/internal/products">Ver Todos los Productos</Link>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts.slice(0, 9).map((product) => (
-              <Card key={product.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <CardDescription className="text-sm">Código: {product.code}</CardDescription>
-                    </div>
-                    {product.internal_product_categories && (
-                      <Badge
-                        style={{ backgroundColor: product.internal_product_categories.color }}
-                        className="text-white"
-                      >
-                        {product.internal_product_categories.name}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Stock:</span>
-                      <span
-                        className={`font-semibold ${
-                          product.current_stock <= product.minimum_stock ? "text-red-600" : "text-green-600"
-                        }`}
-                      >
-                        {product.current_stock} {product.unit_of_measure}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Mínimo:</span>
-                      <span className="text-sm">
-                        {product.minimum_stock} {product.unit_of_measure}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Costo:</span>
-                      <span className="text-sm font-medium">S/ {product.cost_price.toFixed(2)}</span>
-                    </div>
-                    {product.location && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Ubicación:</span>
-                        <span className="text-sm">{product.location}</span>
-                      </div>
-                    )}
-                    {product.is_serialized && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Tipo:</span>
-                        <Badge variant="outline" className="text-xs">
-                          Serializado
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredProducts.length > 9 && (
-            <div className="text-center">
-              <Button variant="outline" asChild>
-                <Link href="/warehouse/internal/products">Ver todos los productos ({filteredProducts.length})</Link>
+          <TabsContent value="products" className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar productos por nombre o código..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <Button variant="outline" asChild className="rounded-xl border-slate-200 dark:border-slate-700">
+                <Link href="/warehouse/internal/products">
+                  Ver Todos los Productos
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
               </Button>
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="alerts" className="space-y-4">
-          {stockAlerts.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Package className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No hay alertas de stock</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center">
-                  Todos los productos tienen stock suficiente
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {stockAlerts.map((product) => (
-                <Card key={product.id} className="border-l-4 border-l-red-500">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Código: {product.code}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.slice(0, 9).map((product) => (
+                <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                  <div className={`h-1 w-full ${product.current_stock <= product.minimum_stock ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate" title={product.name}>{product.name}</CardTitle>
+                        <CardDescription className="text-sm font-mono mt-1 text-slate-500">CODE: {product.code}</CardDescription>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-red-600">
+                      {product.internal_product_categories && (
+                        <Badge
+                          style={{ backgroundColor: product.internal_product_categories.color }}
+                          className="text-white shadow-sm shrink-0"
+                        >
+                          {product.internal_product_categories.name}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 pt-2">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Stock Actual:</span>
+                        <span
+                          className={`font-bold ${
+                            product.current_stock <= product.minimum_stock ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
                           {product.current_stock} {product.unit_of_measure}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Mínimo: {product.minimum_stock}</div>
+                        </span>
                       </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex flex-col p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                          <span className="text-xs text-slate-500">Mínimo</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{product.minimum_stock} {product.unit_of_measure}</span>
+                        </div>
+                        <div className="flex flex-col p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                          <span className="text-xs text-slate-500">Costo Unit.</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">S/ {product.cost_price.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {(product.location || product.is_serialized) && (
+                        <div className="flex gap-2 pt-1">
+                          {product.location && (
+                            <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">
+                              {product.location}
+                            </Badge>
+                          )}
+                          {product.is_serialized && (
+                            <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800">
+                              Serializado
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="equipment" className="space-y-4">
-          {/* Equipment data will be managed from the equipment-by-department page */}
-        </TabsContent>
-
-        <TabsContent value="movements" className="space-y-4">
-          {recentMovements.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  No hay movimientos recientes
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center">
-                  Los movimientos de inventario aparecerán aquí
+            {filteredProducts.length > 9 && (
+              <div className="flex justify-center pt-4">
+                <Button variant="outline" asChild className="rounded-full px-8 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <Link href="/warehouse/internal/products">
+                    Ver todos los productos ({filteredProducts.length})
+                  </Link>
+                </Button>
+              </div>
+            )}
+            
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-16 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">No se encontraron productos</h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-2">
+                  Intenta con otros términos de búsqueda o agrega un nuevo producto.
                 </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {recentMovements.map((movement) => (
-                <Card key={movement.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${getMovementTypeColor(movement.movement_type)}`}>
-                          {getMovementIcon(movement.movement_type)}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="alerts" className="space-y-4">
+            {stockAlerts.length === 0 ? (
+              <Card className="border-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-4 rounded-full mb-4">
+                    <Package className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">¡Todo en orden!</h3>
+                  <p className="text-slate-600 dark:text-slate-400 text-center max-w-md">
+                    No hay productos con stock por debajo del mínimo establecido.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {stockAlerts.map((product) => (
+                  <Card key={product.id} className="border-l-4 border-l-amber-500 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
+                            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-500" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">{product.name}</h4>
+                            <p className="text-sm font-mono text-slate-500 dark:text-slate-400">COD: {product.code}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
+                                Stock Crítico
+                              </Badge>
+                              {product.is_serialized && (
+                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  Serializado
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                            {movement.internal_products.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Código: {movement.internal_products.code}
-                            {movement.internal_product_serials?.serial_number && (
-                              <span className="ml-2 text-xs text-muted-foreground">
-                                (SN: {movement.internal_product_serials.serial_number})
-                              </span>
-                            )}
-                          </p>
+                        <div className="flex items-center gap-6 w-full sm:w-auto bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                          <div className="text-center">
+                            <p className="text-xs text-slate-500 uppercase font-semibold">Actual</p>
+                            <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                              {product.current_stock}
+                            </p>
+                          </div>
+                          <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                          <div className="text-center">
+                            <p className="text-xs text-slate-500 uppercase font-semibold">Mínimo</p>
+                            <p className="text-xl font-bold text-slate-700 dark:text-slate-300">
+                              {product.minimum_stock}
+                            </p>
+                          </div>
+                          <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                           <div className="text-center">
+                            <p className="text-xs text-slate-500 uppercase font-semibold">Unidad</p>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              {product.unit_of_measure}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2">
-                          <Badge className={getMovementTypeColor(movement.movement_type)}>
-                            {movement.movement_type.toUpperCase()}
-                          </Badge>
-                          <span className="font-semibold">
-                            {movement.movement_type === "salida" ? "-" : "+"}
-                            {movement.quantity}
-                          </span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="equipment" className="space-y-4">
+            {/* Equipment data will be managed from the equipment-by-department page */}
+          </TabsContent>
+
+          <TabsContent value="movements" className="space-y-4">
+            {recentMovements.length === 0 ? (
+              <Card className="border-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-full mb-4">
+                    <FileText className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    No hay movimientos recientes
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-400 text-center">
+                    Los movimientos de inventario aparecerán aquí
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {recentMovements.map((movement) => (
+                  <Card key={movement.id} className="border-none shadow-sm hover:shadow-md transition-shadow bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className={`p-3 rounded-xl shrink-0 ${getMovementTypeColor(movement.movement_type)} border`}>
+                            {getMovementIcon(movement.movement_type)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base">
+                              {movement.internal_products.name}
+                            </h4>
+                            <div className="flex flex-wrap gap-2 items-center mt-1">
+                              <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-mono text-[10px]">
+                                {movement.internal_products.code}
+                              </Badge>
+                              {movement.internal_product_serials?.serial_number && (
+                                <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-indigo-200 font-mono text-[10px]">
+                                  SN: {movement.internal_product_serials.serial_number}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                              <span>{new Date(movement.movement_date).toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{new Date(movement.movement_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(movement.movement_date).toLocaleDateString()}
+                        
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 w-full sm:w-auto justify-between sm:justify-start pl-14 sm:pl-0">
+                          <div className="flex items-center gap-2">
+                             <span className={`text-lg font-bold ${
+                                movement.movement_type === "salida" ? "text-rose-600 dark:text-rose-400" : 
+                                movement.movement_type === "entrada" ? "text-emerald-600 dark:text-emerald-400" : 
+                                "text-blue-600 dark:text-blue-400"
+                             }`}>
+                              {movement.movement_type === "salida" ? "-" : "+"}
+                              {movement.quantity}
+                            </span>
+                            <Badge className={`capitalize shadow-none ${getMovementTypeColor(movement.movement_type)}`}>
+                              {movement.movement_type}
+                            </Badge>
+                          </div>
+                          
+                          {movement.requested_by && (
+                            <div className="text-xs text-slate-500 text-right">
+                              Solicitado por: <span className="font-medium text-slate-700 dark:text-slate-300">{movement.requested_by}</span>
+                            </div>
+                          )}
                         </div>
-                        {movement.requested_by && (
-                          <div className="text-xs text-gray-500">Solicitado por: {movement.requested_by}</div>
-                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </motion.div>
   )
 }

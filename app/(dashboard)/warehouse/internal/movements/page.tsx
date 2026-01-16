@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,8 @@ import {
   Eye,
   PlusCircle,
   FileText,
+  Calendar,
+  Filter,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -110,6 +113,28 @@ const MOVEMENT_TYPES = [
   { value: "ajuste", label: "Ajuste", icon: RotateCcw, color: "text-blue-600", bgColor: "bg-blue-50" },
   { value: "baja", label: "Baja del Sistema", icon: Trash, color: "text-orange-600", bgColor: "bg-orange-50" },
 ]
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+    },
+  },
+}
 
 export default function InternalMovementsPage() {
   const router = useRouter()
@@ -572,44 +597,55 @@ export default function InternalMovementsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 mt-10">
-      <div className="flex items-center justify-between">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 mt-10 w-full max-w-[95%] mx-auto"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild className="hover:bg-background/80 transition-colors">
             <Link href="/warehouse/internal">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Movimientos de Inventario Interno</h1>
+            <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              Movimientos de Inventario
+            </h1>
             <p className="text-muted-foreground">
-              Registra y gestiona los movimientos de productos dentro de tu empresa.
+              Historial de movimientos de productos internos y activos fijos.
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCsv}>
+          <Button variant="outline" onClick={handleExportCsv} className="bg-white/50 backdrop-blur-sm border-gray-200">
             <FileText className="h-4 w-4 mr-2" />
             Exportar CSV
           </Button>
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
                 <PlusCircle className="h-4 w-4 mr-2" />
-                Registrar Nuevo Movimiento
+                Registrar Movimiento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl">
               <DialogHeader>
-                <DialogTitle>Registrar Nuevo Movimiento</DialogTitle>
-                <DialogDescription>Completa los detalles para registrar un movimiento de inventario.</DialogDescription>
+                <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                  Registrar Nuevo Movimiento
+                </DialogTitle>
+                <DialogDescription>
+                  Completa los detalles para registrar un movimiento de inventario.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 py-4">
                 {/* Selección de Categoría */}
@@ -623,7 +659,7 @@ export default function InternalMovementsPage() {
                       handleProductSelect(null)
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
                       <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
                     <SelectContent>
@@ -655,7 +691,7 @@ export default function InternalMovementsPage() {
                     onValueChange={(value) => handleSelectChange("movement_type", value)}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
                       <SelectValue placeholder="Selecciona el tipo de movimiento" />
                     </SelectTrigger>
                     <SelectContent>
@@ -681,7 +717,7 @@ export default function InternalMovementsPage() {
                         setFormData((prev) => ({ ...prev, condition: value as "nuevo" | "usado" }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
                         <SelectValue placeholder="Selecciona el estado" />
                       </SelectTrigger>
                       <SelectContent>
@@ -689,7 +725,7 @@ export default function InternalMovementsPage() {
                         <SelectItem value="usado">Usado</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Indica si los productos ingresados son nuevos o ya fueron utilizados.
                     </p>
                   </div>
@@ -708,8 +744,9 @@ export default function InternalMovementsPage() {
                           onChange={handleQuantityChange}
                           min={1}
                           required
+                          className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Se generarán automáticamente {formData.quantity} números de serie únicos.
                         </p>
                       </div>
@@ -726,7 +763,7 @@ export default function InternalMovementsPage() {
                         </Label>
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between bg-transparent">
+                            <Button variant="outline" className="w-full justify-between bg-white/50 border-gray-200">
                               {formData.selected_serials.length > 0
                                 ? `${formData.selected_serials.length} serial(es) seleccionado(s)`
                                 : "Seleccionar seriales..."}
@@ -747,7 +784,7 @@ export default function InternalMovementsPage() {
                                     >
                                       <span>{serial.serial_number}</span>
                                       {formData.selected_serials.includes(serial.id) ? (
-                                        <Check className="ml-auto h-4 w-4" />
+                                        <Check className="ml-auto h-4 w-4 text-green-600" />
                                       ) : null}
                                     </CommandItem>
                                   ))}
@@ -756,7 +793,7 @@ export default function InternalMovementsPage() {
                             </Command>
                           </PopoverContent>
                         </Popover>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Cantidad seleccionada: {formData.selected_serials.length}
                         </p>
                       </div>
@@ -775,6 +812,7 @@ export default function InternalMovementsPage() {
                       onChange={handleQuantityChange}
                       min={1}
                       required
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                     />
                   </div>
                 )}
@@ -790,6 +828,7 @@ export default function InternalMovementsPage() {
                     onChange={handleChange}
                     required
                     disabled
+                    className="bg-gray-100/50"
                   />
                 </div>
 
@@ -806,6 +845,7 @@ export default function InternalMovementsPage() {
                         : "Ej: Venta, Consumo interno, Devolución, etc."
                     }
                     required
+                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -817,6 +857,7 @@ export default function InternalMovementsPage() {
                     value={formData.notes}
                     onChange={handleChange}
                     placeholder="Notas adicionales sobre el movimiento"
+                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20 min-h-[80px]"
                   />
                 </div>
 
@@ -828,6 +869,7 @@ export default function InternalMovementsPage() {
                     value={formData.requested_by}
                     onChange={handleChange}
                     required
+                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -839,7 +881,7 @@ export default function InternalMovementsPage() {
                       value={formData.department_requesting_id}
                       onValueChange={(value) => handleSelectChange("department_requesting_id", value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
                         <SelectValue placeholder="Selecciona un departamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -862,6 +904,7 @@ export default function InternalMovementsPage() {
                       value={formData.supplier}
                       onChange={handleChange}
                       placeholder="Nombre del proveedor"
+                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                     />
                   </div>
                 )}
@@ -875,10 +918,15 @@ export default function InternalMovementsPage() {
                     value={formData.movement_date}
                     onChange={handleChange}
                     required
+                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -892,192 +940,231 @@ export default function InternalMovementsPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </motion.div>
 
       {/* Movement History Table */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle>Historial de Movimientos</CardTitle>
-              <CardDescription>Todos los movimientos de inventario registrados.</CardDescription>
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md overflow-hidden">
+          <CardHeader className="bg-gray-50/30 border-b border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl font-bold text-gray-800">Historial de Movimientos</CardTitle>
+                <CardDescription>Todos los movimientos de inventario registrados.</CardDescription>
+              </div>
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar por producto, serie, solicitante..."
+                  className="pl-9 bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar por producto, serie, solicitante..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredMovements.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">
-                {searchTerm ? "No se encontraron coincidencias" : "No hay movimientos registrados"}
-              </h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Intenta con otros términos de búsqueda." : "Empieza registrando un nuevo movimiento."}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-md border overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>N° Serie / Seriales Generados</TableHead>
-                    <TableHead>Motivo</TableHead>
-                    <TableHead>Solicitante</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMovements.map((movement) => {
-                    const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
-                    const Icon = movementType?.icon || Package
+          </CardHeader>
+          <CardContent className="p-0">
+            {filteredMovements.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                  <Package className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {searchTerm ? "No se encontraron coincidencias" : "No hay movimientos registrados"}
+                </h3>
+                <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
+                  {searchTerm
+                    ? "Intenta con otros términos de búsqueda."
+                    : "Empieza registrando un nuevo movimiento utilizando el botón superior."}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-gray-100">
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Fecha</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Producto</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Tipo</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Cantidad</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">
+                        N° Serie / Seriales Generados
+                      </TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Motivo</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Solicitante</TableHead>
+                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700 text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <AnimatePresence initial={false}>
+                      {filteredMovements.map((movement) => {
+                        const movementType = MOVEMENT_TYPES.find((t) => t.value === movement.movement_type)
+                        const Icon = movementType?.icon || Package
 
-                    let serialsArray: string[] = []
+                        let serialsArray: string[] = []
 
-                    if (movement.movement_type === "entrada" && movement.notes) {
-                      // Try new delimited format first (from fixed assets)
-                      const newFormatMatch = movement.notes.match(
-                        /---SERIALES_GENERADOS---\n([\s\S]*?)\n---FIN_SERIALES---/,
-                      )
-                      if (newFormatMatch) {
-                        serialsArray = newFormatMatch[1]
-                          .trim()
-                          .split("\n")
-                          .map((s: string) => s.trim())
-                          .filter(Boolean)
-                      } else {
-                        // Try old format: "Series generadas: serial1, serial2, serial3" (at end of notes)
-                        const oldFormatMatch = movement.notes.match(/Series generadas:\s*(.+)$/i)
-                        if (oldFormatMatch) {
-                          serialsArray = oldFormatMatch[1]
-                            .split(",")
-                            .map((s: string) => s.trim())
-                            .filter(Boolean)
+                        if (movement.movement_type === "entrada" && movement.notes) {
+                          // Try new delimited format first (from fixed assets)
+                          const newFormatMatch = movement.notes.match(
+                            /---SERIALES_GENERADOS---\n([\s\S]*?)\n---FIN_SERIALES---/,
+                          )
+                          if (newFormatMatch) {
+                            serialsArray = newFormatMatch[1]
+                              .trim()
+                              .split("\n")
+                              .map((s: string) => s.trim())
+                              .filter(Boolean)
+                          } else {
+                            // Try old format: "Series generadas: serial1, serial2, serial3" (at end of notes)
+                            const oldFormatMatch = movement.notes.match(/Series generadas:\s*(.+)$/i)
+                            if (oldFormatMatch) {
+                              serialsArray = oldFormatMatch[1]
+                                .split(",")
+                                .map((s: string) => s.trim())
+                                .filter(Boolean)
+                            }
+                          }
                         }
-                      }
-                    }
 
-                    // Fallback to direct serial_number if no serials found in notes
-                    const directSerial = movement.internal_product_serials?.serial_number || ""
-                    const hasGeneratedSerials = serialsArray.length > 0
-                    const hasDirectSerial = directSerial.length > 0
-                    const hasSerials = hasGeneratedSerials || hasDirectSerial
+                        // Fallback to direct serial_number if no serials found in notes
+                        const directSerial = movement.internal_product_serials?.serial_number || ""
+                        const hasGeneratedSerials = serialsArray.length > 0
+                        const hasDirectSerial = directSerial.length > 0
+                        const hasSerials = hasGeneratedSerials || hasDirectSerial
 
-                    return (
-                      <TableRow key={movement.id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {format(new Date(movement.movement_date), "dd/MM/yyyy", { locale: es })}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(movement.created_at), "HH:mm", { locale: es })}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{movement.internal_products?.name}</div>
-                          <div className="text-sm text-muted-foreground">{movement.internal_products?.code}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                            <Icon className={`h-3 w-3 ${movementType?.color}`} />
-                            {movementType?.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className={`font-medium ${movementType?.color}`}>
-                              {movement.movement_type === "salida" || movement.movement_type === "baja" ? "-" : "+"}
-                              {movement.quantity}
-                            </span>
-                            <span className="text-muted-foreground text-sm">
-                              {movement.internal_products?.unit_of_measure}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-[300px]">
-                          <div className="text-sm">
-                            {!hasSerials ? (
-                              <span className="text-muted-foreground">N/A</span>
-                            ) : hasGeneratedSerials ? (
-                              serialsArray.length > 1 ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="text-sm font-mono text-primary cursor-pointer underline decoration-dotted">
-                                        {serialsArray[0]} y +{serialsArray.length - 1} más
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-sm max-h-64 overflow-y-auto">
-                                      <div className="text-xs font-medium mb-1">
-                                        Series generadas ({serialsArray.length}):
-                                      </div>
-                                      <div className="font-mono text-xs space-y-0.5">
-                                        {serialsArray.map((serial, idx) => (
-                                          <div key={idx}>{serial}</div>
-                                        ))}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                        return (
+                          <motion.tr
+                            key={movement.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="group hover:bg-gray-50/50 transition-colors border-gray-100"
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col">
+                                <span className="font-medium text-gray-800">
+                                  {format(new Date(movement.movement_date), "dd/MM/yyyy", { locale: es })}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(movement.created_at), "HH:mm", { locale: es })}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-gray-800">{movement.internal_products?.name}</div>
+                              <div className="text-sm text-muted-foreground">{movement.internal_products?.code}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={`flex items-center gap-1 w-fit border-none ${movementType?.bgColor}`}
+                              >
+                                <Icon className={`h-3 w-3 ${movementType?.color}`} />
+                                <span className={movementType?.color}>{movementType?.label}</span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <span className={`font-medium ${movementType?.color}`}>
+                                  {movement.movement_type === "salida" || movement.movement_type === "baja"
+                                    ? "-"
+                                    : "+"}
+                                  {movement.quantity}
+                                </span>
+                                <span className="text-muted-foreground text-sm">
+                                  {movement.internal_products?.unit_of_measure}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[300px]">
+                              <div className="text-sm">
+                                {!hasSerials ? (
+                                  <span className="text-muted-foreground">N/A</span>
+                                ) : hasGeneratedSerials ? (
+                                  serialsArray.length > 1 ? (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-sm font-mono text-blue-600 cursor-pointer hover:underline decoration-dotted bg-blue-50 px-2 py-0.5 rounded-md">
+                                            {serialsArray[0]} y +{serialsArray.length - 1} más
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-sm max-h-64 overflow-y-auto">
+                                          <div className="text-xs font-medium mb-1">
+                                            Series generadas ({serialsArray.length}):
+                                          </div>
+                                          <div className="font-mono text-xs space-y-0.5">
+                                            {serialsArray.map((serial, idx) => (
+                                              <div key={idx}>{serial}</div>
+                                            ))}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded-md">
+                                      {serialsArray[0]}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded-md">
+                                    {directSerial}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate" title={movement.reason}>
+                              {movement.reason === "compra_activo_fijo" ? (
+                                <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-none">
+                                  Compra Activo Fijo
+                                </Badge>
                               ) : (
-                                <span className="text-sm font-mono">{serialsArray[0]}</span>
-                              )
-                            ) : (
-                              <span className="text-sm font-mono">{directSerial}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={movement.reason}>
-                          {movement.reason === "compra_activo_fijo" ? (
-                            <Badge variant="secondary" className="text-xs">
-                              Compra Activo Fijo
-                            </Badge>
-                          ) : (
-                            movement.reason
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{movement.requested_by}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/warehouse/internal/movements/${movement.id}`}>
-                              <Eye className="h-4 w-4" />
-                              <span className="sr-only">Ver detalles</span>
-                            </Link>
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(movement.id)}>
-                            <Trash className="h-4 w-4 text-red-500" />
-                            <span className="sr-only">Eliminar</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                                <span className="text-gray-700">{movement.reason}</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                  <User className="h-3 w-3 text-gray-500" />
+                                </div>
+                                <span className="text-sm text-gray-700">{movement.requested_by}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                                >
+                                  <Link href={`/warehouse/internal/movements/${movement.id}`}>
+                                    <Eye className="h-4 w-4" />
+                                    <span className="sr-only">Ver detalles</span>
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(movement.id)}
+                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                  <span className="sr-only">Eliminar</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </motion.tr>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -1085,6 +1172,6 @@ export default function InternalMovementsPage() {
         title="¿Estás seguro de eliminar este movimiento?"
         description="Esta acción no se puede deshacer. Se revertirán los cambios de stock asociados."
       />
-    </div>
+    </motion.div>
   )
 }

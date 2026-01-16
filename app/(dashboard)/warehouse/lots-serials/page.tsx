@@ -16,13 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Package, Search, Barcode, Hash, Calendar, TrendingUp, Download, ChevronDown, ChevronUp, ShoppingCart, Box, AlertCircle } from 'lucide-react'
+import { Package, Search, Barcode, Hash, Calendar, TrendingUp, Download, ChevronDown, ChevronUp, ShoppingCart, Box, AlertCircle, ScanBarcode } from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
 import { updateLotStatus as updateLotStatusWithMovement } from "@/lib/lot-serial-generator"
+import { motion } from "framer-motion"
 
 interface ProductLot {
   id: string
@@ -51,6 +52,23 @@ interface ProductLot {
 
 interface GroupedLots {
   [key: string]: ProductLot[]
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
 }
 
 export default function LotsAndSerialsPage() {
@@ -225,7 +243,7 @@ export default function LotsAndSerialsPage() {
   const getStatusBadge = (status: string, isArchived?: boolean) => {
     if (isArchived) {
       return (
-        <Badge variant="secondary" className="bg-gray-200 text-gray-700 border-gray-300">
+        <Badge variant="secondary" className="bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
           Archivado
         </Badge>
       )
@@ -234,19 +252,19 @@ export default function LotsAndSerialsPage() {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+          <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
             Pendiente
           </Badge>
         )
       case "in_inventory":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
+          <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
             En Inventario
           </Badge>
         )
       case "delivered":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
             Entregado
           </Badge>
         )
@@ -360,22 +378,14 @@ export default function LotsAndSerialsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
-                Lotes y Números de Serie
-              </h1>
-              <p className="text-muted-foreground">Gestión de trazabilidad de productos</p>
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+         <div className="flex items-center gap-4 mb-8">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="space-y-2">
+               <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+               <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
             </div>
-          </div>
-          <Card className="bg-card border-border shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center text-muted-foreground">Cargando lotes...</div>
-            </CardContent>
-          </Card>
-        </div>
+         </div>
       </div>
     )
   }
@@ -383,91 +393,109 @@ export default function LotsAndSerialsPage() {
   const confirmationContent = getConfirmationContent()
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
-              Lotes y Números de Serie
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">Sistema de trazabilidad completa de productos</p>
-          </div>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+             <Barcode className="h-8 w-8 text-indigo-500" />
+             Lotes y Números de Serie
+           </h1>
+           <p className="text-slate-500 dark:text-slate-400 mt-1">
+             Gestión de trazabilidad de productos
+           </p>
         </div>
+      </motion.div>
 
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-          <Card className="bg-card border-border shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total Lotes</CardTitle>
-              <Package className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+      <motion.div variants={itemVariants} className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+               <Package className="h-16 w-16 text-slate-500" />
+            </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Lotes</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold">{lots.length}</div>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{lots.length}</div>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Pendientes</CardTitle>
-              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600" />
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+               <Calendar className="h-16 w-16 text-amber-500" />
+            </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Pendientes</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-yellow-600">
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {lots.filter((l) => l.status === "pending").length}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">En Inventario</CardTitle>
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+               <TrendingUp className="h-16 w-16 text-emerald-500" />
+            </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">En Inventario</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-green-600">
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {lots.filter((l) => l.status === "in_inventory").length}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total Series</CardTitle>
-              <Hash className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+               <Hash className="h-16 w-16 text-indigo-500" />
+            </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Series</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold">
+            <CardContent>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {lots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)}
               </div>
             </CardContent>
           </Card>
-        </div>
+      </motion.div>
 
-        <Card className="bg-card border-border shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground text-base sm:text-lg">
-              <Barcode className="h-4 w-4 sm:h-5 sm:w-5" />
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+                 <ScanBarcode className="h-5 w-5" />
+              </div>
               Gestión de Lotes y Series
             </CardTitle>
-            <CardDescription className="text-muted-foreground text-xs sm:text-sm">
+            <CardDescription>
               {filteredLots.length} de {lots.length} lotes • Agrupados por venta
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-3 w-3 sm:h-4 sm:w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                     <Input
                       placeholder="Buscar por lote, producto, serie..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 border-border focus:border-ring focus:ring-ring text-xs sm:text-sm"
+                      className="pl-10 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11"
                     />
                   </div>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-48 border-border focus:border-ring focus:ring-ring text-xs sm:text-sm">
+                  <SelectTrigger className="w-full sm:w-48 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -481,16 +509,15 @@ export default function LotsAndSerialsPage() {
                   variant="outline"
                   onClick={exportToExcel}
                   disabled={filteredLots.length === 0}
-                  className="border-border text-foreground hover:bg-accent bg-transparent text-xs sm:text-sm"
-                  size="sm"
+                  className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 h-11"
                 >
-                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
               </div>
 
               {/* Mobile view - Grouped by sale */}
-              <div className="lg:hidden space-y-3">
+              <div className="lg:hidden space-y-4">
                 {sortedGroupKeys.length > 0 ? (
                   sortedGroupKeys.map((saleKey) => {
                     const saleLots = groupedLots[saleKey]
@@ -498,23 +525,25 @@ export default function LotsAndSerialsPage() {
                     const isCollapsed = collapsedSaleGroups.has(saleKey)
 
                     return (
-                      <div key={saleKey} className="space-y-2">
+                      <div key={saleKey} className="space-y-3">
                         <div
-                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          className={`p-4 rounded-xl border cursor-pointer transition-all ${
                             isFullyDelivered
-                              ? "bg-blue-50 border-blue-300 hover:bg-blue-100"
-                              : "bg-amber-50 border-amber-300 hover:bg-amber-100"
+                              ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-900/30"
+                              : "bg-amber-50/50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-900/30"
                           }`}
                           onClick={() => toggleSaleGroupCollapse(saleKey)}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <ShoppingCart className="h-4 w-4 text-foreground flex-shrink-0" />
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`p-2 rounded-lg ${isFullyDelivered ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'} dark:bg-slate-800`}>
+                                 <ShoppingCart className="h-4 w-4" />
+                              </div>
                               <div className="min-w-0">
-                                <p className="font-semibold text-sm">
+                                <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">
                                   {saleKey === "sin-asignar" ? "Sin asignar a venta" : `Venta: ${saleKey}`}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                   {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} •{" "}
                                   {saleLots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)} series
                                 </p>
@@ -523,7 +552,7 @@ export default function LotsAndSerialsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 flex-shrink-0"
+                              className="h-8 w-8 p-0 flex-shrink-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 toggleSaleGroupCollapse(saleKey)
@@ -535,7 +564,7 @@ export default function LotsAndSerialsPage() {
                         </div>
 
                         {isCollapsed && isFullyDelivered && (
-                          <div className="px-3 py-2 bg-muted/50 rounded text-xs text-muted-foreground italic">
+                          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs text-slate-500 italic text-center border border-dashed border-slate-200 dark:border-slate-700">
                             {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} entregado
                             {saleLots.length !== 1 ? "s" : ""} • Haz clic para expandir
                           </div>
@@ -543,13 +572,13 @@ export default function LotsAndSerialsPage() {
 
                         {!isCollapsed &&
                           saleLots.map((lot) => (
-                            <Card key={lot.id} className="border-2 ml-2">
-                              <CardHeader className="pb-3">
+                            <Card key={lot.id} className="border border-slate-200 dark:border-slate-800 ml-4 shadow-sm">
+                              <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Barcode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="font-mono font-bold text-sm truncate">{lot.lot_number}</span>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Barcode className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                                      <span className="font-mono font-bold text-sm truncate text-slate-700 dark:text-slate-200">{lot.lot_number}</span>
                                     </div>
                                     {getStatusBadge(lot.status, lot.is_archived)}
                                   </div>
@@ -557,7 +586,7 @@ export default function LotsAndSerialsPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
-                                    className="h-8 w-8 p-0 flex-shrink-0"
+                                    className="h-8 w-8 p-0 flex-shrink-0 rounded-full"
                                   >
                                     {expandedLot === lot.id ? (
                                       <ChevronUp className="h-4 w-4" />
@@ -567,37 +596,35 @@ export default function LotsAndSerialsPage() {
                                   </Button>
                                 </div>
                               </CardHeader>
-                              <CardContent className="space-y-3">
-                                <div className="flex items-start gap-2">
-                                  <Box className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <CardContent className="space-y-4 pt-4">
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                     <Box className="h-4 w-4 text-slate-500" />
+                                  </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{lot.products?.name || "N/A"}</p>
-                                    <p className="text-xs text-muted-foreground font-mono">{lot.products?.code}</p>
+                                    <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">{lot.products?.name || "N/A"}</p>
+                                    <p className="text-xs text-slate-500 font-mono mt-0.5">{lot.products?.code}</p>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 pt-2 border-t">
-                                  <div className="flex items-center gap-2">
-                                    <Package className="h-4 w-4 text-muted-foreground" />
-                                    <Badge variant="outline" className="text-xs">
-                                      {lot.quantity} unidades
-                                    </Badge>
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                    <Package className="h-4 w-4 text-slate-400" />
+                                    <span className="text-xs font-medium">{lot.quantity} unidades</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Hash className="h-4 w-4 text-muted-foreground" />
-                                    <Badge variant="secondary" className="text-xs">
-                                      {lot.product_serials?.length || 0} series
-                                    </Badge>
+                                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                    <Hash className="h-4 w-4 text-slate-400" />
+                                    <span className="text-xs font-medium">{lot.product_serials?.length || 0} series</span>
                                   </div>
                                 </div>
 
-                                <div className="space-y-1 text-xs">
-                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                <div className="space-y-1 text-xs pt-2">
+                                  <div className="flex items-center gap-2 text-slate-500">
                                     <Calendar className="h-3 w-3" />
                                     <span>Generado: {formatDate(lot.generated_date)}</span>
                                   </div>
                                   {lot.ingress_date && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                    <div className="flex items-center gap-2 text-slate-500">
                                       <TrendingUp className="h-3 w-3" />
                                       <span>Ingreso: {formatDate(lot.ingress_date)}</span>
                                     </div>
@@ -605,16 +632,16 @@ export default function LotsAndSerialsPage() {
                                 </div>
 
                                 {expandedLot === lot.id && lot.product_serials && lot.product_serials.length > 0 && (
-                                  <div className="pt-3 border-t space-y-2">
-                                    <div className="flex items-center gap-2 text-sm font-medium">
-                                      <Hash className="h-4 w-4" />
+                                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                      <Hash className="h-4 w-4 text-indigo-500" />
                                       Números de Serie ({lot.product_serials.length})
                                     </div>
                                     <div className="grid grid-cols-1 gap-2">
                                       {lot.product_serials.map((serial) => (
                                         <div
                                           key={serial.id}
-                                          className="p-2 bg-muted rounded border font-mono text-xs truncate"
+                                          className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700 font-mono text-xs truncate text-slate-600 dark:text-slate-300"
                                           title={serial.serial_number}
                                         >
                                           {serial.serial_number}
@@ -624,14 +651,14 @@ export default function LotsAndSerialsPage() {
                                   </div>
                                 )}
 
-                                <div className="flex gap-2 pt-2 border-t">
+                                <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                                   {lot.status === "pending" && (
                                     <Button
                                       size="sm"
                                       onClick={() => handleStatusChangeClick(lot.id, "in_inventory")}
-                                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
+                                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg shadow-sm"
                                     >
-                                      Ingresar
+                                      Ingresar a Inventario
                                     </Button>
                                   )}
                                   {lot.status === "in_inventory" && (
@@ -644,13 +671,13 @@ export default function LotsAndSerialsPage() {
                                         title={
                                           !lot.sale_id ? "El lote debe estar asignado a una venta para entregarlo" : ""
                                         }
-                                        className={`flex-1 text-xs ${
+                                        className={`flex-1 text-xs rounded-lg ${
                                           !lot.sale_id
-                                            ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
-                                            : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                            ? "border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
+                                            : "border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
                                         }`}
                                       >
-                                        Entregar
+                                        Marcar Entregado
                                       </Button>
                                     </>
                                   )}
@@ -662,15 +689,10 @@ export default function LotsAndSerialsPage() {
                     )
                   })
                 ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <div className="text-muted-foreground text-sm">
-                        {lots.length === 0
-                          ? "No hay lotes registrados"
-                          : "No se encontraron lotes con los filtros aplicados"}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                     <Search className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                     <p className="text-slate-500 dark:text-slate-400">No se encontraron lotes</p>
+                  </div>
                 )}
               </div>
 
@@ -683,76 +705,77 @@ export default function LotsAndSerialsPage() {
                     const isCollapsed = collapsedSaleGroups.has(saleKey)
 
                     return (
-                      <div key={saleKey} className="space-y-2">
+                      <div key={saleKey} className="space-y-3">
                         <div
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between ${
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
                             isFullyDelivered
-                              ? "bg-blue-50 border-blue-300 hover:bg-blue-100"
-                              : "bg-amber-50 border-amber-300 hover:bg-amber-100"
+                              ? "bg-blue-50/50 border-blue-100 hover:bg-blue-50 dark:bg-blue-900/10 dark:border-blue-900/30 dark:hover:bg-blue-900/20"
+                              : "bg-amber-50/50 border-amber-100 hover:bg-amber-50 dark:bg-amber-900/10 dark:border-amber-900/30 dark:hover:bg-amber-900/20"
                           }`}
                           onClick={() => toggleSaleGroupCollapse(saleKey)}
                         >
-                          <div className="flex items-center gap-3 flex-1">
-                            <ShoppingCart className="h-5 w-5 text-foreground flex-shrink-0" />
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className={`p-2.5 rounded-xl ${isFullyDelivered ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'} dark:bg-slate-800 shadow-sm`}>
+                               <ShoppingCart className="h-5 w-5" />
+                            </div>
                             <div>
-                              <p className="font-semibold text-base">
+                              <p className="font-semibold text-base text-slate-800 dark:text-slate-200">
                                 {saleKey === "sin-asignar" ? "Sin asignar a venta" : `Venta: ${saleKey}`}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} •{" "}
-                                {saleLots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)} series •{" "}
+                              <div className="flex items-center gap-2 mt-1 text-sm">
+                                <span className="text-slate-500 dark:text-slate-400">{saleLots.length} lote{saleLots.length !== 1 ? "s" : ""}</span>
+                                <span className="text-slate-300 dark:text-slate-600">•</span>
+                                <span className="text-slate-500 dark:text-slate-400">{saleLots.reduce((sum, lot) => sum + (lot.product_serials?.length || 0), 0)} series</span>
+                                <span className="text-slate-300 dark:text-slate-600">•</span>
                                 {isFullyDelivered ? (
-                                  <span className="text-blue-700 font-medium">Todos entregados</span>
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">Todos entregados</Badge>
                                 ) : (
-                                  <span className="text-amber-700 font-medium">Pendientes o en inventario</span>
+                                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">En proceso</Badge>
                                 )}
-                              </p>
+                              </div>
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 flex-shrink-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20"
                             onClick={(e) => {
                               e.stopPropagation()
                               toggleSaleGroupCollapse(saleKey)
                             }}
                           >
-                            {isCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                            {isCollapsed ? <ChevronDown className="h-5 w-5 text-slate-500" /> : <ChevronUp className="h-5 w-5 text-slate-500" />}
                           </Button>
                         </div>
 
                         {isCollapsed && isFullyDelivered && (
-                          <div className="px-4 py-3 bg-muted/50 rounded text-sm text-muted-foreground italic border border-dashed">
-                            <div className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4" />
-                              {saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} entregado
-                              {saleLots.length !== 1 ? "s" : ""} • Haz clic para expandir
-                            </div>
+                          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-sm text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>{saleLots.length} lote{saleLots.length !== 1 ? "s" : ""} entregado{saleLots.length !== 1 ? "s" : ""} • Haz clic para expandir</span>
                           </div>
                         )}
 
                         {!isCollapsed && (
-                          <div className="rounded-md border border-border bg-card overflow-x-auto">
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
                             <Table>
-                              <TableHeader>
-                                <TableRow className="bg-muted/50 border-border">
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                                <TableRow>
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap pl-6">
                                     Número de Lote
                                   </TableHead>
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap">
                                     Producto
                                   </TableHead>
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap">
                                     Cantidad
                                   </TableHead>
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap">
                                     Estado
                                   </TableHead>
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:table-cell">
                                     Fecha Generación
                                   </TableHead>
-                                  <TableHead className="text-foreground font-semibold text-xs sm:text-sm whitespace-nowrap">
+                                  <TableHead className="text-slate-600 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap text-right pr-6">
                                     Acciones
                                   </TableHead>
                                 </TableRow>
@@ -760,48 +783,48 @@ export default function LotsAndSerialsPage() {
                               <TableBody>
                                 {saleLots.map((lot) => (
                                   <>
-                                    <TableRow key={lot.id} className="hover:bg-muted/50 border-border">
-                                      <TableCell>
+                                    <TableRow key={lot.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-slate-100 dark:border-slate-800">
+                                      <TableCell className="pl-6">
                                         <div className="flex items-center gap-2">
-                                          <Barcode className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                                          <span className="font-mono font-medium text-xs sm:text-sm whitespace-nowrap">
+                                          <Barcode className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                                          <span className="font-mono font-medium text-sm text-slate-700 dark:text-slate-200">
                                             {lot.lot_number}
                                           </span>
                                         </div>
                                       </TableCell>
                                       <TableCell>
                                         <div className="min-w-0">
-                                          <div className="font-medium text-foreground text-xs sm:text-sm truncate max-w-[150px]">
+                                          <div className="font-medium text-slate-700 dark:text-slate-200 text-sm truncate max-w-[200px]">
                                             {lot.products?.name || "N/A"}
                                           </div>
-                                          <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                                          <div className="text-xs text-slate-500 font-mono mt-0.5">
                                             {lot.products?.code}
                                           </div>
                                         </div>
                                       </TableCell>
                                       <TableCell>
-                                        <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">
+                                        <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800">
                                           {lot.quantity} unidades
                                         </Badge>
                                       </TableCell>
                                       <TableCell>{getStatusBadge(lot.status, lot.is_archived)}</TableCell>
                                       <TableCell className="hidden md:table-cell">
-                                        <div className="text-xs sm:text-sm whitespace-nowrap">
+                                        <div className="text-sm text-slate-600 dark:text-slate-300">
                                           {formatDate(lot.generated_date)}
                                         </div>
                                         {lot.ingress_date && (
-                                          <div className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                                          <div className="text-xs text-slate-400 mt-0.5">
                                             Ingreso: {formatDate(lot.ingress_date)}
                                           </div>
                                         )}
                                       </TableCell>
-                                      <TableCell>
-                                        <div className="flex gap-1 sm:gap-2 flex-wrap">
+                                      <TableCell className="text-right pr-6">
+                                        <div className="flex justify-end gap-2">
                                           {lot.status === "pending" && (
                                             <Button
                                               size="sm"
                                               onClick={() => handleStatusChangeClick(lot.id, "in_inventory")}
-                                              className="bg-green-600 hover:bg-green-700 text-white text-xs whitespace-nowrap"
+                                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg shadow-sm"
                                             >
                                               Ingresar
                                             </Button>
@@ -818,10 +841,10 @@ export default function LotsAndSerialsPage() {
                                                     ? "El lote debe estar asignado a una venta para entregarlo"
                                                     : ""
                                                 }
-                                                className={`text-xs whitespace-nowrap ${
+                                                className={`text-xs rounded-lg ${
                                                   !lot.sale_id
-                                                    ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
-                                                    : "border-blue-300 text-blue-700 hover:bg-blue-50"
+                                                    ? "border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
+                                                    : "border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
                                                 }`}
                                               >
                                                 Entregar
@@ -832,9 +855,9 @@ export default function LotsAndSerialsPage() {
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => setExpandedLot(expandedLot === lot.id ? null : lot.id)}
-                                            className="text-xs whitespace-nowrap"
+                                            className="text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                                           >
-                                            {expandedLot === lot.id ? "Ocultar" : "Ver"}
+                                            {expandedLot === lot.id ? "Ocultar" : "Ver Series"}
                                           </Button>
                                         </div>
                                       </TableCell>
@@ -842,18 +865,18 @@ export default function LotsAndSerialsPage() {
                                     {expandedLot === lot.id &&
                                       lot.product_serials &&
                                       lot.product_serials.length > 0 && (
-                                        <TableRow>
-                                          <TableCell colSpan={6} className="bg-muted/30">
-                                            <div className="p-3 sm:p-4">
-                                              <h4 className="font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                                                <Hash className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                          <TableCell colSpan={6} className="p-0 border-b border-slate-200 dark:border-slate-800">
+                                            <div className="p-6">
+                                              <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                                <Hash className="h-4 w-4 text-indigo-500" />
                                                 Números de Serie ({lot.product_serials.length})
                                               </h4>
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                                 {lot.product_serials.map((serial) => (
                                                   <div
                                                     key={serial.id}
-                                                    className="p-2 bg-background rounded border border-border font-mono text-xs sm:text-sm truncate"
+                                                    className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-600 dark:text-slate-300 truncate text-center shadow-sm"
                                                     title={serial.serial_number}
                                                   >
                                                     {serial.serial_number}
@@ -874,21 +897,16 @@ export default function LotsAndSerialsPage() {
                     )
                   })
                 ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <div className="text-muted-foreground text-sm">
-                        {lots.length === 0
-                          ? "No hay lotes registrados"
-                          : "No se encontraron lotes con los filtros aplicados"}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                     <Search className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                     <p className="text-slate-500 dark:text-slate-400">No se encontraron lotes</p>
+                  </div>
                 )}
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {confirmationContent && (
         <AlertDialog open={confirmDialog.open} onOpenChange={(open) => {
@@ -896,27 +914,29 @@ export default function LotsAndSerialsPage() {
             setConfirmDialog({ open: false, lotId: "", newStatus: "", currentLot: null })
           }
         }}>
-          <AlertDialogContent className="max-w-md">
+          <AlertDialogContent className="max-w-md rounded-2xl bg-white dark:bg-slate-900 border-none shadow-2xl">
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-lg">
-                <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertDialogTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                   <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                </div>
                 {confirmationContent.title}
               </AlertDialogTitle>
-              <AlertDialogDescription className="mt-4 whitespace-pre-wrap text-base">
+              <AlertDialogDescription className="mt-4 text-slate-600 dark:text-slate-300 whitespace-pre-wrap text-base leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
                 {confirmationContent.description}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="flex gap-3 justify-end mt-6">
-              <AlertDialogCancel disabled={isUpdating} className="bg-gray-100 hover:bg-gray-200">
+              <AlertDialogCancel disabled={isUpdating} className="rounded-xl border-slate-200 hover:bg-slate-100 text-slate-600">
                 Cancelar
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmStatusChange}
                 disabled={isUpdating}
-                className={`${
+                className={`rounded-xl text-white shadow-lg ${
                   confirmDialog.newStatus === "delivered"
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-green-600 hover:bg-green-700"
+                    ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                    : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
                 }`}
               >
                 {isUpdating ? "Procesando..." : confirmDialog.newStatus === "delivered" ? "Confirmar Entrega" : "Confirmar Ingreso"}
@@ -925,6 +945,6 @@ export default function LotsAndSerialsPage() {
           </AlertDialogContent>
         </AlertDialog>
       )}
-    </div>
+    </motion.div>
   )
 }

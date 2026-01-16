@@ -34,6 +34,8 @@ import {
   CheckSquare,
   Square,
   ArrowUpCircle,
+  AlertCircle,
+  FileText
 } from "lucide-react"
 import Link from "next/link"
 import { deleteInternalProduct } from "@/app/actions/internal-products"
@@ -56,6 +58,7 @@ import {
   AlertDialogPortal,
   AlertDialogOverlay,
 } from "@/components/ui/alert-dialog"
+import { motion } from "framer-motion"
 
 interface Category {
   id: string
@@ -83,6 +86,23 @@ interface Product {
     color: string
   }
   qr_code_hash?: string
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
 }
 
 export default function InternalProductsPage() {
@@ -583,13 +603,16 @@ export default function InternalProductsPage() {
 
   if (!companyId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <h2 className="text-2xl font-bold">Selecciona una Empresa</h2>
-        <p className="text-muted-foreground mt-2">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+        <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full mb-6 animate-pulse">
+           <Package className="h-12 w-12 text-slate-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Selecciona una Empresa</h2>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md">
           Por favor, selecciona una empresa para ver y gestionar los productos internos.
         </p>
         {user?.role === "admin" && (
-          <Button onClick={() => router.push("/settings")} className="mt-4">
+          <Button onClick={() => router.push("/settings")} className="mt-6">
             Ir a Configuración de Empresa
           </Button>
         )}
@@ -599,14 +622,30 @@ export default function InternalProductsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Package className="h-8 w-8 animate-spin" />
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+         <div className="flex items-center gap-4 mb-8">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="space-y-2">
+               <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+               <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            </div>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+               <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+            ))}
+         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 mt-10">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
       {/* Quick Entry Dialog */}
       <QuickInternalEntryDialog
         isOpen={isQuickEntryOpen}
@@ -617,386 +656,285 @@ export default function InternalProductsPage() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Productos Internos</h1>
-          <p className="text-muted-foreground">Gestiona los productos de uso interno de la empresa</p>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+             <Package className="h-8 w-8 text-indigo-500" />
+             Productos Internos
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gestiona los productos de uso interno de la empresa</p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           {selectedProductIds.length > 0 && (
-            <Button variant="outline" onClick={handleBulkPrintStickers} disabled={isBulkPrinting}>
+            <Button variant="outline" onClick={handleBulkPrintStickers} disabled={isBulkPrinting} className="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
               <Printer className="h-4 w-4 mr-2" />
               Imprimir Seleccionados ({selectedProductIds.length})
             </Button>
           )}
-          <Button asChild>
+          <Button asChild className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white border-none">
             <Link href="/warehouse/internal/products/new">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Link>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <motion.div variants={itemVariants} className="grid gap-6 md:grid-cols-4">
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Package className="h-16 w-16 text-indigo-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Modelos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Modelos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">{stats.active} activos</p>
+            <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.total}</div>
+            <p className="text-xs text-slate-500 mt-1">{stats.active} activos</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <AlertTriangle className="h-16 w-16 text-amber-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Stock Bajo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.lowStock}</div>
-            <p className="text-xs text-muted-foreground">Modelos requieren atención</p>
+            <div className="text-3xl font-bold text-amber-600 dark:text-amber-500">{stats.lowStock}</div>
+            <p className="text-xs text-slate-500 mt-1">Modelos requieren atención</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <FileText className="h-16 w-16 text-emerald-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Valor Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">S/ {stats.totalValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Inventario valorizado</p>
+            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-500">S/ {stats.totalValue.toFixed(2)}</div>
+            <p className="text-xs text-slate-500 mt-1">Inventario valorizado</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden relative group hover:scale-[1.02] transition-transform duration-300">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Package className="h-16 w-16 text-blue-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categorías</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Categorías</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{categories.length}</div>
-            <p className="text-xs text-muted-foreground">Diferentes tipos</p>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-500">{categories.length}</div>
+            <p className="text-xs text-slate-500 mt-1">Diferentes tipos</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busca y filtra productos internos</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre, código o descripción..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-md mb-6">
+          <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+               <Search className="h-5 w-5 text-indigo-500" />
+               Filtros y Búsqueda
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Buscar por nombre, código o descripción..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11 focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-[240px] rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11">
+                  <SelectValue placeholder="Todas las categorías" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: category.color }} />
+                        {category.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px] rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 h-11">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Activos</SelectItem>
+                  <SelectItem value="inactive">Inactivos</SelectItem>
+                  <SelectItem value="low_stock">Stock Bajo</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Todas las categorías" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las categorías</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                      {category.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Activos</SelectItem>
-                <SelectItem value="inactive">Inactivos</SelectItem>
-                <SelectItem value="low_stock">Stock Bajo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Products Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Lista de Productos</CardTitle>
-            <CardDescription>
-              {filteredProducts.length} de {products.length} modelos de productos
-            </CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={toggleAllSelection}>
-            {selectedProductIds.length === filteredProducts.length ? (
-              <CheckSquare className="h-4 w-4 mr-2" />
-            ) : (
-              <Square className="h-4 w-4 mr-2" />
-            )}
-            Seleccionar Todos
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {/* Mobile Card View */}
-          <div className="grid grid-cols-1 gap-4 md:hidden mb-4">
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-8 border rounded-md">
-                <div className="text-muted-foreground">
-                  <Package className="h-8 w-8 mx-auto mb-2" />
-                  <p>No se encontraron productos</p>
-                  <p className="text-sm">Intenta ajustar los filtros o crear un nuevo producto</p>
-                </div>
-              </div>
-            ) : (
-              filteredProducts.map((product) => (
-                <div key={product.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 mt-1"
-                        onClick={() => toggleProductSelection(product.id)}
-                      >
-                        {selectedProductIds.includes(product.id) ? (
-                          <CheckSquare className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Square className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </Button>
-                      <div>
-                        <div className="font-medium text-base">{product.name}</div>
-                        <div className="text-sm text-muted-foreground font-mono">{product.code}</div>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setProductForQuickEntry(product)
-                            setIsQuickEntryOpen(true)
-                          }}
-                        >
-                          <ArrowUpCircle className="mr-2 h-4 w-4 text-green-600" /> Registrar Entrada
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/warehouse/internal/products/${product.id}`}>
-                            <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/warehouse/internal/products/edit/${product.id}`}>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
-                          </Link>
-                        </DropdownMenuItem>
-                        {product.is_serialized && (
-                          <DropdownMenuItem asChild>
-                            <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
-                              <QrCode className="mr-2 h-4 w-4" /> Ver QRs
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600" onClick={() => handleProductDelete(product.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {product.description && <div className="text-sm text-muted-foreground">{product.description}</div>}
-
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Categoría:</span>
-                      {product.internal_product_categories ? (
-                        <div className="flex items-center gap-1 mt-1">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: product.internal_product_categories.color }}
-                          />
-                          <span>{product.internal_product_categories.name}</span>
-                        </div>
-                      ) : (
-                        <span className="block mt-1">-</span>
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Stock:</span>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span
-                          className={product.current_stock <= product.minimum_stock ? "text-red-600 font-semibold" : ""}
-                        >
-                          {product.current_stock}
-                        </span>
-                        <span className="text-muted-foreground text-xs">{product.unit_of_measure}</span>
-                        {product.current_stock <= product.minimum_stock && (
-                          <AlertTriangle className="h-3 w-3 text-orange-500" />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Estado:</span>
-                      <div className="mt-1">
-                        <Badge variant={product.is_active ? "default" : "secondary"} className="text-xs">
-                          {product.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Tipo:</span>
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {product.is_serialized ? "Serializado" : "No Serial."}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t flex justify-between items-center">
-                    <div className="text-xs text-muted-foreground">
-                      Valor: S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}
-                    </div>
-                    <StickerPrintIndicator
-                      productId={product.id}
-                      serialId={null}
-                      isSerializedProduct={product.is_serialized}
-                      lastPrintInfo={stickerPrintData[product.id]?.lastPrintInfo}
-                      printStats={stickerPrintData[product.id]?.printStats}
-                    />
+        {/* Products Table */}
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-100">Lista de Productos</CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
+                {filteredProducts.length} de {products.length} modelos de productos
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={toggleAllSelection} className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20">
+              {selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0 ? (
+                <CheckSquare className="h-4 w-4 mr-2" />
+              ) : (
+                <Square className="h-4 w-4 mr-2" />
+              )}
+              Seleccionar Todos
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden p-4">
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <div className="text-slate-500 dark:text-slate-400">
+                    <Package className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                    <p className="font-medium">No se encontraron productos</p>
+                    <p className="text-sm mt-1">Intenta ajustar los filtros o crear un nuevo producto</p>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Desktop Table View */}
-          <div className="rounded-md border hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    {filteredProducts.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={toggleAllSelection}>
-                        {selectedProductIds.length === filteredProducts.length ? (
-                          <CheckSquare className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        Seleccionar Todos
-                      </Button>
-                    )}
-                  </TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Costo Unit.</TableHead>
-                  <TableHead>Valor Total</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Sticker</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        <Package className="h-8 w-8 mx-auto mb-2" />
-                        <p>No se encontraron productos</p>
-                        <p className="text-sm">Intenta ajustar los filtros o crear un nuevo producto</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredProducts.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => toggleProductSelection(product.id)}
-                        >
-                          {selectedProductIds.includes(product.id) ? (
-                            <CheckSquare className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Square className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-mono">{product.code}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          {product.description && (
-                            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                              {product.description}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {product.internal_product_categories && (
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: product.internal_product_categories.color }}
-                            />
-                            <span className="text-sm">{product.internal_product_categories.name}</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={
-                              product.current_stock <= product.minimum_stock ? "text-red-600 font-semibold" : ""
-                            }
+              ) : (
+                filteredProducts.map((product) => (
+                  <Card key={product.id} className="border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    <div className="p-4 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 mt-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                            onClick={() => toggleProductSelection(product.id)}
                           >
-                            {product.current_stock}
-                          </span>
-                          <span className="text-muted-foreground text-sm">{product.unit_of_measure}</span>
-                          {product.current_stock <= product.minimum_stock && (
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            {selectedProductIds.includes(product.id) ? (
+                              <CheckSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            ) : (
+                              <Square className="h-5 w-5 text-slate-400" />
+                            )}
+                          </Button>
+                          <div>
+                            <div className="font-bold text-slate-800 dark:text-slate-100 text-base">{product.name}</div>
+                            <div className="text-sm text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded inline-block mt-1">{product.code}</div>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProductForQuickEntry(product)
+                                setIsQuickEntryOpen(true)
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <ArrowUpCircle className="mr-2 h-4 w-4 text-emerald-600" /> Registrar Entrada
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="cursor-pointer">
+                              <Link href={`/warehouse/internal/products/${product.id}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="cursor-pointer">
+                              <Link href={`/warehouse/internal/products/edit/${product.id}`}>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
+                              </Link>
+                            </DropdownMenuItem>
+                            {product.is_serialized && (
+                              <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
+                                  <QrCode className="mr-2 h-4 w-4" /> Ver QRs
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" onClick={() => handleProductDelete(product.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {product.description && <div className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg italic">{product.description}</div>}
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoría</span>
+                          {product.internal_product_categories ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full shadow-sm"
+                                style={{ backgroundColor: product.internal_product_categories.color }}
+                              />
+                              <span className="font-medium">{product.internal_product_categories.name}</span>
+                            </div>
+                          ) : (
+                            <span className="block mt-1 text-slate-400">-</span>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>S/ {product.cost_price !== null ? product.cost_price.toFixed(2) : "N/A"}</TableCell>
-                      <TableCell>S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant={product.is_active ? "default" : "secondary"}>
-                          {product.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {product.is_serialized ? "Serializado" : "No Serializado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+                        <div>
+                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span
+                              className={`font-bold text-lg ${product.current_stock <= product.minimum_stock ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-slate-100"}`}
+                            >
+                              {product.current_stock}
+                            </span>
+                            <span className="text-slate-500 text-xs">{product.unit_of_measure}</span>
+                            {product.current_stock <= product.minimum_stock && (
+                              <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" />
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</span>
+                          <div className="mt-1">
+                            <Badge variant={product.is_active ? "default" : "secondary"} className={`text-xs ${product.is_active ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800" : ""}`}>
+                              {product.is_active ? "Activo" : "Inactivo"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</span>
+                          <div className="mt-1">
+                            <Badge variant="outline" className="text-xs border-slate-200 text-slate-600">
+                              {product.is_serialized ? "Serializado" : "No Serial."}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                        <div className="text-xs font-medium text-slate-500">
+                          Valor: <span className="text-slate-800 dark:text-slate-200">S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}</span>
+                        </div>
                         <StickerPrintIndicator
                           productId={product.id}
                           serialId={null}
@@ -1004,99 +942,229 @@ export default function InternalProductsPage() {
                           lastPrintInfo={stickerPrintData[product.id]?.lastPrintInfo}
                           printStats={stickerPrintData[product.id]?.printStats}
                         />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setProductForQuickEntry(product)
-                                setIsQuickEntryOpen(true)
-                              }}
-                            >
-                              <ArrowUpCircle className="mr-2 h-4 w-4 text-green-600" /> Registrar Entrada
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/warehouse/internal/products/${product.id}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/warehouse/internal/products/edit/${product.id}`}>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
-                              </Link>
-                            </DropdownMenuItem>
-                            {product.is_serialized && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
-                                  <QrCode className="mr-2 h-4 w-4" /> Ver QRs
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleProductDelete(product.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                  <TableRow>
+                    <TableHead className="w-[50px] pl-4">
+                      {filteredProducts.length > 0 && (
+                        <Button variant="ghost" size="sm" onClick={toggleAllSelection} className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md">
+                          {selectedProductIds.length === filteredProducts.length ? (
+                            <CheckSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          ) : (
+                            <Square className="h-4 w-4 text-slate-400" />
+                          )}
+                        </Button>
+                      )}
+                    </TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Código</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Producto</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Categoría</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Stock</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Costo Unit.</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Valor Total</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Estado</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Tipo</TableHead>
+                    <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Sticker</TableHead>
+                    <TableHead className="text-right pr-6 font-semibold text-slate-700 dark:text-slate-300">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProducts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center py-16">
+                        <div className="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+                          <Package className="h-12 w-12 mb-4 text-slate-300 opacity-50" />
+                          <p className="text-lg font-medium">No se encontraron productos</p>
+                          <p className="text-sm mt-1 max-w-sm">Intenta ajustar los filtros de búsqueda o crea un nuevo producto para comenzar.</p>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <TableRow key={product.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors border-slate-100 dark:border-slate-800">
+                        <TableCell className="pl-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md"
+                            onClick={() => toggleProductSelection(product.id)}
+                          >
+                            {selectedProductIds.includes(product.id) ? (
+                              <CheckSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            ) : (
+                              <Square className="h-4 w-4 text-slate-400" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                           <Badge variant="outline" className="font-mono text-xs bg-slate-50 text-slate-600 border-slate-200">{product.code}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-slate-800 dark:text-slate-200">{product.name}</div>
+                            {product.description && (
+                              <div className="text-xs text-slate-500 truncate max-w-[200px] mt-0.5">
+                                {product.description}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {product.internal_product_categories && (
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full shadow-sm"
+                                style={{ backgroundColor: product.internal_product_categories.color }}
+                              />
+                              <span className="text-sm text-slate-600 dark:text-slate-300">{product.internal_product_categories.name}</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-bold ${
+                                product.current_stock <= product.minimum_stock ? "text-amber-600 dark:text-amber-400" : "text-slate-700 dark:text-slate-200"
+                              }`}
+                            >
+                              {product.current_stock}
+                            </span>
+                            <span className="text-slate-400 text-xs">{product.unit_of_measure}</span>
+                            {product.current_stock <= product.minimum_stock && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-slate-600 dark:text-slate-300">S/ {product.cost_price !== null ? product.cost_price.toFixed(2) : "N/A"}</TableCell>
+                        <TableCell className="font-medium text-slate-700 dark:text-slate-200">S/ {(product.current_stock * (product.cost_price ?? 0)).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={product.is_active ? "default" : "secondary"} className={`text-xs ${product.is_active ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                            {product.is_active ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs border-slate-200 text-slate-600">
+                            {product.is_serialized ? "Serializado" : "No Serial."}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <StickerPrintIndicator
+                            productId={product.id}
+                            serialId={null}
+                            isSerializedProduct={product.is_serialized}
+                            lastPrintInfo={stickerPrintData[product.id]?.lastPrintInfo}
+                            printStats={stickerPrintData[product.id]?.printStats}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                                <span className="sr-only">Abrir menú</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setProductForQuickEntry(product)
+                                  setIsQuickEntryOpen(true)
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <ArrowUpCircle className="mr-2 h-4 w-4 text-emerald-600" /> Registrar Entrada
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link href={`/warehouse/internal/products/${product.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link href={`/warehouse/internal/products/edit/${product.id}`}>
+                                  <Edit className="mr-2 h-4 w-4" /> Editar
+                                </Link>
+                              </DropdownMenuItem>
+                              {product.is_serialized && (
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href={`/public/internal-product/${product.qr_code_hash || product.id}`}>
+                                    <QrCode className="mr-2 h-4 w-4" /> Ver QRs
+                                  </Link>
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" onClick={() => handleProductDelete(product.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       {/* Reprint Confirmation Dialog */}
       <AlertDialog
         open={reprintConfirmDialog.open}
         onOpenChange={(open) => !open && setReprintConfirmDialog({ open: false, product: null, lastPrintData: null })}
       >
         <AlertDialogPortal>
-          <AlertDialogOverlay />
-          <AlertDialogContent>
+          <AlertDialogOverlay className="bg-black/20 backdrop-blur-sm" />
+          <AlertDialogContent className="max-w-md rounded-2xl bg-white dark:bg-slate-900 border-none shadow-2xl">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-amber-600">Sticker ya ha sido impreso</AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2 pt-2">
-                <p>El sticker para el producto "{reprintConfirmDialog.product?.name}" ya ha sido impreso anteriormente:</p>
+              <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                 <AlertCircle className="h-5 w-5" />
+                 Sticker ya ha sido impreso
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4 pt-2 text-slate-600 dark:text-slate-300">
+                <p>El sticker para el producto <span className="font-semibold text-slate-800 dark:text-slate-100">"{reprintConfirmDialog.product?.name}"</span> ya ha sido impreso anteriormente.</p>
                 {reprintConfirmDialog.lastPrintData && (
-                  <div className="bg-amber-50 border border-amber-200 rounded p-2 text-sm">
-                    <p className="font-semibold text-amber-900">Última impresión:</p>
-                    <p className="text-amber-800">
-                      {reprintConfirmDialog.lastPrintData.printed_at
-                        ? formatInTimeZone(
-                            reprintConfirmDialog.lastPrintData.printed_at,
-                            "America/Lima",
-                            "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            { locale: es },
-                          )
-                        : "Fecha desconocida"}
-                    </p>
-                    {reprintConfirmDialog.lastPrintData.printed_by_name && (
-                      <p className="text-amber-800">Por: {reprintConfirmDialog.lastPrintData.printed_by_name}</p>
-                    )}
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm">
+                    <p className="font-semibold text-amber-900 dark:text-amber-400 mb-1">Última impresión:</p>
+                    <div className="space-y-1 text-amber-800 dark:text-amber-300/80">
+                       <p>
+                         {reprintConfirmDialog.lastPrintData.printed_at
+                           ? formatInTimeZone(
+                               reprintConfirmDialog.lastPrintData.printed_at,
+                               "America/Lima",
+                               "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
+                               { locale: es },
+                             )
+                           : "Fecha desconocida"}
+                       </p>
+                       {reprintConfirmDialog.lastPrintData.printed_by_name && (
+                         <p>Por: {reprintConfirmDialog.lastPrintData.printed_by_name}</p>
+                       )}
+                    </div>
                   </div>
                 )}
-                <p className="font-semibold">¿Deseas imprimir nuevamente?</p>
+                <p className="font-medium text-slate-700 dark:text-slate-200">¿Deseas imprimir nuevamente?</p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleReprintConfirm} className="bg-amber-600 hover:bg-amber-700 text-white">
+              <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReprintConfirm} className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-lg shadow-amber-500/20">
                 Imprimir de todos modos
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialogPortal>
       </AlertDialog>
-    </div>
+    </motion.div>
   )
 }
