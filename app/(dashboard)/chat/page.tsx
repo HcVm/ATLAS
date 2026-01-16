@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   MessageCircle,
   Send,
@@ -368,10 +369,21 @@ export default function ChatPage() {
     }
   }
 
+  const variants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 20 }
+  }
+
+  const messageVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 }
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <Card className="w-96">
+        <Card className="w-96 glass-card">
           <CardContent className="pt-6">
             <Alert>
               <AlertTriangle className="h-4 w-4" />
@@ -385,107 +397,122 @@ export default function ChatPage() {
 
   return (
     <TooltipProvider>
-      <div className="h-[calc(100vh-8rem)] flex flex-col pt-6">
+      <div className="h-[calc(100vh-8rem)] flex flex-col pt-4 px-2 sm:px-4 space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm shrink-0"
+        >
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-slate-800 via-slate-600 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+              <MessageCircle className="h-6 w-6 text-indigo-500" />
               Chat ATLAS
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Mensajes temporales entre usuarios (se eliminan después de 7 días)
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
+              <Clock className="h-3.5 w-3.5" />
+              Mensajes temporales (se eliminan después de 7 días)
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => refreshConversations()}>
-                  <RefreshCw className="h-4 w-4" />
+                <Button variant="ghost" size="icon" onClick={() => refreshConversations()} className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+                  <RefreshCw className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Actualizar conversaciones</TooltipContent>
             </Tooltip>
-            <Button onClick={() => setShowNewChatDialog(true)} className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={() => setShowNewChatDialog(true)} className="w-full sm:w-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5">
+              <Plus className="h-5 w-5 mr-2" />
               <span className="hidden sm:inline">Nueva conversación</span>
               <span className="sm:hidden">Nueva</span>
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
           {/* Lista de conversaciones */}
           <Card
-            className={cn("w-full lg:w-80 lg:shrink-0 flex flex-col", currentConversation ? "hidden lg:flex" : "flex")}
+            className={cn(
+              "w-full lg:w-80 lg:shrink-0 flex flex-col border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden rounded-3xl", 
+              currentConversation ? "hidden lg:flex" : "flex"
+            )}
           >
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 px-4 pt-4 border-b border-slate-100 dark:border-slate-800">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar conversaciones..."
-                  className="pl-9"
+                  className="pl-10 h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:ring-indigo-500/20"
                 />
               </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden">
-              <ScrollArea className="h-full">
+            <CardContent className="flex-1 p-2 overflow-hidden">
+              <ScrollArea className="h-full pr-2">
                 {isLoading ? (
                   <div className="flex items-center justify-center p-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
                   </div>
                 ) : filteredConversations.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-8 text-center">
-                    <MessageCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "No se encontraron conversaciones" : "No tienes conversaciones"}
+                  <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                      <MessageCircle className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium">
+                      {searchQuery ? "No se encontraron resultados" : "No tienes conversaciones"}
                     </p>
                     {!searchQuery && (
-                      <Button variant="link" size="sm" onClick={() => setShowNewChatDialog(true)} className="mt-2">
+                      <Button variant="link" size="sm" onClick={() => setShowNewChatDialog(true)} className="mt-2 text-indigo-600">
                         Iniciar una nueva
                       </Button>
                     )}
                   </div>
                 ) : (
-                  <div className="p-2 space-y-1">
+                  <div className="space-y-1">
                     {filteredConversations.map((conv) => {
                       const otherParticipant = conv.participants.find((p) => p.user_id !== user.id)
                       const isOnline = otherParticipant ? isUserOnline(otherParticipant.user_id) : false
                       const isSelected = currentConversation?.id === conv.id
 
                       return (
-                        <button
+                        <motion.button
+                          layout
                           key={conv.id}
                           onClick={() => selectConversation(conv)}
                           className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left",
-                            isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50",
+                            "w-full flex items-center gap-3 p-3 rounded-2xl transition-all duration-200 text-left border border-transparent",
+                            isSelected 
+                              ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/50 shadow-sm" 
+                              : "hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-100 dark:hover:border-slate-800"
                           )}
                         >
-                          <div className="relative">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={getConversationAvatar(conv) || undefined} />
-                              <AvatarFallback className="text-xs bg-primary/10">
+                          <div className="relative shrink-0">
+                            <Avatar className="h-12 w-12 border-2 border-white dark:border-slate-900 shadow-sm">
+                              <AvatarImage src={getConversationAvatar(conv) || undefined} className="object-cover" />
+                              <AvatarFallback className="text-sm bg-gradient-to-br from-indigo-100 to-slate-100 text-indigo-600 dark:from-indigo-900 dark:to-slate-900 dark:text-indigo-300">
                                 {conv.is_group ? <Users className="h-5 w-5" /> : getInitials(getConversationName(conv))}
                               </AvatarFallback>
                             </Avatar>
                             {!conv.is_group && (
                               <span
                                 className={cn(
-                                  "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background",
-                                  isOnline ? "bg-green-500" : "bg-muted-foreground",
+                                  "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900",
+                                  isOnline ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600",
                                 )}
                               />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm truncate">{getConversationName(conv)}</span>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className={cn("font-semibold text-sm truncate", isSelected ? "text-indigo-900 dark:text-indigo-100" : "text-slate-700 dark:text-slate-200")}>
+                                {getConversationName(conv)}
+                              </span>
                               {conv.last_message && (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-2">
                                   {formatDistanceToNow(new Date(conv.last_message.created_at), {
                                     addSuffix: false,
                                     locale: es,
@@ -494,29 +521,28 @@ export default function ChatPage() {
                               )}
                             </div>
                             <div className="flex items-center justify-between">
-                              <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                              <p className={cn("text-xs truncate max-w-[140px]", isSelected ? "text-indigo-600/70 dark:text-indigo-300/70" : "text-slate-500 dark:text-slate-400")}>
                                 {conv.last_message ? (
                                   <>
                                     {conv.last_message.sender_id === user.id && (
-                                      <span className="text-primary">Tú: </span>
+                                      <span className="font-medium">Tú: </span>
                                     )}
                                     {conv.last_message.content}
                                   </>
                                 ) : (
-                                  "Sin mensajes"
+                                  <span className="italic opacity-70">Sin mensajes</span>
                                 )}
                               </p>
                               {(conv.unread_count || 0) > 0 && (
                                 <Badge
-                                  variant="default"
-                                  className="h-5 w-5 p-0 flex items-center justify-center text-[10px] rounded-full"
+                                  className="h-5 min-w-[1.25rem] px-1 flex items-center justify-center text-[10px] rounded-full bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border-none"
                                 >
                                   {conv.unread_count}
                                 </Badge>
                               )}
                             </div>
                           </div>
-                        </button>
+                        </motion.button>
                       )
                     })}
                   </div>
@@ -526,24 +552,27 @@ export default function ChatPage() {
           </Card>
 
           {/* Área de chat */}
-          <Card className={cn("flex-1 flex flex-col overflow-hidden", currentConversation ? "flex" : "hidden lg:flex")}>
+          <Card className={cn(
+            "flex-1 flex flex-col overflow-hidden border-none shadow-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl", 
+            currentConversation ? "flex" : "hidden lg:flex"
+          )}>
             {currentConversation ? (
               <>
                 {/* Header del chat */}
-                <CardHeader className="pb-3 border-b shrink-0">
+                <CardHeader className="py-3 px-6 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="lg:hidden shrink-0"
+                        className="lg:hidden shrink-0 -ml-2 rounded-full"
                         onClick={() => selectConversation(null as any)}
                       >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-5 w-5 text-slate-600" />
                       </Button>
-                      <Avatar className="h-10 w-10 shrink-0">
+                      <Avatar className="h-12 w-12 shrink-0 border-2 border-white dark:border-slate-800 shadow-sm cursor-pointer hover:scale-105 transition-transform" onClick={() => setShowInfoDialog(true)}>
                         <AvatarImage src={getConversationAvatar(currentConversation) || undefined} />
-                        <AvatarFallback className="text-xs bg-primary/10">
+                        <AvatarFallback className="text-sm bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
                           {currentConversation.is_group ? (
                             <Users className="h-5 w-5" />
                           ) : (
@@ -557,7 +586,7 @@ export default function ChatPage() {
                             <Input
                               value={editedName}
                               onChange={(e) => setEditedName(e.target.value)}
-                              className="h-8 text-sm"
+                              className="h-9 text-sm rounded-lg"
                               placeholder="Nombre del grupo"
                               autoFocus
                               onKeyDown={(e) => {
@@ -571,7 +600,7 @@ export default function ChatPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8"
+                              className="h-9 w-9 text-green-600 hover:text-green-700 hover:bg-green-50"
                               onClick={handleSaveConversationName}
                             >
                               <Check className="h-4 w-4" />
@@ -579,7 +608,7 @@ export default function ChatPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8"
+                              className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50"
                               onClick={() => setIsEditingName(false)}
                             >
                               <X className="h-4 w-4" />
@@ -587,47 +616,30 @@ export default function ChatPage() {
                           </div>
                         ) : (
                           <>
-                            <div className="flex items-center gap-2">
-                              <CardTitle className="text-sm sm:text-base truncate">
+                            <div className="flex items-center gap-2 group cursor-pointer" onClick={() => currentConversation.is_group && setIsEditingName(true)}>
+                              <CardTitle className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 truncate">
                                 {getConversationName(currentConversation)}
                               </CardTitle>
                               {currentConversation.is_group && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 shrink-0"
-                                  onClick={() => {
-                                    setEditedName(currentConversation.name || "")
-                                    setIsEditingName(true)
-                                  }}
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
+                                <Edit2 className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                               )}
                             </div>
-                            <CardDescription className="flex items-center gap-1 text-xs">
+                            <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
                               {!currentConversation.is_group && (
                                 <>
-                                  <Circle
-                                    className={cn(
-                                      "h-2 w-2 fill-current",
-                                      isUserOnline(
-                                        currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id ||
-                                          "",
-                                      )
-                                        ? "text-green-500"
-                                        : "text-muted-foreground",
-                                    )}
-                                  />
-                                  {isUserOnline(
-                                    currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "",
-                                  )
-                                    ? "En línea"
-                                    : "Desconectado"}
+                                  <span className={cn(
+                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full",
+                                    isUserOnline(currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "")
+                                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+                                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                  )}>
+                                    <Circle className={cn("h-1.5 w-1.5 fill-current")} />
+                                    {isUserOnline(currentConversation.participants.find((p) => p.user_id !== user.id)?.user_id || "") ? "En línea" : "Desconectado"}
+                                  </span>
                                 </>
                               )}
                               {currentConversation.is_group && (
-                                <span>{currentConversation.participants.length} participantes</span>
+                                <span className="text-slate-500">{currentConversation.participants.length} participantes</span>
                               )}
                             </CardDescription>
                           </>
@@ -635,34 +647,26 @@ export default function ChatPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setShowInfoDialog(true)}>
-                            <Info className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Información</TooltipContent>
-                      </Tooltip>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <MoreVertical className="h-5 w-5 text-slate-500" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setShowInfoDialog(true)}>
-                            <Info className="h-4 w-4 mr-2" />
+                        <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
+                          <DropdownMenuItem onClick={() => setShowInfoDialog(true)} className="py-2.5">
+                            <Info className="h-4 w-4 mr-2 text-indigo-500" />
                             Ver detalles
                           </DropdownMenuItem>
                           {currentConversation.is_group && (
-                            <DropdownMenuItem>
-                              <UserPlus className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem className="py-2.5">
+                              <UserPlus className="h-4 w-4 mr-2 text-slate-500" />
                               Agregar participantes
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20 py-2.5"
                             onClick={() => setShowDeleteDialog(true)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -675,22 +679,29 @@ export default function ChatPage() {
                 </CardHeader>
 
                 {/* Mensajes */}
-                <CardContent className="flex-1 p-0 overflow-hidden">
+                <CardContent className="flex-1 p-0 overflow-hidden bg-slate-50/30 dark:bg-slate-900/30 relative">
+                  {/* Background pattern opcional */}
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/subtle-dots.png')]"></div>
+                  
                   <ScrollArea className="h-full">
-                    <div className="space-y-4 p-4">
+                    <div className="space-y-6 p-4 sm:p-6">
                       {/* Info de mensajes temporales */}
                       <div className="flex justify-center">
-                        <Badge variant="secondary" className="text-xs font-normal">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Los mensajes se eliminan después de 7 días
-                        </Badge>
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] sm:text-xs px-3 py-1.5 rounded-full border border-amber-100 dark:border-amber-800/30 flex items-center gap-1.5 shadow-sm">
+                          <Clock className="h-3 w-3" />
+                          Los mensajes se eliminan automáticamente después de 7 días
+                        </div>
                       </div>
 
                       {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <MessageCircle className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                          <p className="text-muted-foreground">No hay mensajes aún</p>
-                          <p className="text-sm text-muted-foreground/70">Envía el primer mensaje</p>
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                          <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                            <MessageCircle className="h-10 w-10 text-indigo-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Comienza la conversación</h3>
+                          <p className="text-slate-500 dark:text-slate-400 max-w-xs mt-2">
+                            Envía un mensaje para iniciar el chat con {getConversationName(currentConversation)}.
+                          </p>
                         </div>
                       ) : (
                         messages.map((message, index) => {
@@ -705,118 +716,129 @@ export default function ChatPage() {
                           return (
                             <div key={message.id}>
                               {showDate && (
-                                <div className="flex justify-center my-4">
-                                  <Badge variant="outline" className="text-xs font-normal">
+                                <div className="flex justify-center my-6">
+                                  <span className="text-[10px] font-medium text-slate-400 bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 shadow-sm uppercase tracking-wide">
                                     {format(new Date(message.created_at), "EEEE, d 'de' MMMM", { locale: es })}
-                                  </Badge>
+                                  </span>
                                 </div>
                               )}
-                              <div className={cn("flex items-end gap-2", isOwn ? "justify-end" : "justify-start")}>
+                              <motion.div 
+                                initial="hidden"
+                                animate="visible"
+                                variants={messageVariants}
+                                className={cn("flex items-end gap-3 group mb-1", isOwn ? "justify-end" : "justify-start")}
+                              >
                                 {!isOwn && (
-                                  <div className="w-8 shrink-0">
-                                    {showAvatar && (
-                                      <Avatar className="h-8 w-8">
+                                  <div className="w-8 shrink-0 flex flex-col items-center">
+                                    {showAvatar ? (
+                                      <Avatar className="h-8 w-8 shadow-sm border border-white dark:border-slate-800">
                                         <AvatarImage src={message.sender?.avatar_url || undefined} />
-                                        <AvatarFallback className="text-[10px] bg-primary/10">
+                                        <AvatarFallback className="text-[9px] bg-gradient-to-br from-indigo-100 to-slate-100 text-indigo-600">
                                           {getInitials(message.sender?.full_name || "?")}
                                         </AvatarFallback>
                                       </Avatar>
+                                    ) : (
+                                      <div className="w-8" />
                                     )}
                                   </div>
                                 )}
                                 <div
                                   className={cn(
-                                    "max-w-[75%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm",
+                                    "max-w-[80%] sm:max-w-[65%] px-4 py-3 shadow-sm relative transition-all duration-200",
                                     isOwn
-                                      ? "bg-primary text-primary-foreground rounded-br-md"
-                                      : "bg-muted text-foreground rounded-bl-md",
+                                      ? "bg-indigo-600 text-white rounded-2xl rounded-tr-sm hover:shadow-md"
+                                      : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-2xl rounded-tl-sm hover:shadow-md",
                                   )}
                                 >
                                   {!isOwn && currentConversation.is_group && showAvatar && (
-                                    <p className="text-[11px] font-medium mb-1 opacity-80">
+                                    <p className="text-[10px] font-bold mb-1 text-indigo-500 dark:text-indigo-400">
                                       {message.sender?.full_name}
                                     </p>
                                   )}
+                                  
                                   {message.message_type === "image" && message.file_url ? (
-                                    <div className="space-y-2">
-                                      <div className="relative group">
+                                    <div className="space-y-2 -mx-2 -mt-2">
+                                      <div className="relative group overflow-hidden rounded-xl">
                                         <img
                                           src={message.file_url || "/placeholder.svg"}
                                           alt={message.file_name || "Imagen"}
-                                          className="rounded-lg max-w-full max-h-96 object-cover cursor-pointer"
+                                          className="max-w-full max-h-80 object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500"
                                           onClick={() =>
                                             handleImageClick(message.file_url!, message.file_name || "imagen.jpg")
                                           }
                                         />
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                           <Button
                                             size="icon"
                                             variant="secondary"
-                                            className="h-8 w-8 rounded-full shadow-lg"
+                                            className="h-9 w-9 rounded-full shadow-lg bg-white/90 hover:bg-white"
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               handleImageClick(message.file_url!, message.file_name || "imagen.jpg")
                                             }}
                                           >
-                                            <ZoomIn className="h-4 w-4" />
+                                            <ZoomIn className="h-4 w-4 text-slate-800" />
                                           </Button>
                                           <Button
                                             size="icon"
                                             variant="secondary"
-                                            className="h-8 w-8 rounded-full shadow-lg"
+                                            className="h-9 w-9 rounded-full shadow-lg bg-white/90 hover:bg-white"
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               handleFileDownload(message.file_url!, message.file_name || "imagen.jpg")
                                             }}
                                           >
-                                            <Download className="h-4 w-4" />
+                                            <Download className="h-4 w-4 text-slate-800" />
                                           </Button>
                                         </div>
                                       </div>
                                       {message.content && message.content !== message.file_name && (
-                                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                        <p className="text-sm whitespace-pre-wrap break-words px-2 pb-1">{message.content}</p>
                                       )}
                                     </div>
                                   ) : message.message_type === "file" && message.file_url ? (
                                     <div className="space-y-2">
                                       <div
                                         className={cn(
-                                          "flex items-center gap-2 p-2 rounded border group",
-                                          isOwn ? "border-primary-foreground/20" : "border-border",
+                                          "flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer",
+                                          isOwn 
+                                            ? "bg-indigo-700/50 border-indigo-500/50 hover:bg-indigo-700" 
+                                            : "bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800",
                                         )}
+                                        onClick={() => handleFileDownload(message.file_url!, message.file_name || "archivo")}
                                       >
-                                        <Paperclip className="h-4 w-4 shrink-0" />
-                                        <span className="text-sm font-medium truncate flex-1">{message.file_name}</span>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-7 w-7 shrink-0"
-                                          onClick={() =>
-                                            handleFileDownload(message.file_url!, message.file_name || "archivo")
-                                          }
-                                        >
-                                          <Download className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <div className={cn("p-2 rounded-lg", isOwn ? "bg-white/20" : "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600")}>
+                                          <Paperclip className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">{message.file_name}</p>
+                                          <p className={cn("text-[10px]", isOwn ? "text-indigo-200" : "text-slate-400")}>Descargar archivo</p>
+                                        </div>
+                                        <Download className={cn("h-4 w-4 opacity-70", isOwn ? "text-white" : "text-slate-500")} />
                                       </div>
                                       {message.content && message.content !== message.file_name && (
                                         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                                       )}
                                     </div>
                                   ) : (
-                                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
                                   )}
+                                  
                                   <div
                                     className={cn(
-                                      "flex items-center gap-1 mt-1",
-                                      isOwn ? "justify-end" : "justify-start",
+                                      "flex items-center gap-1 mt-1 opacity-70 select-none",
+                                      isOwn ? "justify-end text-indigo-100" : "justify-start text-slate-400"
                                     )}
                                   >
-                                    <span className="text-[10px] opacity-60">
+                                    <span className="text-[10px] font-medium">
                                       {format(new Date(message.created_at), "HH:mm")}
                                     </span>
+                                    {isOwn && (
+                                      <Check className="h-3 w-3" />
+                                    )}
                                   </div>
                                 </div>
-                              </div>
+                              </motion.div>
                             </div>
                           )
                         })
@@ -827,24 +849,27 @@ export default function ChatPage() {
                 </CardContent>
 
                 {attachedFile && (
-                  <div className="px-4 py-2 border-t bg-muted/50">
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-background">
+                  <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                       {filePreview ? (
-                        <img
-                          src={filePreview || "/placeholder.svg"}
-                          alt="Preview"
-                          className="h-12 w-12 rounded object-cover"
-                        />
+                        <div className="relative h-12 w-12 shrink-0 group">
+                          <img
+                            src={filePreview || "/placeholder.svg"}
+                            alt="Preview"
+                            className="h-full w-full rounded-lg object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/20 rounded-lg" />
+                        </div>
                       ) : (
-                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
-                          <Paperclip className="h-6 w-6 text-muted-foreground" />
+                        <div className="h-12 w-12 shrink-0 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
+                          <Paperclip className="h-6 w-6" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{attachedFile.name}</p>
-                        <p className="text-xs text-muted-foreground">{(attachedFile.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">{attachedFile.name}</p>
+                        <p className="text-xs text-slate-500">{(attachedFile.size / 1024).toFixed(1)} KB</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={clearAttachedFile}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full" onClick={clearAttachedFile}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -852,8 +877,8 @@ export default function ChatPage() {
                 )}
 
                 {/* Input de mensaje */}
-                <div className="shrink-0 p-4 border-t bg-muted/30">
-                  <div className="flex items-end gap-3">
+                <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <div className="flex items-end gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-indigo-300 dark:focus-within:border-indigo-700 focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-900/20 transition-all">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -861,27 +886,39 @@ export default function ChatPage() {
                       onChange={handleFileSelect}
                       accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-11 w-11 shrink-0 bg-transparent"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isSending}
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 shrink-0 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSending}
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Adjuntar archivo</TooltipContent>
+                    </Tooltip>
+                    
                     <Textarea
                       ref={inputRef}
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Escribe un mensaje..."
-                      className="min-h-[44px] max-h-[120px] resize-none"
+                      className="min-h-[44px] max-h-[120px] resize-none border-none shadow-none focus-visible:ring-0 bg-transparent py-3 text-sm"
                       rows={1}
                     />
+                    
                     <Button
                       size="icon"
-                      className="h-11 w-11 shrink-0"
+                      className={cn(
+                        "h-10 w-10 shrink-0 rounded-xl transition-all",
+                        (!messageInput.trim() && !attachedFile) 
+                          ? "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500 cursor-not-allowed" 
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 hover:scale-105 active:scale-95"
+                      )}
                       onClick={handleSendMessage}
                       disabled={(!messageInput.trim() && !attachedFile) || isSending}
                     >
@@ -891,25 +928,28 @@ export default function ChatPage() {
                 </div>
               </>
             ) : (
-              <CardContent className="flex-1 flex flex-col items-center justify-center text-center">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <MessageCircle className="h-10 w-10 text-primary" />
+              <CardContent className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="w-32 h-32 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-6 shadow-sm">
+                  <MessageCircle className="h-16 w-16 text-indigo-400 dark:text-indigo-500" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Bienvenido al Chat ATLAS</h3>
-                <p className="text-muted-foreground max-w-sm mb-4">
-                  Selecciona una conversación de la lista o inicia una nueva para comenzar a chatear con tus compañeros.
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-3">Bienvenido al Chat ATLAS</h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8 text-lg leading-relaxed">
+                  Selecciona una conversación de la lista o inicia una nueva para comenzar a chatear con tus compañeros de equipo de forma segura y efímera.
                 </p>
-                <Button onClick={() => setShowNewChatDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button onClick={() => setShowNewChatDialog(true)} size="lg" className="h-12 px-8 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/20 hover:-translate-y-1 transition-all">
+                  <Plus className="h-5 w-5 mr-2" />
                   Nueva conversación
                 </Button>
               </CardContent>
             )}
           </Card>
 
-          <Card className="w-72 shrink-0 flex flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Usuarios disponibles</CardTitle>
+          <Card className="w-full lg:w-72 shrink-0 flex flex-col border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl hidden xl:flex">
+            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Users className="h-4 w-4 text-indigo-500" />
+                Usuarios disponibles
+              </CardTitle>
               <CardDescription className="text-xs">Haz clic para iniciar chat</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 p-0 overflow-hidden">
