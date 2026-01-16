@@ -1,4 +1,5 @@
 "use client"
+
 import type React from "react"
 import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,9 +11,12 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Info, Zap, Database, ArrowLeft } from "lucide-react"
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Info, Zap, Database, ArrowLeft, Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import * as XLSX from "xlsx"
+import { motion, AnimatePresence } from "framer-motion"
+import { COLUMN_MAPPING, REQUIRED_COLUMNS, normalizeString, processDataChunk, MAX_ROWS_PER_CHUNK } from "@/lib/open-data-processing"
 
 const ACUERDOS_MARCO = [
   {
@@ -65,12 +69,14 @@ export default function OpenDataUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [currentAction, setCurrentAction] = useState("")
   const [uploadStats, setUploadStats] = useState<UploadStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
-  const CHUNKING_THRESHOLD = 10 * 1024 * 1024 // 10MB
+  // Ya no hay límite estricto de 5MB, el navegador puede manejar archivos grandes
+  // pero ponemos un límite razonable de 100MB para no colgar el navegador
+  const MAX_FILE_SIZE = 100 * 1024 * 1024 
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes"
@@ -80,27 +86,11 @@ export default function OpenDataUploadPage() {
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const getProcessingInfo = (fileSize: number) => {
-    if (fileSize > CHUNKING_THRESHOLD) {
-      const estimatedChunks = Math.ceil(fileSize / (5 * 1024 * 1024)) // Estimación basada en 5MB por chunk
-      return {
-        willChunk: true,
-        estimatedChunks,
-        message: `Archivo grande detectado. Se procesará automáticamente en ~${estimatedChunks} partes para optimizar el rendimiento.`,
-      }
-    }
-    return {
-      willChunk: false,
-      estimatedChunks: 1,
-      message: "El archivo se procesará en una sola operación.",
-    }
-  }
-
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
     if (selectedFile) {
       if (selectedFile.size > MAX_FILE_SIZE) {
-        setError(`El archivo es demasiado grande. Máximo permitido: ${formatFileSize(MAX_FILE_SIZE)}`)
+        setError(`El archivo es demasiado grande. Máximo recomendado: ${formatFileSize(MAX_FILE_SIZE)}`)
         setFile(null)
         return
       }
@@ -129,92 +119,151 @@ export default function OpenDataUploadPage() {
     setProgress(0)
     setError(null)
     setUploadStats(null)
+    setCurrentAction("Analizando archivo...")
 
     try {
+      // 1. Leer archivo en el cliente
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: "array" })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null }) as any[][]
+
+      if (!rawData || rawData.length < 7) {
+        throw new Error("El archivo no contiene suficientes datos o el formato es incorrecto")
+      }
+
+      const headers = rawData[5] as string[]
+      const dataRows = rawData.slice(6)
+      const totalRows = dataRows.length
+
+      setCurrentAction(`Analizando ${totalRows} filas...`)
       setProgress(10)
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("acuerdoMarco", selectedAcuerdo)
 
-      const uploadResponse = await fetch("/api/open-data/upload-url", {
-        method: "POST",
-        body: formData,
-      })
+      // 2. Mapear columnas (Lógica extraída de processDataChunk)
+      const columnIndexes: { [key: string]: number } = {}
+      const foundColumns: string[] = []
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json().catch(() => ({}))
-        throw new Error(errorData.error || `Error del servidor: ${uploadResponse.status}`)
-      }
-
-      const uploadResult = await uploadResponse.json()
-      setProgress(30)
-      console.log(`Archivo subido a Blob: ${uploadResult.url}`)
-
-      const response = await fetch("/api/open-data/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          blobUrl: uploadResult.url,
-          fileName: file.name,
-          fileSize: file.size,
-          acuerdoMarco: selectedAcuerdo,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error del servidor: ${response.status}`)
-      }
-
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let result: any = null
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          const chunk = decoder.decode(value)
-          const lines = chunk.split("\n").filter((line) => line.trim())
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6))
-                if (data.type === "progress") {
-                  setProgress(30 + data.progress * 0.7)
-                } else if (data.type === "complete") {
-                  result = data
-                  setProgress(100)
-                }
-              } catch (e) {
-                console.error("Error parsing SSE data:", e)
-              }
-            }
+      Object.entries(COLUMN_MAPPING).forEach(([dbField, possibleNames]) => {
+        let found = false
+        for (const possibleName of possibleNames) {
+          const index = headers.findIndex((h) => {
+            if (!h) return false
+            const headerName = h.toString().trim()
+            const searchName = possibleName.trim()
+            if (headerName === searchName) return true
+            return normalizeString(headerName) === normalizeString(searchName)
+          })
+          if (index !== -1) {
+            columnIndexes[dbField] = index
+            foundColumns.push(dbField)
+            found = true
+            break
           }
         }
-      }
-
-      if (result) {
-        setUploadStats(result.stats)
-        toast.success("¡Archivo procesado exitosamente!", {
-          description: `${result.stats.insertedRows} registros insertados para ${selectedAcuerdo.split(" ")[0]}`,
-        })
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error)
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
-      setError(errorMessage)
-
-      toast.error("Error al procesar el archivo", {
-        description: errorMessage,
       })
+
+      const missingRequired = REQUIRED_COLUMNS.filter((col) => !(col in columnIndexes))
+      if (missingRequired.length > 0) {
+        throw new Error(`Faltan columnas críticas: ${missingRequired.join(", ")}`)
+      }
+
+      // 3. Resetear acuerdo marco en BD
+      setCurrentAction("Limpiando datos anteriores...")
+      const codigoAcuerdoMarco = selectedAcuerdo.split(" ")[0].trim()
+      
+      const resetRes = await fetch("/api/open-data/reset-acuerdo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigoAcuerdoMarco })
+      })
+
+      if (!resetRes.ok) throw new Error("Error al limpiar datos anteriores")
+      setProgress(20)
+
+      // 4. Procesar y subir en chunks
+      const trimmedAcuerdoMarco = selectedAcuerdo.trim()
+      const chunks = []
+      for (let i = 0; i < dataRows.length; i += MAX_ROWS_PER_CHUNK) {
+        chunks.push(dataRows.slice(i, i + MAX_ROWS_PER_CHUNK))
+      }
+
+      let totalInserted = 0
+      let totalBrandAlerts = 0
+      let totalFiltered = 0
+      let totalProcessed = 0
+      const allErrors: string[] = []
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        setCurrentAction(`Procesando lote ${i + 1}/${chunks.length}...`)
+        
+        // Procesar en cliente
+        const chunkResult = await processDataChunk(
+          chunk,
+          columnIndexes,
+          trimmedAcuerdoMarco,
+          codigoAcuerdoMarco,
+          i
+        )
+
+        totalProcessed += chunkResult.processedData.length
+        totalFiltered += chunkResult.filteredCount
+        allErrors.push(...chunkResult.errors)
+
+        // Subir a API si hay datos
+        if (chunkResult.processedData.length > 0) {
+          const uploadRes = await fetch("/api/open-data/upload-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entries: chunkResult.processedData,
+              alerts: chunkResult.brandAlerts
+            })
+          })
+
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json()
+            throw new Error(errData.message || "Error al subir lote")
+          }
+
+          const uploadData = await uploadRes.json()
+          totalInserted += uploadData.insertedCount
+          totalBrandAlerts += uploadData.brandAlertsCount
+          if (uploadData.errors) allErrors.push(...uploadData.errors)
+        }
+
+        // Actualizar progreso
+        // El progreso va del 20% al 100%
+        const progressPercent = 20 + ((i + 1) / chunks.length) * 80
+        setProgress(progressPercent)
+        
+        // Pequeña pausa para no bloquear la UI
+        await new Promise(r => setTimeout(r, 10))
+      }
+
+      setUploadStats({
+        totalRows,
+        processedRows: totalProcessed,
+        insertedRows: totalInserted,
+        filteredRows: totalFiltered,
+        chunks: chunks.length,
+        brandAlerts: totalBrandAlerts,
+        errors: allErrors,
+        processingMethod: "client-side-chunking",
+        fileSize: file.size,
+        fileName: file.name
+      })
+
+      toast.success("Carga completada exitosamente")
+
+    } catch (error: any) {
+      console.error("Error en carga:", error)
+      setError(error.message || "Error desconocido durante la carga")
+      toast.error("Error en la carga", { description: error.message })
     } finally {
       setUploading(false)
-      setTimeout(() => setProgress(0), 2000)
+      setCurrentAction("")
     }
   }
 
@@ -229,180 +278,168 @@ export default function OpenDataUploadPage() {
     }
   }
 
-  const processingInfo = file ? getProcessingInfo(file.size) : null
-
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="container mx-auto p-6 max-w-6xl min-h-screen pb-20"
+    >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/open-data">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200">Cargar Datos de Acuerdo Marco</h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Sube archivos Excel con datos de compras públicas organizados por acuerdo marco
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center gap-4">
+          <Link href="/open-data">
+            <Button variant="ghost" size="icon" className="hover:bg-slate-100 dark:hover:bg-slate-800">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+              Carga de Datos
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Importación masiva de Acuerdos Marco
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Formulario de carga */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Subir Archivo Excel
-                {file && processingInfo?.willChunk && (
-                  <Badge variant="secondary" className="ml-2">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Procesamiento Inteligente
-                  </Badge>
-                )}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                  <Upload className="h-5 w-5" />
+                </div>
+                Nueva Importación
               </CardTitle>
               <CardDescription>
-                Las cabeceras deben estar en la fila 6 del archivo. Se filtrarán automáticamente los registros con
-                "Orden Electrónica" terminada en "-0".
+                Procesamiento local seguro sin límite de tamaño de servidor.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Alerta de procesamiento inteligente */}
-              {file && processingInfo?.willChunk && (
-                <Alert>
-                  <Zap className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Procesamiento Inteligente Activado:</strong> Tu archivo será procesado automáticamente en
-                    aproximadamente {processingInfo.estimatedChunks} partes para optimizar el rendimiento.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Alerta de límite de tamaño */}
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Límite de archivo:</strong> {formatFileSize(MAX_FILE_SIZE)}. Los archivos grandes se procesan
-                  automáticamente en chunks optimizados.
-                </AlertDescription>
-              </Alert>
-
+            <CardContent className="space-y-6 p-6">
+              
               {/* Selección de acuerdo marco */}
-              <div className="space-y-2">
-                <Label htmlFor="acuerdo">Acuerdo Marco *</Label>
+              <div className="space-y-3">
+                <Label htmlFor="acuerdo" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Acuerdo Marco
+                </Label>
                 <Select value={selectedAcuerdo} onValueChange={setSelectedAcuerdo} disabled={uploading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un acuerdo marco" />
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 h-12">
+                    <SelectValue placeholder="Selecciona el acuerdo destino..." />
                   </SelectTrigger>
                   <SelectContent>
                     {ACUERDOS_MARCO.filter((acuerdo) => acuerdo.status === "active").map((acuerdo) => (
                       <SelectItem key={acuerdo.codigo} value={`${acuerdo.codigo} ${acuerdo.nombre}`}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{acuerdo.codigo}</span>
-                          <span className="text-sm text-muted-foreground">{acuerdo.nombre}</span>
+                        <div className="flex flex-col py-1">
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{acuerdo.codigo}</span>
+                          <span className="text-xs text-slate-500">{acuerdo.nombre}</span>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedAcuerdo && (
-                  <div className="text-xs text-muted-foreground">
-                    Los datos se organizarán bajo el acuerdo: <strong>{selectedAcuerdo.split(" ")[0]}</strong>
-                  </div>
-                )}
               </div>
 
-              {/* Selección de archivo */}
-              <div className="space-y-2">
-                <Label htmlFor="file-upload">Archivo Excel *</Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileSelect}
-                  ref={fileInputRef}
-                  disabled={uploading}
-                />
-                {file && (
-                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="h-8 w-8 text-green-600" />
-                      <div>
-                        <p className="font-medium">{file.name}</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{formatFileSize(file.size)}</p>
+              {/* Área de Drag & Drop */}
+              <div className="space-y-3">
+                <Label htmlFor="file-upload" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Archivo Excel (.xlsx)
+                </Label>
+                <div 
+                  className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-300 flex flex-col items-center justify-center text-center group
+                    ${file 
+                      ? "border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10" 
+                      : "border-slate-200 dark:border-slate-700 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
+                    }
+                  `}
+                >
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileSelect}
+                    ref={fileInputRef}
+                    disabled={uploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  
+                  {file ? (
+                    <div className="space-y-3">
+                      <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto animate-in zoom-in duration-300">
+                        <FileSpreadsheet className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {processingInfo?.willChunk && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Zap className="h-3 w-3" />~{processingInfo.estimatedChunks} chunks
-                        </Badge>
-                      )}
-                      <Badge variant="outline">
-                        {file.size > MAX_FILE_SIZE / 2 ? "Archivo Grande" : "Archivo Normal"}
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white text-lg">{file.name}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{formatFileSize(file.size)}</p>
+                      </div>
+                      <Badge variant="outline" className="bg-white dark:bg-slate-950 text-emerald-600 border-emerald-200">
+                        Listo para procesar
                       </Badge>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 flex items-center justify-center mx-auto transition-colors duration-300">
+                        <Upload className="h-8 w-8 text-slate-400 group-hover:text-blue-500 transition-colors duration-300" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white text-lg">Arrastra tu archivo aquí</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">o haz clic para explorar</p>
+                      </div>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                        Soporta archivos grandes gracias al procesamiento por lotes en el navegador.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Información de procesamiento */}
-              {processingInfo && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    {processingInfo.message}
-                    {processingInfo.willChunk && (
-                      <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-                        💡 El sistema dividirá automáticamente el archivo para optimizar el procesamiento y evitar
-                        timeouts
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Barra de progreso */}
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>
-                      {processingInfo?.willChunk ? "Procesando archivo en chunks..." : "Procesando archivo..."}
-                    </span>
-                    <span>{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="w-full" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      Acuerdo: <strong>{selectedAcuerdo.split(" ")[0]}</strong>
-                    </span>
-                    <span>
-                      {processingInfo?.willChunk
-                        ? "Procesamiento puede tomar varios minutos"
-                        : "Procesamiento en curso..."}
-                    </span>
-                  </div>
-                </div>
-              )}
+              {/* Progreso */}
+              <AnimatePresence>
+                {uploading && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-2 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800"
+                  >
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {currentAction}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400">{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2 w-full" />
+                    <p className="text-xs text-slate-500 text-center">
+                      Por favor no cierres esta ventana hasta que finalice el proceso.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Error */}
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               {/* Botones */}
-              <div className="flex gap-2">
-                <Button onClick={handleUpload} disabled={!file || !selectedAcuerdo || uploading} className="flex-1">
-                  {uploading ? "Procesando..." : "Subir y Procesar Archivo"}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={handleUpload} 
+                  disabled={!file || !selectedAcuerdo || uploading} 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 h-12 text-base font-medium transition-all hover:scale-[1.02]"
+                >
+                  {uploading ? "Procesando..." : "Iniciar Carga Segura"}
                 </Button>
                 {(file || uploadStats || selectedAcuerdo) && (
-                  <Button variant="outline" onClick={resetUpload} disabled={uploading}>
+                  <Button variant="outline" onClick={resetUpload} disabled={uploading} className="h-12 px-6">
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Limpiar
                   </Button>
                 )}
@@ -413,172 +450,88 @@ export default function OpenDataUploadPage() {
 
         {/* Panel lateral con información */}
         <div className="space-y-6">
-          {/* Información del proceso */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Proceso de Carga</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Selección de acuerdo</p>
-                  <p className="text-muted-foreground">Organiza los datos por acuerdo marco específico</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Análisis del archivo</p>
-                  <p className="text-muted-foreground">Detección automática de tamaño y estructura</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">División inteligente</p>
-                  <p className="text-muted-foreground">Archivos grandes se dividen automáticamente</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Inserción y alertas</p>
-                  <p className="text-muted-foreground">Procesamiento de datos y alertas de marca</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Acuerdos Marco disponibles */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Acuerdos Marco Disponibles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {ACUERDOS_MARCO.filter((acuerdo) => acuerdo.status === "active").map((acuerdo) => (
-                <div
-                  key={acuerdo.codigo}
-                  className={`p-3 rounded-lg border transition-colors ${
-                    selectedAcuerdo === `${acuerdo.codigo} ${acuerdo.nombre}`
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <div className="font-medium text-sm">{acuerdo.codigo}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{acuerdo.nombre}</div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
           {/* Estadísticas de Upload */}
-          {uploadStats && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  Procesamiento Completado
-                </CardTitle>
-                <CardDescription>
-                  Acuerdo: <strong>{selectedAcuerdo.split(" ")[0]}</strong>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span>Filas totales:</span>
-                    <Badge variant="outline">{uploadStats.totalRows.toLocaleString()}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Procesadas:</span>
-                    <Badge variant="secondary">{uploadStats.processedRows.toLocaleString()}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Insertadas:</span>
-                    <Badge variant="default">{uploadStats.insertedRows.toLocaleString()}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Filtradas (-0):</span>
-                    <Badge variant="destructive">{uploadStats.filteredRows?.toLocaleString() || 0}</Badge>
-                  </div>
-                  {uploadStats.brandAlerts > 0 && (
-                    <div className="flex justify-between col-span-2">
-                      <span>Alertas de marca:</span>
-                      <Badge variant="secondary">{uploadStats.brandAlerts}</Badge>
+          <AnimatePresence>
+            {uploadStats && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                <Card className="border-emerald-200/50 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-900/10 backdrop-blur-xl shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-lg">
+                      <CheckCircle className="h-5 w-5" />
+                      Carga Exitosa
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Filas</p>
+                        <p className="font-bold text-lg text-slate-900 dark:text-white">{uploadStats.totalRows.toLocaleString()}</p>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Insertadas</p>
+                        <p className="font-bold text-lg text-emerald-600 dark:text-emerald-400">{uploadStats.insertedRows.toLocaleString()}</p>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Alertas</p>
+                        <p className="font-bold text-lg text-amber-600 dark:text-amber-400">{uploadStats.brandAlerts}</p>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Tiempo</p>
+                        <p className="font-bold text-lg text-blue-600 dark:text-blue-400">~{(uploadStats.chunks * 0.5).toFixed(1)}s</p>
+                      </div>
                     </div>
-                  )}
-                  {uploadStats.chunks > 1 && (
-                    <div className="flex justify-between col-span-2">
-                      <span>Chunks procesados:</span>
-                      <Badge variant="outline" className="bg-purple-50">
-                        <Zap className="h-3 w-3 mr-1" />
-                        {uploadStats.chunks}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <Database className="h-3 w-3" />
-                    {uploadStats.processingMethod === "chunked" ? "Procesamiento por Chunks" : "Procesamiento Único"}
-                  </Badge>
-                  <span>{formatFileSize(uploadStats.fileSize)}</span>
-                </div>
+                    {uploadStats.errors.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <Separator className="bg-emerald-200 dark:bg-emerald-800/30" />
+                        <div className="text-sm font-medium text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Advertencias ({uploadStats.errors.length})
+                        </div>
+                        <div className="max-h-32 overflow-y-auto space-y-1 pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                          {uploadStats.errors.slice(0, 10).map((error, index) => (
+                            <p key={index} className="text-xs text-slate-600 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-800">
+                              {error}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                {uploadStats.errors.length > 0 && (
-                  <div className="space-y-2">
-                    <Separator />
-                    <div className="text-sm font-medium text-yellow-600">
-                      Errores encontrados ({uploadStats.errors.length}):
-                    </div>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
-                      {uploadStats.errors.slice(0, 5).map((error, index) => (
-                        <p key={index} className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                          {error}
-                        </p>
-                      ))}
-                      {uploadStats.errors.length > 5 && (
-                        <p className="text-xs text-muted-foreground italic">
-                          ... y {uploadStats.errors.length - 5} errores más
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Ventajas del procesamiento inteligente */}
-          <Card>
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Procesamiento Inteligente
+                <Info className="h-5 w-5 text-blue-500" />
+                Nueva Tecnología de Carga
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <CardContent className="space-y-4 text-sm text-slate-600 dark:text-slate-400">
               <p>
-                • <strong>Organización:</strong> Datos clasificados por acuerdo marco
+                Hemos actualizado el sistema de carga para procesar archivos directamente en tu navegador.
               </p>
-              <p>
-                • <strong>Automático:</strong> División inteligente de archivos grandes
-              </p>
-              <p>
-                • <strong>Eficiente:</strong> Procesamiento optimizado por chunks
-              </p>
-              <p>
-                • <strong>Confiable:</strong> Manejo robusto de errores y timeouts
-              </p>
-              <p>
-                • <strong>Límite:</strong> Hasta {formatFileSize(MAX_FILE_SIZE)} por archivo
-              </p>
+              <ul className="space-y-2 list-disc pl-4">
+                <li>Sin límite de 5MB por archivo.</li>
+                <li>Procesamiento más rápido y seguro.</li>
+                <li>Validación instantánea de columnas.</li>
+                <li>Barra de progreso en tiempo real.</li>
+              </ul>
+              <div className="pt-2">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Client-Side Processing v2.0
+                </Badge>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
