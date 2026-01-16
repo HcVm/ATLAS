@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils"
 
 import SaleEditForm from "@/components/sales/sale-edit-form"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
+import MultiProductSaleForm from "@/components/sales/multi-product-sale-form"
 import PaymentVoucherDialog from "@/components/sales/payment-voucher-dialog"
 import { generateWarrantyLetter } from "@/lib/warranty-letter-generator"
 import { generateCCILetter } from "@/lib/cci-letter-generator"
@@ -649,6 +650,26 @@ export default function SalesPage() {
       {/* Dialogs - Kept mostly functionally same but with updated styling classes where applicable in child components */}
       {/* ... (Dialog implementations using the state variables defined above) ... */}
       
+      {/* New Sale Dialog */}
+      <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Nueva Venta Multi-Producto</DialogTitle>
+            <DialogDescription>Registra una nueva venta con múltiples productos</DialogDescription>
+          </DialogHeader>
+          <MultiProductSaleForm 
+            onSuccess={() => {
+              setShowNewSaleDialog(false)
+              if (companyToUse?.id) {
+                fetchSales(companyToUse.id)
+                fetchStats(companyToUse.id)
+              }
+            }}
+            onCancel={() => setShowNewSaleDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl">
