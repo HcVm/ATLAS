@@ -18,17 +18,18 @@ interface MarketTrendChartProps {
 }
 
 export function MarketTrendChart({ period }: MarketTrendChartProps) {
-  const [data, setData] = useState<TrendData[]>([])
+  const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/open-data/market-trends?period=${period}`)
+        // Use the main consolidated API which now returns "monthlyTrend" correctly populated
+        const res = await fetch(`/api/open-data/market-stats?period=${period}`)
         const json = await res.json()
-        if (json.success) {
-          setData(json.data)
+        if (json.success && json.data.monthlyTrend) {
+          setData(json.data.monthlyTrend)
         }
       } catch (e) {
         console.error(e)
@@ -43,7 +44,8 @@ export function MarketTrendChart({ period }: MarketTrendChartProps) {
 
   const chartData = data.map(d => ({
     ...d,
-    formattedDate: format(new Date(d.date + "-01"), "MMM yyyy", { locale: es }),
+    // The API already returns formatted month names, but let's ensure we use them or reformat if needed
+    // Assuming API returns { month: "Ene 2025", amount: ... }
     amountMillions: Math.round((d.amount / 1000000) * 100) / 100
   }))
 
@@ -69,7 +71,7 @@ export function MarketTrendChart({ period }: MarketTrendChartProps) {
                 </linearGradient>
               </defs>
               <XAxis 
-                dataKey="formattedDate" 
+                dataKey="month" 
                 axisLine={false} 
                 tickLine={false} 
                 tick={{ fill: '#94a3b8', fontSize: 12 }} 

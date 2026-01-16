@@ -57,7 +57,11 @@ async function fetchCatalogRankings(
   const pageSize = 1000
   let from = 0
 
+  // Increased limit for comprehensive analysis
+  const MAX_RECORDS = 50000
+
   do {
+    if (allData.length >= MAX_RECORDS) break
     const { data: page, error } = await query.range(from, from + pageSize - 1)
     if (error) throw error
     if (!page || page.length === 0) break

@@ -5,39 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DollarSign, ShoppingCart, Package, Building2, Users, TrendingUp, Calendar, Award } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 
-interface MarketStatsDashboardProps {
-  period: string
-}
-
-interface MarketStats {
-  totalAmount: number
-  totalOrders: number
-  totalProducts: number
-  totalSuppliers: number
-  totalEntities: number
-  totalAgreements: number
-  avgOrderValue: number
-  growthRate: number
-  monthlyTrend: Array<{
-    month: string
-    amount: number
-    orders: number
-  }>
-  topCategories: Array<{
-    category: string
-    amount: number
-    percentage: number
-  }>
-}
-
-export function MarketStatsDashboard({ period }: MarketStatsDashboardProps) {
-  const [stats, setStats] = useState<MarketStats | null>(null)
+export function MarketStatsDashboard() {
+  const [stats, setStats] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadStats = async () => {
       setLoading(true)
       try {
+        // Use a client-side fetch wrapper or ensure the API endpoint exists
+        // But better yet, since the parent is fetching, let's accept props or refetch
+        const searchParams = new URLSearchParams(window.location.search)
+        const period = searchParams.get("period") || "6months"
+        
         const response = await fetch(`/api/open-data/market-stats?period=${period}`)
         const result = await response.json()
 
@@ -52,7 +32,7 @@ export function MarketStatsDashboard({ period }: MarketStatsDashboardProps) {
     }
 
     loadStats()
-  }, [period])
+  }, []) // Depend on nothing, just load once on mount
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-PE", {
@@ -76,7 +56,7 @@ export function MarketStatsDashboard({ period }: MarketStatsDashboardProps) {
   }
 
   if (!stats) {
-    return null
+    return <div className="text-center p-4">No data available</div>
   }
 
   return (
@@ -131,7 +111,7 @@ export function MarketStatsDashboard({ period }: MarketStatsDashboardProps) {
         </CardHeader>
         <CardContent>
            <div className="space-y-3">
-              {stats.topCategories.slice(0, 5).map((cat, i) => (
+              {stats.topCategories && stats.topCategories.slice(0, 5).map((cat: any, i: number) => (
                  <div key={i} className="flex items-center justify-between text-sm">
                     <span className="truncate max-w-[150px] text-slate-600 dark:text-slate-400" title={cat.category}>{cat.category}</span>
                     <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(cat.amount)}</span>

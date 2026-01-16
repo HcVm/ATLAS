@@ -322,59 +322,73 @@ export default function DocumentDetailsPage() {
     }
   }
 
+  const getStorageDetails = (fileUrl: string) => {
+    try {
+      if (fileUrl.startsWith("http")) {
+        const url = new URL(fileUrl)
+        const match = url.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/)
+        if (match) {
+          return { bucket: match[1], path: match[2] }
+        }
+      }
+      return { bucket: "documents", path: fileUrl }
+    } catch (e) {
+      return { bucket: "documents", path: fileUrl }
+    }
+  }
+
   const viewFile = async (fileUrl: string) => {
     try {
-      let filePath = fileUrl
-      if (filePath.startsWith("http")) {
-        const url = new URL(filePath)
-        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/)
-        filePath = pathMatch && pathMatch[1] ? pathMatch[1] : url.pathname.replace("/storage/v1/object/public/", "")
-      }
-      const { data } = await supabase.storage.from("documents").createSignedUrl(filePath, 3600)
+      const { bucket, path } = getStorageDetails(fileUrl)
+      
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600)
       if (data?.signedUrl) {
         setViewerUrl(data.signedUrl)
         setViewerOpen(true)
       } else {
-        throw new Error("No se pudo generar la URL firmada")
+        // Fallback: use the public URL directly if signed URL generation fails (e.g. public bucket)
+        setViewerUrl(fileUrl)
+        setViewerOpen(true)
       }
     } catch (error) {
-      toast({ title: "Error", description: "No se pudo cargar la vista previa", variant: "destructive" })
+      // If everything fails, try to show the original URL
+      setViewerUrl(fileUrl)
+      setViewerOpen(true)
     }
   }
 
   const downloadFile = async (fileUrl: string, fileName?: string) => {
     try {
       setDownloadLoading(true)
-      let filePath = fileUrl
-      if (filePath.startsWith("http")) {
-        const url = new URL(filePath)
-        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/)
-        filePath = pathMatch && pathMatch[1] ? pathMatch[1] : url.pathname.replace("/storage/v1/object/public/", "")
-      }
+      const { bucket, path } = getStorageDetails(fileUrl)
       
-      const { data, error } = await supabase.storage.from("documents").download(filePath)
+      const { data, error } = await supabase.storage.from(bucket).download(path)
       if (error) throw error
       
       if (user) {
         await trackDownload({
           documentId: document.id,
           userId: user.id,
-          downloadType: "main_file",
+          downloadType: bucket === "documents" ? "main_file" : "attachment",
           fileName: fileName || document.file_name || "documento",
           fileSize: data.size
         })
       }
       
       const url = URL.createObjectURL(data)
-      const a = document.createElement("a")
+      const a = window.document.createElement("a")
       a.href = url
-      a.download = fileName || filePath.split("/").pop() || "documento"
-      document.body.appendChild(a)
+      a.download = fileName || path.split("/").pop() || "documento"
+      window.document.body.appendChild(a)
       a.click()
       URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      window.document.body.removeChild(a)
     } catch (error: any) {
+      console.error("Download error:", error)
       toast({ title: "Error", description: "No se pudo descargar el archivo", variant: "destructive" })
+      
+      // Fallback: Open in new tab if download via API fails
+      window.open(fileUrl, "_blank")
     } finally {
       setDownloadLoading(false)
     }
@@ -846,6 +860,10 @@ export default function DocumentDetailsPage() {
       {/* File Viewer Dialog */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
          <DialogContent className="max-w-5xl h-[80vh] rounded-2xl p-0 overflow-hidden">
+            <DialogHeader className="sr-only">
+               <DialogTitle>Vista Previa de Archivo</DialogTitle>
+               <DialogDescription>Visor de documentos para archivos adjuntos y principales</DialogDescription>
+            </DialogHeader>
             <div className="h-full w-full bg-slate-100 dark:bg-slate-900 flex flex-col">
                <div className="p-4 border-b bg-white dark:bg-slate-800 flex justify-between items-center">
                   <h3 className="font-semibold">Vista Previa</h3>
@@ -863,6 +881,7 @@ export default function DocumentDetailsPage() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>Estadísticas de Descarga</DialogTitle>
+            <DialogDescription>Historial de accesos y descargas de este documento</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
              {statsLoading ? (
