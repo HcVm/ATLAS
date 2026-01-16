@@ -143,32 +143,35 @@ export function ClientFollowUpDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
-        <DialogHeader>
-          <DialogTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-2xl p-0">
+        <DialogHeader className="p-6 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-sm">
+          <DialogTitle className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-indigo-500" />
             Seguimiento - {clientName}
           </DialogTitle>
-          <DialogDescription className="text-slate-600 dark:text-slate-300">
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             Registra y visualiza el historial de seguimiento del cliente
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 flex-1 min-h-0 overflow-hidden">
           {/* Formulario de nuevo seguimiento */}
-          <div className="flex flex-col border-r border-slate-200 dark:border-slate-700">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3 px-4 pt-4">Nuevo Seguimiento</h3>
+          <div className="flex flex-col border-r border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4 px-6 pt-6 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              Nuevo Seguimiento
+            </h3>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 px-4 pb-4 flex-1">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 pb-6 flex-1 overflow-y-auto">
                 <FormField
                   control={form.control}
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-700 dark:text-slate-200">Estado *</FormLabel>
+                      <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Estado *</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger className="border-slate-200 dark:border-slate-700">
+                          <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg">
                             <SelectValue placeholder="Selecciona un estado" />
                           </SelectTrigger>
                         </FormControl>
@@ -190,23 +193,27 @@ export function ClientFollowUpDialog({
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-700 dark:text-slate-200">Notas *</FormLabel>
+                      <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Notas *</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Describe el resultado del contacto, observaciones, etc..."
-                          className="border-slate-200 dark:border-slate-700 resize-none min-h-24"
+                          className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 resize-none min-h-[120px] focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
                           {...field}
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {field.value.length}/1000 caracteres
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-right">
+                        {field.value.length}/1000
                       </p>
                     </FormItem>
                   )}
                 />
 
-                <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
+                <Button 
+                  type="submit" 
+                  disabled={form.formState.isSubmitting} 
+                  className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:hover:bg-slate-200 dark:text-slate-900 rounded-lg shadow-lg shadow-slate-900/10 transition-all hover:scale-[1.02]"
+                >
                   {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Registrar Seguimiento
                 </Button>
@@ -215,38 +222,46 @@ export function ClientFollowUpDialog({
           </div>
 
           {/* Historial de seguimientos */}
-          <div className="flex flex-col">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3 px-4 pt-4">Historial</h3>
+          <div className="flex flex-col bg-slate-50/30 dark:bg-slate-800/30">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4 px-6 pt-6 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Historial
+            </h3>
             {loadingHistory ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              <div className="flex items-center justify-center py-8 flex-1">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
               </div>
             ) : followUps.length === 0 ? (
-              <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                <p className="text-sm">No hay seguimientos registrados aún</p>
+              <div className="text-center py-12 px-6 text-slate-500 dark:text-slate-400 flex-1 flex flex-col items-center justify-center">
+                <MessageSquare className="h-12 w-12 text-slate-200 dark:text-slate-700 mb-3" />
+                <p className="font-medium">No hay historial</p>
+                <p className="text-xs mt-1 max-w-[200px]">Los seguimientos registrados aparecerán aquí</p>
               </div>
             ) : (
               <ScrollArea className="flex-1">
-                <div className="space-y-3 px-4 pb-4">
+                <div className="space-y-4 px-6 pb-6">
                   {followUps.map((followUp) => (
                     <div
                       key={followUp.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2 bg-slate-50 dark:bg-slate-700/30"
+                      className="border border-slate-200/60 dark:border-slate-700/60 rounded-xl p-4 space-y-3 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <Badge variant={getStatusVariant(followUp.status)}>{getStatusLabel(followUp.status)}</Badge>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                        <Badge variant={getStatusVariant(followUp.status)} className="rounded-md capitalize shadow-none">
+                          {getStatusLabel(followUp.status)}
+                        </Badge>
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded-full">
                           {new Date(followUp.created_at).toLocaleDateString("es-ES", {
                             day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
+                            month: "short",
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
                       {followUp.notes && (
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{followUp.notes}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-1 border-l-2 border-slate-100 dark:border-slate-700">
+                          {followUp.notes}
+                        </p>
                       )}
                     </div>
                   ))}

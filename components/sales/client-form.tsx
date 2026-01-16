@@ -136,162 +136,168 @@ export function ClientForm({ open, onOpenChange, entity, companyId, onSuccess }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50">
-        <DialogHeader>
-          <DialogTitle className="text-slate-800 dark:text-slate-100">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-2xl p-0">
+        <DialogHeader className="p-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <DialogTitle className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
             {isEditing ? "Editar Cliente" : "Crear Nuevo Cliente"}
           </DialogTitle>
-          <DialogDescription className="text-slate-600 dark:text-slate-300">
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             {isEditing ? "Actualiza la información del cliente" : "Registra un nuevo cliente (entidad) en el sistema"}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Nombre de la Entidad *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Nombre completo de la entidad"
-                      className="border-slate-200 dark:border-slate-700"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="ruc"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">RUC *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="20123456789" className="border-slate-200 dark:border-slate-700" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="client_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Tipo de Cliente *</FormLabel>
-                  <Select value={field.value || "private"} onValueChange={field.onChange}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Nombre de la Entidad *</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="border-slate-200 dark:border-slate-700">
-                        <SelectValue placeholder="Selecciona un tipo" />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="Nombre completo de la entidad"
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
+                        {...field}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="private">Privado</SelectItem>
-                      <SelectItem value="government">Gubernamental</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="executing_unit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Unidad Ejecutora (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ej: 001, 002, etc."
-                      className="border-slate-200 dark:border-slate-700"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="ruc"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">RUC *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="20123456789" 
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg font-mono" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="fiscal_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Dirección Fiscal (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Dirección fiscal de la entidad"
-                      className="border-slate-200 dark:border-slate-700"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="client_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Tipo de Cliente *</FormLabel>
+                    <Select value={field.value || "private"} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg">
+                          <SelectValue placeholder="Selecciona un tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="private">Privado</SelectItem>
+                        <SelectItem value="government">Gubernamental</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Correo Electrónico (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="correo@ejemplo.com"
-                      type="email"
-                      className="border-slate-200 dark:border-slate-700"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="executing_unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Unidad Ejecutora (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ej: 001, 002, etc."
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="contact_person"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-slate-700 dark:text-slate-200">Persona de Contacto (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Nombre de la persona de contacto"
-                      className="border-slate-200 dark:border-slate-700"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="fiscal_address"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Dirección Fiscal (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Dirección fiscal de la entidad"
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="flex gap-2 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Correo Electrónico (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="correo@ejemplo.com"
+                        type="email"
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="contact_person"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Persona de Contacto (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nombre de la persona de contacto"
+                        className="bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-10 focus:ring-2 focus:ring-indigo-500/20 rounded-lg"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-6 border-t border-slate-100 dark:border-slate-800 mt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="border-slate-200 dark:border-slate-700"
+                className="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-6"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={form.formState.isSubmitting}
-                className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700"
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:hover:bg-slate-200 dark:text-slate-900 rounded-lg px-6 shadow-lg shadow-slate-900/10 transition-all hover:scale-[1.02]"
               >
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? "Actualizar" : "Crear"} Cliente

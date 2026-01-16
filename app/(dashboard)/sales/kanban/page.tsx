@@ -13,7 +13,7 @@ import { es } from "date-fns/locale"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,6 +27,7 @@ import {
   CheckCircle,
   Truck,
   ArrowRight,
+  RefreshCw,
   Eye,
   Edit,
   Info,
@@ -38,10 +39,13 @@ import {
   FileCheck,
   History,
   XCircle,
+  LayoutGrid,
+  List,
 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { DeliveryAttachments } from "@/components/deliveries/delivery-attachments"
 import { DeliveryDocumentsLink } from "@/components/deliveries/delivery-documents-link"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Delivery {
   id: string
@@ -129,42 +133,42 @@ const KANBAN_COLUMNS: Omit<KanbanColumn, "deliveries">[] = [
     id: "entrega-pendiente",
     title: "Entrega Pendiente",
     deliveryStatus: "pending",
-    color: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800",
+    color: "bg-yellow-50/50 border-yellow-200/50 dark:bg-yellow-950/10 dark:border-yellow-800/50",
     icon: Clock,
   },
   {
     id: "en-preparacion",
     title: "En Preparación",
     deliveryStatus: "preparing",
-    color: "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800",
+    color: "bg-blue-50/50 border-blue-200/50 dark:bg-blue-950/10 dark:border-blue-800/50",
     icon: Package,
   },
   {
     id: "enviado",
     title: "Enviado",
     deliveryStatus: "shipped",
-    color: "bg-purple-50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-800",
+    color: "bg-purple-50/50 border-purple-200/50 dark:bg-purple-950/10 dark:border-purple-800/50",
     icon: Truck,
   },
   {
     id: "entregado",
     title: "Entregado",
     deliveryStatus: "delivered",
-    color: "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800",
+    color: "bg-green-50/50 border-green-200/50 dark:bg-green-950/10 dark:border-green-800/50",
     icon: CheckCircle,
   },
   {
     id: "guia-firmada",
     title: "Guía Firmada",
     deliveryStatus: "signed_guide",
-    color: "bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700",
+    color: "bg-emerald-50/50 border-emerald-300/50 dark:bg-emerald-950/20 dark:border-emerald-700/50",
     icon: FileCheck,
   },
   {
     id: "cancelado",
     title: "Cancelado",
     deliveryStatus: "cancelled",
-    color: "bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700",
+    color: "bg-red-50/50 border-red-300/50 dark:bg-red-950/20 dark:border-red-700/50",
     icon: XCircle,
   },
 ]
@@ -215,7 +219,7 @@ const DeliveryDetailsDialog = memo(
 
     return (
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Detalles Completos de Entrega</DialogTitle>
           </DialogHeader>
@@ -460,7 +464,7 @@ const DeliveryCard = memo(
   }) => {
     const isDelivered = delivery.delivery_status === "delivered"
     const isSignedGuide = delivery.delivery_status === "signed_guide"
-    const isCancelled = delivery.delivery_status === "cancelled" // Check for cancelled status
+    const isCancelled = delivery.delivery_status === "cancelled"
 
     const parseDate = (dateString: string) => {
       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -471,274 +475,132 @@ const DeliveryCard = memo(
     }
 
     const cardColorClass = isCancelled
-      ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" // Red color for cancelled
+      ? "bg-red-50/50 dark:bg-red-950/10 border-red-200/60 dark:border-red-800/60 hover:border-red-300 dark:hover:border-red-700"
       : isSignedGuide
-        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-        : ""
+        ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200/60 dark:border-emerald-800/60 hover:border-emerald-300 dark:hover:border-emerald-700"
+        : isDelivered
+          ? "bg-green-50/50 dark:bg-green-950/10 border-green-200/60 dark:border-green-800/60 hover:border-green-300 dark:hover:border-green-700"
+          : "bg-white/80 dark:bg-slate-900/80 border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-300 dark:hover:border-indigo-700"
 
     const cardContent = (provided?: any, snapshot?: any) => (
       <div
         ref={provided?.innerRef}
         {...(provided?.draggableProps || {})}
         {...(provided?.dragHandleProps || {})}
-        className={`board-card mb-3 rounded-lg border transition-all duration-200 ease-out will-change-transform max-w-full overflow-hidden ${
+        className={`group relative mb-3 rounded-2xl border backdrop-blur-xl transition-all duration-300 ease-out will-change-transform max-w-full overflow-hidden ${
           snapshot?.isDragging
-            ? "shadow-2xl scale-105 z-50 bg-background/95 backdrop-blur-sm border-primary/50"
-            : "hover:shadow-lg hover:scale-[1.02]"
-        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${cardColorClass} ${
-          isDelivered && !isSignedGuide ? "p-2 sm:p-3" : "p-3 sm:p-4"
-        }`}
+            ? "shadow-2xl scale-105 z-50 bg-white/95 dark:bg-slate-900/95 border-primary/50 ring-2 ring-primary/20"
+            : "hover:shadow-xl hover:shadow-slate-200/40 dark:hover:shadow-slate-900/40 hover:-translate-y-1 shadow-sm"
+        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${cardColorClass}`}
         style={provided?.draggableProps?.style}
       >
-        {isDelivered || isSignedGuide || isCancelled ? ( // Apply this style for delivered, signed_guide, and cancelled
-          <div className="space-y-1.5 sm:space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-xs sm:text-sm text-foreground truncate">
-                  Venta #{delivery.sales.sale_number || "N/A"}
+        {/* Decorative Gradient Background on Hover */}
+        <div className={`absolute inset-0 bg-gradient-to-br from-white/0 to-white/0 group-hover:from-indigo-500/5 group-hover:to-purple-500/5 transition-all duration-500`} />
+
+        <div className={`relative ${isDelivered && !isSignedGuide ? "p-3 sm:p-4" : "p-4 sm:p-5"}`}>
+          {/* Header: Sale Number & Date */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shadow-inner flex-shrink-0 ${
+                isCancelled ? "bg-red-100 dark:bg-red-900/30 text-red-600" :
+                isSignedGuide ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600" :
+                isDelivered ? "bg-green-100 dark:bg-green-900/30 text-green-600" :
+                "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 transition-colors"
+              }`}>
+                <Package2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-tight">
+                  #{delivery.sales.sale_number || "S/N"}
                 </h4>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{delivery.sales.entity_name}</p>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Badge
-                  variant="secondary"
-                  className={
-                    isSignedGuide
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                      : isCancelled
-                        ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" // Cancelled badge
-                        : ""
-                  }
-                >
-                  {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
-                </Badge>
-
-                {/* Botón de edición (i) */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
-                  onClick={() => onEditDelivery(delivery)}
-                >
-                  <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                </Button>
-
-                {/* Botón de vista completa */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
-                  onClick={() => onViewDetails(delivery)}
-                >
-                  <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span className="text-xs sm:text-sm font-semibold text-foreground">
-                  S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              {delivery.actual_delivery_date && (
-                <div
-                  className={`text-[10px] sm:text-xs font-medium ${isSignedGuide ? "text-emerald-600" : isCancelled ? "text-red-600" : "text-green-600"}`}
-                >
-                  {format(parseDate(delivery.actual_delivery_date), "dd/MM/yy", { locale: es })}
-                </div>
-              )}
-            </div>
-
-            {delivery.sales.warehouse_manager && (
-              <div className="flex items-center gap-1">
-                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                  Almacén: {delivery.sales.warehouse_manager}
-                </span>
-              </div>
-            )}
-          </div> // Style for other statuses
-        ) : (
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <h4 className="font-semibold text-xs sm:text-sm text-foreground truncate">
-                  Venta #{delivery.sales.sale_number || "N/A"}
-                </h4>
-                {delivery.sales.ocam && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] sm:text-xs mt-1 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-300 font-bold"
-                  >
-                    OCAM: {delivery.sales.ocam}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-500">
+                    {format(parseDate(delivery.sales.sale_date), "dd MMM", { locale: es })}
                   </Badge>
-                )}
+                  {delivery.sales.ocam && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300 border-0">
+                      OCAM
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 py-0">
-                  {format(parseDate(delivery.sales.sale_date), "dd/MM", { locale: es })}
-                </Badge>
-                <Badge variant="outline" className="text-[10px] sm:text-xs px-1 py-0">
-                  {delivery.sales.sale_status}
-                </Badge>
+            </div>
+            
+            <div className="flex gap-1">
+               {/* Actions */}
+               <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-primary/10 transition-colors"
-                  onClick={() => onEditDelivery(delivery)}
+                  size="icon"
+                  className="h-6 w-6 rounded-md hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 hover:shadow-sm transition-all"
+                  onClick={(e) => { e.stopPropagation(); onEditDelivery(delivery); }}
+                  title="Editar"
                 >
-                  <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                  <Edit className="h-3 w-3" />
                 </Button>
-              </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-md hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 hover:shadow-sm transition-all"
+                  onClick={(e) => { e.stopPropagation(); onViewDetails(delivery); }}
+                  title="Ver Detalles"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </Button>
+               </div>
             </div>
+          </div>
 
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-foreground truncate" title={delivery.sales.entity_name}>
-                {delivery.sales.entity_name}
-              </p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">RUC: {delivery.sales.entity_ruc}</p>
-            </div>
-
-            {delivery.sales.final_destination && (
-              <div className="min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Dirección:</p>
+          {/* Content: Client & Details */}
+          <div className="space-y-2 mb-3">
+             <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
+                <User className="h-4 w-4 text-slate-400 group-hover/item:text-indigo-500 transition-colors flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                   <p className="font-medium truncate leading-tight">{delivery.sales.entity_name}</p>
+                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">RUC: {delivery.sales.entity_ruc}</p>
                 </div>
-                <p className="text-xs sm:text-sm truncate" title={delivery.sales.final_destination}>
-                  {delivery.sales.final_destination}
-                </p>
-              </div>
-            )}
+             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-1 mb-0.5">
-                <Package2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Productos:</p>
-              </div>
-              <div className="space-y-1">
-                {delivery.sales.is_multi_product && delivery.sales.items_count && delivery.sales.items_count > 1 ? (
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-medium truncate">
-                      {delivery.sales.items_count} productos diferentes
-                    </p>
-                    <div className="text-[10px] sm:text-xs text-muted-foreground space-y-0.5">
-                      {delivery.sales.sale_items.slice(0, 2).map((item, index) => (
-                        <p key={index} className="truncate">
-                          • {item.product_name} (x{item.quantity})
-                          {item.product_code && (
-                            <span className="ml-1 font-mono text-[10px] bg-muted px-1 rounded">
-                              {item.product_code}
-                            </span>
-                          )}
-                        </p>
-                      ))}
-                      {delivery.sales.sale_items.length > 2 && (
-                        <p className="text-[10px]">• +{delivery.sales.sale_items.length - 2} más</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  delivery.sales.sale_items &&
-                  delivery.sales.sale_items.length > 0 && (
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm truncate" title={delivery.sales.sale_items[0].product_name}>
-                        {delivery.sales.sale_items[0].product_name}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
-                        <span>Cantidad: {delivery.sales.sale_items[0].quantity}</span>
-                        {delivery.sales.sale_items[0].product_code && (
-                          <span className="font-mono bg-muted px-1 rounded truncate">
-                            {delivery.sales.sale_items[0].product_code}
-                          </span>
-                        )}
-                        {delivery.sales.sale_items[0].product_brand && (
-                          <span className="truncate">• {delivery.sales.sale_items[0].product_brand}</span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                )}
-                {(!delivery.sales.sale_items || delivery.sales.sale_items.length === 0) && (
-                  <p className="text-xs sm:text-sm text-muted-foreground">Sin productos</p>
-                )}
-              </div>
-            </div>
+             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
+                <DollarSign className="h-4 w-4 text-slate-400 group-hover/item:text-emerald-500 transition-colors flex-shrink-0" />
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                   S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </span>
+             </div>
 
-            {delivery.tracking_number && (
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Tracking:</p>
-                <p className="text-xs sm:text-sm font-mono truncate">{delivery.tracking_number}</p>
-              </div>
-            )}
-
-            {(delivery.sales.delivery_start_date || delivery.sales.delivery_end_date) && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs text-muted-foreground">Plazo de Entrega:</span>
+             {delivery.sales.final_destination && (
+                <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 group/item">
+                   <MapPin className="h-3.5 w-3.5 text-slate-400 group-hover/item:text-red-500 transition-colors flex-shrink-0 mt-0.5" />
+                   <p className="truncate leading-relaxed">{delivery.sales.final_destination}</p>
                 </div>
-                {delivery.sales.delivery_start_date && delivery.sales.delivery_end_date ? (
-                  <div className="text-[10px] sm:text-xs bg-blue-50 border border-blue-200 p-1.5 sm:p-2 rounded">
-                    <span className="text-blue-700 font-medium">
-                      {format(parseDate(delivery.sales.delivery_start_date), "dd/MM", { locale: es })} -{" "}
-                      {format(parseDate(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
-                    </span>
+             )}
+          </div>
+
+          {/* Footer: Tags & Status */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50 mt-2">
+            <div className="flex items-center gap-2">
+               {delivery.sales.warehouse_manager && (
+                  <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-100 dark:border-slate-800">
+                     <User className="h-3 w-3" />
+                     <span className="truncate max-w-[80px]">{delivery.sales.warehouse_manager}</span>
                   </div>
-                ) : (
-                  <div className="text-[10px] sm:text-xs">
-                    {delivery.sales.delivery_start_date && (
-                      <span className="text-blue-600">
-                        Inicio: {format(parseDate(delivery.sales.delivery_start_date), "dd/MM/yy", { locale: es })}
-                      </span>
-                    )}
-                    {delivery.sales.delivery_end_date && (
-                      <span className="text-blue-600">
-                        Fin: {format(parseDate(delivery.sales.delivery_end_date), "dd/MM/yy", { locale: es })}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {delivery.sales.warehouse_manager && (
-              <div className="flex items-center gap-1 min-w-0">
-                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                  Almacén: {delivery.sales.warehouse_manager}
-                </span>
-              </div>
-            )}
-
-            {delivery.assigned_user?.full_name && (
-              <div className="flex items-center gap-1 min-w-0">
-                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                  Asignado: {delivery.assigned_user.full_name}
-                </span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-1.5 sm:pt-2 border-t border-border">
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
-                <span className="text-xs sm:text-sm font-semibold text-foreground">
-                  S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+               )}
             </div>
-
-            {canViewAllSales && delivery.sales.profiles?.full_name && (
-              <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                Vendedor: {delivery.sales.profiles.full_name}
-              </div>
+            
+            {delivery.actual_delivery_date && (
+               <Badge variant="outline" className={`text-[10px] font-medium border-0 ${
+                  isSignedGuide ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : 
+                  isCancelled ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+               }`}>
+                  {isSignedGuide ? "Firmado: " : isCancelled ? "Cancelado: " : "Entregado: "}
+                  {format(parseDate(delivery.actual_delivery_date), "dd/MM", { locale: es })}
+               </Badge>
             )}
+          </div>
 
             {!isDraggable && canEditDeliveryStatus && onMoveCard && (
-              <div className="pt-2 border-t border-border">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 mt-2">
                 <Label className="text-[10px] text-muted-foreground mb-1 block">Mover a:</Label>
                 <Select value={delivery.delivery_status} onValueChange={(value) => onMoveCard(delivery.id, value)}>
                   <SelectTrigger className="h-8 text-xs">
@@ -761,8 +623,7 @@ const DeliveryCard = memo(
                 </Select>
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
     )
 
@@ -793,7 +654,7 @@ export default function SalesKanbanPage() {
   const [editingDelivery, setEditingDelivery] = useState<Partial<Delivery>>({})
   const [isDragging, setIsDragging] = useState(false)
   const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null)
-  const [activeTab, setActiveTab] = useState("entrega-pendiente")
+  const [viewMode, setViewMode] = useState<"board" | "list">("board")
 
   const companyToUse = useMemo(() => {
     if (user?.role === "admin") {
@@ -941,6 +802,7 @@ export default function SalesKanbanPage() {
         sale_items (product_name, product_brand, product_code, product_description, quantity)
       `)
         .eq("company_id", companyToUse.id)
+        .neq("sale_status", "rechazada")
 
       if (!canViewAllSales && user?.id) {
         salesQuery = salesQuery.eq("created_by", user.id)
@@ -1004,8 +866,6 @@ export default function SalesKanbanPage() {
       }))
 
       setColumns(organizedColumns)
-      const firstWithData = organizedColumns.find((c) => c.deliveries.length > 0)
-      setActiveTab(firstWithData?.id || organizedColumns[0].id)
     } catch (error: any) {
       toast.error("Error al cargar las entregas: " + error.message)
     } finally {
@@ -1059,10 +919,6 @@ export default function SalesKanbanPage() {
           ...movedItem,
           delivery_status: destCol.deliveryStatus,
         })
-
-        if (source.droppableId !== destination.droppableId) {
-          setActiveTab(destination.droppableId)
-        }
 
         return prevColumns.map((col) => {
           if (col.id === source.droppableId) return { ...col, deliveries: newSourceDeliveries }
@@ -1253,11 +1109,6 @@ export default function SalesKanbanPage() {
         const newSourceDeliveries = sourceCol.deliveries.filter((d) => d.id !== deliveryId)
         const newDestDeliveries = [...destCol.deliveries, { ...movedItem, delivery_status: newStatus }]
 
-        const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
-        if (destColumnInfo) {
-          setActiveTab(destColumnInfo.id)
-        }
-
         return prevColumns.map((col) => {
           if (col.deliveryStatus === oldStatus) return { ...col, deliveries: newSourceDeliveries }
           if (col.deliveryStatus === newStatus) return { ...col, deliveries: newDestDeliveries }
@@ -1334,342 +1185,385 @@ export default function SalesKanbanPage() {
         }
 
         const destColumnInfo = KANBAN_COLUMNS.find((c) => c.deliveryStatus === newStatus)
-        toast.success(`Entrega movida a ${destColumnInfo?.title}`)
+        toast.success(`Entrega movida a ${destColumnInfo?.title || newStatus}`)
       } catch (error: any) {
         setColumns(originalColumns)
-        toast.error("Error al actualizar el estado: " + error.message)
+        toast.error("Error al mover la entrega: " + error.message)
       }
     },
     [canEditDeliveryStatus, columns, user?.id],
   )
 
-  const memoizedColumns = useMemo(() => columns, [columns])
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
 
-  if (!hasSalesAccess || !companyToUse) {
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
+  if (loading && columns.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen p-4">
-        <Card className="w-full max-w-md text-center p-6">
-          <CardHeader>
-            <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
-            <CardTitle className="mt-4 text-2xl">Acceso Denegado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              {!hasSalesAccess
-                ? "No tienes los permisos necesarios para acceder a esta página."
-                : "Por favor, selecciona una empresa para continuar."}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground animate-pulse">Cargando tablero...</p>
+        </div>
       </div>
     )
   }
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6 animate-pulse">
-        <div className="h-10 bg-gray-200 rounded w-1/3 mb-6"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-96 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-      </div>
-    )
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "preparing":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "shipped":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      case "delivered":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "signed_guide":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200"
+      default:
+        return "bg-slate-100 text-slate-800 border-slate-200"
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    const col = KANBAN_COLUMNS.find((c) => c.deliveryStatus === status)
+    return col ? col.title : status
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-foreground/60 bg-clip-text text-transparent">
-            Tablero de Entregas
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Gestión visual del estado de entregas de:{" "}
-            <span className="font-semibold text-foreground">{companyToUse?.name || "N/A"}</span>
-            {!canViewAllSales && <span className="ml-2 text-xs text-orange-600 font-medium">(Solo tus ventas)</span>}
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            {canEditDeliveryStatus ? (
-              <Badge variant="default" className="text-[10px] sm:text-xs">
-                <Edit className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                Modo Edición
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                Solo Lectura
-              </Badge>
-            )}
+    <>
+      <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-800/50 p-2 sm:p-4 overflow-hidden">
+        <motion.div 
+          className="space-y-4 flex-shrink-0 mb-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+              <Truck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              Tablero de Entregas
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Gestión de: <span className="font-semibold text-foreground">{companyToUse?.name || "N/A"}</span>
+              {!canViewAllSales && <span className="ml-2 text-xs text-orange-600 font-medium">(Tus ventas)</span>}
+            </p>
           </div>
-        </div>
-        <Button onClick={fetchDeliveries} variant="outline" size="sm" className="w-full sm:w-auto bg-transparent">
-          <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-          Actualizar
-        </Button>
-      </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg flex items-center">
+              <Button
+                variant={viewMode === "board" ? "white" : "ghost"}
+                size="sm"
+                className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "board" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
+                onClick={() => setViewMode("board")}
+              >
+                <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                Tablero
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "white" : "ghost"}
+                size="sm"
+                className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-3.5 w-3.5 mr-1.5" />
+                Lista
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-1.5">
+              {canEditDeliveryStatus ? (
+                <Badge variant="default" className="text-[10px] h-7 px-2">
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edición
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] h-7 px-2">
+                  <Eye className="h-3 w-3 mr-1" />
+                  Lectura
+                </Badge>
+              )}
+            </div>
+            <Button
+              onClick={fetchDeliveries}
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Actualizar
+            </Button>
+          </div>
+        </motion.div>
 
-      <div className="lg:hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full gap-1 h-auto p-1 bg-muted/50 overflow-x-auto">
-            {memoizedColumns.map((column) => {
-              const Icon = column.icon
-              const isActive = activeTab === column.id
-              return (
-                <TabsTrigger
-                  key={column.id}
-                  value={column.id}
-                  className={`flex flex-col items-center gap-1 py-2 px-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all ${
-                    isActive ? "border-b-2 border-primary" : ""
-                  }`}
-                >
-                  <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                  <span
-                    className={`text-[8px] sm:text-xs font-medium leading-tight text-center truncate ${
-                      isActive ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {column.title.split(" ")[0]}
-                  </span>
-                  <Badge
-                    variant={isActive ? "default" : "secondary"}
-                    className="text-[8px] px-1 py-0 min-w-[18px] justify-center"
-                  >
-                    {column.deliveries.length}
-                  </Badge>
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
-
-          {memoizedColumns.map((column) => (
-            <TabsContent key={column.id} value={column.id} className="mt-4">
-              <div className="space-y-3">
-                {column.deliveries.length > 0 ? (
-                  column.deliveries.map((delivery, index) => (
-                    <DeliveryCard
-                      key={delivery.id}
-                      delivery={delivery}
-                      index={index}
-                      canEditDeliveryStatus={canEditDeliveryStatus}
-                      getProductDisplayName={getProductDisplayName}
-                      canViewAllSales={canViewAllSales}
-                      onEditDelivery={handleEditDelivery}
-                      onViewDetails={handleViewDetails}
-                      isDraggable={false}
-                      onMoveCard={handleMoveCard}
-                    />
-                  ))
-                ) : (
-                  <Card className={`${column.color} border-2`}>
-                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                      <column.icon className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground font-medium">
-                        No hay entregas en {column.title.toLowerCase()}
-                      </p>
-                      <p className="text-xs text-muted-foreground/70 mt-1">
-                        Las entregas aparecerán aquí cuando cambien de estado
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-
-      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="hidden lg:grid lg:grid-cols-5 lg:gap-6">
-          {memoizedColumns.map((column) => (
-            <div key={column.id} className="space-y-4">
-              <div className={`rounded-lg border-2 ${column.color} p-4 transition-all duration-200`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <column.icon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold text-base text-foreground">{column.title}</h3>
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {column.deliveries.length}
-                  </Badge>
-                </div>
-
-                <Droppable
-                  droppableId={column.id}
-                  isDropDisabled={!canEditDeliveryStatus || column.deliveryStatus === "cancelled"}
-                >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-[400px] space-y-2 transition-all duration-200 ease-out rounded-lg ${
-                        snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
-                          ? "bg-primary/5 border-2 border-dashed border-primary/30 p-2"
-                          : ""
-                      } ${isDragging && canEditDeliveryStatus ? "bg-muted/30" : ""}`}
-                    >
-                      {column.deliveries.map((delivery, index) => (
-                        <DeliveryCard
-                          key={delivery.id}
-                          delivery={delivery}
-                          index={index}
-                          canEditDeliveryStatus={canEditDeliveryStatus}
-                          getProductDisplayName={getProductDisplayName}
-                          canViewAllSales={canViewAllSales}
-                          onEditDelivery={handleEditDelivery}
-                          onViewDetails={handleViewDetails}
-                          isDraggable={true}
-                        />
-                      ))}
-                      {provided.placeholder}
-
-                      {column.deliveries.length === 0 && (
+        {viewMode === "board" ? (
+          /* Kanban Board View */
+          <div className="flex-1 overflow-x-auto overflow-y-hidden">
+            <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
+              <div className="flex h-full gap-3 min-w-max pb-2">
+                {columns.map((column) => (
+                  <div key={column.id} className="w-[280px] 2xl:w-[320px] flex-shrink-0 flex flex-col h-full max-h-full">
+                    <Droppable droppableId={column.id} isDropDisabled={!canEditDeliveryStatus}>
+                      {(provided, snapshot) => (
                         <div
-                          className={`flex items-center justify-center h-32 text-muted-foreground text-sm border-2 border-dashed rounded-lg transition-all duration-200 ${
-                            snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
-                              ? "border-primary/50 bg-primary/5 text-primary"
-                              : "border-muted"
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`rounded-xl border-2 ${column.color} flex flex-col h-full max-h-full transition-all duration-300 ${
+                            snapshot.isDraggingOver && canEditDeliveryStatus
+                              ? "ring-2 ring-primary/50 scale-[1.01] bg-slate-50/80 dark:bg-slate-900/80 z-10"
+                              : ""
                           }`}
                         >
-                          {snapshot.isDraggingOver && canEditDeliveryStatus && column.deliveryStatus !== "cancelled"
-                            ? "Suelta aquí para cambiar estado"
-                            : "No hay entregas en esta etapa"}
+                          <div className="flex-shrink-0 p-3 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                            <h3 className="font-bold text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                              <column.icon className="h-4 w-4" />
+                              {column.title}
+                            </h3>
+                            <Badge variant="secondary" className="bg-white/50 dark:bg-black/20 backdrop-blur-sm font-mono text-[10px] h-5 min-w-[1.25rem] flex items-center justify-center px-1">
+                              {column.deliveries.length}
+                            </Badge>
+                          </div>
+
+                          <div className="flex-1 overflow-y-auto p-2 min-h-0 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                            <div className="space-y-2">
+                              {column.deliveries.map((delivery, index) => (
+                                <DeliveryCard
+                                  key={delivery.id}
+                                  delivery={delivery}
+                                  index={index}
+                                  canEditDeliveryStatus={canEditDeliveryStatus}
+                                  getProductDisplayName={getProductDisplayName}
+                                  canViewAllSales={canViewAllSales}
+                                  onEditDelivery={handleEditDelivery}
+                                  onViewDetails={handleViewDetails}
+                                  isDraggable={true}
+                                />
+                              ))}
+                              {provided.placeholder}
+                              {column.deliveries.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground opacity-50 border-2 border-dashed rounded-lg border-slate-200 dark:border-slate-700 m-1">
+                                  <column.icon className="h-6 w-6 mb-1" />
+                                  <p className="text-xs font-medium">Vacío</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
-                    </div>
-                  )}
-                </Droppable>
+                    </Droppable>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
-      </DragDropContext>
+            </DragDropContext>
+          </div>
+        ) : (
+          /* List View */
+          <div className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shadow-lg">
+            <table className="w-full text-sm text-left relative">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-medium sticky top-0 z-10 backdrop-blur-md">
+                <tr>
+                  <th className="px-4 py-3">Venta</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3">Fecha Venta</th>
+                  <th className="px-4 py-3">Entrega</th>
+                  <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {columns.flatMap(col => col.deliveries).map((delivery) => (
+                  <tr key={delivery.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
+                        #{delivery.sales.sale_number || "S/N"}
+                      </div>
+                      {delivery.sales.ocam && (
+                        <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
+                          OCAM: {delivery.sales.ocam}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium max-w-[200px] truncate" title={delivery.sales.entity_name}>
+                        {delivery.sales.entity_name}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {delivery.sales.entity_ruc}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {canEditDeliveryStatus ? (
+                        <Select
+                          value={delivery.delivery_status}
+                          onValueChange={(value) => handleMoveCard(delivery.id, value)}
+                          disabled={delivery.delivery_status === "cancelled"}
+                        >
+                          <SelectTrigger className={`h-8 w-fit min-w-[140px] border-0 ${getStatusBadge(delivery.delivery_status)}`}>
+                            <SelectValue>{getStatusLabel(delivery.delivery_status)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {KANBAN_COLUMNS.filter(col => col.deliveryStatus !== "cancelled").map((col) => (
+                              <SelectItem key={col.deliveryStatus} value={col.deliveryStatus}>
+                                <div className="flex items-center gap-2">
+                                  <col.icon className="h-4 w-4" />
+                                  {col.title}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline" className={`${getStatusBadge(delivery.delivery_status)} font-normal`}>
+                          {getStatusLabel(delivery.delivery_status)}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {format(new Date(delivery.sales.sale_date), "dd MMM yyyy", { locale: es })}
+                    </td>
+                    <td className="px-4 py-3">
+                      {delivery.actual_delivery_date ? (
+                        <span className="text-green-600 font-medium flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          {format(new Date(delivery.actual_delivery_date), "dd/MM", { locale: es })}
+                        </span>
+                      ) : delivery.sales.delivery_end_date ? (
+                        <span className="text-blue-600 flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs italic">Sin fecha</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 font-medium">
+                      S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-500 hover:text-indigo-600"
+                          onClick={() => handleEditDelivery(delivery)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-500 hover:text-indigo-600"
+                          onClick={() => handleViewDetails(delivery)}
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {columns.every(col => col.deliveries.length === 0) && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      No se encontraron entregas
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      <DeliveryDetailsDialog
-        delivery={viewingDelivery}
-        open={!!viewingDelivery}
-        onClose={() => setViewingDelivery(null)}
-      />
+        <DeliveryDetailsDialog
+          delivery={viewingDelivery}
+          open={!!viewingDelivery}
+          onClose={() => setViewingDelivery(null)}
+        />
 
-      {selectedDelivery && (
-        <Dialog open={!!selectedDelivery} onOpenChange={() => setSelectedDelivery(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
-            <div className="p-6 pb-0">
-              <DialogHeader>
-                <DialogTitle>Detalles de Entrega - Venta #{selectedDelivery.sales.sale_number}</DialogTitle>
-              </DialogHeader>
-            </div>
-
-            <Tabs defaultValue="info" className="w-full">
-              <div className="px-6">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="info">Información</TabsTrigger>
-                  <TabsTrigger value="archivos">Archivos</TabsTrigger>
-                  <TabsTrigger value="documentos">Documentos</TabsTrigger>
-                </TabsList>
-              </div>
-
-              <div className="max-h-[60vh] overflow-y-auto px-6 pb-6">
-                {/* === PESTAÑA INFORMACIÓN === */}
-                <TabsContent value="info" className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="tracking">Número de Seguimiento</Label>
-                    <Input
-                      id="tracking"
-                      value={editingDelivery.tracking_number || ""}
-                      onChange={(e) => setEditingDelivery((prev) => ({ ...prev, tracking_number: e.target.value }))}
-                      placeholder="Ej: TRK123456789"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="notes">Notas de Entrega</Label>
-                    <Textarea
-                      id="notes"
-                      value={editingDelivery.notes || ""}
-                      onChange={(e) => setEditingDelivery((prev) => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Instrucciones especiales, dirección, etc."
-                      rows={4}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleUpdateDelivery} className="flex-1">
-                      Guardar
-                    </Button>
-                    <Button variant="outline" onClick={() => setSelectedDelivery(null)} className="flex-1">
-                      Cancelar
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                {/* === PESTAÑA ARCHIVOS === */}
-                <TabsContent value="archivos" className="space-y-4 mt-4">
+        <Dialog open={!!selectedDelivery} onOpenChange={(open) => !open && setSelectedDelivery(null)}>
+          <DialogContent className="sm:max-w-[425px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Editar Entrega</DialogTitle>
+              <DialogDescription>Actualiza los detalles de la entrega.</DialogDescription>
+            </DialogHeader>
+            {selectedDelivery && (
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="tracking">Número de Tracking</Label>
+                  <Input
+                    id="tracking"
+                    value={editingDelivery.tracking_number || ""}
+                    onChange={(e) => setEditingDelivery({ ...editingDelivery, tracking_number: e.target.value })}
+                    placeholder="Ej: 123456789"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="assigned">Asignado a</Label>
+                  <Input
+                    id="assigned"
+                    value={editingDelivery.assigned_to || ""}
+                    onChange={(e) => setEditingDelivery({ ...editingDelivery, assigned_to: e.target.value })}
+                    placeholder="Nombre del repartidor"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="notes">Notas</Label>
+                  <Textarea
+                    id="notes"
+                    value={editingDelivery.notes || ""}
+                    onChange={(e) => setEditingDelivery({ ...editingDelivery, notes: e.target.value })}
+                    placeholder="Notas adicionales..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Documentos</Label>
+                  <DeliveryDocumentsLink 
+                    deliveryId={selectedDelivery.id} 
+                    linkedDocuments={selectedDelivery.delivery_documents || []}
+                    onDocumentsChange={(docs: any) => {
+                        setSelectedDelivery((prev) => prev ? ({ ...prev, delivery_documents: docs }) : null)
+                    }}
+                    companyId={selectedDelivery.sales.company_id}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Adjuntos</Label>
                   <DeliveryAttachments
                     deliveryId={selectedDelivery.id}
                     attachments={selectedDelivery.delivery_attachments || []}
-                    onAttachmentsChange={(attachments) => {
-                      setSelectedDelivery((prev) => (prev ? { ...prev, delivery_attachments: attachments } : null))
+                    onAttachmentsChange={(atts: any) => {
+                        setSelectedDelivery((prev) => prev ? ({ ...prev, delivery_attachments: atts }) : null)
                     }}
-                    canEdit={true}
+                    canEdit={canEditDeliveryStatus}
                   />
-                </TabsContent>
-
-                {/* === PESTAÑA DOCUMENTOS === */}
-                <TabsContent value="documentos" className="space-y-4 mt-4">
-                  <div className="max-w-full overflow-hidden">
-                    <DeliveryDocumentsLink
-                      deliveryId={selectedDelivery.id}
-                      linkedDocuments={selectedDelivery.delivery_documents || []}
-                      onDocumentsChange={(documents) => {
-                        setSelectedDelivery((prev) => (prev ? { ...prev, delivery_documents: documents } : null))
-                      }}
-                      companyId={selectedDelivery.sales?.company_id}
-                    />
-                  </div>
-                </TabsContent>
+                </div>
               </div>
-            </Tabs>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedDelivery(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateDelivery}>Guardar Cambios</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
-
-      <Card className="bg-muted/50">
-        <CardHeader>
-          <CardTitle className="text-lg">Cómo usar el tablero</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            • <strong>Sistema independiente:</strong> Este tablero maneja entregas separadas de los estados de venta
-          </p>
-          <p>
-            • <strong>Permisos:</strong> Solo supervisores y administradores pueden mover las tarjetas entre estados
-            (excepto a "Cancelado")
-          </p>
-          <p>
-            • <strong>Detalles:</strong> Haz clic en el ícono de información para agregar tracking, notas, subir
-            archivos o vincular documentos
-          </p>
-          <p>
-            • <strong>Historial:</strong> Se registra automáticamente cada cambio de estado con fecha, hora y usuario
-          </p>
-          <p>
-            • <strong>Entrega Pendiente:</strong> Entregas que aún no han iniciado el proceso
-          </p>
-          <p>
-            • <strong>En Preparación:</strong> Entregas que están siendo preparadas para envío
-          </p>
-          <p>
-            • <strong>Enviado:</strong> Entregas que han sido enviadas al cliente
-          </p>
-          <p>
-            • <strong>Entregado:</strong> Entregas completadas exitosamente
-          </p>
-          <p>
-            • <strong>Guía Firmada:</strong> Entregas con guía firmada (venta exitosa con fondo verde tenuo)
-          </p>
-          <p>
-            • <strong>Cancelado:</strong> Entregas que fueron canceladas (fondo rojo tenuo)
-          </p>
-        </CardContent>
-      </Card>
+      </motion.div>
     </div>
+    </>
   )
 }

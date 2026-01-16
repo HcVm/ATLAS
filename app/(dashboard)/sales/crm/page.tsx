@@ -26,11 +26,27 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Users } from "lucide-react"
+import { Search, Plus, Users, Loader2, LayoutGrid, List as ListIcon, Edit, MessageSquare, MoreHorizontal, FileText, Trash2 } from "lucide-react"
 import { ClientForm } from "@/components/sales/client-form"
 import { ClientFollowUpDialog } from "@/components/sales/client-follow-up-dialog"
 import { ClientCard } from "@/components/sales/client-card"
 import { generatePresentationLetter } from "@/lib/presentation-letter-generator"
+import { motion, AnimatePresence } from "framer-motion"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface SalesEntity {
   id: string
@@ -66,6 +82,29 @@ const statusLabels = {
   descartado: "Descartado",
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24
+    }
+  }
+}
+
 export default function CRMPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -81,6 +120,7 @@ export default function CRMPage() {
   const [clientForLetter, setClientForLetter] = useState<SalesEntity | null>(null)
   const [letterNumberInput, setLetterNumberInput] = useState("")
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
   const companyToUse =
     user?.role === "admin"
@@ -279,7 +319,27 @@ export default function CRMPage() {
 
   const groupedClients = filteredClients.reduce(
     (acc, client) => {
-      const status = followUps[client.id]?.status || "por_contactar"
+      let status = followUps[client.id]?.status || "por_contactar"
+      status = status.toLowerCase()
+      
+      // Normalize common status mismatches if necessary
+      if (!statusOrder.hasOwnProperty(status)) {
+        // Try to find a partial match or default to 'por_contactar'
+        // But for now, just let's assume if it's not valid, treat as 'por_contactar' 
+        // unless we want to show them in a specific "Others" section.
+        // Given the user complaint, likely they are disappearing because of mismatch.
+        if (status === "pending") status = "por_contactar"
+        else if (status === "contacted") status = "contactado"
+        else if (status === "negotiating") status = "negociando"
+        else if (status === "inactive") status = "inactivo"
+        else if (status === "discarded") status = "descartado"
+        // If still not found in statusOrder, we might want to default to 'por_contactar'
+        // so they at least appear somewhere.
+        else if (!Object.keys(statusOrder).includes(status)) {
+           status = "por_contactar"
+        }
+      }
+
       if (!acc[status]) {
         acc[status] = []
       }
@@ -291,8 +351,8 @@ export default function CRMPage() {
 
   if (!canManageClients) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-800/50">
+        <Card className="bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/50 backdrop-blur-sm">
           <CardContent className="pt-6">
             <p className="text-red-800 dark:text-red-200">No tienes permiso para acceder a esta sección</p>
           </CardContent>
@@ -303,119 +363,261 @@ export default function CRMPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-800/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div 
+          className="space-y-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
-                <Users className="h-8 w-8 text-slate-700 dark:text-slate-300" />
+              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+                <Users className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                 CRM - Gestión de Clientes
               </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-2">
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
                 {clients.length} cliente{clients.length !== 1 ? "s" : ""} registrado{clients.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <Button
-              onClick={() => {
-                setEditingClient(null)
-                setShowCreateForm(true)
-              }}
-              className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700 gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo Cliente
-            </Button>
-          </div>
+            <div className="flex items-center gap-3">
+               <div className="bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg flex items-center border border-slate-200 dark:border-slate-700/50">
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setViewMode("grid")}
+                     className={`h-8 w-8 p-0 rounded-md transition-all ${
+                        viewMode === "grid" 
+                        ? "bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400" 
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                     }`}
+                  >
+                     <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setViewMode("list")}
+                     className={`h-8 w-8 p-0 rounded-md transition-all ${
+                        viewMode === "list" 
+                        ? "bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400" 
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                     }`}
+                  >
+                     <ListIcon className="h-4 w-4" />
+                  </Button>
+               </div>
+               <Button
+                  onClick={() => {
+                  setEditingClient(null)
+                  setShowCreateForm(true)
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-500 dark:hover:bg-indigo-600 shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 rounded-xl h-11 px-6"
+               >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Nuevo Cliente
+               </Button>
+            </div>
+          </motion.div>
 
           {/* Search Bar */}
-          <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
-            <CardContent className="pt-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por nombre, RUC, dirección, email o contacto..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-slate-200 dark:border-slate-700"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants}>
+            <div className="relative max-w-2xl mx-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur-lg opacity-20 dark:opacity-40" />
+              <Card className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-xl rounded-2xl overflow-hidden">
+                <CardContent className="p-2">
+                  <div className="relative flex items-center">
+                    <Search className="absolute left-4 h-5 w-5 text-slate-400" />
+                    <Input
+                      placeholder="Buscar por nombre, RUC, dirección, email o contacto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-12 bg-transparent border-none h-12 text-lg focus-visible:ring-0 placeholder:text-slate-400"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Stats Overview (Optional enhancement) */}
+          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             {/* Simple stats could go here if we calculated them, for now we skip to keep it clean */}
+          </motion.div>
 
           {/* Clients by Status */}
-          {loading ? (
-            <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600 dark:border-slate-400"></div>
-                  <span className="ml-3 text-slate-600 dark:text-slate-300">Cargando clientes...</span>
-                </div>
-              </CardContent>
-            </Card>
-          ) : filteredClients.length === 0 ? (
-            <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
-              <CardContent className="pt-6">
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-600 dark:text-slate-400">
-                    {searchTerm ? "No se encontraron clientes que coincidan" : "No hay clientes registrados"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              {Object.entries(statusOrder)
-                .sort(([, a], [, b]) => a - b)
-                .map(([status]) => {
-                  const statusClientsCount = groupedClients[status]?.length || 0
-                  return (
-                    <div key={status} className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-                          {statusLabels[status as keyof typeof statusLabels]}
-                        </h2>
-                        <Badge
-                          variant="secondary"
-                          className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
-                        >
-                          {statusClientsCount}
-                        </Badge>
-                      </div>
-
-                      {statusClientsCount === 0 ? (
-                        <Card className="bg-slate-50/50 dark:bg-slate-800/30 border-dashed border-slate-300 dark:border-slate-700">
-                          <CardContent className="pt-6">
-                            <p className="text-center text-slate-500 dark:text-slate-400 text-sm">
-                              No hay clientes en este estado
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {(groupedClients[status] || []).map((client) => (
-                            <ClientCard
-                              key={client.id}
-                              client={client}
-                              lastFollowUpStatus={followUps[client.id]?.status || "por_contactar"}
-                              onEdit={(client) => {
-                                setEditingClient(client)
-                                setShowCreateForm(true)
-                              }}
-                              onDelete={(client) => setDeletingClient(client)}
-                              onFollowUp={(client) => setFollowUpClient(client)}
-                              onGenerateLetter={handleGenerateLetter}
-                            />
-                          ))}
-                        </div>
-                      )}
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200/50 dark:border-slate-700/50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-400" />
+                      <span className="ml-3 text-slate-600 dark:text-slate-300">Cargando clientes...</span>
                     </div>
-                  )
-                })}
-            </div>
-          )}
-        </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : filteredClients.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200/50 dark:border-slate-700/50">
+                  <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                      <Users className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-600 dark:text-slate-400">
+                        {searchTerm ? "No se encontraron clientes que coincidan" : "No hay clientes registrados"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="content" 
+                className="space-y-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {Object.entries(statusOrder)
+                  .sort(([, a], [, b]) => a - b)
+                  .map(([status]) => {
+                    const statusClientsCount = groupedClients[status]?.length || 0
+                    return (
+                      <motion.div key={status} variants={itemVariants} className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-sm">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                              {statusLabels[status as keyof typeof statusLabels]}
+                            </h2>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800"
+                          >
+                            {statusClientsCount}
+                          </Badge>
+                        </div>
+
+                        {statusClientsCount === 0 ? (
+                          <Card className="bg-slate-50/30 dark:bg-slate-800/20 border-dashed border-slate-300 dark:border-slate-700 backdrop-blur-sm">
+                            <CardContent className="pt-6">
+                              <p className="text-center text-slate-500 dark:text-slate-400 text-sm">
+                                No hay clientes en este estado
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                           viewMode === "grid" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {(groupedClients[status] || []).map((client, index) => (
+                                <motion.div
+                                  key={client.id}
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: index * 0.05 }}
+                                >
+                                  <ClientCard
+                                    client={client}
+                                    lastFollowUpStatus={followUps[client.id]?.status || "por_contactar"}
+                                    onEdit={(client) => {
+                                      setEditingClient(client)
+                                      setShowCreateForm(true)
+                                    }}
+                                    onDelete={(client) => setDeletingClient(client)}
+                                    onFollowUp={(client) => setFollowUpClient(client)}
+                                    onGenerateLetter={handleGenerateLetter}
+                                  />
+                                </motion.div>
+                              ))}
+                            </div>
+                           ) : (
+                              <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
+                                 <Table>
+                                    <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                                       <TableRow>
+                                          <TableHead>Cliente</TableHead>
+                                          <TableHead>RUC</TableHead>
+                                          <TableHead>Contacto</TableHead>
+                                          <TableHead>Email</TableHead>
+                                          <TableHead className="text-right">Acciones</TableHead>
+                                       </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                       {(groupedClients[status] || []).map((client, index) => (
+                                          <TableRow key={client.id} className="hover:bg-white/50 dark:hover:bg-slate-800/50">
+                                             <TableCell className="font-medium text-slate-700 dark:text-slate-200">
+                                                {client.name}
+                                             </TableCell>
+                                             <TableCell className="font-mono text-xs text-slate-500">{client.ruc}</TableCell>
+                                             <TableCell className="text-slate-600 dark:text-slate-300">{client.contact_person || "---"}</TableCell>
+                                             <TableCell className="text-slate-500 text-xs">{client.email || "---"}</TableCell>
+                                             <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                   <Button 
+                                                      size="sm" 
+                                                      variant="ghost" 
+                                                      onClick={() => setFollowUpClient(client)}
+                                                      className="h-8 px-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/20"
+                                                   >
+                                                      <MessageSquare className="h-4 w-4 mr-2" />
+                                                      Seguimiento
+                                                   </Button>
+                                                   
+                                                   <DropdownMenu>
+                                                      <DropdownMenuTrigger asChild>
+                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                         </Button>
+                                                      </DropdownMenuTrigger>
+                                                      <DropdownMenuContent align="end">
+                                                         <DropdownMenuItem onClick={() => handleGenerateLetter(client)}>
+                                                            <FileText className="h-4 w-4 mr-2" />
+                                                            Generar Carta
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem onClick={() => {
+                                                            setEditingClient(client)
+                                                            setShowCreateForm(true)
+                                                         }}>
+                                                            <Edit className="h-4 w-4 mr-2" />
+                                                            Editar
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem 
+                                                            onClick={() => setDeletingClient(client)}
+                                                            className="text-red-600 focus:text-red-600"
+                                                         >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                            Eliminar
+                                                         </DropdownMenuItem>
+                                                      </DropdownMenuContent>
+                                                   </DropdownMenu>
+                                                </div>
+                                             </TableCell>
+                                          </TableRow>
+                                       ))}
+                                    </TableBody>
+                                 </Table>
+                              </div>
+                           )
+                        )}
+                      </motion.div>
+                    )
+                  })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       <ClientForm
@@ -446,8 +648,8 @@ export default function CRMPage() {
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingClient} onOpenChange={(open) => !open && setDeletingClient(null)}>
         <AlertDialogPortal>
-          <AlertDialogOverlay />
-          <AlertDialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <AlertDialogOverlay className="backdrop-blur-sm bg-black/40" />
+          <AlertDialogContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-slate-200 dark:border-slate-700 shadow-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-slate-900 dark:text-slate-50">Eliminar Cliente</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
@@ -455,8 +657,8 @@ export default function CRMPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-200 dark:border-slate-700">Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700 text-white">
+              <AlertDialogCancel className="border-slate-200 dark:border-slate-700 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20">
                 Eliminar
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -466,7 +668,7 @@ export default function CRMPage() {
 
       {/* Letter Number Input Dialog */}
       <Dialog open={showLetterNumberDialog} onOpenChange={setShowLetterNumberDialog}>
-        <DialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <DialogContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-slate-200 dark:border-slate-700 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-slate-900 dark:text-slate-50">Número de Carta</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
@@ -480,15 +682,20 @@ export default function CRMPage() {
               value={letterNumberInput}
               onChange={(e) => setLetterNumberInput(e.target.value)}
               placeholder="Ej: NºARM-001-2024"
-              className="mt-2"
+              className="mt-2 bg-white/50 dark:bg-slate-900/50"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLetterNumberDialog(false)}>
+            <Button variant="outline" onClick={() => setShowLetterNumberDialog(false)} className="bg-transparent border-slate-200 dark:border-slate-700">
               Cancelar
             </Button>
-            <Button onClick={handleLetterNumberSubmit} disabled={isGeneratingLetter}>
-              {isGeneratingLetter ? "Generando..." : "Guardar y Generar"}
+            <Button onClick={handleLetterNumberSubmit} disabled={isGeneratingLetter} className="bg-slate-900 dark:bg-slate-50 dark:text-slate-900">
+              {isGeneratingLetter ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generando...
+                </>
+              ) : "Guardar y Generar"}
             </Button>
           </DialogFooter>
         </DialogContent>
