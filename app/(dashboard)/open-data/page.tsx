@@ -135,7 +135,7 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
           <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
             <div className="flex items-center gap-2 text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
               <Calendar className="h-8 w-8" />
-              2025
+              2026
             </div>
             <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Año Vigente</div>
           </div>
@@ -232,7 +232,7 @@ export default async function OpenDataPage() {
             Datos Abiertos
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
-            Transparencia en contrataciones públicas. Accede y analiza la información detallada de los Acuerdos Marco 2025.
+            Transparencia en contrataciones públicas. Accede y analiza la información detallada de los Acuerdos Marco 2026.
           </p>
         </div>
         <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
