@@ -164,13 +164,6 @@ const KANBAN_COLUMNS: Omit<KanbanColumn, "deliveries">[] = [
     color: "bg-emerald-50/50 border-emerald-300/50 dark:bg-emerald-950/20 dark:border-emerald-700/50",
     icon: FileCheck,
   },
-  {
-    id: "cancelado",
-    title: "Cancelado",
-    deliveryStatus: "cancelled",
-    color: "bg-red-50/50 border-red-300/50 dark:bg-red-950/20 dark:border-red-700/50",
-    icon: XCircle,
-  },
 ]
 
 const DeliveryDetailsDialog = memo(
@@ -590,10 +583,9 @@ const DeliveryCard = memo(
             {delivery.actual_delivery_date && (
                <Badge variant="outline" className={`text-[10px] font-medium border-0 ${
                   isSignedGuide ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : 
-                  isCancelled ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
                   "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                }`}>
-                  {isSignedGuide ? "Firmado: " : isCancelled ? "Cancelado: " : "Entregado: "}
+                  {isSignedGuide ? "Firmado: " : "Entregado: "}
                   {format(parseDate(delivery.actual_delivery_date), "dd/MM", { locale: es })}
                </Badge>
             )}
@@ -607,9 +599,9 @@ const DeliveryCard = memo(
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {KANBAN_COLUMNS.filter((col) => col.deliveryStatus !== "cancelled").map(
+                    {KANBAN_COLUMNS.map(
                       (
-                        col, // Exclude cancelled from move options
+                        col,
                       ) => (
                         <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
                           <div className="flex items-center gap-2">
@@ -633,7 +625,7 @@ const DeliveryCard = memo(
           key={delivery.id}
           draggableId={delivery.id}
           index={index}
-          isDragDisabled={!canEditDeliveryStatus || delivery.delivery_status === "cancelled"}
+          isDragDisabled={!canEditDeliveryStatus}
         >
           {(provided, snapshot) => cardContent(provided, snapshot)}
         </Draggable>
@@ -899,8 +891,8 @@ export default function SalesKanbanPage() {
       const delivery = columns.flatMap((c) => c.deliveries).find((d) => d.id === draggableId)
       if (!delivery) return
 
-      // Prevent moving if the delivery is already 'signed_guide' or 'cancelled'
-      if (delivery.delivery_status === "signed_guide" || delivery.delivery_status === "cancelled") {
+      // Prevent moving if the delivery is already 'signed_guide'
+      if (delivery.delivery_status === "signed_guide") {
         toast.error(`No se puede mover una entrega con estado "${delivery.delivery_status}"`)
         return
       }
@@ -949,9 +941,6 @@ export default function SalesKanbanPage() {
 
         if (destColumnInfo.deliveryStatus === "delivered" || destColumnInfo.deliveryStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
-        } else if (destColumnInfo.deliveryStatus === "cancelled") {
-          // If moving to cancelled, reset actual_delivery_date if it exists
-          updateData.actual_delivery_date = null
         }
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", draggableId)
@@ -1091,11 +1080,6 @@ export default function SalesKanbanPage() {
         return
       }
 
-      if (newStatus === "cancelled" && (oldStatus === "delivered" || oldStatus === "signed_guide")) {
-        toast.error("No se puede cancelar una entrega que ya fue entregada o tiene guía firmada")
-        return
-      }
-
       const originalColumns = columns
 
       setColumns((prevColumns) => {
@@ -1135,9 +1119,6 @@ export default function SalesKanbanPage() {
 
         if (newStatus === "delivered" || newStatus === "signed_guide") {
           updateData.actual_delivery_date = getPeruDate()
-        } else if (newStatus === "cancelled") {
-          // If moving to cancelled, reset actual_delivery_date if it exists
-          updateData.actual_delivery_date = null
         }
 
         const { error: updateError } = await supabase.from("deliveries").update(updateData).eq("id", deliveryId)
@@ -1315,9 +1296,9 @@ export default function SalesKanbanPage() {
           /* Kanban Board View */
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
             <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
-              <div className="flex h-full gap-3 min-w-max pb-2">
+              <div className="flex h-full min-w-full w-max gap-3 pb-2 px-1">
                 {columns.map((column) => (
-                  <div key={column.id} className="w-[280px] 2xl:w-[320px] flex-shrink-0 flex flex-col h-full max-h-full">
+                  <div key={column.id} className="w-[310px] 2xl:w-[350px] flex-shrink-0 flex flex-col h-full max-h-full">
                     <Droppable droppableId={column.id} isDropDisabled={!canEditDeliveryStatus}>
                       {(provided, snapshot) => (
                         <div
@@ -1418,7 +1399,7 @@ export default function SalesKanbanPage() {
                             <SelectValue>{getStatusLabel(delivery.delivery_status)}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {KANBAN_COLUMNS.filter(col => col.deliveryStatus !== "cancelled").map((col) => (
+                            {KANBAN_COLUMNS.map((col) => (
                               <SelectItem key={col.deliveryStatus} value={col.deliveryStatus}>
                                 <div className="flex items-center gap-2">
                                   <col.icon className="h-4 w-4" />
