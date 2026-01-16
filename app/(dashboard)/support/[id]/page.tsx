@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, MessageSquare, Paperclip, Send, Edit, Save, X, Download, User } from "lucide-react"
+import { ArrowLeft, MessageSquare, Paperclip, Send, Edit, Save, X, Download, User, Ticket, Calendar, Clock, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,6 +17,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import { motion } from "framer-motion"
 
 interface SupportTicket {
   id: string
@@ -81,14 +82,14 @@ interface TechUser {
 }
 
 const statusConfig = {
-  open: { label: "Abierto", color: "bg-blue-500" },
-  in_progress: { label: "En Progreso", color: "bg-yellow-500" },
-  resolved: { label: "Resuelto", color: "bg-green-500" },
-  closed: { label: "Cerrado", color: "bg-gray-500" },
+  open: { label: "Abierto", color: "bg-blue-500", icon: Ticket },
+  in_progress: { label: "En Progreso", color: "bg-yellow-500", icon: Clock },
+  resolved: { label: "Resuelto", color: "bg-green-500", icon: CheckCircle },
+  closed: { label: "Cerrado", color: "bg-gray-500", icon: XCircle },
 }
 
 const priorityConfig = {
-  low: { label: "Baja", color: "bg-gray-500" },
+  low: { label: "Baja", color: "bg-slate-500" },
   medium: { label: "Media", color: "bg-blue-500" },
   high: { label: "Alta", color: "bg-orange-500" },
   urgent: { label: "Urgente", color: "bg-red-500" },
@@ -101,6 +102,23 @@ const categoryConfig = {
   email: { label: "Email" },
   system: { label: "Sistema" },
   other: { label: "Otro" },
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
 }
 
 export default function SupportTicketDetailPage() {
@@ -137,10 +155,7 @@ export default function SupportTicketDetailPage() {
 
   const fetchTechUsers = async () => {
     const companyId = selectedCompany?.id || user?.company_id
-    if (!companyId) {
-      console.log("No company ID available for fetching tech users")
-      return
-    }
+    if (!companyId) return
 
     try {
       setTechUsers([])
@@ -165,31 +180,11 @@ export default function SupportTicketDetailPage() {
         return
       }
 
-      console.log("📊 All users found:", allUsers?.length || 0)
-      console.log("👥 Users data:", allUsers)
-
-      if (!allUsers || allUsers.length === 0) {
-        console.log("⚠️ No users found for company")
-        toast.error("No se encontraron usuarios en la empresa")
-        return
-      }
-
-      const techUsers = allUsers.filter((user) => {
+      const techUsers = (allUsers || []).filter((user) => {
         const isAdmin = user.role === "admin"
         const isTech = user.departments?.name === "Tecnología"
-
-        console.log(`👤 ${user.full_name || user.email}:`, {
-          role: user.role,
-          department: user.departments?.name,
-          isAdmin,
-          isTech,
-          qualifies: isAdmin || isTech,
-        })
-
         return isAdmin || isTech
       })
-
-      console.log("🔧 Tech users filtered:", techUsers.length)
 
       const formattedUsers: TechUser[] = techUsers.map((user) => ({
         id: user.id,
@@ -200,16 +195,10 @@ export default function SupportTicketDetailPage() {
         department_name: user.departments?.name,
       }))
 
-      console.log("✅ Final tech users:", formattedUsers)
       setTechUsers(formattedUsers)
-
-      if (formattedUsers.length === 0) {
-        toast.error("No se encontraron usuarios de tecnología en esta empresa")
-      }
     } catch (error) {
       console.error("💥 Error in fetchTechUsers:", error)
       toast.error("Error al cargar usuarios de tecnología")
-      setTechUsers([])
     }
   }
 
@@ -393,7 +382,7 @@ export default function SupportTicketDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 min-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -406,8 +395,8 @@ export default function SupportTicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">
+      <div className="container mx-auto p-6 min-h-[calc(100vh-4rem)]">
+        <div className="text-center py-20">
           <h2 className="text-2xl font-bold mb-2">Ticket no encontrado</h2>
           <p className="text-muted-foreground mb-4">El ticket que buscas no existe o no tienes permisos para verlo.</p>
           <Link href="/support">
@@ -418,399 +407,417 @@ export default function SupportTicketDetailPage() {
     )
   }
 
+  const StatusIcon = statusConfig[ticket.status].icon
+
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="container mx-auto p-6 max-w-6xl min-h-[calc(100vh-4rem)]"
+    >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/support">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div>
+           <Button variant="ghost" size="sm" asChild className="pl-0 hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 mb-2">
+            <Link href="/support">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a Soporte
+            </Link>
           </Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold">{ticket.title}</h1>
-            <Badge variant="outline">{ticket.ticket_number}</Badge>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+              {ticket.title}
+            </h1>
+            <Badge variant="outline" className="text-sm py-1 px-3 bg-white/50 dark:bg-slate-800/50">
+              {ticket.ticket_number}
+            </Badge>
           </div>
-          <p className="text-muted-foreground">
-            Creado por {ticket.profiles?.full_name} •{" "}
+          <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+            Creado por <span className="font-medium text-slate-700 dark:text-slate-300">{ticket.profiles?.full_name}</span> •{" "}
             {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: es })}
           </p>
         </div>
-      </div>
+        
+        <div className={`px-4 py-2 rounded-full flex items-center gap-2 ${statusConfig[ticket.status].color} text-white shadow-lg`}>
+          <StatusIcon className="h-5 w-5" />
+          <span className="font-bold">{statusConfig[ticket.status].label}</span>
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Ticket Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Descripción</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="whitespace-pre-wrap text-sm">{ticket.description}</div>
-            </CardContent>
-          </Card>
-
-          {/* Attachments */}
-          {attachments.length > 0 && (
-            <Card>
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" />
-                  Adjuntos ({attachments.length})
-                </CardTitle>
+                <CardTitle>Descripción</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {attachments.map((attachment) => (
-                    <div key={attachment.id} className="border rounded-lg p-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {attachment.file_size && `${(attachment.file_size / 1024 / 1024).toFixed(2)} MB • `}
-                            Por {attachment.profiles.full_name}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadAttachment(attachment)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      {attachment.file_type?.startsWith("image/") && (
-                        <div className="mt-2">
-                          <img
-                            src={attachment.file_url || "/placeholder.svg"}
-                            alt={attachment.file_name}
-                            className="w-full h-32 object-cover rounded"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800">
+                  {ticket.description}
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <motion.div variants={itemVariants}>
+              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4 text-blue-500" />
+                    Adjuntos ({attachments.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">{attachment.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {attachment.file_size && `${(attachment.file_size / 1024 / 1024).toFixed(2)} MB • `}
+                              Por {attachment.profiles.full_name}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => downloadAttachment(attachment)}
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {attachment.file_type?.startsWith("image/") && (
+                          <div className="mt-2">
+                            <img
+                              src={attachment.file_url || "/placeholder.svg"}
+                              alt={attachment.file_name}
+                              className="w-full h-32 object-cover rounded bg-slate-100 dark:bg-slate-800"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
           {/* Comments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Comentarios ({comments.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {comments.map((comment, index) => (
-                <div key={comment.id}>
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.profiles.avatar_url || ""} />
-                      <AvatarFallback>
-                        {comment.profiles.full_name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{comment.profiles.full_name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
-                        </span>
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-lg">{comment.content}</div>
-                    </div>
-                  </div>
-                  {index < comments.length - 1 && <Separator className="mt-4" />}
-                </div>
-              ))}
-
-              {comments.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">No hay comentarios aún</div>
-              )}
-
-              {/* Add Comment */}
-              {ticket.status !== "closed" ? (
-                <div className="border-t pt-4">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar_url || ""} />
-                      <AvatarFallback>
-                        {user?.full_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-2">
-                      <Textarea
-                        placeholder="Agregar un comentario..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        rows={3}
-                      />
-                      <div className="flex justify-end">
-                        <Button onClick={handleAddComment} disabled={!newComment.trim() || submittingComment} size="sm">
-                          <Send className="h-4 w-4 mr-2" />
-                          {submittingComment ? "Enviando..." : "Comentar"}
-                        </Button>
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-blue-500" />
+                  Comentarios ({comments.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="flex items-start gap-4 group">
+                      <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-sm">
+                        <AvatarImage src={comment.profiles.avatar_url || ""} />
+                        <AvatarFallback>
+                          {comment.profiles.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{comment.profiles.full_name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
+                          </span>
+                        </div>
+                        <div className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-r-xl rounded-bl-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                          {comment.content}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
+
+                  {comments.length === 0 && (
+                    <div className="text-center py-12 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                      <MessageSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 dark:text-slate-400">No hay comentarios aún</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="border-t pt-4">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Este ticket está cerrado. No se pueden agregar más comentarios.
-                    </p>
+
+                {/* Add Comment */}
+                {ticket.status !== "closed" ? (
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-sm">
+                        <AvatarImage src={user?.avatar_url || ""} />
+                        <AvatarFallback>
+                          {user?.full_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-3">
+                        <Textarea
+                          placeholder="Escribe un comentario o respuesta..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          rows={3}
+                          className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 resize-none focus:ring-blue-500"
+                        />
+                        <div className="flex justify-end">
+                          <Button 
+                            onClick={handleAddComment} 
+                            disabled={!newComment.trim() || submittingComment} 
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            {submittingComment ? "Enviando..." : "Enviar Comentario"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        🔒 Este ticket está cerrado. No se pueden agregar más comentarios.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Debug Info */}
-          {process.env.NODE_ENV === "development" && (
-            <Card>
+          {/* Status & Assignment */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
               <CardHeader>
-                <CardTitle className="text-sm">Debug Info</CardTitle>
+                <CardTitle className="text-lg">Gestión del Ticket</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs space-y-1">
-                <div>Company: {selectedCompany?.name || user?.company_id}</div>
-                <div>Tech Users: {techUsers.length}</div>
-                <div>Can Manage: {canManageTicket ? "Yes" : "No"}</div>
-                <div>User Role: {user?.role}</div>
-                <div>User Dept: {user?.departments?.name}</div>
+              <CardContent>
+                {editingStatus && canManageTicket ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Estado:</label>
+                      <Select value={newStatus} onValueChange={setNewStatus}>
+                        <SelectTrigger className="mt-1 bg-white/50 dark:bg-slate-800/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Abierto</SelectItem>
+                          <SelectItem value="in_progress">En Progreso</SelectItem>
+                          <SelectItem value="resolved">Resuelto</SelectItem>
+                          <SelectItem value="closed">Cerrado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Asignar a:</label>
+                      <Select value={assigningTo} onValueChange={setAssigningTo}>
+                        <SelectTrigger className="mt-1 bg-white/50 dark:bg-slate-800/50">
+                          <SelectValue placeholder="Sin asignar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin asignar</SelectItem>
+                          {techUsers.map((techUser) => (
+                            <SelectItem key={techUser.id} value={techUser.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{techUser.full_name}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {techUser.role === "admin" ? "Admin" : techUser.department_name}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {techUsers.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">No hay usuarios de tecnología disponibles</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" onClick={handleStatusUpdate} disabled={updatingTicket} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                        <Save className="h-4 w-4 mr-1" />
+                        Guardar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingStatus(false)
+                          setNewStatus(ticket.status)
+                          setAssigningTo(ticket.assigned_to || "none")
+                        }}
+                        disabled={updatingTicket}
+                        className="flex-1"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Estado Actual</span>
+                      <Badge className={`${statusConfig[ticket.status].color} text-white border-none shadow-sm`}>
+                        {statusConfig[ticket.status].label}
+                      </Badge>
+                    </div>
+
+                    {canManageTicket && (
+                      <Button size="sm" variant="outline" onClick={() => setEditingStatus(true)} className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Gestionar Ticket
+                      </Button>
+                    )}
+
+                    {!canManageTicket &&
+                      (user?.role === "admin" || user?.departments?.name === "Tecnología") &&
+                      ticket.status !== "closed" && (
+                        <p className="text-xs text-center text-muted-foreground bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
+                          Solo el personal de Tecnología puede gestionar tickets
+                        </p>
+                      )}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          )}
+          </motion.div>
 
-          {/* Status & Assignment */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {editingStatus && canManageTicket ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Estado:</label>
-                    <Select value={newStatus} onValueChange={setNewStatus}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">Abierto</SelectItem>
-                        <SelectItem value="in_progress">En Progreso</SelectItem>
-                        <SelectItem value="resolved">Resuelto</SelectItem>
-                        <SelectItem value="closed">Cerrado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Asignar a:</label>
-                    <Select value={assigningTo} onValueChange={setAssigningTo}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin asignar</SelectItem>
-                        {techUsers.map((techUser) => (
-                          <SelectItem key={techUser.id} value={techUser.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{techUser.full_name}</span>
-                              <Badge variant="secondary" className="text-xs">
-                                {techUser.role === "admin" ? "Admin" : techUser.department_name}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {techUsers.length === 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">No hay usuarios de tecnología disponibles</p>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleStatusUpdate} disabled={updatingTicket}>
-                      <Save className="h-4 w-4 mr-1" />
-                      {updatingTicket ? "Guardando..." : "Guardar"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingStatus(false)
-                        setNewStatus(ticket.status)
-                        setAssigningTo(ticket.assigned_to || "none")
-                      }}
-                      disabled={updatingTicket}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Estado:</span>
-                    <Badge className={`${statusConfig[ticket.status].color} text-white`}>
-                      {statusConfig[ticket.status].label}
+          {/* Details */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg">Detalles Adicionales</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Prioridad</span>
+                  <div className="mt-1">
+                    <Badge className={`${priorityConfig[ticket.priority].color} text-white border-none shadow-sm`}>
+                      {priorityConfig[ticket.priority].label}
                     </Badge>
                   </div>
-
-                  {canManageTicket && (
-                    <Button size="sm" variant="outline" onClick={() => setEditingStatus(true)} className="w-full">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Gestionar Ticket
-                    </Button>
-                  )}
-
-                  {(user?.role === "admin" || user?.departments?.name === "Tecnología") &&
-                    ticket.status === "closed" && (
-                      <div className="text-center p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-600 font-medium">🔒 Ticket Cerrado</p>
-                        <p className="text-xs text-red-500 mt-1">Este ticket no se puede modificar</p>
-                      </div>
-                    )}
-
-                  {user?.role !== "admin" && user?.departments?.name !== "Tecnología" && (
-                    <div className="text-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-600 font-medium">👁️ Solo Lectura</p>
-                      <p className="text-xs text-blue-500 mt-1">Puedes ver detalles y agregar comentarios</p>
-                    </div>
-                  )}
-
-                  {!canManageTicket &&
-                    (user?.role === "admin" || user?.departments?.name === "Tecnología") &&
-                    ticket.status !== "closed" && (
-                      <p className="text-xs text-muted-foreground">
-                        Solo el personal de Tecnología puede gestionar tickets
-                      </p>
-                    )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Priority & Category */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <span className="text-sm font-medium">Prioridad:</span>
-                <Badge className={`ml-2 ${priorityConfig[ticket.priority].color} text-white`}>
-                  {priorityConfig[ticket.priority].label}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Categoría:</span>
-                <Badge variant="secondary" className="ml-2">
-                  {categoryConfig[ticket.category].label}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+                <Separator />
+                <div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Categoría</span>
+                  <div className="mt-1">
+                    <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {categoryConfig[ticket.category].label}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* People */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <span className="text-sm font-medium">Creado por:</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={ticket.profiles?.avatar_url || ""} />
-                    <AvatarFallback className="text-xs">
-                      {ticket.profiles?.full_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm">{ticket.profiles?.full_name}</span>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-sm font-medium">Asignado a:</span>
-                {ticket.assigned_profile ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={ticket.assigned_profile.avatar_url || ""} />
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg">Personas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Creado por</span>
+                  <div className="flex items-center gap-3 mt-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={ticket.profiles?.avatar_url || ""} />
                       <AvatarFallback className="text-xs">
-                        {ticket.assigned_profile.full_name
+                        {ticket.profiles?.full_name
                           ?.split(" ")
                           .map((n) => n[0])
                           .join("")
                           .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{ticket.assigned_profile.full_name}</span>
+                    <span className="text-sm font-medium">{ticket.profiles?.full_name}</span>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 mt-1">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Sin asignar</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Asignado a</span>
+                  {ticket.assigned_profile ? (
+                    <div className="flex items-center gap-3 mt-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={ticket.assigned_profile.avatar_url || ""} />
+                        <AvatarFallback className="text-xs">
+                          {ticket.assigned_profile.full_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{ticket.assigned_profile.full_name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-2 p-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="text-sm">Sin asignar</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Timestamps */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Fechas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium">Creado:</span>
-                <div className="text-muted-foreground">{new Date(ticket.created_at).toLocaleString("es-ES")}</div>
-              </div>
-              <div>
-                <span className="font-medium">Actualizado:</span>
-                <div className="text-muted-foreground">{new Date(ticket.updated_at).toLocaleString("es-ES")}</div>
-              </div>
-              {ticket.resolved_at && (
-                <div>
-                  <span className="font-medium">Resuelto:</span>
-                  <div className="text-muted-foreground">{new Date(ticket.resolved_at).toLocaleString("es-ES")}</div>
+          <motion.div variants={itemVariants}>
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg">Cronología</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Creado</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{new Date(ticket.created_at).toLocaleDateString("es-ES")}</span>
                 </div>
-              )}
-              {ticket.closed_at && (
-                <div>
-                  <span className="font-medium">Cerrado:</span>
-                  <div className="text-muted-foreground">{new Date(ticket.closed_at).toLocaleString("es-ES")}</div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Actualizado</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{new Date(ticket.updated_at).toLocaleDateString("es-ES")}</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {ticket.resolved_at && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Resuelto</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">{new Date(ticket.resolved_at).toLocaleDateString("es-ES")}</span>
+                  </div>
+                )}
+                {ticket.closed_at && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Cerrado</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{new Date(ticket.closed_at).toLocaleDateString("es-ES")}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -108,11 +108,23 @@ export function ExportButtons({ data, acuerdoMarco, searchParams, acuerdoMarcoFu
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={isExporting}>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleExportCSV} 
+        disabled={isExporting}
+        className="text-white border-white/20 bg-white/10 hover:bg-white/20 hover:text-white"
+      >
         <Download className="h-4 w-4 mr-2" />
         {isExporting ? "Exportando..." : "Exportar CSV"}
       </Button>
-      <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isExporting}>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleExportExcel} 
+        disabled={isExporting}
+        className="text-white border-white/20 bg-white/10 hover:bg-white/20 hover:text-white"
+      >
         <Download className="h-4 w-4 mr-2" />
         {isExporting ? "Exportando..." : "Exportar Excel"}
       </Button>

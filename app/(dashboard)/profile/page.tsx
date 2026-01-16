@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { User, Building2, Calendar, Shield, Save, Camera, FileText, Activity, Eye, EyeOff, Lock } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { motion } from "framer-motion"
 
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
@@ -135,14 +136,14 @@ export default function ProfilePage() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
-        return <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm">Administrador</Badge>
+        return <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm border-0">Administrador</Badge>
       case "supervisor":
-        return <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm">Supervisor</Badge>
+        return <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm border-0">Supervisor</Badge>
       case "user":
         return (
           <Badge
             variant="secondary"
-            className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 text-gray-700 dark:text-slate-200 shadow-sm"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-0"
           >
             Usuario
           </Badge>
@@ -162,25 +163,18 @@ export default function ProfilePage() {
 
       const file = event.target.files[0]
 
-      // Validar tipo de archivo
       if (!file.type.startsWith("image/")) {
         throw new Error("El archivo debe ser una imagen.")
       }
 
-      // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
         throw new Error("La imagen debe ser menor a 5MB.")
       }
 
-      // Crear nombre de archivo con estructura que funcione con RLS
       const fileExt = file.name.split(".").pop()
       const timestamp = Date.now()
       const fileName = `${user?.id}/avatar-${timestamp}.${fileExt}`
 
-      console.log("Uploading file:", fileName)
-      console.log("User ID:", user?.id)
-
-      // Eliminar avatar anterior si existe
       if (profile.avatar_url) {
         try {
           const oldPath = profile.avatar_url.split("/").pop()
@@ -192,20 +186,15 @@ export default function ProfilePage() {
         }
       }
 
-      // Subir archivo a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
         cacheControl: "3600",
         upsert: true,
       })
 
       if (uploadError) {
-        console.error("Upload error:", uploadError)
         throw uploadError
       }
 
-      console.log("Upload successful:", uploadData)
-
-      // Obtener URL pública
       const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
       const publicUrl = data.publicUrl
 
@@ -213,20 +202,15 @@ export default function ProfilePage() {
         throw new Error("No se pudo obtener la URL de la imagen")
       }
 
-      console.log("Public URL:", publicUrl)
-
-      // Actualizar perfil con nueva URL
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
         .eq("id", user?.id)
 
       if (updateError) {
-        console.error("Profile update error:", updateError)
         throw updateError
       }
 
-      // Actualizar estado local
       setProfile({ ...profile, avatar_url: publicUrl })
       await refreshUser()
 
@@ -243,7 +227,6 @@ export default function ProfilePage() {
       })
     } finally {
       setUploading(false)
-      // Limpiar el input file
       const input = document.getElementById("avatar-upload") as HTMLInputElement
       if (input) input.value = ""
     }
@@ -288,7 +271,6 @@ export default function ProfilePage() {
 
     setChangingPassword(true)
     try {
-      // Primero verificar la contraseña actual intentando hacer login
       const { error: verifyError } = await supabase.auth.signInWithPassword({
         email: user?.email || "",
         password: passwordForm.currentPassword,
@@ -303,7 +285,6 @@ export default function ProfilePage() {
         return
       }
 
-      // Si la verificación es exitosa, actualizar la contraseña
       const { error: updateError } = await supabase.auth.updateUser({
         password: passwordForm.newPassword,
       })
@@ -317,7 +298,6 @@ export default function ProfilePage() {
         return
       }
 
-      // Limpiar el formulario
       setPasswordForm({
         currentPassword: "",
         newPassword: "",
@@ -342,40 +322,55 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="p-3 sm:p-4 lg:p-6">
-        <div className="flex items-center justify-center py-20">
-          <p className="text-muted-foreground">Cargando perfil...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+          <p className="text-muted-foreground animate-pulse">Cargando perfil...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 min-h-screen ">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="p-6 space-y-8 min-h-screen pb-20"
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">Mi Perfil</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestiona tu información personal</p>
-        </div>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+          Mi Perfil
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Gestiona tu información personal y preferencias de cuenta
+        </p>
       </div>
 
       {/* Profile Header Card */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+      <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+        <div className="h-48 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-900 dark:via-indigo-900 dark:to-purple-900 opacity-90" />
+          <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
+        </div>
+        <CardContent className="relative px-6 pb-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-16 gap-6">
             <div className="relative group">
-              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-white dark:ring-slate-600 shadow-xl">
-                <AvatarImage src={profile.avatar_url || "/placeholder.svg"} />
-                <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-lg sm:text-xl">
-                  {profile.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-2 -right-2">
+              <div className="p-1.5 rounded-full bg-white dark:bg-slate-950 shadow-xl">
+                <Avatar className="h-32 w-32 sm:h-40 sm:w-40 ring-4 ring-white dark:ring-slate-900">
+                  <AvatarImage src={profile.avatar_url || "/placeholder.svg"} className="object-cover" />
+                  <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-4xl">
+                    {profile.full_name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="absolute bottom-2 right-2">
                 <input
                   type="file"
                   id="avatar-upload"
@@ -385,39 +380,37 @@ export default function ProfilePage() {
                 />
                 <Button
                   size="icon"
-                  variant="outline"
-                  className="h-8 w-8 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:scale-110 transition-all duration-300"
+                  className="h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-2 border-white dark:border-slate-950 transition-all duration-300 hover:scale-110"
                   onClick={() => document.getElementById("avatar-upload")?.click()}
                   disabled={uploading}
                 >
                   {uploading ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 dark:border-slate-300 border-t-transparent" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   ) : (
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-5 w-5" />
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-2">
+            <div className="flex-1 text-center sm:text-left space-y-2 mb-2 pt-4 sm:pt-0">
               <div className="space-y-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{profile.full_name}</h2>
-                <p className="text-sm sm:text-base text-muted-foreground">{profile.email}</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">{profile.full_name}</h2>
+                <p className="text-lg text-slate-500 dark:text-slate-400 font-medium">{profile.email}</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
                 {getRoleBadge(user.role)}
                 {department && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: department.color || "#6B7280" }} />
-                    <span className="text-sm text-muted-foreground">{department.name}</span>
-                  </div>
+                  <Badge variant="outline" className="gap-2 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-700">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: department.color || "#6B7280" }} />
+                    {department.name}
+                  </Badge>
                 )}
-              </div>
-
-              <div className="flex items-center justify-center sm:justify-start gap-1 text-xs sm:text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Miembro desde {format(new Date(user.created_at), "MMMM yyyy", { locale: es })}</span>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 px-2 py-1 rounded-full bg-slate-100/50 dark:bg-slate-800/50">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Miembro desde {format(new Date(user.created_at), "MMM yyyy", { locale: es })}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -425,75 +418,61 @@ export default function ProfilePage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Documentos Creados</p>
-                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.documentsCreated}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
-                <FileText className="h-6 w-6 text-slate-600 dark:text-slate-300" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">En Mi Departamento</p>
-                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.documentsInDepartment}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
-                <Building2 className="h-6 w-6 text-slate-600 dark:text-slate-300" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Movimientos</p>
-                <p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{stats.movementsMade}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700">
-                <Activity className="h-6 w-6 text-slate-600 dark:text-slate-300" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {[
+          { label: "Documentos Creados", value: stats.documentsCreated, icon: FileText, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+          { label: "En Mi Departamento", value: stats.documentsInDepartment, icon: Building2, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-900/20" },
+          { label: "Movimientos", value: stats.movementsMade, icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+        ].map((stat, index) => (
+          <motion.div
+            key={index}
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm h-full">
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">{stat.label}</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+                </div>
+                <div className={`p-4 rounded-2xl ${stat.bg}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Profile Form */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-4 sm:p-6">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
-                <User className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Profile Form */}
+        <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm h-full">
+          <CardContent className="p-6 sm:p-8 space-y-8">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                <User className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Información Personal</h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Información Personal</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Actualiza tus datos básicos</p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-300">
                   Nombre Completo
                 </Label>
                 <Input
                   id="full_name"
                   value={profile.full_name}
                   onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                  className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  className="bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">
                   Email
                 </Label>
                 <Input
@@ -501,63 +480,78 @@ export default function ProfilePage() {
                   type="email"
                   value={profile.email}
                   disabled
-                  className="bg-gray-50 dark:bg-slate-600 text-gray-500 dark:text-slate-400"
+                  className="bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800 text-slate-500"
                 />
-                <p className="text-xs text-muted-foreground">El email no se puede cambiar</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  El correo electrónico está vinculado a tu cuenta y no se puede cambiar directamente.
+                </p>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300">
                   Teléfono
                 </Label>
                 <Input
                   id="phone"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  placeholder="Número de teléfono"
-                  className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  placeholder="Tu número de teléfono"
+                  className="bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-slate-700 dark:text-slate-200">
-                  Rol
+                <Label className="text-slate-700 dark:text-slate-300">
+                  Rol del Sistema
                 </Label>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800">
+                  <Shield className="h-5 w-5 text-slate-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{user.role}</p>
+                  </div>
                   {getRoleBadge(user.role)}
                 </div>
               </div>
             </div>
 
-            <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+            <div className="pt-4 flex justify-end">
               <Button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-300"
               >
-                <Save className="h-4 w-4 mr-2" />
-                {loading ? "Guardando..." : "Guardar Cambios"}
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Cambios
+                  </>
+                )}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Password Change Card */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-4 sm:p-6">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
-                <Lock className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+        {/* Password Change Card */}
+        <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm h-full">
+          <CardContent className="p-6 sm:p-8 space-y-8">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                <Lock className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Cambiar Contraseña</h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Seguridad</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Actualiza tu contraseña</p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="current_password" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="current_password" className="text-slate-700 dark:text-slate-300">
                   Contraseña Actual
                 </Label>
                 <div className="relative">
@@ -566,14 +560,14 @@ export default function ProfilePage() {
                     type={showPasswords.current ? "text" : "password"}
                     value={passwordForm.currentPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    placeholder="Ingresa tu contraseña actual"
+                    className="pr-10 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
+                    placeholder="••••••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
                   >
                     {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -582,7 +576,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="new_password" className="text-slate-700 dark:text-slate-200">
+                <Label htmlFor="new_password" className="text-slate-700 dark:text-slate-300">
                   Nueva Contraseña
                 </Label>
                 <div className="relative">
@@ -591,25 +585,27 @@ export default function ProfilePage() {
                     type={showPasswords.new ? "text" : "password"}
                     value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    placeholder="Ingresa tu nueva contraseña"
+                    className="pr-10 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
+                    placeholder="••••••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
                   >
                     {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 pl-1">
+                  Mínimo 6 caracteres
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm_password" className="text-slate-700 dark:text-slate-200">
-                  Confirmar Nueva Contraseña
+                <Label htmlFor="confirm_password" className="text-slate-700 dark:text-slate-300">
+                  Confirmar Contraseña
                 </Label>
                 <div className="relative">
                   <Input
@@ -617,14 +613,14 @@ export default function ProfilePage() {
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwordForm.confirmPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                    className="border-gray-200 dark:border-slate-600 focus:border-slate-400 dark:focus:border-slate-400 focus:ring-slate-400/20 dark:focus:ring-slate-400/20 transition-all duration-300 pr-10 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    placeholder="Confirma tu nueva contraseña"
+                    className="pr-10 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
+                    placeholder="••••••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
                   >
                     {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -633,9 +629,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+            <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -645,7 +639,7 @@ export default function ProfilePage() {
                     confirmPassword: "",
                   })
                 }}
-                className="w-full sm:w-auto border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                className="border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                 disabled={changingPassword}
               >
                 Cancelar
@@ -658,15 +652,24 @@ export default function ProfilePage() {
                   !passwordForm.newPassword ||
                   !passwordForm.confirmPassword
                 }
-                className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white transition-all duration-300"
               >
-                <Lock className="h-4 w-4 mr-2" />
-                {changingPassword ? "Cambiando..." : "Cambiar Contraseña"}
+                {changingPassword ? (
+                  <>
+                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Cambiando...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Actualizar Contraseña
+                  </>
+                )}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
+    </motion.div>
   )
 }

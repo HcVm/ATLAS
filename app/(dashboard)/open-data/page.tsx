@@ -2,10 +2,11 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp } from "lucide-react"
+import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
+import { motion } from "framer-motion"
 
 export const dynamic = "force-dynamic"
 
@@ -15,7 +16,7 @@ const ACUERDOS_MARCO = [
     id: "EXT-CE-2024-11",
     name: "Mobiliario en General",
     description: "Datos de compras de mobiliario y equipamiento para oficinas y espacios públicos",
-    color: "bg-blue-500",
+    color: "from-blue-500 to-cyan-500",
     icon: "🪑",
     fullName: "EXT-CE-2024-11 MOBILIARIO EN GENERAL",
     status: "inactive", // Marcado como inactivo
@@ -24,43 +25,43 @@ const ACUERDOS_MARCO = [
     id: "EXT-CE-2025-11",
     name: "Mobiliario en General",
     description: "Acuerdo marco reemplazante para mobiliario en general (vigente 2025)",
-    color: "bg-blue-600",
+    color: "from-blue-600 to-indigo-600",
     icon: "🪑",
     fullName: "EXT-CE-2025-11 MOBILIARIO EN GENERAL",
     status: "active",
   },
   {
     id: "EXT-CE-2024-12",
-    name: "Tuberías, Pinturas, Cerámicos, Sanitarios, Accesorios y Complementos",
+    name: "Tuberías y Acabados",
     description: "Acuerdo marco para materiales de construcción y acabados",
-    color: "bg-amber-500",
+    color: "from-amber-500 to-orange-500",
     icon: "🔧",
     fullName: "EXT-CE-2024-12 TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL",
     status: "active",
   },
   {
     id: "EXT-CE-2024-3",
-    name: "Materiales e Insumos de Limpieza",
+    name: "Materiales de Limpieza",
     description: "Acuerdo marco para materiales e insumos de limpieza, papeles para aseo y limpieza",
-    color: "bg-green-600",
+    color: "from-emerald-500 to-green-600",
     icon: "🧹",
     fullName: "EXT-CE-2024-3 MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA",
     status: "active",
   },
   {
     id: "EXT-CE-2024-16",
-    name: "Accesorios Domésticos y Bienes Diversos",
+    name: "Accesorios Domésticos",
     description: "Accesorios domésticos y bienes para usos diversos en instituciones públicas",
-    color: "bg-green-500",
+    color: "from-teal-500 to-emerald-500",
     icon: "🏠",
     fullName: "EXT-CE-2024-16 ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS",
     status: "active",
   },
   {
     id: "EXT-CE-2024-26",
-    name: "Máquinas y Equipos de Jardinería",
+    name: "Jardinería y Agricultura",
     description: "Máquinas, equipos y herramientas para jardinería, silvicultura y agricultura",
-    color: "bg-orange-500",
+    color: "from-orange-500 to-red-500",
     icon: "🌱",
     fullName: "EXT-CE-2024-26 MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA",
     status: "active",
@@ -108,32 +109,35 @@ async function getOpenDataStats() {
 
 function OpenDataStatsCard({ stats }: { stats: any }) {
   return (
-    <Card className="mb-6">
+    <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm mb-8 overflow-hidden">
+      <div className="absolute top-0 right-0 p-3 opacity-10">
+        <Database className="w-32 h-32" />
+      </div>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
-          Estadísticas de Datos Abiertos
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <Database className="h-5 w-5 text-blue-500" />
+          Estadísticas Generales
         </CardTitle>
-        <CardDescription>Información general sobre los acuerdos marco disponibles</CardDescription>
+        <CardDescription>Resumen de datos procesados del sistema</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-            <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
+            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
               {stats.totalRecords.toLocaleString()}
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Total de Registros</div>
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total de Registros</div>
           </div>
-          <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-            <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{ACUERDOS_MARCO.length}</div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Acuerdos Marco</div>
+          <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
+            <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">{ACUERDOS_MARCO.length}</div>
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Acuerdos Marco</div>
           </div>
-          <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-            <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">
-              <Calendar className="h-5 w-5 inline mr-1" />
+          <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
+            <div className="flex items-center gap-2 text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+              <Calendar className="h-8 w-8" />
               2025
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Año Vigente</div>
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Año Vigente</div>
           </div>
         </div>
       </CardContent>
@@ -147,83 +151,68 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
   const isActive = acuerdo.status === "active"
 
   return (
-    <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "" : "cursor-pointer"}>
+    <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "block h-full" : "block h-full cursor-pointer"}>
       <Card
-        className={`transition-all duration-200 h-full ${
-          isActive && isAvailable ? "hover:shadow-lg hover:scale-105" : ""
-        } ${
-          !isActive
-            ? "bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800"
-            : "bg-white dark:bg-slate-950"
+        className={`group relative h-full transition-all duration-300 overflow-hidden border-slate-200/60 dark:border-slate-800/60 ${
+          isActive 
+            ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md" 
+            : "bg-slate-50/50 dark:bg-slate-900/20 grayscale opacity-80 hover:opacity-100 hover:grayscale-0"
         }`}
       >
-        <CardHeader className={`${!isActive ? "pb-2" : "pb-3"}`}>
-          <div className="flex items-start justify-between gap-2">
-            <div className={`flex items-center gap-3 ${!isActive && "gap-2"}`}>
-              <div
-                className={`${!isActive ? "w-10 h-10" : "w-12 h-12"} rounded-lg ${acuerdo.color} flex items-center justify-center text-white ${!isActive ? "text-lg" : "text-xl"}`}
-              >
-                {acuerdo.icon}
-              </div>
-              <div>
-                <CardTitle className={`${!isActive ? "text-base" : "text-lg"}`}>{acuerdo.name}</CardTitle>
-                {isActive && <CardDescription className="text-sm mt-1">{acuerdo.description}</CardDescription>}
-                <div className={`text-xs text-slate-500 dark:text-slate-400 font-mono ${isActive ? "mt-2" : "mt-1"}`}>
-                  {acuerdo.id}
-                </div>
-              </div>
+        <div className={`absolute inset-0 bg-gradient-to-br ${acuerdo.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+        
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${acuerdo.color} flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300`}>
+              {acuerdo.icon}
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 items-end">
               {!isActive && (
-                <Badge
-                  variant="outline"
-                  className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 text-xs whitespace-nowrap"
-                >
+                <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">
                   Histórico
                 </Badge>
               )}
-              {isAvailable && isActive && (
-                <Badge
-                  variant="secondary"
-                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs"
-                >
-                  Disponible
+              {isActive && (
+                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0">
+                  Activo
                 </Badge>
               )}
             </div>
           </div>
+          <CardTitle className="mt-4 text-lg font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            {acuerdo.name}
+          </CardTitle>
+          <CardDescription className="line-clamp-2 min-h-[40px]">
+            {acuerdo.description}
+          </CardDescription>
         </CardHeader>
-        <CardContent className={`pt-0 ${!isActive && "pb-2"}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              <FileText className="h-4 w-4" />
-              <span>{count.toLocaleString()} registros</span>
+        
+        <CardContent>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/50">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Registros</span>
+              <span className="text-lg font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                {count.toLocaleString()}
+                <FileText className="h-3 w-3 text-slate-400" />
+              </span>
             </div>
-            <div className="flex gap-2">
-              {isAvailable ? (
-                <Button
-                  asChild
-                  variant={isActive ? "outline" : "ghost"}
-                  size={isActive ? "sm" : "xs"}
-                  className={`${isActive ? "" : "text-xs hover:bg-slate-200 dark:hover:bg-slate-800"}`}
-                >
-                  <span>
-                    <Eye className={`h-4 w-4 ${isActive ? "mr-1" : ""}`} />
-                    {isActive ? "Ver Datos" : ""}
-                  </span>
-                </Button>
+            
+            <Button 
+              size="sm" 
+              variant={isActive ? "default" : "secondary"}
+              className={`rounded-full px-4 ${isActive ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900" : ""}`}
+            >
+              {isActive ? (
+                <>
+                  Ver Datos <ArrowUpRight className="ml-1 h-3 w-3" />
+                </>
               ) : (
-                <Button
-                  variant="ghost"
-                  size={isActive ? "sm" : "xs"}
-                  disabled
-                  title={isActive ? "Sin datos" : "Acuerdo histórico sin datos"}
-                  className={isActive ? "" : "text-xs"}
-                >
-                  {isActive ? "Sin datos" : "Ver"}
-                </Button>
+                "Consultar"
               )}
-            </div>
+            </Button>
+          </div>
+          <div className="mt-3 text-[10px] text-slate-400 font-mono truncate px-1">
+            {acuerdo.id}
           </div>
         </CardContent>
       </Card>
@@ -235,35 +224,35 @@ export default async function OpenDataPage() {
   const stats = await getOpenDataStats()
 
   return (
-    <div className="mx-auto p-6 max-w-8xl">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Datos Abiertos</h1>
-            <p className="text-slate-600 dark:text-slate-400 text-lg">
-              Accede a los datos públicos de contrataciones por acuerdo marco. Información transparente sobre las
-              compras gubernamentales del año 2025.
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/open-data/upload">
-              <Database className="h-4 w-4 mr-2" />
-              Subir Archivo
-            </Link>
-          </Button>
+    <div className="mx-auto p-6 max-w-7xl space-y-8 pb-20">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+            Datos Abiertos
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
+            Transparencia en contrataciones públicas. Accede y analiza la información detallada de los Acuerdos Marco 2025.
+          </p>
         </div>
+        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+          <Link href="/open-data/upload">
+            <Database className="h-4 w-4 mr-2" />
+            Subir Nuevo Dataset
+          </Link>
+        </Button>
       </div>
 
       <Suspense
         fallback={
-          <Card className="mb-6">
+          <Card className="mb-6 bg-white/50 backdrop-blur-sm">
             <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mb-4"></div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="h-20 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  <div className="h-20 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  <div className="h-20 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-1/4"></div>
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
+                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
+                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
                 </div>
               </div>
             </CardContent>
@@ -273,116 +262,125 @@ export default async function OpenDataPage() {
         <OpenDataStatsCard stats={stats} />
       </Suspense>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 auto-rows-max">
-        {ACUERDOS_MARCO.map((acuerdo) => (
-          <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} stats={stats} />
-        ))}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-1 bg-blue-500 rounded-full" />
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Catálogo de Acuerdos</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {ACUERDOS_MARCO.map((acuerdo) => (
+            <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} stats={stats} />
+          ))}
+        </div>
       </div>
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Alertas de Marca</h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              Monitoreo automático de ventas de las marcas WORLDLIFE, HOPE LIFE, ZEUS y VALHALLA
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+        {/* Brand Alerts Section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+                Alertas de Marca
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Monitoreo en tiempo real de marcas estratégicas
+              </p>
+            </div>
+            <Button variant="outline" asChild className="hover:bg-amber-50 dark:hover:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+              <Link href="/open-data/brand-alerts">
+                Ver Todo
+              </Link>
+            </Button>
           </div>
-          <Button asChild>
-            <Link href="/open-data/brand-alerts">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Ver todas las alertas
-            </Link>
-          </Button>
+          <div className="bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-4 backdrop-blur-sm">
+            <Suspense fallback={<div className="p-4 text-center text-slate-500">Cargando alertas...</div>}>
+              <BrandAlertsPreview />
+            </Suspense>
+          </div>
         </div>
 
-        <Suspense fallback={<div>Cargando alertas...</div>}>
-          <BrandAlertsPreview />
-        </Suspense>
-      </div>
+        {/* Rankings Section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-purple-500" />
+                Rankings de Mercado
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Análisis de tendencias y competidores
+              </p>
+            </div>
+            <Button variant="outline" asChild className="hover:bg-purple-50 dark:hover:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400">
+              <Link href="/open-data/rankings">
+                Explorar
+              </Link>
+            </Button>
+          </div>
 
-      <div className="mt-8">
-        <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200 dark:border-purple-800">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center text-white text-xl">
-                  📊
-                </div>
-                <div>
-                  <CardTitle className="text-xl">Rankings de Mercado</CardTitle>
-                  <CardDescription>
-                    Analiza tendencias y productos más vendidos por acuerdo marco, categoría y proveedor
-                  </CardDescription>
-                </div>
-              </div>
-              <Button asChild>
-                <Link href="/open-data/rankings">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Ver Rankings
+          <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 border-purple-100 dark:border-slate-800 h-full">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 gap-4 h-full">
+                <Link href="/open-data/rankings?tab=products" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏆</div>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">Productos Top</div>
+                  <div className="text-xs text-slate-500">Más vendidos por monto</div>
                 </Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏆</div>
-                <div className="text-sm font-medium">Productos Top</div>
-                <div className="text-xs text-slate-500">Por monto total</div>
+                <Link href="/open-data/rankings?tab=suppliers" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏢</div>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">Proveedores</div>
+                  <div className="text-xs text-slate-500">Líderes del mercado</div>
+                </Link>
+                <Link href="/open-data/rankings?tab=entities" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏛️</div>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">Entidades</div>
+                  <div className="text-xs text-slate-500">Mayores compradores</div>
+                </Link>
+                <Link href="/open-data/rankings?tab=trends" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📈</div>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">Tendencias</div>
+                  <div className="text-xs text-slate-500">Análisis mensual</div>
+                </Link>
               </div>
-              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏢</div>
-                <div className="text-sm font-medium">Proveedores</div>
-                <div className="text-xs text-slate-500">Más exitosos</div>
-              </div>
-              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">🏛️</div>
-                <div className="text-sm font-medium">Entidades</div>
-                <div className="text-xs text-slate-500">Mayor volumen</div>
-              </div>
-              <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                <div className="text-lg font-bold text-purple-700 dark:text-purple-300">📈</div>
-                <div className="text-sm font-medium">Tendencias</div>
-                <div className="text-xs text-slate-500">Por categoría</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Información sobre los Acuerdos Marco</CardTitle>
-        </CardHeader>
-        <CardContent className="prose dark:prose-invert max-w-none">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-3">¿Qué son los Acuerdos Marco?</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Los acuerdos marco son instrumentos de contratación pública que establecen las condiciones generales
-                bajo las cuales se realizarán las contrataciones específicas durante un período determinado.
+      <Card className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 mt-12">
+        <CardContent className="p-8">
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+            <div className="flex-1 space-y-4">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Sobre los Acuerdos Marco</h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                Los Acuerdos Marco son una modalidad de contratación que permite a las entidades públicas adquirir bienes y servicios de manera ágil y eficiente. A través de este portal de Datos Abiertos, ATLAS proporciona transparencia total sobre las transacciones realizadas, permitiendo a proveedores y ciudadanos analizar el comportamiento del mercado público.
               </p>
-              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                <li>• Contratos de suministro de bienes y servicios</li>
-                <li>• Condiciones preestablecidas de precio y calidad</li>
-                <li>• Transparencia en el proceso de contratación</li>
-                <li>• Eficiencia en las compras públicas</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Acuerdos Disponibles 2025</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Actualmente disponemos de información detallada sobre tres acuerdos marco vigentes para el año 2025, con
-                datos actualizados sobre las contrataciones realizadas.
-              </p>
-              <div className="space-y-2">
-                {ACUERDOS_MARCO.map((acuerdo) => (
-                  <div key={acuerdo.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-lg">{acuerdo.icon}</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">{acuerdo.name}</span>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="outline" className="bg-white dark:bg-slate-800">Transparencia</Badge>
+                <Badge variant="outline" className="bg-white dark:bg-slate-800">Eficiencia</Badge>
+                <Badge variant="outline" className="bg-white dark:bg-slate-800">Datos en Tiempo Real</Badge>
               </div>
+            </div>
+            <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+              <h4 className="font-semibold mb-4 text-slate-800 dark:text-slate-200">Enlaces Rápidos</h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <Link href="https://www.perucompras.gob.pe" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2">
+                    <ArrowUpRight className="h-3 w-3" /> Perú Compras Oficial
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/documentation" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+                    <FileText className="h-3 w-3" /> Documentación API
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/support" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+                    <Eye className="h-3 w-3" /> Reportar Incidencia
+                  </Link>
+                </li>
+              </ul>
             </div>
           </div>
         </CardContent>

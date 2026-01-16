@@ -59,10 +59,10 @@ export default function DashboardLayoutClient({
   // Mostrar loading mientras se verifica la autenticación
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Cargando aplicación...</p>
+          <p className="text-muted-foreground animate-pulse">Cargando aplicación...</p>
         </div>
       </div>
     )
@@ -71,8 +71,8 @@ export default function DashboardLayoutClient({
   // Si hay un error de autenticación
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="max-w-md w-full space-y-4">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="max-w-md w-full space-y-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
           <Alert variant="destructive">
             <AlertDescription>Error: {error}</AlertDescription>
           </Alert>
@@ -102,7 +102,7 @@ export default function DashboardLayoutClient({
   // Si no hay usuario y no estamos cargando, mostrar mensaje de redirección
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Redirigiendo al login...</p>
           <Button onClick={() => router.push("/login")}>Ir al Login</Button>
@@ -114,8 +114,8 @@ export default function DashboardLayoutClient({
   // Si el usuario no tiene rol, mostrar error y opciones
   if (!user.role) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="max-w-md w-full space-y-4">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="max-w-md w-full space-y-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
           <Alert variant="destructive">
             <AlertDescription>
               Tu cuenta no tiene un rol asignado. Contacta al administrador para que configure tu cuenta.
@@ -138,31 +138,41 @@ export default function DashboardLayoutClient({
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-background/80 backdrop-blur-md border-b border-border">
+        <SidebarInset className="bg-transparent">
+          {/* Fondo global con gradiente sutil */}
+          <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100/20 via-slate-50/10 to-transparent dark:from-indigo-900/20 dark:via-slate-900/10 pointer-events-none -z-10" />
+          
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-all ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-2 px-4">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ml-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" />
               <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-foreground">Sistema de Seguimiento de Documentos</span>
+                <span className="font-semibold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent hidden sm:inline-block">
+                  Sistema de Seguimiento de Documentos
+                </span>
+                <span className="font-semibold text-foreground sm:hidden">SSD</span>
               </div>
             </div>
-            <div className="ml-auto flex items-center gap-2 px-4">
+            <div className="ml-auto flex items-center gap-3 px-4">
               {user.role === "admin" && (
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <Suspense fallback={<div className="w-[200px] h-9 bg-muted animate-pulse rounded-md"></div>}>
+                <div className="hidden md:flex items-center gap-2 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+                  <Building2 className="h-4 w-4 text-slate-500 ml-2" />
+                  <Suspense fallback={<div className="w-[200px] h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-md"></div>}>
                     <CompanySelector />
                   </Suspense>
                 </div>
               )}
+              
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+              
               <ThemeToggle />
               <NotificationBadge />
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-accent">
-                    <Avatar className="h-8 w-8 ring-2 ring-border">
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:ring-2 focus:ring-indigo-500/20">
+                    <Avatar className="h-9 w-9 ring-2 ring-white dark:ring-slate-800 shadow-sm transition-transform hover:scale-105">
                       <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
-                      <AvatarFallback className="bg-muted text-foreground font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs">
                         {user.full_name
                           .split(" ")
                           .map((n) => n[0])
@@ -172,35 +182,37 @@ export default function DashboardLayoutClient({
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-background border-border" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
+                <DropdownMenuContent className="w-56 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-200/50 dark:border-slate-800/50 shadow-xl rounded-xl" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal p-3">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none text-foreground">{user.full_name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-sm font-semibold leading-none text-foreground">{user.full_name}</p>
+                      <p className="text-xs leading-none text-muted-foreground opacity-80">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push("/profile")} className="text-foreground hover:bg-accent">
-                    <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-700/50" />
+                  <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-lg m-1">
+                    <User className="mr-2 h-4 w-4 text-indigo-500" />
                     <span>Perfil</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => router.push("/settings")}
-                    className="text-foreground hover:bg-accent"
+                    className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-lg m-1"
                   >
-                    <Cog className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Cog className="mr-2 h-4 w-4 text-slate-500" />
                     <span>Configuración</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-foreground hover:bg-accent">
+                  <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-700/50" />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 focus:bg-red-50 dark:focus:bg-red-950/30 rounded-lg m-1">
                     <span>Cerrar sesión</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <main className="flex-1">{children}</main>
+          <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6 lg:p-8 pt-6 overflow-x-hidden relative z-10">
+            <main className="flex-1 w-full max-w-[1600px] mx-auto animate-in fade-in zoom-in-95 duration-500">
+              {children}
+            </main>
           </div>
         </SidebarInset>
       </SidebarProvider>

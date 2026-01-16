@@ -4,21 +4,39 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Upload, X } from "lucide-react"
+import { ArrowLeft, Upload, X, Ticket, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import Link from "next/link"
+import { motion } from "framer-motion"
 
 interface AttachmentFile {
   file: File
   preview?: string
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
 }
 
 export default function NewSupportTicketPage() {
@@ -60,7 +78,6 @@ export default function NewSupportTicketPage() {
       }
     })
 
-  
     event.target.value = ""
   }
 
@@ -178,99 +195,118 @@ export default function NewSupportTicketPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="container mx-auto p-6 max-w-4xl min-h-[calc(100vh-4rem)]"
+    >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/support">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-        </Link>
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold">Nuevo Ticket de Soporte</h1>
-          <p className="text-muted-foreground">Describe tu problema o solicitud de soporte</p>
+          <Button variant="ghost" size="sm" asChild className="pl-0 hover:bg-transparent hover:text-blue-600 dark:hover:text-blue-400 mb-2">
+            <Link href="/support">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a Soporte
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Ticket className="h-8 w-8 text-blue-600" />
+            Nuevo Ticket
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Describe tu problema o solicitud de soporte</p>
         </div>
-      </div>
+      </motion.div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Información del Ticket</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Título */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                placeholder="Describe brevemente el problema..."
-                value={formData.title}
-                onChange={(e) => handleInputChange("title", e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Descripción */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Descripción *</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe detalladamente el problema, incluyendo pasos para reproducirlo, mensajes de error, etc."
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                rows={6}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Prioridad */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-blue-500" />
+                Información del Ticket
+              </CardTitle>
+              <CardDescription>Proporciona los detalles necesarios para que podamos ayudarte</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Título */}
               <div className="space-y-2">
-                <Label htmlFor="priority">Prioridad</Label>
-                <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baja - No es urgente</SelectItem>
-                    <SelectItem value="medium">Media - Problema normal</SelectItem>
-                    <SelectItem value="high">Alta - Afecta el trabajo</SelectItem>
-                    <SelectItem value="urgent">Urgente - Sistema no funciona</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="title">Título *</Label>
+                <Input
+                  id="title"
+                  placeholder="Ej: Error al generar reporte de ventas"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
+                  required
+                  className="bg-white/50 dark:bg-slate-800/50"
+                />
               </div>
 
-              {/* Categoría */}
+              {/* Descripción */}
               <div className="space-y-2">
-                <Label htmlFor="category">Categoría</Label>
-                <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hardware">Hardware - Equipos, impresoras, etc.</SelectItem>
-                    <SelectItem value="software">Software - Programas, aplicaciones</SelectItem>
-                    <SelectItem value="network">Red - Internet, conectividad</SelectItem>
-                    <SelectItem value="email">Email - Correo electrónico</SelectItem>
-                    <SelectItem value="system">Sistema - Este sistema web</SelectItem>
-                    <SelectItem value="other">Otro - Otros problemas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="description">Descripción *</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe detalladamente el problema, incluyendo pasos para reproducirlo, mensajes de error, etc."
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  rows={6}
+                  required
+                  className="bg-white/50 dark:bg-slate-800/50 resize-none"
+                />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Prioridad */}
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Prioridad</Label>
+                  <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baja - No es urgente</SelectItem>
+                      <SelectItem value="medium">Media - Problema normal</SelectItem>
+                      <SelectItem value="high">Alta - Afecta el trabajo</SelectItem>
+                      <SelectItem value="urgent">Urgente - Sistema no funciona</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Categoría */}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoría</Label>
+                  <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hardware">Hardware - Equipos, impresoras, etc.</SelectItem>
+                      <SelectItem value="software">Software - Programas, aplicaciones</SelectItem>
+                      <SelectItem value="network">Red - Internet, conectividad</SelectItem>
+                      <SelectItem value="email">Email - Correo electrónico</SelectItem>
+                      <SelectItem value="system">Sistema - Este sistema web</SelectItem>
+                      <SelectItem value="other">Otro - Otros problemas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Adjuntos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Adjuntos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="attachments">Subir archivos (opcional)</Label>
-              <div className="mt-2">
+        <motion.div variants={itemVariants}>
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5 text-blue-500" />
+                Adjuntos
+              </CardTitle>
+              <CardDescription>Puedes subir capturas de pantalla o documentos relacionados</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <input
                   id="attachments"
                   type="file"
@@ -281,29 +317,40 @@ export default function NewSupportTicketPage() {
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => document.getElementById("attachments")?.click()}
-                  className="w-full"
+                  className="w-full h-full flex flex-col items-center gap-2"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Seleccionar archivos
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Haz clic para seleccionar archivos</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Máximo 10MB por archivo. Imágenes, PDF, Docs, ZIP.
+                  </span>
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Máximo 10MB por archivo. Formatos: imágenes, PDF, documentos, archivos comprimidos.
-              </p>
-            </div>
 
-            {/* Lista de adjuntos */}
-            {attachments.length > 0 && (
-              <div className="space-y-2">
-                <Label>Archivos seleccionados:</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {attachments.map((attachment, index) => (
-                    <div key={index} className="border rounded-lg p-3">
-                      <div className="flex items-start justify-between">
+              {/* Lista de adjuntos */}
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Archivos seleccionados:</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {attachments.map((attachment, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                        {attachment.preview ? (
+                          <img
+                            src={attachment.preview || "/placeholder.svg"}
+                            alt="Preview"
+                            className="h-10 w-10 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-slate-500 uppercase">
+                              {attachment.file.name.split('.').pop()}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{attachment.file.name}</p>
+                          <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">{attachment.file.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {(attachment.file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
@@ -311,42 +358,33 @@ export default function NewSupportTicketPage() {
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={() => removeAttachment(index)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      {attachment.preview && (
-                        <div className="mt-2">
-                          <img
-                            src={attachment.preview || "/placeholder.svg"}
-                            alt={attachment.file.name}
-                            className="w-full h-32 object-cover rounded"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Botones */}
-        <div className="flex justify-end gap-4">
-          <Link href="/support">
-            <Button type="button" variant="outline">
+        <motion.div variants={itemVariants} className="flex justify-end gap-4 pb-10">
+          <Button type="button" variant="outline" asChild className="border-slate-200 dark:border-slate-700">
+            <Link href="/support">
               Cancelar
-            </Button>
-          </Link>
-          <Button type="submit" disabled={loading}>
+            </Link>
+          </Button>
+          <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20">
             {loading ? "Creando..." : "Crear Ticket"}
           </Button>
-        </div>
+        </motion.div>
       </form>
-    </div>
+    </motion.div>
   )
 }

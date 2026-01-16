@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { useTheme } from "next-themes"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard,
   FileText,
@@ -488,27 +489,31 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar className="glass-sidebar border-r border-slate-200/50 dark:border-slate-700/50 flex flex-col">
-      <SidebarHeader className="shrink-0 p-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-20">
-        <div className="sidebar-header-glass rounded-xl p-4">
-          <div className="flex items-center gap-2 justify-center">
-            <div className="flex h-24 w-28 items-center justify-center rounded-lg  dark:from-slate-600 dark:to-slate-700 text-white shadow-lg">
+    <Sidebar className="border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl transition-all duration-300">
+      <SidebarHeader className="shrink-0 p-4 border-b border-slate-200/50 dark:border-slate-800/50 z-20">
+        <div className="rounded-xl p-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+          <div className="flex flex-col items-center justify-center gap-2">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center justify-center rounded-lg overflow-hidden shadow-lg shadow-blue-500/10"
+            >
               <img
                 src={theme === "dark" ? "/logos/atlas-logo-dark.png" : "/logos/atlas-logo-white.png"}
                 alt="logo"
-                className="h-22 w-25"
+                className="h-16 w-auto object-contain"
               />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-slate-500 dark:text-slate-400">v1</span>
+            </motion.div>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">Enterprise Edition</span>
             </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="flex-1 overflow-y-auto !overflow-x-hidden px-2 py-2 pb-32 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent hover:scrollbar-thumb-slate-400 dark:hover:scrollbar-thumb-slate-600 min-h-0">
+      <SidebarContent className="flex-1 overflow-y-auto !overflow-x-hidden px-3 py-4 pb-32 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent min-h-0 space-y-2">
         {user.role ? (
-          <>
+          <AnimatePresence>
             {Object.entries(menuSections).map(([sectionKey, section]) => {
               const filteredItems = filterSectionItems(section.items)
 
@@ -519,52 +524,59 @@ export function AppSidebar() {
 
               return (
                 <Collapsible key={sectionKey} open={isExpanded} onOpenChange={() => toggleSection(sectionKey)}>
-                  <SidebarGroup className="py-2">
+                  <SidebarGroup className="py-0">
                     <CollapsibleTrigger asChild>
-                      <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200 flex items-center justify-between group h-auto min-h-[2rem]">
+                      <SidebarGroupLabel className="text-xs font-bold text-slate-400 dark:text-slate-500 px-2 py-3 uppercase tracking-wider cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center justify-between group select-none">
                         <span className="truncate leading-tight">{section.title}</span>
-                        {isExpanded ? (
-                          <ChevronDown className="h-3 w-3 shrink-0 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 shrink-0 transition-all duration-300 ease-out group-hover:text-slate-600 dark:group-hover:text-slate-300" />
-                        )}
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 0 : -90 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+                        </motion.div>
                       </SidebarGroupLabel>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="overflow-hidden transition-all duration-500 ease-out data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top-1 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:slide-in-from-top-1 data-[state=open]:fade-in-0">
+                    <CollapsibleContent>
                       <SidebarGroupContent>
-                        <SidebarMenu className="px-2">
-                          {filteredItems.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                              <SidebarMenuButton asChild isActive={pathname === item.url}>
-                                <Link
-                                  href={item.url}
-                                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group ${
-                                    pathname === item.url
-                                      ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm"
-                                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
-                                  }`}
-                                >
-                                  <div
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
-                                      pathname === item.url
-                                        ? "bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200"
-                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-slate-700 dark:group-hover:text-slate-200"
+                        <SidebarMenu className="space-y-1">
+                          {filteredItems.map((item) => {
+                            const isActive = pathname === item.url
+                            return (
+                              <SidebarMenuItem key={item.title}>
+                                <SidebarMenuButton asChild isActive={isActive} className="w-full">
+                                  <Link
+                                    href={item.url}
+                                    className={`relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 group overflow-hidden ${
+                                      isActive
+                                        ? "text-white shadow-sm shadow-blue-500/10"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
                                     }`}
                                   >
-                                    <item.icon className="h-4 w-4" />
-                                  </div>
-                                  <span className="font-medium transition-colors duration-300 truncate">
-                                    {item.title}
-                                  </span>
-                                  {item.title === "Notificaciones" && (
-                                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 dark:bg-slate-600 text-[10px] font-medium text-white shadow-sm">
-                                      <Bell className="h-3 w-3" />
+                                    {isActive && (
+                                      <motion.div
+                                        layoutId="activeTab"
+                                        className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                      />
+                                    )}
+                                    <div className={`relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                      <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`} />
+                                    </div>
+                                    <span className="relative z-10 font-medium text-sm truncate">
+                                      {item.title}
                                     </span>
-                                  )}
-                                </Link>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          ))}
+                                    {item.title === "Notificaciones" && (
+                                      <span className="relative z-10 ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-950">
+                                        <Bell className="h-3 w-3" />
+                                      </span>
+                                    )}
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            )
+                          })}
                         </SidebarMenu>
                       </SidebarGroupContent>
                     </CollapsibleContent>
@@ -572,102 +584,85 @@ export function AppSidebar() {
                 </Collapsible>
               )
             })}
-          </>
+          </AnimatePresence>
         ) : (
           <SidebarGroup className="px-4">
             <SidebarGroupContent>
-              <Alert variant="destructive" className="glass-card">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>Sin rol asignado. Contacta al administrador.</AlertDescription>
+              <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <AlertDescription className="text-red-800 dark:text-red-300">Sin rol asignado. Contacta al administrador.</AlertDescription>
               </Alert>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      <SidebarFooter className="shrink-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 z-20 shadow-lg">
+      <SidebarFooter className="shrink-0 p-4 border-t border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md z-20 space-y-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3 py-2 uppercase tracking-wider">
-            USUARIO
+          <SidebarGroupLabel className="text-xs font-bold text-slate-400 dark:text-slate-500 px-2 uppercase tracking-wider mb-2">
+            CUENTA
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="px-2">
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/profile"}>
-                  <Link
-                    href="/profile"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
-                      pathname === "/profile"
-                        ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
-                    }`}
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">Perfil</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/settings"}>
-                  <Link
-                    href="/settings"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
-                      pathname === "/settings"
-                        ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
-                    }`}
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="font-medium">Configuración</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+            <SidebarMenu className="space-y-1">
+              {[
+                { title: "Perfil", url: "/profile", icon: User },
+                { title: "Configuración", url: "/settings", icon: Settings }
+              ].map((item) => {
+                const isActive = pathname === item.url
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link
+                        href={item.url}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                          isActive
+                            ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {user && (
-          <div className="glass-card rounded-xl p-3 mt-4 mx-2 border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 ring-2 ring-slate-200 dark:ring-slate-700 shrink-0">
-                <AvatarImage src={user.avatar_url || ""} />
-                <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold">
-                  {user.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">{user.full_name}</p>
-                <div className="flex items-center gap-1">
-                  <Badge
-                    variant={user.role === "admin" ? "default" : user.role === "supervisor" ? "secondary" : "outline"}
-                    className={`text-xs px-2 py-0 h-5 truncate max-w-full ${
-                      user.role === "admin"
-                        ? "bg-slate-700 dark:bg-slate-600 text-white"
-                        : user.role === "supervisor"
-                          ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
-                          : "border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    {user.role || "Sin rol"}
-                  </Badge>
-                </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+            <Avatar className="h-9 w-9 ring-2 ring-white dark:ring-slate-700 shrink-0">
+              <AvatarImage src={user.avatar_url || ""} />
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs">
+                {user.full_name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">{user.full_name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className={`h-1.5 w-1.5 rounded-full ${user.role === 'admin' ? 'bg-purple-500' : 'bg-emerald-500'}`} />
+                <span className="text-xs text-slate-500 dark:text-slate-400 capitalize truncate">
+                  {user.role || "Sin rol"}
+                </span>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              onClick={handleSignOut}
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         )}
-
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 mt-4 mx-2 transition-all duration-300 font-medium"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Cerrar sesión
-        </Button>
       </SidebarFooter>
     </Sidebar>
   )

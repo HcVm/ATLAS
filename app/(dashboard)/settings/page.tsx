@@ -43,6 +43,7 @@ import { useCompany } from "@/lib/company-context"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -231,464 +232,399 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 dark:bg-primary/20 rounded-lg">
-                <Settings className="h-6 w-6 text-primary dark:text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Configuración</h1>
-                <p className="text-slate-600 dark:text-slate-300">Personaliza tu experiencia y gestiona tu cuenta</p>
-              </div>
-            </div>
-          </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen p-6 pb-20 space-y-8"
+    >
+      {/* Header */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+          Configuración
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Personaliza tu experiencia y gestiona tu cuenta
+        </p>
+      </div>
 
-          <div className="space-y-8">
-            {/* Appearance Settings */}
-            <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Monitor className="h-5 w-5" />
-                  Apariencia
-                </CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Personaliza la apariencia de la aplicación
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Tema</Label>
-                    <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">Selecciona tu tema preferido</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <Button
-                        variant={theme === "light" ? "default" : "outline"}
-                        onClick={() => setTheme("light")}
-                        className="flex items-center gap-2 h-auto p-4"
-                      >
-                        <Sun className="h-4 w-4" />
-                        <div className="text-left">
-                          <div className="font-medium">Claro</div>
-                          <div className="text-xs opacity-70">Tema claro</div>
-                        </div>
-                      </Button>
-                      <Button
-                        variant={theme === "dark" ? "default" : "outline"}
-                        onClick={() => setTheme("dark")}
-                        className="flex items-center gap-2 h-auto p-4"
-                      >
-                        <Moon className="h-4 w-4" />
-                        <div className="text-left">
-                          <div className="font-medium">Oscuro</div>
-                          <div className="text-xs opacity-70">Tema oscuro</div>
-                        </div>
-                      </Button>
-                      <Button
-                        variant={theme === "system" ? "default" : "outline"}
-                        onClick={() => setTheme("system")}
-                        className="flex items-center gap-2 h-auto p-4"
-                      >
-                        <Monitor className="h-4 w-4" />
-                        <div className="text-left">
-                          <div className="font-medium">Sistema</div>
-                          <div className="text-xs opacity-70">Auto</div>
-                        </div>
-                      </Button>
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Appearance Settings */}
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-blue-500" />
+                Apariencia
+              </CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">
+                Personaliza la apariencia de la aplicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Tema</Label>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Selecciona tu tema preferido para la interfaz</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Button
+                      variant={theme === "light" ? "default" : "outline"}
+                      onClick={() => setTheme("light")}
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
+                        theme === "light" 
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950" 
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <Sun className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">Claro</div>
+                      </div>
+                    </Button>
+                    <Button
+                      variant={theme === "dark" ? "default" : "outline"}
+                      onClick={() => setTheme("dark")}
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
+                        theme === "dark" 
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white" 
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <Moon className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">Oscuro</div>
+                      </div>
+                    </Button>
+                    <Button
+                      variant={theme === "system" ? "default" : "outline"}
+                      onClick={() => setTheme("system")}
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
+                        theme === "system" 
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white" 
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <Monitor className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">Sistema</div>
+                      </div>
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Notifications Settings */}
-            <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Notificaciones
-                </CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Configura cómo y cuándo recibir notificaciones
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+          {/* Notifications Settings */}
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <Bell className="h-5 w-5 text-indigo-500" />
+                Notificaciones
+              </CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">
+                Configura cómo y cuándo recibir notificaciones
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Notificaciones por email</Label>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                    Recibe actualizaciones importantes en tu correo
+                  </p>
+                </div>
+                <Switch
+                  checked={notifications.email}
+                  onCheckedChange={(checked) => handleNotificationChange("email", checked)}
+                />
+              </div>
+
+              <Separator className="bg-slate-100 dark:bg-slate-800" />
+
+              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Notificaciones push</Label>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                    Recibe alertas en tiempo real en tu navegador
+                  </p>
+                </div>
+                <Switch
+                  checked={notifications.push}
+                  onCheckedChange={(checked) => handleNotificationChange("push", checked)}
+                />
+              </div>
+
+              <Separator className="bg-slate-100 dark:bg-slate-800" />
+
+              <div className="space-y-4">
+                <Label className="text-slate-700 dark:text-slate-200 text-sm font-semibold uppercase tracking-wider pl-3">Por Módulo</Label>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                     <div className="space-y-0.5">
-                      <Label className="text-slate-700 dark:text-slate-200 text-base">Notificaciones por email</Label>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm">
-                        Recibe notificaciones importantes por correo electrónico
-                      </p>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">Documentos</Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">Creación y actualización de documentos</p>
                     </div>
                     <Switch
-                      checked={notifications.email}
-                      onCheckedChange={(checked) => handleNotificationChange("email", checked)}
+                      checked={notifications.documents}
+                      onCheckedChange={(checked) => handleNotificationChange("documents", checked)}
                     />
                   </div>
 
-                  <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                     <div className="space-y-0.5">
-                      <Label className="text-slate-700 dark:text-slate-200 text-base">Notificaciones push</Label>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm">
-                        Recibe notificaciones en tiempo real en el navegador
-                      </p>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">Inventario</Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">Movimientos de stock y alertas de bajo stock</p>
                     </div>
                     <Switch
-                      checked={notifications.push}
-                      onCheckedChange={(checked) => handleNotificationChange("push", checked)}
+                      checked={notifications.movements}
+                      onCheckedChange={(checked) => handleNotificationChange("movements", checked)}
                     />
                   </div>
 
-                  <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-                  <div className="space-y-4">
-                    <Label className="text-slate-700 dark:text-slate-200 text-base">Notificaciones por módulo</Label>
-
-                    <div className="space-y-4 pl-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-slate-700 dark:text-slate-200 text-sm">Documentos</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-xs">Nuevos documentos y movimientos</p>
-                        </div>
-                        <Switch
-                          checked={notifications.documents}
-                          onCheckedChange={(checked) => handleNotificationChange("documents", checked)}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-slate-700 dark:text-slate-200 text-sm">Inventario</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-xs">Movimientos de stock y alertas</p>
-                        </div>
-                        <Switch
-                          checked={notifications.movements}
-                          onCheckedChange={(checked) => handleNotificationChange("movements", checked)}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-slate-700 dark:text-slate-200 text-sm">Ventas</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-xs">Nuevas ventas y cotizaciones</p>
-                        </div>
-                        <Switch
-                          checked={notifications.sales}
-                          onCheckedChange={(checked) => handleNotificationChange("sales", checked)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Account Settings */}
-            <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Cuenta
-                </CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Gestiona tu cuenta y datos personales
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                     <div className="space-y-0.5">
-                      <Label className="text-slate-700 dark:text-slate-200 text-base">Información de la cuenta</Label>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm">{user?.email}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {user?.role === "admin"
-                            ? "Administrador"
-                            : user?.role === "supervisor"
-                              ? "Supervisor"
-                              : "Usuario"}
-                        </Badge>
-                        {selectedCompany && (
-                          <Badge variant="secondary" className="text-xs">
-                            {selectedCompany.name}
-                          </Badge>
-                        )}
-                      </div>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">Ventas</Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">Nuevas ventas, cotizaciones y clientes</p>
                     </div>
-                  </div>
-
-                  <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-slate-700 dark:text-slate-200 text-base">Exportar datos</Label>
-                        <p className="text-slate-600 dark:text-slate-300 text-sm">
-                          Descarga una copia completa de todos tus datos personales en formato JSON
-                        </p>
-                      </div>
-                      <Button variant="outline" onClick={handleExportData} disabled={isExporting}>
-                        {isExporting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        {isExporting ? "Exportando..." : "Exportar"}
-                      </Button>
-                    </div>
+                    <Switch
+                      checked={notifications.sales}
+                      onCheckedChange={(checked) => handleNotificationChange("sales", checked)}
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Data & Privacy */}
-            <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="border-b border-border/50 dark:border-border/50">
-                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Datos y Privacidad
-                </CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Información sobre cómo protegemos y utilizamos tus datos
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
-                  <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
-                    <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertDescription className="text-blue-800 dark:text-blue-200">
-                      <strong>Compromiso de Privacidad:</strong> Tus datos están protegidos con encriptación de nivel
-                      empresarial y solo se utilizan para el funcionamiento de la aplicación. Nunca compartimos
-                      información personal con terceros sin tu consentimiento explícito.
-                    </AlertDescription>
-                  </Alert>
+          {/* Data & Privacy */}
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <Database className="h-5 w-5 text-emerald-500" />
+                Datos y Privacidad
+              </CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">
+                Información sobre la protección y uso de tus datos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <Alert className="border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10">
+                <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-800 dark:text-blue-300 text-sm">
+                  <strong>Privacidad garantizada:</strong> Tus datos están protegidos con encriptación de nivel
+                  empresarial. No compartimos información con terceros sin tu consentimiento.
+                </AlertDescription>
+              </Alert>
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Lock className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">
-                            Encriptación
-                          </Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            Todos tus datos se almacenan con encriptación AES-256 y se transmiten mediante HTTPS/TLS.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">
-                            Acceso Controlado
-                          </Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            Solo tú y los administradores autorizados de tu empresa pueden acceder a tus datos.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Auditoría</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            Mantenemos registros de auditoría de todos los accesos y modificaciones a tus datos.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">
-                            Cumplimiento
-                          </Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            Cumplimos con GDPR, CCPA y regulaciones locales de protección de datos.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <Database className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Respaldos</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            Realizamos respaldos automáticos diarios con retención de 30 días para proteger tus datos.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <Shield className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
-                        <div>
-                          <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Incidentes</Label>
-                          <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                            En caso de incidente de seguridad, te notificaremos dentro de 72 horas.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator className="bg-slate-200 dark:bg-slate-600" />
-
-                  <div className="space-y-4">
-                    <Label className="text-slate-700 dark:text-slate-200 text-base font-medium">Tus Derechos</Label>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div className="space-y-2">
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Acceso:</strong> Puedes solicitar una copia de todos tus datos personales.
-                        </p>
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Rectificación:</strong> Puedes corregir datos incorrectos o incompletos.
-                        </p>
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Supresión:</strong> Puedes solicitar la eliminación de tus datos
-                          personales.
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Portabilidad:</strong> Puedes exportar tus datos en formato estructurado.
-                        </p>
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Oposición:</strong> Puedes oponerte al procesamiento de tus datos.
-                        </p>
-                        <p className="text-slate-600 dark:text-slate-300">
-                          <strong>Derecho de Limitación:</strong> Puedes solicitar limitar el procesamiento.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Alert className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
-                    <Info className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <AlertDescription className="text-green-800 dark:text-green-200">
-                      <strong>Retención de Datos:</strong> Los datos se conservan mientras tu cuenta esté activa.
-                      Después de la eliminación de la cuenta, los datos se eliminan permanentemente en un plazo de 30
-                      días, excepto aquellos requeridos por ley para fines de auditoría (máximo 7 años).
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Danger Zone */}
-            <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
-              <CardHeader className="border-b border-red-200 dark:border-red-800">
-                <CardTitle className="text-slate-800 dark:text-slate-100 flex items-center gap-2 text-red-800 dark:text-red-200">
-                  <AlertTriangle className="h-5 w-5" />
-                  Zona de Peligro
-                </CardTitle>
-                <CardDescription className="text-red-600 dark:text-red-300">
-                  Acciones irreversibles que afectan permanentemente tu cuenta
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <Alert className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
-                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                    <AlertDescription className="text-red-800 dark:text-red-200">
-                      <strong>Advertencia:</strong> La eliminación de cuenta es permanente e irreversible. Se eliminarán
-                      todos tus datos, documentos, movimientos, ventas y configuraciones. Esta acción no se puede
-                      deshacer.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-slate-700 dark:text-slate-200 text-base text-red-800 dark:text-red-200 font-medium">
-                        Eliminar cuenta permanentemente
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                      <Lock className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">
+                        Encriptación Total
                       </Label>
-                      <p className="text-sm text-red-600 dark:text-red-300">
-                        Esta acción eliminará todos tus datos de forma permanente. Los administradores no podrán
-                        recuperar tu información.
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                        Datos almacenados con AES-256 y transmitidos vía HTTPS/TLS.
                       </p>
-                      {user?.role === "admin" && (
-                        <p className="text-xs text-red-500 dark:text-red-400 font-medium">
-                          Las cuentas de administrador deben ser eliminadas por otro administrador.
-                        </p>
-                      )}
                     </div>
-                    <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                          disabled={user?.role === "admin"}
-                        >
-                          <UserX className="h-4 w-4 mr-2" />
-                          Eliminar Cuenta
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="text-red-800 dark:text-red-200">
-                            ¿Eliminar cuenta permanentemente?
-                          </DialogTitle>
-                          <DialogDescription className="text-red-600 dark:text-red-300">
-                            Esta acción no se puede deshacer. Se eliminarán todos tus datos de forma permanente.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Para confirmar, escribe tu email: <strong>{user?.email}</strong>
-                            </Label>
-                            <Input
-                              type="email"
-                              placeholder="Confirma tu email"
-                              value={deleteConfirmation}
-                              onChange={(e) => setDeleteConfirmation(e.target.value)}
-                              className="mt-2"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter className="flex-col sm:flex-row gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowDeleteDialog(false)
-                              setDeleteConfirmation("")
-                            }}
-                            className="w-full sm:w-auto"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={handleDeleteAccount}
-                            disabled={isDeleting || deleteConfirmation !== user?.email}
-                            className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
-                          >
-                            {isDeleting ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 mr-2" />
-                            )}
-                            {isDeleting ? "Eliminando..." : "Eliminar Definitivamente"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                      <Eye className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">
+                        Acceso Controlado
+                      </Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                        Acceso restringido únicamente a personal autorizado.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">Auditoría</Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                        Registro detallado de todos los accesos y modificaciones.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400">
+                      <Database className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <Label className="text-slate-700 dark:text-slate-200 text-sm font-medium">Respaldos Diarios</Label>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                        Backups automáticos con retención de 30 días.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-8">
+          {/* Account Settings */}
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden h-fit">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-500" />
+                Cuenta
+              </CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">
+                Detalles de tu cuenta
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div>
+                <Label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Registrado</Label>
+                <p className="text-slate-900 dark:text-slate-100 font-medium mt-1">{user?.email}</p>
+              </div>
+              
+              <div>
+                <Label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rol & Permisos</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900/50">
+                    {user?.role === "admin"
+                      ? "Administrador"
+                      : user?.role === "supervisor"
+                        ? "Supervisor"
+                        : "Usuario"}
+                  </Badge>
+                  {selectedCompany && (
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                      {selectedCompany.name}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <Separator className="bg-slate-100 dark:bg-slate-800" />
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-slate-900 dark:text-white font-medium">Exportar mis datos</Label>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 mb-3">
+                    Descarga una copia de tu información personal en formato JSON.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExportData} 
+                    disabled={isExporting}
+                    className="w-full justify-start border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {isExporting ? "Generando archivo..." : "Descargar Datos"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-red-200/50 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/10 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10">
+              <CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Zona de Peligro
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <p className="text-sm text-red-600 dark:text-red-300">
+                La eliminación de cuenta es irreversible. Se perderán todos tus datos y configuraciones.
+              </p>
+              
+              {user?.role === "admin" && (
+                <div className="p-3 rounded bg-red-100/50 dark:bg-red-900/20 text-xs text-red-800 dark:text-red-200">
+                  Las cuentas de administrador no pueden auto-eliminarse.
+                </div>
+              )}
+
+              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20"
+                    disabled={user?.role === "admin"}
+                  >
+                    <UserX className="h-4 w-4 mr-2" />
+                    Eliminar Cuenta
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md border-red-200 dark:border-red-900">
+                  <DialogHeader>
+                    <DialogTitle className="text-red-700 dark:text-red-400">
+                      ¿Eliminar cuenta permanentemente?
+                    </DialogTitle>
+                    <DialogDescription>
+                      Esta acción no se puede deshacer. Por favor escribe tu email para confirmar.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Email de confirmación: <span className="font-bold select-all">{user?.email}</span>
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="tucorreo@ejemplo.com"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        className="border-red-200 focus:ring-red-500/20"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowDeleteDialog(false)
+                        setDeleteConfirmation("")
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeleting || deleteConfirmation !== user?.email}
+                      className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Eliminar Definitivamente
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
