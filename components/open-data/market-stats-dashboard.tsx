@@ -72,193 +72,74 @@ export function MarketStatsDashboard({ period }: MarketStatsDashboardProps) {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-2"></div>
-                  <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[...Array(2)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4"></div>
-                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+    return <div className="h-[400px] flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-indigo-500 rounded-full border-t-transparent"></div></div>
   }
 
   if (!stats) {
     return null
   }
 
-  const mainStats = [
-    {
-      title: "Monto Total Contratado",
-      value: formatCurrency(stats.totalAmount),
-      icon: DollarSign,
-      color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950",
-      description: "Valor total de todas las compras públicas",
-    },
-    {
-      title: "Órdenes de Compra",
-      value: formatNumber(stats.totalOrders),
-      icon: ShoppingCart,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950",
-      description: "Número total de órdenes procesadas",
-    },
-    {
-      title: "Productos Únicos",
-      value: formatNumber(stats.totalProducts),
-      icon: Package,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950",
-      description: "Diferentes productos adquiridos",
-    },
-    {
-      title: "Proveedores Activos",
-      value: formatNumber(stats.totalSuppliers),
-      icon: Building2,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50 dark:bg-orange-950",
-      description: "Empresas que han vendido al Estado",
-    },
-  ]
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {mainStats.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card key={index} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-sm">{stat.title}</p>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+    <div className="space-y-4">
+      <Card className="bg-indigo-600 text-white border-none shadow-xl shadow-indigo-500/20">
+        <CardContent className="p-6">
+           <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/20 rounded-lg"><DollarSign className="h-5 w-5 text-white" /></div>
+              <span className="text-indigo-100 font-medium text-sm">Monto Total</span>
+           </div>
+           <div className="text-3xl font-bold mb-1">{formatCurrency(stats.totalAmount)}</div>
+           <div className="flex items-center gap-1 text-indigo-100 text-sm">
+              <TrendingUp className="h-3 w-3" />
+              <span className={stats.growthRate >= 0 ? "text-emerald-300 font-bold" : "text-red-300 font-bold"}>
+                 {formatPercentage(stats.growthRate)}
+              </span>
+              <span className="opacity-80"> vs periodo anterior</span>
+           </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tendencia mensual */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-              Tendencia de Compras Mensuales
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={stats.monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), "Monto"]}
-                  labelFormatter={(label) => `Mes: ${label}`}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                  dot={{ fill: "#2563eb", strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur border-slate-200/50 dark:border-slate-800/50">
+           <CardContent className="p-4">
+              <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase font-bold tracking-wider">Órdenes</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-slate-200">{formatNumber(stats.totalOrders)}</div>
+           </CardContent>
         </Card>
-
-        {/* Top categorías */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-purple-600" />
-              Categorías con Mayor Gasto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.topCategories} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-                <YAxis dataKey="category" type="category" width={120} />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), "Monto"]} />
-                <Bar dataKey="amount" fill="#7c3aed" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur border-slate-200/50 dark:border-slate-800/50">
+           <CardContent className="p-4">
+              <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase font-bold tracking-wider">Proveedores</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-slate-200">{formatNumber(stats.totalSuppliers)}</div>
+           </CardContent>
+        </Card>
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur border-slate-200/50 dark:border-slate-800/50">
+           <CardContent className="p-4">
+              <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase font-bold tracking-wider">Entidades</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-slate-200">{formatNumber(stats.totalEntities)}</div>
+           </CardContent>
+        </Card>
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur border-slate-200/50 dark:border-slate-800/50">
+           <CardContent className="p-4">
+              <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase font-bold tracking-wider">Ticket Prom</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-slate-200">{formatCurrency(stats.avgOrderValue)}</div>
+           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Users className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatNumber(stats.totalEntities)}</p>
-            <p className="text-sm font-medium">Entidades Compradoras</p>
-            <p className="text-xs text-muted-foreground">Instituciones públicas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Award className="h-8 w-8 text-red-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatNumber(stats.totalAgreements)}</p>
-            <p className="text-sm font-medium">Acuerdos Marco</p>
-            <p className="text-xs text-muted-foreground">Contratos vigentes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Calendar className="h-8 w-8 text-teal-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue)}</p>
-            <p className="text-sm font-medium">Valor Promedio</p>
-            <p className="text-xs text-muted-foreground">Por orden de compra</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6 text-center">
-            <TrendingUp
-              className={`h-8 w-8 mx-auto mb-2 ${stats.growthRate >= 0 ? "text-green-600" : "text-red-600"}`}
-            />
-            <p className="text-2xl font-bold">{formatPercentage(stats.growthRate)}</p>
-            <p className="text-sm font-medium">Crecimiento</p>
-            <p className="text-xs text-muted-foreground">Respecto al período anterior</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-none shadow-md bg-white dark:bg-slate-950">
+        <CardHeader className="pb-2">
+           <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">Top 5 Categorías</CardTitle>
+        </CardHeader>
+        <CardContent>
+           <div className="space-y-3">
+              {stats.topCategories.slice(0, 5).map((cat, i) => (
+                 <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="truncate max-w-[150px] text-slate-600 dark:text-slate-400" title={cat.category}>{cat.category}</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(cat.amount)}</span>
+                 </div>
+              ))}
+           </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

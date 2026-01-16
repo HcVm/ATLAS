@@ -296,12 +296,12 @@ export function DocumentStickerGenerator({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={printSticker} className="gap-2 bg-transparent">
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={printSticker} className="gap-2 rounded-xl">
               <Printer className="h-4 w-4" />
               Imprimir Etiqueta
             </Button>
-            <Button onClick={downloadSticker} className="gap-2">
+            <Button onClick={downloadSticker} className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
               <Download className="h-4 w-4" />
               Descargar PNG
             </Button>

@@ -199,73 +199,93 @@ export default function EditUserPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 space-y-6 max-w-6xl mx-auto p-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push("/users")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
+    <div className="min-h-screen space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <Button 
+            variant="ghost" 
+            onClick={() => router.push("/users")}
+            className="group pl-0 hover:pl-2 transition-all duration-300 hover:bg-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
+          Volver a Usuarios
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+      </div>
+      
+      <div className="flex flex-col gap-2 mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
             Editar Usuario
           </h1>
-          <p className="text-muted-foreground">Modifica la información del usuario</p>
-        </div>
+          <p className="text-slate-500 dark:text-slate-400">
+            Gestiona la información personal, roles y permisos del usuario.
+          </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
-          <CardHeader>
-            <CardTitle>Foto de Perfil</CardTitle>
-            <CardDescription>Imagen del usuario</CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">Foto de Perfil</CardTitle>
+            <CardDescription className="text-slate-500 dark:text-slate-400">Imagen visible para otros usuarios</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
-            <Avatar className="h-32 w-32">
-              <AvatarImage src={user.avatar_url || ""} />
-              <AvatarFallback className="text-2xl">
-                {user.full_name
-                  ?.split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+          <CardContent className="flex flex-col items-center space-y-6 pb-8">
+            <div className="relative group">
+                <Avatar className="h-40 w-40 ring-4 ring-white dark:ring-slate-900 shadow-lg">
+                <AvatarImage src={user.avatar_url || ""} className="object-cover" />
+                <AvatarFallback className="text-4xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-slate-500 dark:text-slate-400">
+                    {user.full_name
+                    ?.split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase() || "U"}
+                </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => document.getElementById("avatar-upload")?.click()}>
+                    <Camera className="h-8 w-8 text-white" />
+                </div>
+            </div>
+            
             <input type="file" id="avatar-upload" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById("avatar-upload")?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <>
-                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <Camera className="h-4 w-4 mr-2" />
-                  Cambiar Foto
-                </>
-              )}
-            </Button>
+            
+            <div className="flex flex-col items-center gap-2 w-full px-4">
+                <Button
+                variant="outline"
+                className="w-full border-slate-200/60 bg-white/50 hover:bg-slate-50 dark:border-slate-800/60 dark:bg-slate-900/50 dark:hover:bg-slate-800 transition-all shadow-sm"
+                onClick={() => document.getElementById("avatar-upload")?.click()}
+                disabled={uploading}
+                >
+                {uploading ? (
+                    <>
+                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
+                    Subiendo...
+                    </>
+                ) : (
+                    <>
+                    <Camera className="h-4 w-4 mr-2" />
+                    Cambiar Foto
+                    </>
+                )}
+                </Button>
+                <p className="text-xs text-center text-slate-400 dark:text-slate-500 mt-2">
+                    Recomendado: 500x500px. Máx 5MB.<br/>Formatos: JPG, PNG.
+                </p>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           {error && (
-            <Alert variant="destructive" className="mb-6">
+            <Alert variant="destructive" className="bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <div className="mb-4">
+          <div className="flex justify-end">
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={fetchCompanies}
-              className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 bg-transparent"
+              className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             >
-              <span>Recargar empresas</span>
+              <span className="flex items-center gap-1">Recargar datos de empresas</span>
             </Button>
           </div>
 

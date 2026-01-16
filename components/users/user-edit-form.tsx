@@ -179,14 +179,14 @@ export function UserEditForm({
   }
 
   return (
-    <Card className="shadow-lg border-slate-200/50 bg-gradient-to-br from-white to-slate-50/50">
-      <CardHeader>
-        <CardTitle className="text-slate-700">Información del Usuario</CardTitle>
-        <CardDescription className="text-slate-600">
-          Actualiza la información del usuario y asigna empresa
+    <Card className="shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl">
+      <CardHeader className="border-b border-slate-100/60 dark:border-slate-800/60 pb-6">
+        <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">Información del Usuario</CardTitle>
+        <CardDescription className="text-slate-500 dark:text-slate-400">
+          Actualiza los datos personales, contacto y asignaciones de empresa.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -195,12 +195,12 @@ export function UserEditForm({
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700">Nombre completo</FormLabel>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Nombre completo</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Nombre completo"
                         {...field}
-                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                        className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all"
                       />
                     </FormControl>
                     <FormMessage />
@@ -213,12 +213,12 @@ export function UserEditForm({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700">Email</FormLabel>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Email</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="email@ejemplo.com"
                         {...field}
-                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                        className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all"
                       />
                     </FormControl>
                     <FormMessage />
@@ -231,12 +231,12 @@ export function UserEditForm({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700">Teléfono</FormLabel>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Teléfono</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Teléfono"
                         {...field}
-                        className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20"
+                        className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all"
                       />
                     </FormControl>
                     <FormMessage />
@@ -249,10 +249,10 @@ export function UserEditForm({
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700">Rol</FormLabel>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Rol del sistema</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
+                        <SelectTrigger className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all">
                           <SelectValue placeholder="Seleccionar rol" />
                         </SelectTrigger>
                       </FormControl>
@@ -267,80 +267,93 @@ export function UserEditForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="company_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-slate-700">Empresa</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
-                          <SelectValue placeholder="Seleccionar empresa" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin empresa</SelectItem>
-                        {companies.map((company) => (
-                          <SelectItem key={company.id} value={company.id}>
-                            {company.code} - {company.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="col-span-1 md:col-span-2 border-t border-slate-100/60 dark:border-slate-800/60 pt-6 mt-2">
+                 <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                    Asignación Organizacional
+                 </h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="company_id"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">Empresa</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all">
+                                <SelectValue placeholder="Seleccionar empresa" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="none">Sin empresa</SelectItem>
+                                {companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                    {company.code} - {company.name}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="department_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-slate-700">
-                      Departamento
-                      {selectedCompanyId && selectedCompanyId !== "none" && (
-                        <span className="text-sm text-muted-foreground ml-2">(Solo de la empresa seleccionada)</span>
-                      )}
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="border-slate-200 focus:border-slate-400 focus:ring-slate-400/20">
-                          <SelectValue placeholder="Seleccionar departamento" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin departamento</SelectItem>
-                        {filteredDepartments.map((department) => (
-                          <SelectItem key={department.id} value={department.id}>
-                            {department.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <FormField
+                        control={form.control}
+                        name="department_id"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">
+                            Departamento
+                            {selectedCompanyId && selectedCompanyId !== "none" && (
+                                <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-2">(Filtrado por empresa)</span>
+                            )}
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger className="bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-400 dark:focus:border-slate-600 transition-all">
+                                <SelectValue placeholder="Seleccionar departamento" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="none">Sin departamento</SelectItem>
+                                {filteredDepartments.map((department) => (
+                                <SelectItem key={department.id} value={department.id}>
+                                    {department.name}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                 </div>
+              </div>
             </div>
 
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-4 pt-4 border-t border-slate-100/60 dark:border-slate-800/60">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
                 disabled={isLoading}
-                className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                className="border-slate-200/60 bg-white/50 hover:bg-slate-50 dark:border-slate-800/60 dark:bg-slate-900/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black dark:from-white dark:to-slate-200 dark:hover:from-slate-200 dark:hover:to-slate-300 text-white dark:text-slate-900 shadow-lg shadow-slate-500/20"
               >
-                {isLoading ? "Guardando..." : "Guardar cambios"}
+                {isLoading ? (
+                    <>
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Guardando...
+                    </>
+                ) : "Guardar cambios"}
               </Button>
             </div>
           </form>

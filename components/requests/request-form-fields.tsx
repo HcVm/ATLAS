@@ -11,6 +11,8 @@ interface RequestFormFieldsProps {
   requestType: string
 }
 
+const inputClasses = "bg-white/50 dark:bg-slate-950/50 border-slate-200/50 dark:border-slate-800/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 hover:bg-white/80 dark:hover:bg-slate-900/80"
+
 export function RequestFormFields({ form, requestType }: RequestFormFieldsProps) {
   return (
     <>
@@ -20,11 +22,11 @@ export function RequestFormFields({ form, requestType }: RequestFormFieldsProps)
         name="subject"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Asunto</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Asunto</FormLabel>
             <FormControl>
-              <Input placeholder="Resumen breve de tu solicitud" {...field} />
+              <Input placeholder="Resumen breve de tu solicitud" {...field} className={inputClasses} />
             </FormControl>
-            <FormDescription>Un título descriptivo para tu solicitud</FormDescription>
+            <FormDescription className="text-slate-500 dark:text-slate-400">Un título descriptivo para tu solicitud</FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -35,15 +37,15 @@ export function RequestFormFields({ form, requestType }: RequestFormFieldsProps)
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Descripción</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Descripción</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Describe detalladamente tu solicitud"
-                className="min-h-[100px] resize-none"
+                className={`min-h-[100px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
-            <FormDescription>Proporciona todos los detalles relevantes</FormDescription>
+            <FormDescription className="text-slate-500 dark:text-slate-400">Proporciona todos los detalles relevantes</FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -74,9 +76,9 @@ function LateJustificationFields({ form }: { form: any }) {
           name="incident_date"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de la Tardanza</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Fecha de la Tardanza</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <Input type="date" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -87,9 +89,9 @@ function LateJustificationFields({ form }: { form: any }) {
           name="incident_time"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Hora de Llegada</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Hora de Llegada</FormLabel>
               <FormControl>
-                <Input type="time" {...field} />
+                <Input type="time" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -101,11 +103,11 @@ function LateJustificationFields({ form }: { form: any }) {
         name="reason"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Motivo de la Tardanza</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Motivo de la Tardanza</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Explica el motivo de tu tardanza"
-                className="min-h-[80px] resize-none"
+                className={`min-h-[80px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
@@ -125,9 +127,9 @@ function AbsenceJustificationFields({ form }: { form: any }) {
         name="incident_date"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Fecha de la Ausencia</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Fecha de la Ausencia</FormLabel>
             <FormControl>
-              <Input type="date" {...field} />
+              <Input type="date" {...field} className={inputClasses} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -138,11 +140,11 @@ function AbsenceJustificationFields({ form }: { form: any }) {
         name="reason"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Motivo de la Ausencia</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Motivo de la Ausencia</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Explica el motivo de tu ausencia"
-                className="min-h-[80px] resize-none"
+                className={`min-h-[80px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
@@ -154,13 +156,13 @@ function AbsenceJustificationFields({ form }: { form: any }) {
         control={form.control}
         name="medical_certificate"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
             <FormControl>
               <Checkbox checked={field.value} onCheckedChange={field.onChange} />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Tengo certificado médico disponible</FormLabel>
-              <FormDescription>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Tengo certificado médico disponible</FormLabel>
+              <FormDescription className="text-slate-500 dark:text-slate-400">
                 Marca esta casilla si tienes un certificado médico que respalda tu ausencia
               </FormDescription>
             </div>
@@ -179,9 +181,9 @@ function OvertimeRequestFields({ form }: { form: any }) {
         name="work_date"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Fecha del Trabajo Extra</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Fecha del Trabajo Extra</FormLabel>
             <FormControl>
-              <Input type="date" {...field} />
+              <Input type="date" {...field} className={inputClasses} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -193,9 +195,9 @@ function OvertimeRequestFields({ form }: { form: any }) {
           name="start_time"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Hora de Inicio</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Hora de Inicio</FormLabel>
               <FormControl>
-                <Input type="time" {...field} />
+                <Input type="time" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -206,9 +208,9 @@ function OvertimeRequestFields({ form }: { form: any }) {
           name="end_time"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Hora de Fin</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Hora de Fin</FormLabel>
               <FormControl>
-                <Input type="time" {...field} />
+                <Input type="time" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -219,7 +221,7 @@ function OvertimeRequestFields({ form }: { form: any }) {
           name="hours_worked"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Horas Trabajadas</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Horas Trabajadas</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -228,6 +230,7 @@ function OvertimeRequestFields({ form }: { form: any }) {
                   max="12"
                   {...field}
                   onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                  className={inputClasses}
                 />
               </FormControl>
               <FormMessage />
@@ -240,11 +243,11 @@ function OvertimeRequestFields({ form }: { form: any }) {
         name="reason"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Motivo del Trabajo Extra</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Motivo del Trabajo Extra</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Explica por qué fue necesario trabajar horas extras"
-                className="min-h-[80px] resize-none"
+                className={`min-h-[80px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
@@ -265,9 +268,9 @@ function  PermissionRequestFields({ form }: { form: any }) {
           name="start_date"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de Inicio</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Fecha de Inicio</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <Input type="date" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -278,9 +281,9 @@ function  PermissionRequestFields({ form }: { form: any }) {
           name="end_date"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de Fin</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Fecha de Fin</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <Input type="date" {...field} className={inputClasses} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -292,10 +295,10 @@ function  PermissionRequestFields({ form }: { form: any }) {
         name="permission_type"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Tipo de Permiso</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Tipo de Permiso</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={inputClasses}>
                   <SelectValue placeholder="Selecciona el tipo de permiso" />
                 </SelectTrigger>
               </FormControl>
@@ -316,11 +319,11 @@ function  PermissionRequestFields({ form }: { form: any }) {
         name="reason"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Motivo del Permiso</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Motivo del Permiso</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Explica el motivo de tu solicitud de permiso"
-                className="min-h-[80px] resize-none"
+                className={`min-h-[80px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
@@ -341,10 +344,10 @@ function EquipmentRequestFields({ form }: { form: any }) {
           name="equipment_type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de Equipo</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Tipo de Equipo</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={inputClasses}>
                     <SelectValue placeholder="Selecciona el tipo" />
                   </SelectTrigger>
                 </FormControl>
@@ -366,13 +369,14 @@ function EquipmentRequestFields({ form }: { form: any }) {
           name="quantity"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Cantidad</FormLabel>
+              <FormLabel className="text-slate-700 dark:text-slate-300">Cantidad</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   min="1"
                   {...field}
                   onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
+                  className={inputClasses}
                 />
               </FormControl>
               <FormMessage />
@@ -385,10 +389,10 @@ function EquipmentRequestFields({ form }: { form: any }) {
         name="priority"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Prioridad</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Prioridad</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={inputClasses}>
                   <SelectValue placeholder="Selecciona la prioridad" />
                 </SelectTrigger>
               </FormControl>
@@ -408,15 +412,15 @@ function EquipmentRequestFields({ form }: { form: any }) {
         name="justification"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Justificación</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Justificación</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Explica por qué necesitas este equipo/material"
-                className="min-h-[100px] resize-none"
+                className={`min-h-[100px] resize-none ${inputClasses}`}
                 {...field}
               />
             </FormControl>
-            <FormDescription>
+            <FormDescription className="text-slate-500 dark:text-slate-400">
               Describe cómo este equipo/material mejorará tu productividad o resolverá un problema específico
             </FormDescription>
             <FormMessage />
@@ -435,10 +439,10 @@ function GeneralRequestFields({ form }: { form: any }) {
         name="category"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Categoría</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Categoría</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={inputClasses}>
                   <SelectValue placeholder="Selecciona la categoría" />
                 </SelectTrigger>
               </FormControl>
@@ -459,10 +463,10 @@ function GeneralRequestFields({ form }: { form: any }) {
         name="priority"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Prioridad</FormLabel>
+            <FormLabel className="text-slate-700 dark:text-slate-300">Prioridad</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={inputClasses}>
                   <SelectValue placeholder="Selecciona la prioridad" />
                 </SelectTrigger>
               </FormControl>

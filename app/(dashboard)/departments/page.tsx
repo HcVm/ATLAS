@@ -13,7 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Building2, Edit, Trash2, Users, Home, AlertCircle, MoreHorizontal } from "lucide-react"
+import { Plus, Search, Building2, Edit, Trash2, Users, Home, AlertCircle, MoreHorizontal, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -193,6 +193,30 @@ export default function DepartmentsPage() {
       (dept.description && dept.description.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
+  // Group departments by company
+  const groupedDepartments = filteredDepartments.reduce((acc, dept) => {
+    const companyId = dept.companies?.id || "unknown"
+    const companyName = dept.companies?.name || "Sin Empresa Asignada"
+    const companyCode = dept.companies?.code
+    
+    if (!acc[companyId]) {
+      acc[companyId] = {
+        name: companyName,
+        code: companyCode,
+        departments: []
+      }
+    }
+    acc[companyId].departments.push(dept)
+    return acc
+  }, {} as Record<string, { name: string, code?: string, departments: any[] }>)
+
+  const sortedCompanyIds = Object.keys(groupedDepartments).sort((a, b) => {
+    // Put "Sin Empresa" at the end
+    if (a === "unknown") return 1
+    if (b === "unknown") return -1
+    return groupedDepartments[a].name.localeCompare(groupedDepartments[b].name)
+  })
+
   if (user?.role !== "admin") {
     return (
       <div className="text-center py-10">
@@ -203,18 +227,18 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
-      <Breadcrumb>
+    <div className="min-h-screen space-y-6 p-4 sm:p-6 lg:p-8">
+      <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard" className="flex items-center gap-2">
+            <BreadcrumbLink href="/dashboard" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
               <Home className="h-4 w-4" />
               Dashboard
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage className="flex items-center gap-2">
+            <BreadcrumbPage className="flex items-center gap-2 font-medium">
               <Building2 className="h-4 w-4" />
               Departamentos
               {isGeneralView && (
@@ -234,10 +258,10 @@ export default function DepartmentsPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
             Departamentos
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+          <p className="text-base text-slate-500 dark:text-slate-400 mt-1">
             {isGeneralView
               ? "Gestiona todos los departamentos de todas las empresas"
               : `Gestiona los departamentos de ${selectedCompany?.name || "la empresa seleccionada"}`}
@@ -251,10 +275,10 @@ export default function DepartmentsPage() {
                 <Button
                   onClick={handleCreateDepartment}
                   disabled={!canCreateDepartment}
-                  className={`w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 ${
+                  className={`w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl ${
                     canCreateDepartment
-                      ? "bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white hover:scale-105"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      ? "bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black dark:from-white dark:to-slate-200 dark:hover:from-slate-200 dark:hover:to-slate-300 text-white dark:text-slate-900 hover:scale-105"
+                      : "bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
                   }`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -273,13 +297,13 @@ export default function DepartmentsPage() {
       </div>
 
       {isGeneralView && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-amber-200/60 bg-amber-50/50 dark:bg-amber-900/10 dark:border-amber-800/30 backdrop-blur-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800">Vista General Activa</p>
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Vista General Activa</p>
+                <p className="text-xs text-amber-700 dark:text-amber-500/80 mt-1">
                   Para crear departamentos, selecciona una empresa específica en el selector de empresas.
                 </p>
               </div>
@@ -288,14 +312,14 @@ export default function DepartmentsPage() {
         </Card>
       )}
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 hover:shadow-xl transition-all duration-300 border-slate-200 dark:border-slate-700">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-center gap-4 mb-6">
+      <Card className="shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4 mb-8">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Buscar departamentos..."
-                className="pl-8 border-slate-200 dark:border-slate-700 focus:border-slate-400 focus:ring-slate-400/20 transition-all duration-300"
+                className="pl-10 h-10 bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 focus:ring-2 focus:ring-slate-500/20 transition-all duration-300 rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -303,215 +327,227 @@ export default function DepartmentsPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600 dark:border-slate-300 mx-auto"></div>
-              <p className="mt-4 text-muted-foreground">Cargando departamentos...</p>
+            <div className="text-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600 dark:border-slate-400 mx-auto"></div>
+              <p className="mt-4 text-slate-500 dark:text-slate-400 animate-pulse">Cargando departamentos...</p>
             </div>
           ) : filteredDepartments.length === 0 ? (
-            <div className="text-center py-8 sm:py-12">
-              <div className="p-3 sm:p-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 flex items-center justify-center">
-                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600 dark:text-slate-300" />
+            <div className="text-center py-20 bg-slate-50/30 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+              <div className="p-4 rounded-full bg-slate-100/80 dark:bg-slate-800/80 w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-sm">
+                <Building2 className="h-10 w-10 text-slate-400" />
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                 No hay departamentos
               </h3>
-              <p className="text-sm sm:text-base text-muted-foreground">
+              <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                 {isGeneralView
                   ? "No se encontraron departamentos en el sistema."
                   : `No hay departamentos para ${selectedCompany?.name || "esta empresa"}.`}
               </p>
             </div>
           ) : (
-            <div>
-              {/* Vista de Tabla para Escritorio (md y superior) */}
-              <div className="hidden md:block rounded-md border border-gray-200 dark:border-slate-600 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200 dark:border-slate-700">
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Departamento
-                        </TableHead>
-                        {isGeneralView && (
-                          <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                            Empresa
-                          </TableHead>
-                        )}
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Descripción
-                        </TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Color
-                        </TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Usuarios
-                        </TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Fecha de creación
-                        </TableHead>
-                        <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs sm:text-sm">
-                          Acciones
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDepartments.map((dept) => (
-                        <TableRow
-                          key={dept.id}
-                          className="border-gray-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-slate-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-600/50 transition-all duration-300"
-                        >
-                          <TableCell className="p-2 sm:p-4">
-                            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="space-y-10">
+              {sortedCompanyIds.map((companyId) => {
+                const group = groupedDepartments[companyId]
+                return (
+                  <div key={companyId} className="space-y-4">
+                    {/* Company Header - Only show if in General View or if there are multiple companies (which shouldn't happen in single view but safe to keep) */}
+                    {isGeneralView && (
+                      <div className="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                           <Building2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                             {group.name}
+                             <Badge variant="secondary" className="text-xs font-normal bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                {group.departments.length}
+                             </Badge>
+                           </h3>
+                           {group.code && <p className="text-xs text-slate-400 font-mono">{group.code}</p>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Vista de Tabla para Escritorio (md y superior) */}
+                    <div className="hidden md:block rounded-xl border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-sm bg-white/40 dark:bg-slate-900/40">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-800/50">
+                              <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4 pl-6">
+                                Departamento
+                              </TableHead>
+                              <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">
+                                Descripción
+                              </TableHead>
+                              <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">
+                                Color
+                              </TableHead>
+                              <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">
+                                Usuarios
+                              </TableHead>
+                              <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">
+                                Fecha de creación
+                              </TableHead>
+                              <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4 pr-6">
+                                Acciones
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.departments.map((dept) => (
+                              <TableRow
+                                key={dept.id}
+                                className="border-b border-slate-100/60 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group"
+                              >
+                                <TableCell className="p-4 pl-6">
+                                  <div className="flex items-center space-x-3">
+                                    <div
+                                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg shadow-black/10 transition-transform duration-300 group-hover:scale-105 flex-shrink-0"
+                                      style={{
+                                        background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + "dd" : "#4B5563"})`,
+                                      }}
+                                    >
+                                      <Building2 className="h-5 w-5" />
+                                    </div>
+                                    <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                                      {dept.name}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-slate-500 dark:text-slate-400 text-sm p-4 max-w-xs truncate font-medium">
+                                  {dept.description || <span className="text-slate-300 dark:text-slate-600 italic">Sin descripción</span>}
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-4 h-4 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm ring-1 ring-white dark:ring-slate-950"
+                                      style={{ backgroundColor: dept.color || "#6B7280" }}
+                                    />
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono hidden lg:inline bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      {dept.color || "#6B7280"}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                      <Users className="h-3.5 w-3.5" />
+                                    </div>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-200 text-sm">
+                                      {dept.userCount || 0}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-slate-500 dark:text-slate-400 text-xs p-4">
+                                  <div className="flex items-center gap-2">
+                                      <Calendar className="h-3.5 w-3.5 opacity-70" />
+                                      {new Date(dept.created_at).toLocaleDateString("es-ES", { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right p-4 pr-6">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      align="end"
+                                      className="w-48 p-1 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl"
+                                    >
+                                      <DropdownMenuItem
+                                        onClick={() => router.push(`/departments/edit/${dept.id}`)}
+                                        className="rounded-lg focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer py-2"
+                                      >
+                                        <Edit className="mr-2 h-4 w-4 text-blue-500" />
+                                        <span className="font-medium">Editar</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-800/50" />
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteClick(dept)}
+                                        className="rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer py-2"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span className="font-medium">Eliminar</span>
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+
+                    {/* Vista de Tarjetas para Móvil (hasta md) */}
+                    <div className="grid grid-cols-1 gap-4 md:hidden">
+                      {group.departments.map((dept) => (
+                        <div key={dept.id} className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-5 space-y-4 shadow-sm">
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex items-center gap-3 font-bold">
                               <div
-                                className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl text-white shadow-lg transition-transform duration-300 hover:scale-110 flex-shrink-0"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg flex-shrink-0"
                                 style={{
                                   background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + "dd" : "#4B5563"})`,
                                 }}
                               >
-                                <Building2 className="h-3 w-3 sm:h-5 sm:w-5" />
+                                <Building2 className="h-5 w-5" />
                               </div>
-                              <div className="font-medium text-gray-900 dark:text-slate-100 text-sm sm:text-base">
-                                {dept.name}
+                              <div className="flex-1 min-w-0">
+                                  <h3 className="flex-1 break-words text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">{dept.name}</h3>
+                                  {dept.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{dept.description}</p>}
                               </div>
                             </div>
-                          </TableCell>
-                          {isGeneralView && (
-                            <TableCell className="p-2 sm:p-4">
-                              {dept.companies && (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                                  {dept.companies.name || dept.companies.code || "Empresa"}
-                                </Badge>
-                              )}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4 max-w-xs truncate">
-                            {dept.description || "Sin descripción"}
-                          </TableCell>
-                          <TableCell className="p-2 sm:p-4">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-white dark:border-slate-900 shadow-md"
-                                style={{ backgroundColor: dept.color || "#6B7280" }}
-                              />
-                              <span className="text-xs sm:text-sm text-muted-foreground font-mono hidden lg:inline">
-                                {dept.color || "#6B7280"}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-2 sm:p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1 rounded-md bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700">
-                                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-300" />
-                              </div>
-                              <span className="font-medium text-gray-700 dark:text-slate-200 text-sm">
-                                {dept.userCount || 0}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-gray-600 dark:text-slate-300 text-sm p-2 sm:p-4">
-                            {new Date(dept.created_at).toLocaleDateString("es-ES")}
-                          </TableCell>
-                          <TableCell className="text-right p-2 sm:p-4">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 h-8 w-8"
-                                >
+                                <Button variant="ghost" size="icon" className="-mt-1 -mr-1 h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="shadow-lg border-gray-200 dark:border-slate-600"
-                              >
-                                <DropdownMenuItem
-                                  onClick={() => router.push(`/departments/edit/${dept.id}`)}
-                                  className="hover:bg-blue-50 transition-colors duration-200"
-                                >
-                                  <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                                  <span>Editar</span>
+                              <DropdownMenuContent align="end" className="w-48 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl">
+                                <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)} className="py-2.5">
+                                  <Edit className="mr-2 h-4 w-4 text-blue-500" /> Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(dept)}
-                                  className="text-red-600 focus:text-red-600 hover:bg-red-50 transition-colors duration-200"
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50 py-2.5"
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Eliminar</span>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
+                          </div>
+
+                          <div className="border-t border-slate-100/60 dark:border-slate-800/60 pt-3 space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5" />
+                                Usuarios
+                              </span>
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{dept.userCount || 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1.5">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  Creado
+                              </span>
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(dept.created_at).toLocaleDateString("es-ES")}</span>
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Vista de Tarjetas para Móvil (hasta md) */}
-              <div className="grid grid-cols-1 gap-4 md:hidden">
-                {filteredDepartments.map((dept) => (
-                  <div key={dept.id} className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-3">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex items-center gap-3 font-bold">
-                        <div
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-md flex-shrink-0"
-                          style={{
-                            background: `linear-gradient(135deg, ${dept.color || "#6B7280"}, ${dept.color ? dept.color + "dd" : "#4B5563"})`,
-                          }}
-                        >
-                          <Building2 className="h-4 w-4" />
-                        </div>
-                        <h3 className="flex-1 break-words text-base leading-tight">{dept.name}</h3>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="-mt-2 -mr-2 h-8 w-8 flex-shrink-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => router.push(`/departments/edit/${dept.id}`)}>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(dept)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {dept.description && <p className="text-sm text-muted-foreground pt-1">{dept.description}</p>}
-
-                    <div className="border-t pt-3 space-y-2 text-sm">
-                      {isGeneralView && dept.companies && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Empresa</span>
-                          <Badge variant="secondary">{dept.companies.name}</Badge>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          <Users className="h-3 w-3" />
-                          Usuarios
-                        </span>
-                        <span className="font-medium">{dept.userCount || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Creado el</span>
-                        <span className="font-medium">{new Date(dept.created_at).toLocaleDateString("es-ES")}</span>
-                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )}
         </CardContent>

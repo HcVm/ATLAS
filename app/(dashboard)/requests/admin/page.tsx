@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { createBrowserClient } from "@supabase/ssr"
@@ -26,11 +26,17 @@ import {
   User,
   Wrench,
   MessageSquare,
+  Filter,
+  Eye,
+  Calendar,
+  UserX,
+  FileCheck
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { requestsDB, type RequestWithDetails, REQUEST_TYPE_LABELS, PRIORITY_LABELS } from "@/lib/requests-db"
 import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Request {
   id: string
@@ -71,87 +77,81 @@ interface Request {
   items_requeridos?: any[]
 }
 
-const REQUEST_TYPES = {
+const REQUEST_TYPES_CONFIG = {
   late_justification: {
-    title: "Justificación de Tardanza",
-    description: "Justificar llegadas tardías al trabajo",
+    label: "Justificación de Tardanza",
     icon: Clock,
-    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    timeLimit: "24 horas",
-    urgent: true,
+    color: "text-orange-600 dark:text-orange-400",
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    border: "border-orange-200 dark:border-orange-800",
   },
   absence_justification: {
-    title: "Justificación de Ausencia",
-    description: "Justificar ausencias al trabajo",
-    icon: User,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    timeLimit: "24 horas",
-    urgent: true,
+    label: "Justificación de Ausencia",
+    icon: UserX,
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    border: "border-red-200 dark:border-red-800",
   },
   overtime_request: {
-    title: "Registro de Horas Extras",
-    description: "Registrar horas extras trabajadas",
+    label: "Registro de Horas Extras",
     icon: Plus,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    timeLimit: "24 horas",
-    urgent: true,
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    border: "border-blue-200 dark:border-blue-800",
   },
   permission_request: {
-    title: "Solicitud de Permiso",
-    description: "Solicitar permisos y vacaciones",
-    icon: AlertCircle,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    timeLimit: "3 días",
-    urgent: false,
+    label: "Solicitud de Permiso",
+    icon: Calendar,
+    color: "text-green-600 dark:text-green-400",
+    bg: "bg-green-50 dark:bg-green-900/20",
+    border: "border-green-200 dark:border-green-800",
   },
   equipment_request: {
-    title: "Solicitud de Equipos/Materiales",
-    description: "Solicitar equipos o materiales para tu departamento",
+    label: "Solicitud de Equipos/Materiales",
     icon: Wrench,
-    color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    timeLimit: "Sin límite",
-    urgent: false,
+    color: "text-purple-600 dark:text-purple-400",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    border: "border-purple-200 dark:border-purple-800",
   },
   general_request: {
-    title: "Solicitud General",
-    description: "Comentarios, sugerencias y solicitudes generales",
+    label: "Solicitud General",
     icon: MessageSquare,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
-    timeLimit: "Sin límite",
-    urgent: false,
+    color: "text-slate-600 dark:text-slate-400",
+    bg: "bg-slate-50 dark:bg-slate-900/20",
+    border: "border-slate-200 dark:border-slate-800",
   },
 }
 
 const STATUS_CONFIG = {
-  INGRESADA: {
+  ingresada: {
     label: "Ingresada",
     icon: AlertCircle,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
   },
-  EN_GESTION: {
+  en_gestion: {
     label: "En Gestión",
     icon: Loader2,
-    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    color: "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
   },
-  APROBADA: {
+  aprobada: {
     label: "Aprobada",
     icon: CheckCircle,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    color: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
   },
-  DESAPROBADA: {
+  desaprobada: {
     label: "Desaprobada",
     icon: XCircle,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
   },
-  EJECUTADA: {
+  ejecutada: {
     label: "Ejecutada",
     icon: CheckCircle,
-    color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+    color: "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800",
   },
-  CANCELADA: {
+  cancelada: {
     label: "Cancelada",
     icon: Clock,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    color: "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-800",
   },
 }
 
@@ -425,33 +425,59 @@ export default function AdminRequestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 text-blue-600" />
+          </div>
+        </div>
+        <p className="text-slate-500 dark:text-slate-400 animate-pulse">Cargando panel de administración...</p>
       </div>
     )
   }
 
   if (!selectedCompany) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No hay empresa seleccionada</h3>
-          <p className="text-muted-foreground">Selecciona una empresa para ver las solicitudes</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-card max-w-md w-full border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="h-8 w-8 text-slate-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">No hay empresa seleccionada</h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-2">
+                Selecciona una empresa para ver las solicitudes
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Administración de Solicitudes</h1>
-          <p className="text-muted-foreground">Gestiona todas las solicitudes del sistema - {selectedCompany.name}</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+            Administración de Solicitudes
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">
+            Gestiona todas las solicitudes del sistema - {selectedCompany.name}
+          </p>
         </div>
-        <Button onClick={() => setShowApproverDialog(true)}>
+        <Button 
+          onClick={() => setShowApproverDialog(true)}
+          className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 shadow-lg shadow-slate-900/10 transition-all hover:scale-105"
+        >
           <Settings className="h-4 w-4 mr-2" />
           Gestionar Aprobadores
         </Button>
@@ -460,89 +486,67 @@ export default function AdminRequestsPage() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ingresadas</CardTitle>
-              <AlertCircle className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.ingresada}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En Gestión</CardTitle>
-              <Loader2 className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.en_gestion}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.aprobada}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Desaprobadas</CardTitle>
-              <XCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.desaprobada}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Expiradas</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.expired}</div>
-            </CardContent>
-          </Card>
+          {[
+            { label: "Total", value: stats.total, icon: BarChart3, color: "text-slate-500", bg: "bg-slate-50 dark:bg-slate-900/20" },
+            { label: "Ingresadas", value: stats.ingresada, icon: AlertCircle, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-900/20" },
+            { label: "En Gestión", value: stats.en_gestion, icon: Loader2, color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-900/20" },
+            { label: "Aprobadas", value: stats.aprobada, icon: CheckCircle, color: "text-green-500", bg: "bg-green-50 dark:bg-green-900/20" },
+            { label: "Desaprobadas", value: stats.desaprobada, icon: XCircle, color: "text-red-500", bg: "bg-red-50 dark:bg-red-900/20" },
+            { label: "Expiradas", value: stats.expired, icon: AlertCircle, color: "text-red-500", bg: "bg-red-50 dark:bg-red-900/20" },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <Card className="h-full border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-5 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
+                    <div className={`p-2 rounded-lg ${stat.bg}`}>
+                      <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {stat.value}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       )}
 
-      <Tabs defaultValue="requests" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="requests">Solicitudes</TabsTrigger>
-          <TabsTrigger value="analytics">Análisis</TabsTrigger>
-          <TabsTrigger value="approvers">Aprobadores</TabsTrigger>
+      <Tabs defaultValue="requests" className="space-y-6">
+        <TabsList className="bg-white/50 dark:bg-slate-900/50 p-1 border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm rounded-xl w-full flex overflow-x-auto">
+          <TabsTrigger value="requests" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all">Solicitudes</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all">Análisis</TabsTrigger>
+          <TabsTrigger value="approvers" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all">Aprobadores</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="requests" className="space-y-4">
+        <TabsContent value="requests" className="space-y-6">
           {/* Filters */}
-          <Card>
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
             <CardHeader>
-              <CardTitle>Filtros</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Filter className="h-5 w-5 text-slate-500" />
+                Filtros de Búsqueda
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder="Buscar por empleado o razón..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                   />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -557,7 +561,7 @@ export default function AdminRequestsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -570,7 +574,7 @@ export default function AdminRequestsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     <SelectValue placeholder="Departamento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -589,11 +593,15 @@ export default function AdminRequestsPage() {
           {/* Requests List */}
           <div className="grid gap-4">
             {filteredRequests.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No se encontraron solicitudes</h3>
-                  <p className="text-muted-foreground">
+              <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                <CardContent className="p-12 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                    No se encontraron solicitudes
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400">
                     {requests.length === 0
                       ? "No hay solicitudes registradas en el sistema"
                       : "No hay solicitudes que coincidan con los filtros aplicados"}
@@ -601,88 +609,134 @@ export default function AdminRequestsPage() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRequests.map((request) => {
-                const StatusIcon = STATUS_CONFIG[request.status].icon
-                return (
-                  <Card key={request.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Badge className={STATUS_CONFIG[request.status].color}>
-                              <StatusIcon className="h-4 w-4 mr-1" />
-                              {STATUS_CONFIG[request.status].label}
-                            </Badge>
-                            <Badge variant={getPriorityBadgeVariant(request.priority)}>
-                              {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
-                            </Badge>
-                            <Badge className={REQUEST_TYPES[request.request_type].color}>
-                              {REQUEST_TYPES[request.request_type].title}
-                            </Badge>
-                            {request.is_expired && <Badge variant="destructive">Expirada</Badge>}
+              <AnimatePresence>
+                {filteredRequests.map((request, index) => {
+                  const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.ingresada
+                  const StatusIcon = statusConfig.icon
+                  const typeConfig = REQUEST_TYPES_CONFIG[request.request_type as keyof typeof REQUEST_TYPES_CONFIG]
+                  
+                  return (
+                    <motion.div
+                      key={request.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className="hover:shadow-md transition-all border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">
+                        <CardContent className="p-6">
+                          <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+                            <div className="space-y-3 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className={`${statusConfig.color} border`}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {statusConfig.label}
+                                </Badge>
+                                <Badge variant={getPriorityBadgeVariant(request.priority)}>
+                                  {PRIORITY_LABELS[request.priority as keyof typeof PRIORITY_LABELS]}
+                                </Badge>
+                                <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900">
+                                  {typeConfig?.label || request.request_type}
+                                </Badge>
+                                {request.is_expired && (
+                                  <Badge variant="destructive" className="bg-red-500">Expirada</Badge>
+                                )}
+                              </div>
+                              
+                              <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                  {request.requester_name}
+                                </h3>
+                                <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                  <span>{request.department_name}</span>
+                                  <span className="mx-2">•</span>
+                                  <span>{request.requester_email}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                <p className="text-sm text-slate-700 dark:text-slate-300 italic">
+                                  "{request.reason}"
+                                </p>
+                              </div>
+                              
+                              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  <span>Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+                                </div>
+                                {request.reviewer_name && (
+                                  <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                    <User className="h-3.5 w-3.5" />
+                                    <span>Revisor: {request.reviewer_name}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 w-full md:w-auto">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setSelectedRequest(request)}
+                                className="flex-1 md:flex-none"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Detalles
+                              </Button>
+                              {(request.status === "ingresada" || request.status === "en_gestion") && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => setSelectedRequest(request)}
+                                  className="flex-1 md:flex-none"
+                                >
+                                  Reasignar
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold">{request.requester_name}</h3>
-                            <p className="text-sm text-muted-foreground">{request.department_name}</p>
-                          </div>
-                          <p className="text-sm">{request.reason}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>
-                              Creada: {format(new Date(request.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                            </span>
-                            <span>
-                              Expira: {format(new Date(request.expires_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                            </span>
-                            {request.reviewer_name && <span>Revisor: {request.reviewer_name}</span>}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                            Ver Detalles
-                          </Button>
-                          {(request.status === "ingresada" || request.status === "en_gestion") && (
-                            <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                              Reasignar
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
             )}
           </div>
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-4">
+        <TabsContent value="analytics" className="space-y-6">
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
                 <CardHeader>
                   <CardTitle>Solicitudes por Tipo</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {Object.entries(stats.by_type).map(([type, count]) => (
-                      <div key={type} className="flex justify-between items-center">
-                        <span className="text-sm">{REQUEST_TYPE_LABELS[type as keyof typeof REQUEST_TYPE_LABELS]}</span>
-                        <Badge variant="secondary">{count}</Badge>
+                      <div key={type} className="flex justify-between items-center p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                        <span className="text-sm font-medium">{REQUEST_TYPE_LABELS[type as keyof typeof REQUEST_TYPE_LABELS]}</span>
+                        <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800">{count}</Badge>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
                 <CardHeader>
                   <CardTitle>Solicitudes por Departamento</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {Object.entries(stats.by_department).map(([dept, count]) => (
-                      <div key={dept} className="flex justify-between items-center">
-                        <span className="text-sm">{dept}</span>
-                        <Badge variant="secondary">{count}</Badge>
+                      <div key={dept} className="flex justify-between items-center p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                        <span className="text-sm font-medium">{dept}</span>
+                        <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800">{count}</Badge>
                       </div>
                     ))}
                   </div>
@@ -692,9 +746,9 @@ export default function AdminRequestsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="approvers" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+        <TabsContent value="approvers" className="space-y-6">
+          <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <CardTitle>Aprobadores Configurados</CardTitle>
                 <CardDescription>Usuarios autorizados para aprobar solicitudes por departamento</CardDescription>
@@ -704,6 +758,7 @@ export default function AdminRequestsPage() {
                   resetApproverForm()
                   setShowApproverDialog(true)
                 }}
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Aprobador
@@ -712,8 +767,8 @@ export default function AdminRequestsPage() {
             <CardContent>
               <div className="space-y-4">
                 {approvers.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                    <Settings className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No hay aprobadores configurados</h3>
                     <p className="text-muted-foreground mb-4">Agrega usuarios que puedan aprobar solicitudes</p>
                     <Button
@@ -721,6 +776,7 @@ export default function AdminRequestsPage() {
                         resetApproverForm()
                         setShowApproverDialog(true)
                       }}
+                      variant="outline"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Agregar Primer Aprobador
@@ -728,22 +784,24 @@ export default function AdminRequestsPage() {
                   </div>
                 ) : (
                   approvers.map((approver) => (
-                    <div key={approver.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{approver.approver_name}</h4>
-                        <p className="text-sm text-muted-foreground">
+                    <div key={approver.id} className="flex flex-col md:flex-row items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-white/50 dark:bg-slate-900/30 hover:shadow-md transition-all">
+                      <div className="flex-1 mb-4 md:mb-0 text-center md:text-left">
+                        <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                          <h4 className="font-semibold text-lg">{approver.approver_name}</h4>
+                          {!approver.is_active && <Badge variant="destructive">Inactivo</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
                           {approver.department_name || "Todos los departamentos"}
                         </p>
-                        <div className="flex gap-1 mt-2">
+                        <div className="flex flex-wrap justify-center md:justify-start gap-1">
                           {approver.request_types.map((type) => (
-                            <Badge key={type} variant="outline" className="text-xs">
+                            <Badge key={type} variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800">
                               {REQUEST_TYPE_LABELS[type as keyof typeof REQUEST_TYPE_LABELS]}
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={approver.is_active} disabled />
+                      <div className="flex items-center gap-3">
                         <Button variant="outline" size="sm" onClick={() => editApprover(approver)}>
                           Editar
                         </Button>
@@ -770,15 +828,15 @@ export default function AdminRequestsPage() {
             <DialogTitle>{selectedApprover ? "Editar Aprobador" : "Agregar Aprobador"}</DialogTitle>
             <DialogDescription>Configura los permisos de aprobación para un usuario</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <Label>Usuario Aprobador</Label>
                 <Select
                   value={approverForm.approver_user_id}
                   onValueChange={(value) => setApproverForm((prev) => ({ ...prev, approver_user_id: value }))}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger>
                     <SelectValue placeholder="Seleccionar usuario" />
                   </SelectTrigger>
                   <SelectContent>
@@ -790,13 +848,13 @@ export default function AdminRequestsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Departamento (Opcional)</Label>
                 <Select
                   value={approverForm.department_id || "all"}
                   onValueChange={(value) => setApproverForm((prev) => ({ ...prev, department_id: value }))}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger>
                     <SelectValue placeholder="Todos los departamentos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -811,19 +869,19 @@ export default function AdminRequestsPage() {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-3">
               <Label>Tipos de Solicitudes que puede Aprobar</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
                 {Object.entries(REQUEST_TYPE_LABELS).map(([key, label]) => (
-                  <div key={key} className="flex items-center space-x-2">
+                  <div key={key} className="flex items-center space-x-3">
                     <input
                       type="checkbox"
                       id={key}
                       checked={approverForm.request_types.includes(key)}
                       onChange={() => toggleRequestType(key)}
-                      className="rounded border-gray-300"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <Label htmlFor={key} className="text-sm font-normal">
+                    <Label htmlFor={key} className="text-sm font-normal cursor-pointer">
                       {label}
                     </Label>
                   </div>
@@ -831,37 +889,41 @@ export default function AdminRequestsPage() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
               <Switch
                 checked={approverForm.is_active}
                 onCheckedChange={(checked) => setApproverForm((prev) => ({ ...prev, is_active: checked }))}
               />
-              <Label>Activo</Label>
+              <div className="space-y-1">
+                <Label>Estado Activo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Desactiva esta opción para revocar temporalmente los permisos sin eliminar el registro.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowApproverDialog(false)} disabled={savingApprover}>
               Cancelar
             </Button>
             <Button
-              onClick={() => {
-                saveApprover()
-              }}
+              onClick={saveApprover}
               disabled={savingApprover || !approverForm.approver_user_id || approverForm.request_types.length === 0}
+              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900"
             >
               {savingApprover ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Guardando...
                 </>
               ) : selectedApprover ? (
-                "Actualizar"
+                "Actualizar Aprobador"
               ) : (
-                "Crear"
+                "Crear Aprobador"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -889,6 +951,6 @@ export default function AdminRequestsPage() {
           showActions={true}
         />
       )}
-    </div>
+    </motion.div>
   )
 }

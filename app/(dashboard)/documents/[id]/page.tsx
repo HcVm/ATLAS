@@ -656,6 +656,42 @@ export default function DocumentDetailsPage() {
                                 "{movement.notes}"
                              </div>
                           )}
+
+                          {attachments.filter(att => att.movement_id === movement.id).length > 0 && (
+                             <div className="mt-3 space-y-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                   <Paperclip className="h-3 w-3" /> Adjuntos
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                   {attachments
+                                      .filter(att => att.movement_id === movement.id)
+                                      .map(att => (
+                                         <div key={att.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 group hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+                                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
+                                               <FileText className="h-3.5 w-3.5" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                               <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title={att.file_name}>
+                                                  {att.file_name}
+                                               </p>
+                                               <p className="text-[10px] text-slate-400">
+                                                  {(att.file_size / 1024 / 1024).toFixed(2)} MB
+                                               </p>
+                                            </div>
+                                            <div className="flex">
+                                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20" onClick={() => viewFile(att.file_url)}>
+                                                  <Eye className="h-3.5 w-3.5" />
+                                               </Button>
+                                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={() => downloadFile(att.file_url, att.file_name)}>
+                                                  <Download className="h-3.5 w-3.5" />
+                                               </Button>
+                                            </div>
+                                         </div>
+                                      ))
+                                   }
+                                </div>
+                             </div>
+                          )}
                        </div>
                     </div>
                  ))}

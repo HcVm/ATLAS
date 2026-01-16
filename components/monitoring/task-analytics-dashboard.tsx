@@ -19,8 +19,25 @@ import {
   Clock,
   Award,
   Building,
+  Activity
 } from "lucide-react"
-import { subDays } from "date-fns"
+import { subDays, format } from "date-fns"
+import { es } from "date-fns/locale"
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie,
+  Legend
+} from "recharts"
 
 interface AnalyticsData {
   totalEmployees: number
@@ -60,6 +77,7 @@ interface AnalyticsData {
     tasksCompleted: number
     completionRate: number
     employeesActive: number
+    formattedDate?: string
   }>
   weeklyComparison: {
     thisWeek: number
@@ -71,6 +89,37 @@ interface AnalyticsData {
 interface TaskAnalyticsDashboardProps {
   dateRange?: string
   refreshTrigger?: number
+}
+
+const renderGradients = () => (
+  <defs>
+    <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1} />
+    </linearGradient>
+    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
+    </linearGradient>
+  </defs>
+)
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-3 shadow-xl">
+        <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 text-xs mb-1">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
+            <span className="text-slate-500 dark:text-slate-400">{entry.name}:</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return null
 }
 
 export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: TaskAnalyticsDashboardProps) {
@@ -147,39 +196,14 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
       const { data: employeesData, error: employeesError } = employeesResult
       const { data: boardsData, error: boardsError } = boardsResult
 
-      if (employeesError) {
-        console.error("[v0] Error loading employees:", employeesError)
-        throw employeesError
-      }
-
-      if (boardsError) {
-        console.error("[v0] Error loading boards:", boardsError)
-        throw boardsError
-      }
-
-      console.log("[v0] Raw boards loaded:", boardsData?.length)
-      console.log("[v0] Sample board data:", boardsData?.[0])
+      if (employeesError) throw employeesError
+      if (boardsError) throw boardsError
 
       const filteredBoardsData =
         boardsData?.filter((board) => {
           const boardCompanyId = board.company_id || board.user_profile?.company_id
-          const matches = boardCompanyId === selectedCompany?.id
-
-          console.log("[v0] Board filter check:", {
-            boardId: board.id,
-            boardTitle: board.title,
-            boardCompanyId: board.company_id,
-            userCompanyId: board.user_profile?.company_id,
-            selectedCompanyId: selectedCompany?.id,
-            matches,
-          })
-
-          return matches
+          return boardCompanyId === selectedCompany?.id
         }) || []
-
-      console.log("[v0] Loaded employees:", employeesData?.length)
-      console.log("[v0] Filtered boards:", filteredBoardsData.length)
-      console.log("[v0] Company ID used for filtering:", selectedCompany?.id)
 
       const allTasks =
         filteredBoardsData?.flatMap((board) =>
@@ -198,22 +222,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
             user_profile: board.user_profile,
           })),
         ) || []
-
-      console.log("[v0] PROCESSED TASKS:", {
-        totalTasks: allTasks.length,
-        tasksByStatus: {
-          completed: allTasks.filter((t) => t.status === "completed").length,
-          pending: allTasks.filter((t) => t.status === "pending").length,
-          in_progress: allTasks.filter((t) => t.status === "in_progress").length,
-        },
-        sampleTasks: allTasks.slice(0, 3).map((t) => ({
-          title: t.title,
-          status: t.status,
-          board_date: t.board_date,
-          user_id: t.user_id,
-          user_name: t.user_profile?.full_name,
-        })),
-      })
 
       const completedTasks = allTasks.filter((task) => task.status === "completed")
       const overdueTasks = allTasks.filter((task) => {
@@ -326,34 +334,9 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
       })
 
       const dailyStats = []
-      const today = new Date()
-
-      const formatDatePeru = (date: Date | string): string => {
-        const dateObj = typeof date === "string" ? new Date(date) : date
-        return dateObj
-          .toLocaleDateString("es-PE", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          })
-          .split("/")
-          .reverse()
-          .join("-")
-      }
-
-      const formatDateDisplay = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString("es-PE", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      }
-
       const uniqueBoardDates = [...new Set(filteredBoardsData?.map((board) => board.board_date).filter(Boolean))]
         .sort()
         .slice(-7)
-
-      console.log("[v0] Unique board dates found:", uniqueBoardDates)
 
       for (const dateStr of uniqueBoardDates) {
         const dayBoards = filteredBoardsData?.filter((board) => board.board_date === dateStr) || []
@@ -374,19 +357,14 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         })
 
         const activeEmployeeIds = new Set(dayBoards.map((board) => board.user_id))
-
         const completionRate = dayTasks.length > 0 ? (dayTasksCompleted.length / dayTasks.length) * 100 : 0
-
-        console.log(`[v0] Daily stats for ${dateStr}:`, {
-          dayBoards: dayBoards.length,
-          dayTasks: dayTasks.length,
-          dayTasksCompleted: dayTasksCompleted.length,
-          activeEmployees: activeEmployeeIds.size,
-          completionRate: completionRate.toFixed(1),
-        })
+        
+        const dateObj = new Date(dateStr)
+        const formattedDate = format(dateObj, "d MMM", { locale: es })
 
         dailyStats.push({
           date: dateStr,
+          formattedDate,
           tasksCreated: dayTasks.length,
           tasksCompleted: dayTasksCompleted.length,
           completionRate,
@@ -415,21 +393,6 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
       const productivityTrend = thisWeekRate - lastWeekRate
       const improvement = lastWeekRate > 0 ? ((thisWeekRate - lastWeekRate) / lastWeekRate) * 100 : 0
-
-      console.log("[v0] Enhanced analytics calculated successfully:", {
-        totalTasks: allTasks.length,
-        completedTasks: completedTasks.length,
-        overdueTasks: overdueTasks.length,
-        avgCompletionRate,
-        avgCompletionTime,
-        topPerformers: topPerformers.length,
-        departmentStats: departmentStats.length,
-        roleStats: roleStats.length,
-        dailyStatsCount: dailyStats.length,
-        thisWeekRate,
-        lastWeekRate,
-        productivityTrend,
-      })
 
       setAnalytics({
         totalEmployees: employeesData?.length || 0,
@@ -460,10 +423,13 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
   if (!selectedCompany?.id) {
     return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Selecciona una empresa para ver los análisis</p>
+      <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200/60 dark:border-slate-800/60">
+        <CardContent className="p-8 text-center">
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Users className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Sin Empresa Seleccionada</h3>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Selecciona una empresa para ver los análisis de rendimiento</p>
         </CardContent>
       </Card>
     )
@@ -471,14 +437,9 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(8)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-32 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"></div>
         ))}
       </div>
     )
@@ -486,10 +447,12 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
   if (!analytics) {
     return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <AlertTriangle className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">No se pudieron cargar los datos de análisis</p>
+      <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200/60 dark:border-slate-800/60">
+        <CardContent className="p-8 text-center">
+          <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-8 w-8 text-red-400 dark:text-red-500" />
+          </div>
+          <p className="text-slate-500 dark:text-slate-400">No se pudieron cargar los datos de análisis</p>
         </CardContent>
       </Card>
     )
@@ -497,13 +460,19 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Análisis de Rendimiento</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Métricas y tendencias de productividad</p>
+          <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 via-slate-600 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+            <Activity className="h-5 w-5 text-blue-500" />
+            Análisis de Rendimiento
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Métricas de productividad y eficiencia del equipo
+          </p>
         </div>
         <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200/60 dark:border-slate-800/60">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -514,71 +483,80 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
         </Select>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
+        <Card className="bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-xl transition-all duration-300 group">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Empleados</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analytics.totalEmployees}</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Empleados</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">{analytics.totalEmployees}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-600" />
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl group-hover:scale-110 transition-transform">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-xl transition-all duration-300 group">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tareas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analytics.totalTasks}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {analytics.avgTasksPerEmployee.toFixed(1)} por empleado
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Tareas</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                   <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalTasks}</p>
+                   <p className="text-xs text-slate-400">~{analytics.avgTasksPerEmployee.toFixed(0)}/emp</p>
+                </div>
+              </div>
+              <div className="p-2.5 bg-purple-50 dark:bg-purple-900/20 rounded-xl group-hover:scale-110 transition-transform">
+                <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-xl transition-all duration-300 group">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Completado</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                  {analytics.avgCompletionRate.toFixed(0)}%
                 </p>
               </div>
-              <Target className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tasa de Completado</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {analytics.avgCompletionRate.toFixed(1)}%
-                </p>
-                <Progress value={analytics.avgCompletionRate} className="mt-2" />
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl group-hover:scale-110 transition-transform">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
+            <Progress value={analytics.avgCompletionRate} className="h-1.5" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-xl transition-all duration-300 group">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tiempo Promedio</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {analytics.avgCompletionTime.toFixed(1)}h
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">para completar</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tiempo Promedio</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                   <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.avgCompletionTime.toFixed(1)}</p>
+                   <span className="text-xs text-slate-500">hrs</span>
+                </div>
               </div>
-              <Clock className="h-8 w-8 text-indigo-600" />
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl group-hover:scale-110 transition-transform">
+                <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-xl transition-all duration-300 group">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tendencia</p>
-                <div className="flex items-center space-x-1">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tendencia</p>
+                <div className="flex items-center gap-2 mt-1">
+                   <p className={`text-2xl font-bold ${analytics.productivityTrend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {Math.abs(analytics.productivityTrend).toFixed(1)}%
                   </p>
                   {analytics.productivityTrend >= 0 ? (
@@ -587,233 +565,190 @@ export function TaskAnalyticsDashboard({ dateRange = "week", refreshTrigger }: T
                     <TrendingDown className="h-4 w-4 text-red-600" />
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {analytics.productivityTrend >= 0 ? "Mejorando" : "Declinando"}
-                </p>
               </div>
-              <BarChart3 className="h-8 w-8 text-orange-600" />
+              <div className="p-2.5 bg-orange-50 dark:bg-orange-900/20 rounded-xl group-hover:scale-110 transition-transform">
+                <BarChart3 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {analytics.weeklyComparison.lastWeek > 0 && (
-        <Card
-          className={`border-2 ${
-            analytics.weeklyComparison.improvement >= 0
-              ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20"
-              : "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20"
-          }`}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {analytics.weeklyComparison.improvement >= 0 ? (
-                  <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
-                ) : (
-                  <TrendingDown className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                )}
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    Comparación Semanal: {analytics.weeklyComparison.improvement >= 0 ? "Mejora" : "Declive"} del{" "}
-                    {Math.abs(analytics.weeklyComparison.improvement).toFixed(1)}%
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Esta semana: {analytics.weeklyComparison.thisWeek.toFixed(1)}% vs Semana pasada:{" "}
-                    {analytics.weeklyComparison.lastWeek.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {analytics.overdueTasks > 0 && (
-        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <div>
-                <p className="font-medium text-red-800 dark:text-red-200">
-                  {analytics.overdueTasks} tareas vencidas requieren atención
-                </p>
-                <p className="text-sm text-red-600 dark:text-red-300">
-                  Revisa las tareas pendientes para evitar retrasos en los proyectos
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Main Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
+        {/* Daily Trend Chart */}
+        <Card className="lg:col-span-2 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Award className="h-5 w-5" />
-              Mejores Desempeños
+            <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <Calendar className="h-5 w-5 text-blue-500" />
+              Productividad Diaria
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
-              Empleados con mayor tasa de completado
-            </CardDescription>
+            <CardDescription>Tareas creadas vs completadas en los últimos 7 días</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="h-[300px]">
+             <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={analytics.dailyStats} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  {renderGradients()}
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" vertical={false} />
+                  <XAxis 
+                    dataKey="formattedDate" 
+                    tick={{ fill: '#94a3b8', fontSize: 12 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#94a3b8', fontSize: 12 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    dx={-10}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="tasksCreated" 
+                    name="Tareas Creadas"
+                    stroke="#3B82F6" 
+                    strokeWidth={2} 
+                    fillOpacity={1} 
+                    fill="url(#colorTasks)" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="tasksCompleted" 
+                    name="Completadas"
+                    stroke="#10B981" 
+                    strokeWidth={2} 
+                    fillOpacity={1} 
+                    fill="url(#colorCompleted)" 
+                  />
+                  <Legend iconType="circle" />
+                </AreaChart>
+             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Top Performers List */}
+        <Card className="bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <Award className="h-5 w-5 text-yellow-500" />
+              Top Desempeño
+            </CardTitle>
+            <CardDescription>Empleados con mayor eficiencia</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {analytics.topPerformers.map((performer, index) => (
               <div
                 key={performer.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-white/60 dark:hover:bg-slate-900/60 transition-colors"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+                <div className="flex items-center gap-3">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                    index === 0 ? "bg-yellow-100 text-yellow-700" :
+                    index === 1 ? "bg-slate-100 text-slate-700" :
+                    index === 2 ? "bg-orange-100 text-orange-700" :
+                    "bg-slate-50 text-slate-500"
+                  }`}>
                     {index + 1}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{performer.name}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {performer.role} • {performer.department}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {performer.tasksCompleted}/{performer.totalTasks} tareas •{" "}
-                      {performer.avgCompletionTime.toFixed(1)}h promedio
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{performer.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {performer.tasksCompleted} tareas
                     </p>
                   </div>
                 </div>
-                <Badge
-                  variant={
-                    performer.completionRate >= 80
-                      ? "default"
-                      : performer.completionRate >= 60
-                        ? "secondary"
-                        : "destructive"
-                  }
-                >
-                  {performer.completionRate.toFixed(1)}%
-                </Badge>
+                <div className="text-right">
+                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      {performer.completionRate.toFixed(0)}%
+                   </Badge>
+                </div>
               </div>
             ))}
             {analytics.topPerformers.length === 0 && (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay datos suficientes para mostrar</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Building className="h-5 w-5" />
-              Por Departamento
-            </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
-              Comparación de productividad entre departamentos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {analytics.departmentStats.map((dept) => (
-              <div key={dept.department} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{dept.department}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {dept.employees} empleados • {dept.totalTasks} tareas • {dept.avgCompletionTime.toFixed(1)}h
-                      promedio
-                    </p>
-                  </div>
-                  <Badge variant={dept.completionRate >= 80 ? "default" : "secondary"}>
-                    {dept.completionRate.toFixed(1)}%
-                  </Badge>
-                </div>
-                <Progress value={dept.completionRate} className="h-2" />
+              <div className="text-center py-8 text-slate-500">
+                 No hay datos suficientes
               </div>
-            ))}
-            {analytics.departmentStats.length === 0 && (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay departamentos configurados</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Users className="h-5 w-5" />
-              Por Rol
-            </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
-              Rendimiento según el rol del empleado
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {analytics.roleStats.map((role) => (
-              <div key={role.role} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{role.role}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {role.employees} empleados • {role.totalTasks} tareas
-                    </p>
-                  </div>
-                  <Badge variant={role.completionRate >= 80 ? "default" : "secondary"}>
-                    {role.completionRate.toFixed(1)}%
-                  </Badge>
-                </div>
-                <Progress value={role.completionRate} className="h-2" />
-              </div>
-            ))}
-            {analytics.roleStats.length === 0 && (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay roles configurados</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-            <Calendar className="h-5 w-5" />
-            Tendencia Diaria
-          </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-400">
-            Evolución de la productividad en el período seleccionado
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {analytics.dailyStats.map((day) => (
-              <div
-                key={day.date}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
-              >
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {(() => {
-                      const [year, month, dayNum] = day.date.split("-").map(Number)
-                      const date = new Date(year, month - 1, dayNum)
-                      return date.toLocaleDateString("es-PE", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })
-                    })()}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {day.tasksCompleted}/{day.tasksCreated} tareas completadas • {day.employeesActive} empleados activos
-                  </p>
-                </div>
-                <div className="text-right">
-                  <Badge
-                    variant={
-                      day.completionRate >= 80 ? "default" : day.completionRate >= 60 ? "secondary" : "destructive"
-                    }
-                  >
-                    {day.completionRate.toFixed(1)}%
-                  </Badge>
-                  <Progress value={day.completionRate} className="w-20 h-2 mt-1" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Secondary Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* By Department */}
+        <Card className="bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl border-slate-200/60 dark:border-slate-800/60 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <Building className="h-5 w-5 text-indigo-500" />
+              Por Departamento
+            </CardTitle>
+            <CardDescription>Eficiencia por área</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {analytics.departmentStats.map((dept) => (
+               <div key={dept.department} className="space-y-2">
+                 <div className="flex justify-between text-sm">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{dept.department}</span>
+                    <span className="text-slate-500">{dept.completionRate.toFixed(1)}%</span>
+                 </div>
+                 <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-500 rounded-full" 
+                      style={{ width: `${dept.completionRate}%` }}
+                    />
+                 </div>
+               </div>
+             ))}
+          </CardContent>
+        </Card>
+
+        {/* Alerts & Warnings */}
+        <div className="space-y-4">
+           {analytics.weeklyComparison.lastWeek > 0 && (
+            <Card className={`border-l-4 shadow-sm ${
+                analytics.weeklyComparison.improvement >= 0
+                  ? "border-l-green-500 bg-green-50/50 dark:bg-green-900/10"
+                  : "border-l-orange-500 bg-orange-50/50 dark:bg-orange-900/10"
+              }`}>
+              <CardContent className="p-4 flex items-center gap-4">
+                 <div className={`p-2 rounded-full ${
+                    analytics.weeklyComparison.improvement >= 0 ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"
+                 }`}>
+                    {analytics.weeklyComparison.improvement >= 0 ? <TrendingUp className="h-5 w-5"/> : <TrendingDown className="h-5 w-5"/>}
+                 </div>
+                 <div>
+                    <h4 className="font-semibold text-slate-800 dark:text-slate-200">
+                       {analytics.weeklyComparison.improvement >= 0 ? "Mejora de Productividad" : "Disminución de Productividad"}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                       {Math.abs(analytics.weeklyComparison.improvement).toFixed(1)}% respecto a la semana anterior
+                    </p>
+                 </div>
+              </CardContent>
+            </Card>
+           )}
+
+           {analytics.overdueTasks > 0 && (
+            <Card className="border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-900/10 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-4">
+                 <div className="p-2 rounded-full bg-red-100 text-red-600">
+                    <AlertTriangle className="h-5 w-5"/>
+                 </div>
+                 <div>
+                    <h4 className="font-semibold text-red-800 dark:text-red-200">
+                       {analytics.overdueTasks} Tareas Vencidas
+                    </h4>
+                    <p className="text-sm text-red-600 dark:text-red-300">
+                       Requieren atención inmediata para evitar retrasos
+                    </p>
+                 </div>
+              </CardContent>
+            </Card>
+           )}
+        </div>
+      </div>
     </div>
   )
 }

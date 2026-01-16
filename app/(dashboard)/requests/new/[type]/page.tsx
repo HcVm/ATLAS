@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import {
   Clock,
   UserX,
@@ -33,6 +34,8 @@ import {
   X,
   CheckCircle,
   XCircle,
+  FileText,
+  Trash2,
 } from "lucide-react"
 
 const REQUEST_TYPES = {
@@ -40,7 +43,9 @@ const REQUEST_TYPES = {
     title: "Justificación de Tardanza",
     description: "Justificar llegadas tardías al trabajo",
     icon: Clock,
-    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    color: "text-orange-600 dark:text-orange-400",
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    gradient: "from-orange-500 to-amber-500",
     timeLimit: "24 horas",
     urgent: true,
   },
@@ -48,7 +53,9 @@ const REQUEST_TYPES = {
     title: "Justificación de Ausencia",
     description: "Justificar ausencias al trabajo",
     icon: UserX,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    gradient: "from-red-500 to-rose-500",
     timeLimit: "24 horas",
     urgent: true,
   },
@@ -56,7 +63,9 @@ const REQUEST_TYPES = {
     title: "Registro de Horas Extras",
     description: "Registrar horas extras trabajadas",
     icon: Plus,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    gradient: "from-blue-500 to-cyan-500",
     timeLimit: "24 horas",
     urgent: true,
   },
@@ -64,7 +73,9 @@ const REQUEST_TYPES = {
     title: "Solicitud de Permiso",
     description: "Solicitar permisos y vacaciones",
     icon: Calendar,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    color: "text-green-600 dark:text-green-400",
+    bg: "bg-green-50 dark:bg-green-900/20",
+    gradient: "from-green-500 to-emerald-500",
     timeLimit: "3 días",
     urgent: false,
   },
@@ -72,7 +83,9 @@ const REQUEST_TYPES = {
     title: "Solicitud de Equipos/Materiales",
     description: "Solicitar equipos o materiales para tu departamento",
     icon: Wrench,
-    color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    color: "text-purple-600 dark:text-purple-400",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    gradient: "from-purple-500 to-violet-500",
     timeLimit: "Sin límite",
     urgent: false,
   },
@@ -80,42 +93,11 @@ const REQUEST_TYPES = {
     title: "Solicitud General",
     description: "Comentarios, sugerencias y solicitudes generales",
     icon: MessageSquare,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    color: "text-slate-600 dark:text-slate-400",
+    bg: "bg-slate-50 dark:bg-slate-900/20",
+    gradient: "from-slate-500 to-gray-500",
     timeLimit: "Sin límite",
     urgent: false,
-  },
-}
-
-const STATUS_CONFIG = {
-  INGRESADA: {
-    label: "Ingresada",
-    icon: AlertCircle,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  },
-  EN_GESTION: {
-    label: "En Gestión",
-    icon: Loader2,
-    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  },
-  APROBADA: {
-    label: "Aprobada",
-    icon: CheckCircle,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  },
-  DESAPROBADA: {
-    label: "Desaprobada",
-    icon: XCircle,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  },
-  EJECUTADA: {
-    label: "Ejecutada",
-    icon: CheckCircle,
-    color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-  },
-  CANCELADA: {
-    label: "Cancelada",
-    icon: Clock,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
   },
 }
 
@@ -279,24 +261,11 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
 
           if (uploadError) {
             console.error("[v0] Error uploading file:", uploadError)
-            console.error("[v0] Error details:", {
-              message: uploadError.message,
-              statusCode: uploadError.statusCode,
-              error: uploadError.error,
-            })
-
+            
             if (uploadError.message?.includes("row-level security policy") || uploadError.statusCode === "403") {
               toast({
                 title: "Error de permisos",
                 description: "No tienes permisos para subir archivos. Contacta al administrador del sistema.",
-                variant: "destructive",
-              })
-              setLoading(false)
-              return
-            } else if (uploadError.message?.includes("Bucket not found")) {
-              toast({
-                title: "Error de configuración",
-                description: "El sistema de archivos no está configurado correctamente. Contacta al administrador.",
                 variant: "destructive",
               })
               setLoading(false)
@@ -372,100 +341,109 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
   const isTimeSensitive = requestType?.urgent
   const timeWarning = isTimeSensitive ? `Esta solicitud debe presentarse dentro de ${requestType?.timeLimit}` : null
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
+  if (!requestType) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Tipo de solicitud no válido: "{resolvedParams.type}". Por favor, selecciona un tipo de solicitud válido.
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" asChild>
           <Link href="/requests/new">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            Volver a Selección
           </Link>
         </Button>
-        <div className="flex items-center gap-3">
-          {requestType && (
-            <div className={`p-2 rounded-lg ${requestType.color}`}>
-              <Icon className="h-5 w-5" />
-            </div>
-          )}
-          {requestType && (
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{requestType.title}</h1>
-              <p className="text-muted-foreground">{requestType.description}</p>
-            </div>
-          )}
+      </div>
+    )
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-8 p-6 pb-20 max-w-4xl mx-auto"
+    >
+      <div className="flex flex-col gap-4">
+        <Button variant="ghost" size="sm" asChild className="w-fit -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+          <Link href="/requests/new">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver a Tipos de Solicitud
+          </Link>
+        </Button>
+        
+        <div className="flex items-start gap-4">
+          <div className={`p-3 rounded-2xl ${requestType.bg} ${requestType.color} mt-1`}>
+            <Icon className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+              {requestType.title}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-lg mt-1">
+              {requestType.description}
+            </p>
+          </div>
         </div>
       </div>
 
       {timeWarning && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert className="border-orange-200/50 dark:border-orange-800/50 bg-orange-50/50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200">
+          <Clock className="h-4 w-4" />
           <AlertDescription>
-            <strong>Tiempo límite:</strong> {timeWarning}
+            <strong>Importante:</strong> {timeWarning}
           </AlertDescription>
         </Alert>
       )}
 
-      {requestType && (
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Icon className="h-5 w-5" />
-              Información de la Solicitud
-            </CardTitle>
-            <CardDescription>Completa todos los campos requeridos para enviar tu solicitud</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Razón</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe detalladamente tu solicitud"
-                          className="min-h-[100px] resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+      <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-lg relative overflow-hidden">
+        <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${requestType.gradient}`} />
+        
+        <CardHeader>
+          <CardTitle>Formulario de Solicitud</CardTitle>
+          <CardDescription>
+            Completa los detalles a continuación. Los campos marcados con * son obligatorios.
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              
+              {/* Type Specific Fields - BEFORE Reason */}
+              <div className="grid gap-6">
                 {resolvedParams.type === "late_justification" && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="incident_date"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fecha de la Tardanza</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="incident_time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Hora de Llegada</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="incident_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de la Tardanza</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="incident_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Hora de Llegada</FormLabel>
+                          <FormControl>
+                            <Input type="time" className="bg-white/50 dark:bg-slate-900/50" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 )}
 
                 {resolvedParams.type === "absence_justification" && (
@@ -476,7 +454,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                       <FormItem>
                         <FormLabel>Fecha de la Ausencia</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -493,7 +471,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                         <FormItem>
                           <FormLabel>Fecha del Trabajo Extra</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -507,7 +485,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                           <FormItem>
                             <FormLabel>Hora de Inicio</FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} />
+                              <Input type="time" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -520,7 +498,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                           <FormItem>
                             <FormLabel>Hora de Fin</FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} />
+                              <Input type="time" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -539,7 +517,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                         <FormItem>
                           <FormLabel>Fecha de Inicio</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -552,7 +530,7 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                         <FormItem>
                           <FormLabel>Fecha de Fin (opcional)</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -560,218 +538,248 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                     />
                   </div>
                 )}
-
+                
                 {resolvedParams.type === "equipment_request" && (
-                  <>
-                    <div className="space-y-6 border rounded-lg p-6 bg-card">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="requerimiento_numero"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Requerimiento N°</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Auto-generado" disabled {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="fecha_entrega_solicitada"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Fecha de Entrega Solicitada</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="dirigido_a"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Dirigido a</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nombre del responsable o área" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="area_solicitante"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Área Solicitante</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Área que solicita" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="solicitante_nombre"
+                        name="requerimiento_numero"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Solicitante</FormLabel>
+                            <FormLabel>Requerimiento N°</FormLabel>
                             <FormControl>
-                              <Input placeholder="Nombre del solicitante" {...field} />
+                              <Input placeholder="Auto-generado" disabled className="bg-slate-100 dark:bg-slate-800" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
-                        name="motivo_requerimiento"
+                        name="fecha_entrega_solicitada"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Motivo de Requerimiento</FormLabel>
+                            <FormLabel>Fecha de Entrega Solicitada</FormLabel>
                             <FormControl>
-                              <Textarea
-                                placeholder="Describe el motivo del requerimiento"
-                                className="min-h-[80px] resize-none"
-                                {...field}
-                              />
+                              <Input type="date" className="bg-white/50 dark:bg-slate-900/50" {...field} />
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium">Ítems Requeridos</label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const items = form.getValues("items_requeridos") || []
-                              form.setValue("items_requeridos", [
-                                ...items,
-                                { item: items.length + 1, especificaciones: "", cantidad: 1 },
-                              ])
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Agregar Ítem
-                          </Button>
-                        </div>
-
-                        <div className="border rounded-lg overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-muted border-b">
-                                <th className="p-3 text-left font-medium">#</th>
-                                <th className="p-3 text-left font-medium">Especificaciones / Comentarios</th>
-                                <th className="p-3 text-left font-medium">Cantidad</th>
-                                <th className="p-3 text-left font-medium">Acción</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {form.watch("items_requeridos")?.map((item: any, index: number) => (
-                                <tr key={index} className="border-b hover:bg-muted/50">
-                                  <td className="p-3">{index + 1}</td>
-                                  <td className="p-3">
-                                    <FormField
-                                      control={form.control}
-                                      name={`items_requeridos.${index}.especificaciones`}
-                                      render={({ field }) => (
-                                        <FormControl>
-                                          <Input placeholder="Descripción del ítem" {...field} />
-                                        </FormControl>
-                                      )}
-                                    />
-                                  </td>
-                                  <td className="p-3">
-                                    <FormField
-                                      control={form.control}
-                                      name={`items_requeridos.${index}.cantidad`}
-                                      render={({ field }) => (
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            min="1"
-                                            {...field}
-                                            onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
-                                          />
-                                        </FormControl>
-                                      )}
-                                    />
-                                  </td>
-                                  <td className="p-3">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        const items = form.getValues("items_requeridos")
-                                        form.setValue(
-                                          "items_requeridos",
-                                          items.filter((_, i) => i !== index),
-                                        )
-                                      }}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="urgencia"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Urgencia</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona la urgencia" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="low">Baja</SelectItem>
-                                <SelectItem value="normal">Normal</SelectItem>
-                                <SelectItem value="high">Alta</SelectItem>
-                                <SelectItem value="urgent">Urgente</SelectItem>
-                              </SelectContent>
-                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
-                  </>
-                )}
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Archivos Adjuntos (opcional)</label>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Puedes adjuntar documentos de soporte (PDF, Word, imágenes). Máximo 10MB por archivo.
-                    </p>
-                    <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="dirigido_a"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Dirigido a</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Nombre del responsable o área" className="bg-white/50 dark:bg-slate-900/50" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="area_solicitante"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Área Solicitante</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Área que solicita" className="bg-white/50 dark:bg-slate-900/50" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="solicitante_nombre"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Solicitante</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nombre del solicitante" className="bg-white/50 dark:bg-slate-900/50" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="motivo_requerimiento"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Motivo de Requerimiento</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Describe el motivo del requerimiento"
+                              className="min-h-[80px] resize-none bg-white/50 dark:bg-slate-900/50"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-3 bg-slate-50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Ítems Requeridos</label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const items = form.getValues("items_requeridos") || []
+                            form.setValue("items_requeridos", [
+                              ...items,
+                              { item: items.length + 1, especificaciones: "", cantidad: 1 },
+                            ])
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Agregar Ítem
+                        </Button>
+                      </div>
+
+                      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-100 dark:bg-slate-800">
+                            <tr>
+                              <th className="p-3 text-left font-medium w-12">#</th>
+                              <th className="p-3 text-left font-medium">Especificaciones / Comentarios</th>
+                              <th className="p-3 text-left font-medium w-24">Cant.</th>
+                              <th className="p-3 text-center font-medium w-12"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-slate-900">
+                            {form.watch("items_requeridos")?.map((item: any, index: number) => (
+                              <tr key={index} className="border-t border-slate-100 dark:border-slate-800">
+                                <td className="p-3 text-center">{index + 1}</td>
+                                <td className="p-3">
+                                  <FormField
+                                    control={form.control}
+                                    name={`items_requeridos.${index}.especificaciones`}
+                                    render={({ field }) => (
+                                      <FormControl>
+                                        <Input placeholder="Descripción del ítem" className="h-8" {...field} />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </td>
+                                <td className="p-3">
+                                  <FormField
+                                    control={form.control}
+                                    name={`items_requeridos.${index}.cantidad`}
+                                    render={({ field }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          className="h-8"
+                                          {...field}
+                                          onChange={(e) => field.onChange(Number.parseInt(e.target.value) || 1)}
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                </td>
+                                <td className="p-3">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    onClick={() => {
+                                      const items = form.getValues("items_requeridos")
+                                      form.setValue(
+                                        "items_requeridos",
+                                        items.filter((_, i) => i !== index),
+                                      )
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="urgencia"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Urgencia</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white/50 dark:bg-slate-900/50">
+                                <SelectValue placeholder="Selecciona la urgencia" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Baja</SelectItem>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="high">Alta</SelectItem>
+                              <SelectItem value="urgent">Urgente</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Razón / Descripción General</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe detalladamente el motivo de tu solicitud..."
+                        className="min-h-[120px] resize-none bg-white/50 dark:bg-slate-900/50 text-base"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div>
+                  <FormLabel className="text-base">Archivos Adjuntos</FormLabel>
+                  <CardDescription className="mb-4">
+                    Puedes adjuntar documentos de soporte (PDF, Word, imágenes). Máximo 10MB por archivo.
+                  </CardDescription>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/20 hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors cursor-pointer" onClick={() => document.getElementById("file-upload")?.click()}>
+                      <div className="p-3 bg-white dark:bg-slate-800 rounded-full mb-3 shadow-sm">
+                        <Upload className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                        Haz clic para subir archivos
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        PDF, DOCX, JPG, PNG (Max. 10MB)
+                      </p>
                       <Input
                         type="file"
                         multiple
@@ -780,72 +788,65 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
                         className="hidden"
                         id="file-upload"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.getElementById("file-upload")?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Subir Archivos
-                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {uploadedFiles.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-sm italic">
+                          No hay archivos seleccionados
+                        </div>
+                      ) : (
+                        uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                <FileText className="h-4 w-4 text-slate-500" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile(index)}
+                              className="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {uploadedFiles.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Archivos seleccionados:</p>
-                      {uploadedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                          <span className="text-sm truncate">{file.name}</span>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(index)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+              <div className="flex justify-end gap-3 pt-6">
+                <Button variant="outline" asChild className="px-6">
+                  <Link href="/requests/new">Cancelar</Link>
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 px-8"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    "Enviar Solicitud"
                   )}
-                </div>
-
-                <div className="flex justify-end gap-3 pt-6">
-                  <Button variant="outline" asChild>
-                    <Link href="/requests/new">Cancelar</Link>
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      "Enviar Solicitud"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
-
-      {!requestType && (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/requests/new">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Link>
-            </Button>
-          </div>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Tipo de solicitud no válido: "{resolvedParams.type}". Por favor, selecciona un tipo de solicitud válido.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-    </div>
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }

@@ -24,10 +24,12 @@ import {
   ChevronRight,
   Eye,
   CalendarIcon,
+  Filter,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Request {
   id: string
@@ -58,38 +60,44 @@ const REQUEST_TYPES = {
   late_justification: {
     label: "Justificación de Tardanza",
     icon: Clock,
-    color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    description: "Justificar llegadas tardías (dentro de 24 horas)",
+    color: "from-orange-500 to-amber-500",
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    text: "text-orange-700 dark:text-orange-300",
   },
   absence_justification: {
     label: "Justificación de Ausencia",
     icon: UserX,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    description: "Justificar ausencias (dentro de 24 horas)",
+    color: "from-red-500 to-rose-500",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    text: "text-red-700 dark:text-red-300",
   },
   overtime_request: {
     label: "Registro de Horas Extras",
     icon: Plus,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    description: "Registrar horas extras trabajadas (dentro de 24 horas)",
+    color: "from-blue-500 to-cyan-500",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    text: "text-blue-700 dark:text-blue-300",
   },
   permission_request: {
     label: "Solicitud de Permiso",
     icon: Calendar,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    description: "Solicitar permisos (con 3 días de anticipación)",
+    color: "from-green-500 to-emerald-500",
+    bg: "bg-green-50 dark:bg-green-900/20",
+    text: "text-green-700 dark:text-green-300",
   },
   equipment_request: {
     label: "Solicitud de Equipos/Materiales",
     icon: Wrench,
-    color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    description: "Solicitar equipos o materiales para tu departamento",
+    color: "from-purple-500 to-violet-500",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    text: "text-purple-700 dark:text-purple-300",
   },
   general_request: {
     label: "Solicitud General",
     icon: MessageSquare,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
-    description: "Comentarios, sugerencias y solicitudes generales",
+    color: "from-slate-500 to-gray-500",
+    bg: "bg-slate-50 dark:bg-slate-900/20",
+    text: "text-slate-700 dark:text-slate-300",
   },
 }
 
@@ -97,32 +105,27 @@ const STATUS_CONFIG = {
   pending: {
     label: "Pendiente",
     icon: AlertCircle,
-    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    bgColor: "bg-yellow-50 dark:bg-yellow-950",
+    color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
   },
   in_progress: {
     label: "En Proceso",
     icon: Loader2,
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
+    color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
   },
   approved: {
     label: "Aprobada",
     icon: CheckCircle,
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    bgColor: "bg-green-50 dark:bg-green-950",
+    color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
   },
   rejected: {
     label: "Rechazada",
     icon: XCircle,
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    bgColor: "bg-red-50 dark:bg-red-950",
+    color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
   },
   expired: {
     label: "Expirada",
     icon: Clock,
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
-    bgColor: "bg-gray-50 dark:bg-gray-950",
+    color: "text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-800",
   },
 }
 
@@ -197,16 +200,6 @@ export default function RequestsPage() {
     })
   }
 
-  const formatDateWithTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
   const RequestCard = ({ request }: { request: Request }) => {
     const requestType = REQUEST_TYPES[request.request_type as keyof typeof REQUEST_TYPES]
     const status = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG]
@@ -223,29 +216,19 @@ export default function RequestsPage() {
       switch (request.request_type) {
         case "equipment_request":
           return (
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800 text-sm space-y-2">
               {request.requerimiento_numero && (
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-foreground min-w-fit">Requerimiento:</span>
-                  <span className="break-all">{request.requerimiento_numero}</span>
-                </div>
-              )}
-              {request.dirigido_a && (
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-foreground min-w-fit">Dirigido a:</span>
-                  <span>{request.dirigido_a}</span>
-                </div>
-              )}
-              {request.motivo_requerimiento && (
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-foreground min-w-fit">Motivo:</span>
-                  <span className="line-clamp-2">{request.motivo_requerimiento}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Requerimiento</span>
+                  <span className="font-mono font-medium">{request.requerimiento_numero}</span>
                 </div>
               )}
               {request.items_requeridos && request.items_requeridos.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">Artículos:</span>
-                  <span>{request.items_requeridos.length} artículo(s)</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Items</span>
+                  <Badge variant="secondary" className="bg-white dark:bg-slate-800">
+                    {request.items_requeridos.length} artículo(s)
+                  </Badge>
                 </div>
               )}
             </div>
@@ -256,211 +239,154 @@ export default function RequestsPage() {
     }
 
     return (
-      <Card
-        className={`glass-card hover:shadow-lg transition-all duration-300 border-l-4 overflow-hidden ${
-          status?.color.split(" ")[0] === "bg-yellow-100"
-            ? "border-l-yellow-400"
-            : status?.color.split(" ")[0] === "bg-blue-100"
-              ? "border-l-blue-400"
-              : status?.color.split(" ")[0] === "bg-green-100"
-                ? "border-l-green-400"
-                : status?.color.split(" ")[0] === "bg-red-100"
-                  ? "border-l-red-400"
-                  : "border-l-gray-400"
-        }`}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        whileHover={{ y: -5 }}
+        transition={{ duration: 0.2 }}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <div className={`p-2 rounded-lg flex-shrink-0 ${requestType?.color || "bg-gray-100"}`}>
-                <Icon className="h-4 w-4" />
+        <Card className="h-full border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
+          <div className={`h-1.5 w-full bg-gradient-to-r ${requestType?.color || "from-slate-400 to-gray-400"}`} />
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2.5 rounded-xl ${requestType?.bg} ${requestType?.text}`}>
+                <Icon className="h-5 w-5" />
               </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="text-base line-clamp-1">{requestType?.label || request.request_type}</CardTitle>
-              </div>
-            </div>
-            <div className="flex-shrink-0">
-              <Badge className={`${status?.color} text-xs flex items-center gap-1 whitespace-nowrap`}>
-                <StatusIcon className="h-2.5 w-2.5" />
-                <span>{status?.label || request.status}</span>
+              <Badge variant="outline" className={`${status?.color} border px-2.5 py-0.5 rounded-full font-medium`}>
+                <StatusIcon className="h-3 w-3 mr-1.5" />
+                {status?.label || request.status}
               </Badge>
             </div>
-          </div>
-        </CardHeader>
 
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground line-clamp-3">{request.description || request.reason}</p>
+            <div className="space-y-2 mb-4">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
+                {requestType?.label || request.request_type}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5rem]">
+                {request.description || request.reason || "Sin descripción"}
+              </p>
+            </div>
 
-          {renderTypeSpecificFields()}
+            {renderTypeSpecificFields()}
 
-          <div className="grid grid-cols-2 gap-3 py-3 border-t border-b border-muted">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Creada</p>
-              <div className="flex items-center gap-2 text-xs">
-                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5" />
                 <span>{formatDate(request.created_at)}</span>
               </div>
+              
+              {expired && (
+                <div className="flex items-center gap-1.5 text-red-500 font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Expirado</span>
+                </div>
+              )}
             </div>
 
-            {request.expires_at && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Expira</p>
-                <div className={`flex items-center gap-2 text-xs ${expired ? "text-red-500 font-medium" : ""}`}>
-                  <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{formatDate(request.expires_at)}</span>
-                </div>
-              </div>
-            )}
-
-            {request.approved_at && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Aprobada</p>
-                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{formatDate(request.approved_at)}</span>
-                </div>
-              </div>
-            )}
-
-            {request.rejected_at && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Rechazada</p>
-                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
-                  <XCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{formatDate(request.rejected_at)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {request.approver_comments && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">Comentarios del Aprobador</p>
-              <p className="text-sm text-blue-800 dark:text-blue-300 line-clamp-2">{request.approver_comments}</p>
-            </div>
-          )}
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleViewDetails}
-            className="w-full bg-transparent hover:bg-primary/5 mt-2"
-          >
-            <Eye className="h-3.5 w-3.5 mr-2" />
-            Ver Detalles Completos
-            <ChevronRight className="h-3.5 w-3.5 ml-auto" />
-          </Button>
-        </CardContent>
-      </Card>
+            <Button
+              onClick={handleViewDetails}
+              className="w-full mt-4 bg-slate-900/5 dark:bg-white/5 hover:bg-slate-900/10 dark:hover:bg-white/10 text-slate-900 dark:text-slate-100 border-0"
+              variant="outline"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Ver Detalles
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Cargando solicitudes...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 text-blue-600" />
+          </div>
         </div>
+        <p className="text-slate-500 dark:text-slate-400 animate-pulse">Cargando tus solicitudes...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Mis Solicitudes</h1>
-          <p className="text-muted-foreground mt-1">Gestiona tus solicitudes de justificaciones, permisos y equipos</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+            Mis Solicitudes
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">
+            Gestiona y monitorea el estado de tus requerimientos
+          </p>
         </div>
-        <Button asChild className="shadow-lg">
+        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
           <Link href="/requests/new">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-5 w-5 mr-2" />
             Nueva Solicitud
           </Link>
         </Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="glass-card border-t-2 border-t-yellow-400 overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("pending").length}</p>
-                <p className="text-xs text-muted-foreground">Pendientes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-t-2 border-t-blue-400 overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("in_progress").length}</p>
-                <p className="text-xs text-muted-foreground">En Proceso</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-t-2 border-t-green-400 overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("approved").length}</p>
-                <p className="text-xs text-muted-foreground">Aprobadas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-t-2 border-t-red-400 overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{getRequestsByStatus("rejected").length}</p>
-                <p className="text-xs text-muted-foreground">Rechazadas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Pendientes", status: "pending", icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20" },
+          { label: "En Proceso", status: "in_progress", icon: Loader2, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-900/20" },
+          { label: "Aprobadas", status: "approved", icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+          { label: "Rechazadas", status: "rejected", icon: XCircle, color: "text-red-500", bg: "bg-red-50 dark:bg-red-900/20" },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+          >
+            <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+                    {getRequestsByStatus(stat.status).length}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <div className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar solicitudes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+      {/* Filters */}
+      <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+              <Input
+                placeholder="Buscar por asunto, descripción..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="flex gap-4">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Estado" />
+                <SelectTrigger className="w-full md:w-[180px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-slate-400" />
+                    <SelectValue placeholder="Estado" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
@@ -471,8 +397,8 @@ export default function RequestsPage() {
                 </SelectContent>
               </Select>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="Tipo" />
+                <SelectTrigger className="w-full md:w-[200px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <SelectValue placeholder="Tipo de Solicitud" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los tipos</SelectItem>
@@ -488,33 +414,48 @@ export default function RequestsPage() {
         </CardContent>
       </Card>
 
-      {filteredRequests.length === 0 ? (
-        <Card className="glass-card">
-          <CardContent className="p-8 text-center">
-            <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay solicitudes</h3>
-            <p className="text-muted-foreground mb-4">
-              {requests.length === 0
-                ? "Aún no has creado ninguna solicitud."
-                : "No se encontraron solicitudes que coincidan con los filtros."}
-            </p>
-            <Button asChild>
-              <Link href="/requests/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Primera Solicitud
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {filteredRequests.map((request) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
-        </div>
-      )}
+      {/* Requests Grid */}
+      <AnimatePresence mode="popLayout">
+        {filteredRequests.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+          >
+            <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+              <CardContent className="p-12 text-center flex flex-col items-center">
+                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                  <FileCheck className="h-8 w-8 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                  No se encontraron solicitudes
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mb-6">
+                  {requests.length === 0
+                    ? "Aún no has creado ninguna solicitud. ¡Comienza ahora!"
+                    : "No hay resultados que coincidan con tus filtros de búsqueda."}
+                </p>
+                {requests.length === 0 && (
+                  <Button asChild className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200">
+                    <Link href="/requests/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Primera Solicitud
+                    </Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredRequests.map((request) => (
+              <RequestCard key={request.id} request={request} />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
 
       <RequestDetailsDialog request={selectedRequest} open={showDetailsDialog} onOpenChange={setShowDetailsDialog} />
-    </div>
+    </motion.div>
   )
 }

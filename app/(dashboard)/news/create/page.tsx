@@ -232,169 +232,179 @@ export default function CreateNewsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-4xl mx-auto p-3 sm:p-4 lg:p-6">
-        {/* Header - Responsive */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <Button variant="outline" size="icon" asChild className="self-start bg-transparent">
-            <Link href="/news">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold">Crear Nueva Noticia</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              {selectedCompany
-                ? `Creando noticia para ${selectedCompany.name}`
-                : "Completa el formulario para crear una nueva noticia"}
-            </p>
-          </div>
-        </div>
-
-        {/* Form Card - Responsive */}
-        <Card className="shadow-lg">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-lg sm:text-xl">
-              <Newspaper className="h-5 w-5 self-start sm:self-center" />
-              <span>Nueva Noticia</span>
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base mt-2">
-              Completa el formulario para crear una nueva noticia
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="p-4 sm:p-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                {/* Title Field */}
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Título de la noticia" {...field} />
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
-                        El título debe tener al menos 3 caracteres.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Content Field */}
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contenido</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Contenido de la noticia (opcional si subes una imagen)"
-                          className="min-h-[120px] sm:min-h-[150px] resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
-                        El contenido es opcional si subes una imagen. Si no subes imagen, el contenido debe tener al
-                        menos 10 caracteres.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Image Field - Responsive */}
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" />
-                        Imagen (Opcional - puede ser el contenido principal)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="space-y-3">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            className="text-sm"
-                            disabled={processing || loading}
-                          />
-
-                          {compressionInfo && (
-                            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                              <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
-                                <span className="text-sm font-medium">Imagen Optimizada</span>
-                              </div>
-                              <div className="text-xs text-green-700 dark:text-green-300 mt-1 space-y-1">
-                                <p>Tamaño original: {formatFileSize(compressionInfo.originalSize)}</p>
-                                <p>Tamaño optimizado: {formatFileSize(compressionInfo.compressedSize)}</p>
-                                <p>Ahorro: {compressionInfo.ratio}% menos espacio</p>
-                              </div>
-                            </div>
-                          )}
-
-                          {processing && (
-                            <div className="flex items-center justify-center h-32 bg-muted rounded-lg">
-                              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                              <span className="text-sm text-muted-foreground">Optimizando imagen...</span>
-                            </div>
-                          )}
-
-                          {imagePreview && !processing && (
-                            <div className="relative">
-                              <img
-                                src={imagePreview || "/placeholder.svg"}
-                                alt="Preview"
-                                className="w-full max-w-md h-32 sm:h-48 object-cover rounded-lg border"
-                              />
-                              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                                Vista previa
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs sm:text-sm">
-                        Sube una imagen para la noticia (JPG, PNG, GIF - máximo 10MB). Se convertirá automáticamente a
-                        WebP para optimizar el tamaño.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Action Buttons - Responsive */}
-                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 px-0 pt-4 sm:pt-6">
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => router.back()}
-                    className="w-full sm:w-auto order-2 sm:order-1"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading || processing}
-                    className="w-full sm:w-auto order-1 sm:order-2"
-                  >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    <span className="hidden sm:inline">{processing ? "Procesando..." : "Publicar Noticia"}</span>
-                    <span className="sm:hidden">{processing ? "Procesando..." : "Publicar"}</span>
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <Button 
+            variant="ghost" 
+            onClick={() => router.push("/news")}
+            className="group pl-0 hover:pl-2 transition-all duration-300 hover:bg-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
+          Volver a Noticias
+        </Button>
       </div>
+
+      <div className="flex flex-col gap-2 mb-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
+            Crear Nueva Noticia
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400">
+             {selectedCompany
+                ? `Publicando para: ${selectedCompany.name}`
+                : "Publicación global para toda la organización"}
+          </p>
+      </div>
+
+      {/* Form Card */}
+      <Card className="shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl">
+        <CardHeader className="border-b border-slate-100/60 dark:border-slate-800/60 pb-6">
+          <CardTitle className="flex items-center gap-2 text-xl text-slate-900 dark:text-slate-100">
+            <Newspaper className="h-5 w-5 text-orange-500" />
+            <span>Contenido de la Noticia</span>
+          </CardTitle>
+          <CardDescription className="text-slate-500 dark:text-slate-400">
+            Completa los detalles para informar a tu equipo.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="pt-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Title Field */}
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium text-base">Título de la Noticia</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Ej: Nuevo horario de atención por feriados..." 
+                        {...field} 
+                        className="h-12 text-lg bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 dark:focus:border-orange-600 transition-all"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-slate-400 text-xs">
+                      Debe ser claro y conciso (mínimo 3 caracteres).
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Content Field */}
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 dark:text-slate-300 font-medium text-base">Cuerpo del Mensaje</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Escribe aquí todos los detalles..."
+                        className="min-h-[200px] resize-y bg-white/50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/60 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 dark:focus:border-orange-600 transition-all text-base leading-relaxed p-4"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-slate-400 text-xs">
+                      Opcional si subes una imagen explicativa.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Image Field */}
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem className="bg-slate-50/50 dark:bg-slate-900/30 p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-400 dark:hover:border-orange-600 transition-colors">
+                    <FormLabel className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium text-base mb-4 cursor-pointer">
+                      <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                      Imagen Destacada
+                      <span className="text-xs font-normal text-slate-400 ml-auto bg-white dark:bg-slate-800 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700">Opcional</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 dark:file:bg-orange-900/30 dark:file:text-orange-300 cursor-pointer bg-transparent border-0 h-auto p-0"
+                          disabled={processing || loading}
+                        />
+
+                        {compressionInfo && (
+                          <div className="bg-emerald-50/80 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-800/60 rounded-xl p-4 flex items-start gap-3">
+                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800/50 rounded-full text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                <ImageIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Imagen Optimizada con Éxito</p>
+                                <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex gap-4 font-mono">
+                                    <span>Original: {formatFileSize(compressionInfo.originalSize)}</span>
+                                    <span>Final: {formatFileSize(compressionInfo.compressedSize)}</span>
+                                    <span className="font-bold">Ahorro: {compressionInfo.ratio}%</span>
+                                </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {processing && (
+                          <div className="flex items-center justify-center h-40 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl animate-pulse">
+                            <div className="flex flex-col items-center gap-2 text-slate-500">
+                                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                                <span className="text-sm font-medium">Optimizando imagen...</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {imagePreview && !processing && (
+                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md max-w-md mx-auto">
+                            <img
+                              src={imagePreview || "/placeholder.svg"}
+                              alt="Preview"
+                              className="w-full h-auto object-cover max-h-[400px]"
+                            />
+                            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">
+                              Vista Previa
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-slate-100/60 dark:border-slate-800/60">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => router.back()}
+                  className="w-full sm:w-auto h-11 border-slate-200/60 bg-white/50 hover:bg-slate-50 dark:border-slate-800/60 dark:bg-slate-900/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading || processing}
+                  className="w-full sm:w-auto h-11 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg shadow-orange-500/20 rounded-xl font-medium px-8"
+                >
+                  {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Newspaper className="mr-2 h-5 w-5" />}
+                  <span>{processing ? "Procesando..." : "Publicar Noticia"}</span>
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

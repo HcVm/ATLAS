@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
       totalAgreements,
       avgOrderValue: Math.round(avgOrderValue),
       growthRate: Math.round(growthRate * 100) / 100,
+      topCategories,
+      monthlyTrend
     }
 
     return NextResponse.json({

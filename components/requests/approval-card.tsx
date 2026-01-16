@@ -98,7 +98,7 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
       case "late_justification":
       case "absence_justification":
         return request.incident_date ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
             <CalendarIcon className="h-4 w-4" />
             <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
             {request.incident_time && <span className="ml-2">Hora: {request.incident_time}</span>}
@@ -107,7 +107,7 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
 
       case "overtime_request":
         return request.incident_date ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
             <Clock className="h-4 w-4" />
             <span>Fecha: {new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
             {request.incident_time && request.end_time && (
@@ -120,7 +120,7 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
 
       case "permission_request":
         return request.incident_date ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 flex-wrap">
             <Calendar className="h-4 w-4" />
             <span>{new Date(request.incident_date).toLocaleDateString("es-ES")}</span>
             {request.end_date && (
@@ -135,25 +135,25 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
 
       case "equipment_request":
         return (
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
             {request.requerimiento_numero && (
               <div>
-                <span className="font-medium">Requerimiento:</span> {request.requerimiento_numero}
+                <span className="font-medium text-slate-700 dark:text-slate-300">Requerimiento:</span> {request.requerimiento_numero}
               </div>
             )}
             {request.dirigido_a && (
               <div>
-                <span className="font-medium">Dirigido a:</span> {request.dirigido_a}
+                <span className="font-medium text-slate-700 dark:text-slate-300">Dirigido a:</span> {request.dirigido_a}
               </div>
             )}
             {request.motivo_requerimiento && (
               <div className="line-clamp-2">
-                <span className="font-medium">Motivo:</span> {request.motivo_requerimiento}
+                <span className="font-medium text-slate-700 dark:text-slate-300">Motivo:</span> {request.motivo_requerimiento}
               </div>
             )}
             {request.items_requeridos && request.items_requeridos.length > 0 && (
               <div>
-                <span className="font-medium">{request.items_requeridos.length} artículo(s)</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{request.items_requeridos.length} artículo(s)</span>
               </div>
             )}
           </div>
@@ -165,89 +165,96 @@ export function ApprovalCard({ request, onApprove, onReject, onViewDetails }: Ap
   }
 
   return (
-    <Card className="glass-card hover:shadow-lg transition-all duration-300">
-      <CardHeader className="pb-3">
+    <Card className="group relative overflow-hidden border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl hover:shadow-xl hover:border-slate-300/60 transition-all duration-300">
+      <div className={`absolute top-0 left-0 w-1 h-full ${requestType?.color.split(" ")[0].replace("bg-", "bg-opacity-80 bg-")} transition-all duration-300 group-hover:w-1.5`} />
+      
+      <CardHeader className="pb-3 pl-5">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${requestType?.color || "bg-gray-100"}`}>
+            <div className={`p-2.5 rounded-xl shadow-sm ring-1 ring-black/5 ${requestType?.color || "bg-gray-100 text-gray-800"}`}>
               <Icon className="h-4 w-4" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-lg">{requestType?.label || request.request_type}</CardTitle>
-              <CardDescription className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className={requestType?.color}>
-                  {requestType?.label || request.request_type}
-                </Badge>
+              <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {requestType?.label || request.request_type}
+              </CardTitle>
+              <div className="flex items-center gap-2 mt-1.5">
                 {expired && (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge variant="destructive" className="h-5 text-[10px] font-medium px-1.5 shadow-sm">
                     Expirada
                   </Badge>
                 )}
-              </CardDescription>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium px-2 py-0.5 rounded-full bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                   {request.status}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>{request.requester_name}</span>
+      
+      <CardContent className="pl-5">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+            <User className="h-4 w-4 text-slate-400" />
+            <span className="font-medium text-slate-700 dark:text-slate-300">{request.requester_name}</span>
             {request.department_name && (
               <>
-                <span>•</span>
-                <span>{request.department_name}</span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-xs">{request.department_name}</span>
               </>
             )}
           </div>
 
-          <p className="text-sm text-muted-foreground line-clamp-2">{request.reason}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+            {request.reason}
+          </p>
 
-          <div className="text-xs text-muted-foreground space-y-2">
+          <div className="text-xs space-y-3 pt-1">
             {renderTypeSpecificFields()}
+            
             {request.supporting_documents && request.supporting_documents.length > 0 && (
-              <div className="flex items-center gap-2">
-                <FileText className="h-3 w-3" />
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
+                <FileText className="h-3.5 w-3.5" />
                 <span>{request.supporting_documents.length} archivo(s) adjunto(s)</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Creada: {formatDate(request.created_at)}</span>
+          <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/50">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatDate(request.created_at)}
+            </span>
             {request.expires_at && (
-              <span className={expired ? "text-red-500" : ""}>Expira: {formatDate(request.expires_at)}</span>
+              <span className={expired ? "text-red-500 flex items-center gap-1" : "flex items-center gap-1"}>
+                Expira: {formatDate(request.expires_at)}
+              </span>
             )}
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <Button
               size="sm"
               variant="outline"
               onClick={() => onViewDetails(request)}
-              className="flex-1 bg-transparent"
+              className="flex-1 bg-white/50 hover:bg-white/80 border-slate-200/60 text-slate-700 hover:text-slate-900 shadow-sm transition-all"
             >
-              <Eye className="h-3 w-3 mr-1" />
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
               Ver Detalles
             </Button>
-          </div>
-          {(request.status === "INGRESADA" || request.status === "EN_GESTION") && (
-            <div className="flex gap-2">
+            
+            {(request.status === "INGRESADA" || request.status === "EN_GESTION") && (
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() => {
-                  // Call a new onStatusChange callback instead of onApprove/onReject
-                  // This will be handled by the parent component
-                  onViewDetails(request)
-                }}
-                className="flex-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900"
+                onClick={() => onViewDetails(request)}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 border-0"
               >
-                <Clock className="h-3 w-3 mr-1" />
-                Cambiar Estado
+                <Clock className="h-3.5 w-3.5 mr-1.5" />
+                Gestionar
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
