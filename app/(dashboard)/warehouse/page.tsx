@@ -15,11 +15,19 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Barcode,
+  Warehouse,
+  Boxes,
+  History,
+  Activity,
+  Zap,
+  Clock,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
+import { motion } from "framer-motion"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface WarehouseStats {
   totalProducts: number
@@ -29,6 +37,23 @@ interface WarehouseStats {
   totalMovements: number
   recentMovements: any[]
   topProducts: any[]
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.4 }
+  }
 }
 
 export default function WarehousePage() {
@@ -50,11 +75,7 @@ export default function WarehousePage() {
     const hasWarehouseAccess =
       user?.role === "admin" ||
       user?.role === "supervisor" ||
-      user?.departments?.name === "Almacén" ||
-      user?.departments?.name === "Contabilidad" ||
-      user?.departments?.name === "Operaciones" ||
-      user?.departments?.name === "Acuerdos Marco" ||
-      user?.departments?.name === "Administración"
+      ["Almacén", "Contabilidad", "Operaciones", "Acuerdos Marco", "Administración"].includes(user?.departments?.name || "")
 
     // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -85,8 +106,6 @@ export default function WarehousePage() {
         `)
         .eq("company_id", companyId)
         .eq("is_active", true)
-
-      console.log("Products query result:", { products, productsError })
 
       if (productsError) {
         console.error("Products error:", productsError)
@@ -148,382 +167,360 @@ export default function WarehousePage() {
   const hasWarehouseAccess =
     user?.role === "admin" ||
     user?.role === "supervisor" ||
-    user?.departments?.name === "Almacén" ||
-    user?.departments?.name === "Contabilidad" ||
-    user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "Acuerdos Marco" ||
-    user?.departments?.name === "Administración"
+    ["Almacén", "Contabilidad", "Operaciones", "Acuerdos Marco", "Administración"].includes(user?.departments?.name || "")
 
   // Get the company to use
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   if (!hasWarehouseAccess) {
     return (
-      <div className="min-h-screen">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
-                Almacén
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] p-4">
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+          <CardHeader>
+            <div className="mx-auto p-4 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+               <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
             </div>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="h-8 w-8 text-slate-500 dark:text-slate-400" />
-                </div>
-                <p className="text-slate-600 dark:text-slate-300">No tienes permisos para acceder al almacén.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Acceso Restringido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-500 dark:text-slate-400">
+              No tienes los permisos necesarios para acceder al módulo de almacén.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (!companyToUse) {
     return (
-      <div className="min-h-screen">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
-                Almacén
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] p-4">
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+          <CardHeader>
+            <div className="mx-auto p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+               <Warehouse className="h-10 w-10 text-slate-500" />
             </div>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center">
-                  <Package className="h-8 w-8 text-slate-500 dark:text-slate-400" />
-                </div>
-                <p className="text-slate-600 dark:text-slate-300">
-                  {user?.role === "admin"
-                    ? "Selecciona una empresa para ver su inventario."
-                    : "No tienes una empresa asignada. Contacta al administrador."}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
-                Almacén
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Panel de control del inventario</p>
-            </div>
-            <Button disabled className="bg-slate-200 text-slate-500 dark:text-slate-400">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
-            </Button>
-          </div>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card
-                key={i}
-                className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60"
-              >
-                <CardContent className="p-6">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-8 bg-slate-200 rounded w-1/2"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Sin Empresa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-500 dark:text-slate-400">
+               {user?.role === "admin"
+                 ? "Selecciona una empresa para ver su inventario."
+                 : "No tienes una empresa asignada. Contacta al administrador."}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 bg-clip-text text-transparent">
-              Almacén
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300">
-              Panel de control del inventario
-              {user?.role === "admin" && selectedCompany && (
-                <span className="ml-2 text-slate-700 dark:text-slate-200 font-medium">- {selectedCompany.name}</span>
-              )}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              asChild
-              className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 bg-transparent"
-            >
-              <Link href="/warehouse/inventory">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Ver Inventario
-              </Link>
-            </Button>
-            <Button
-              asChild
-              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-            >
-              <Link href="/warehouse/products/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Producto
-              </Link>
-            </Button>
-          </div>
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Warehouse className="h-8 w-8 text-orange-500" />
+            Almacén General
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Gestión integral de inventario y movimientos
+            {user?.role === "admin" && selectedCompany && (
+              <span className="ml-2 font-medium text-slate-700 dark:text-slate-300">- {selectedCompany.name}</span>
+            )}
+          </p>
         </div>
-
-        {/* Estadísticas principales */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Total Productos</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.totalProducts}</div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">productos activos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Valor Total</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                {formatCurrency(stats.totalValue)}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">valor del inventario</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Stock Bajo</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.lowStockProducts}</div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                <Link href="/warehouse/products?filter=low-stock" className="hover:underline">
-                  productos con stock bajo
-                </Link>
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-200">Sin Stock</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-red-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.outOfStockProducts}</div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">productos agotados</p>
-            </CardContent>
-          </Card>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            asChild
+            className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Link href="/warehouse/inventory">
+              <Boxes className="h-4 w-4 mr-2" />
+              Inventario
+            </Link>
+          </Button>
+          <Button
+            asChild
+            className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20"
+          >
+            <Link href="/warehouse/products/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Producto
+            </Link>
+          </Button>
         </div>
+      </motion.div>
 
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-          {/* Productos con mayor stock */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-md flex items-center justify-center">
-                  <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                </div>
-                Productos con Mayor Stock
-              </CardTitle>
-              <CardDescription className="text-slate-600 dark:text-slate-300">
-                Top 5 productos por cantidad disponible
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.topProducts.length > 0 ? (
-                  stats.topProducts.map((product, index) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white dark:from-slate-700 dark:to-slate-600 border-slate-200/50 dark:border-slate-600/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center text-sm font-medium">
-                          {index + 1}
+      {/* Estadísticas principales */}
+      <motion.div variants={itemVariants} className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+         {loading ? (
+            [...Array(4)].map((_, i) => (
+               <Card key={i} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
+                  <CardContent className="p-6">
+                     <Skeleton className="h-4 w-24 mb-2" />
+                     <Skeleton className="h-8 w-16" />
+                  </CardContent>
+               </Card>
+            ))
+         ) : (
+            <>
+               <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-blue-50/50 dark:bg-blue-900/10 backdrop-blur-md">
+                  <CardContent className="p-5 flex items-center justify-between">
+                     <div>
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Productos</p>
+                        <h3 className="text-3xl font-bold text-blue-700 dark:text-blue-300 mt-1">{stats.totalProducts}</h3>
+                     </div>
+                     <div className="p-3 rounded-xl bg-white/60 dark:bg-white/10 text-blue-500">
+                        <Package className="h-6 w-6" />
+                     </div>
+                  </CardContent>
+               </Card>
+
+               <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-emerald-50/50 dark:bg-emerald-900/10 backdrop-blur-md">
+                  <CardContent className="p-5 flex items-center justify-between">
+                     <div>
+                        <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Valor Total</p>
+                        <h3 className="text-3xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{formatCurrency(stats.totalValue)}</h3>
+                     </div>
+                     <div className="p-3 rounded-xl bg-white/60 dark:bg-white/10 text-emerald-500">
+                        <DollarSign className="h-6 w-6" />
+                     </div>
+                  </CardContent>
+               </Card>
+
+               <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-amber-50/50 dark:bg-amber-900/10 backdrop-blur-md">
+                  <CardContent className="p-5 flex items-center justify-between">
+                     <div>
+                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Stock Bajo</p>
+                        <h3 className="text-3xl font-bold text-amber-700 dark:text-amber-300 mt-1">{stats.lowStockProducts}</h3>
+                     </div>
+                     <div className="p-3 rounded-xl bg-white/60 dark:bg-white/10 text-amber-500">
+                        <AlertTriangle className="h-6 w-6" />
+                     </div>
+                  </CardContent>
+               </Card>
+
+               <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-red-50/50 dark:bg-red-900/10 backdrop-blur-md">
+                  <CardContent className="p-5 flex items-center justify-between">
+                     <div>
+                        <p className="text-sm font-medium text-red-600 dark:text-red-400">Sin Stock</p>
+                        <h3 className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.outOfStockProducts}</h3>
+                     </div>
+                     <div className="p-3 rounded-xl bg-white/60 dark:bg-white/10 text-red-500">
+                        <TrendingUp className="h-6 w-6" />
+                     </div>
+                  </CardContent>
+               </Card>
+            </>
+         )}
+      </motion.div>
+
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        {/* Productos con mayor stock */}
+        <motion.div variants={itemVariants}>
+           <Card className="h-full border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+               <CardTitle className="flex items-center gap-2 text-lg">
+                 <Activity className="h-5 w-5 text-indigo-500" />
+                 Top Stock
+               </CardTitle>
+               <CardDescription>
+                 Productos con mayor disponibilidad
+               </CardDescription>
+             </CardHeader>
+             <CardContent className="p-0">
+               {loading ? (
+                  <div className="p-6 space-y-4">
+                     {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex justify-between items-center">
+                           <Skeleton className="h-10 w-10 rounded-full" />
+                           <Skeleton className="h-4 w-1/2" />
+                           <Skeleton className="h-4 w-16" />
                         </div>
-                        <div>
-                          <div className="font-medium text-slate-800 dark:text-slate-100">{product.name}</div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400">{product.code}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium text-slate-800 dark:text-slate-100">{product.current_stock}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">unidades</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                    No hay productos registrados
+                     ))}
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+               ) : (
+                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                   {stats.topProducts.length > 0 ? (
+                     stats.topProducts.map((product, index) => (
+                       <div
+                         key={product.id}
+                         className="flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                       >
+                         <div className="flex items-center gap-4">
+                           <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center text-sm font-bold shadow-inner">
+                             {index + 1}
+                           </div>
+                           <div>
+                             <div className="font-semibold text-slate-800 dark:text-slate-200">{product.name}</div>
+                             <div className="text-xs text-slate-500 font-mono">{product.code}</div>
+                           </div>
+                         </div>
+                         <Badge variant="secondary" className="font-mono text-sm bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800">
+                           {product.current_stock} un.
+                         </Badge>
+                       </div>
+                     ))
+                   ) : (
+                     <div className="text-center text-slate-500 dark:text-slate-400 py-12 flex flex-col items-center">
+                        <Package className="h-10 w-10 text-slate-300 mb-2" />
+                        <p>No hay productos registrados</p>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </CardContent>
+           </Card>
+        </motion.div>
 
-          {/* Movimientos recientes */}
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-md flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                </div>
-                Movimientos Recientes
-              </CardTitle>
-              <CardDescription className="text-slate-600 dark:text-slate-300">
-                Últimos movimientos de inventario
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.recentMovements.length > 0 ? (
-                  stats.recentMovements.map((movement) => (
-                    <div
-                      key={movement.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-white dark:from-slate-700 dark:to-slate-600 border-slate-200/50 dark:border-slate-600/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            movement.movement_type === "entrada"
-                              ? "bg-gradient-to-br from-green-100 to-green-200"
-                              : "bg-gradient-to-br from-red-100 to-red-200"
-                          }`}
-                        >
-                          {movement.movement_type === "entrada" ? (
-                            <ArrowUpRight className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <ArrowDownRight className="h-4 w-4 text-red-600" />
-                          )}
+        {/* Movimientos recientes */}
+        <motion.div variants={itemVariants}>
+           <Card className="h-full border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+             <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+               <CardTitle className="flex items-center gap-2 text-lg">
+                 <History className="h-5 w-5 text-orange-500" />
+                 Movimientos Recientes
+               </CardTitle>
+               <CardDescription>
+                 Últimas entradas y salidas de inventario
+               </CardDescription>
+             </CardHeader>
+             <CardContent className="p-0">
+               {loading ? (
+                  <div className="p-6 space-y-4">
+                     {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex justify-between items-center">
+                           <Skeleton className="h-10 w-10 rounded-lg" />
+                           <Skeleton className="h-4 w-1/3" />
+                           <Skeleton className="h-6 w-12 rounded-full" />
                         </div>
-                        <div>
-                          <div className="font-medium text-slate-800 dark:text-slate-100">
-                            {movement.products?.name || "Producto eliminado"}
-                          </div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400">
-                            {new Date(movement.movement_date).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge
-                          variant={movement.movement_type === "entrada" ? "default" : "secondary"}
-                          className="bg-slate-100 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600"
-                        >
-                          {movement.movement_type === "entrada" ? "+" : "-"}
-                          {movement.quantity}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                    No hay movimientos registrados
+                     ))}
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+               ) : (
+                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                   {stats.recentMovements.length > 0 ? (
+                     stats.recentMovements.map((movement) => (
+                       <div
+                         key={movement.id}
+                         className="flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                       >
+                         <div className="flex items-center gap-4">
+                           <div
+                             className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
+                               movement.movement_type === "entrada"
+                                 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+                                 : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                             }`}
+                           >
+                             {movement.movement_type === "entrada" ? (
+                               <ArrowUpRight className="h-5 w-5" />
+                             ) : (
+                               <ArrowDownRight className="h-5 w-5" />
+                             )}
+                           </div>
+                           <div>
+                             <div className="font-medium text-slate-800 dark:text-slate-200">
+                               {movement.products?.name || "Producto eliminado"}
+                             </div>
+                             <div className="text-xs text-slate-500 flex items-center gap-1">
+                               <Clock className="h-3 w-3" />
+                               {new Date(movement.movement_date).toLocaleDateString()}
+                             </div>
+                           </div>
+                         </div>
+                         <Badge
+                           className={`font-mono text-sm ${
+                              movement.movement_type === "entrada"
+                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                 : "bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300"
+                           }`}
+                         >
+                           {movement.movement_type === "entrada" ? "+" : "-"}
+                           {movement.quantity}
+                         </Badge>
+                       </div>
+                     ))
+                   ) : (
+                     <div className="text-center text-slate-500 dark:text-slate-400 py-12 flex flex-col items-center">
+                        <History className="h-10 w-10 text-slate-300 mb-2" />
+                        <p>No hay movimientos recientes</p>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </CardContent>
+           </Card>
+        </motion.div>
+      </div>
 
-        {/* Acciones rápidas */}
-        <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
+      {/* Acciones rápidas */}
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-lg bg-white/60 dark:bg-slate-900/60 backdrop-blur-md overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-slate-800 dark:text-slate-100">Acciones Rápidas</CardTitle>
-            <CardDescription className="text-slate-600 dark:text-slate-300">
-              Accesos directos a las funciones más utilizadas
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2 text-lg text-slate-800 dark:text-slate-100">
+               <Zap className="h-5 w-5 text-yellow-500" /> Acciones Rápidas
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
-                asChild
-              >
-                <Link href="/warehouse/products/new">
-                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                    <Plus className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                  </div>
-                  Nuevo Producto
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
-                asChild
-              >
-                <Link href="/warehouse/inventory">
-                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                  </div>
-                  Ver Inventario
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
-                asChild
-              >
-                <Link href="/warehouse/products?filter=low-stock">
-                  <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  </div>
-                  Stock Bajo
-                </Link>
-              </Button>
-              {/* Quick access button to lots and serials management */}
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 bg-transparent"
-                asChild
-              >
-                <Link href="/warehouse/lots-serials">
-                  <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-600 dark:to-slate-700 rounded-lg flex items-center justify-center">
-                    <Barcode className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                  </div>
-                  Lotes y Series
-                </Link>
-              </Button>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <Link href="/warehouse/products/new" className="group">
+                 <div className="h-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-orange-500 dark:hover:border-orange-500 transition-all flex items-center gap-4 shadow-sm hover:shadow-md">
+                    <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                       <Plus className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <h4 className="font-semibold text-slate-800 dark:text-slate-200">Nuevo Producto</h4>
+                       <p className="text-xs text-slate-500">Registrar item</p>
+                    </div>
+                 </div>
+              </Link>
+
+              <Link href="/warehouse/inventory" className="group">
+                 <div className="h-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all flex items-center gap-4 shadow-sm hover:shadow-md">
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                       <Eye className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <h4 className="font-semibold text-slate-800 dark:text-slate-200">Ver Inventario</h4>
+                       <p className="text-xs text-slate-500">Consultar stock</p>
+                    </div>
+                 </div>
+              </Link>
+
+              <Link href="/warehouse/products?filter=low-stock" className="group">
+                 <div className="h-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-amber-500 dark:hover:border-amber-500 transition-all flex items-center gap-4 shadow-sm hover:shadow-md">
+                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                       <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <h4 className="font-semibold text-slate-800 dark:text-slate-200">Stock Bajo</h4>
+                       <p className="text-xs text-slate-500">Alertas activas</p>
+                    </div>
+                 </div>
+              </Link>
+
+              <Link href="/warehouse/lots-serials" className="group">
+                 <div className="h-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-500 dark:hover:border-purple-500 transition-all flex items-center gap-4 shadow-sm hover:shadow-md">
+                    <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                       <Barcode className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <h4 className="font-semibold text-slate-800 dark:text-slate-200">Lotes y Series</h4>
+                       <p className="text-xs text-slate-500">Trazabilidad</p>
+                    </div>
+                 </div>
+              </Link>
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

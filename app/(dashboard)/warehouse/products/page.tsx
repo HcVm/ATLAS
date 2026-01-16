@@ -7,13 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Edit, Eye, AlertTriangle, Package } from "lucide-react"
+import { Plus, Search, Edit, Eye, AlertTriangle, Package, Filter, RefreshCw, Archive, SlidersHorizontal } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { motion, AnimatePresence } from "framer-motion"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Product {
   id: string
@@ -44,6 +46,23 @@ interface Category {
   color: string
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.3 }
+  }
+}
+
 export default function ProductsPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
@@ -52,6 +71,7 @@ export default function ProductsPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBrand, setSelectedBrand] = useState<string>("all")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -69,24 +89,9 @@ export default function ProductsPage() {
     const hasWarehouseAccess =
       user?.role === "admin" ||
       user?.role === "supervisor" ||
-      user?.departments?.name === "Almacén" ||
-      user?.departments?.name === "almacén" ||
-      user?.departments?.name === "Contabilidad" ||
-      user?.departments?.name === "contabilidad" ||
-      user?.departments?.name === "Operaciones" ||
-      user?.departments?.name === "operaciones" ||
-      user?.departments?.name === "Acuerdos Marco" ||
-      user?.departments?.name === "acuerdos marco" ||
-      user?.departments?.name === "Administración" ||
-      user?.departments?.name === "administración" ||
-      user?.departments?.name === "administracion" ||
-      user?.departments?.name === "Ventas" ||
-      user?.departments?.name === "ventas" ||
-      user?.departments?.name === "Gerencia Logística" ||
-      user?.departments?.name === "gerencia logística" ||
-      user?.departments?.name === "gerencia logistica" ||
-      user?.departments?.name === "Jefatura de Ventas" ||
-      user?.departments?.name === "jefatura de ventas"
+      ["Almacén", "Contabilidad", "Operaciones", "Acuerdos Marco", "Administración", "Ventas", "Gerencia Logística", "Jefatura de Ventas"].some(dept => 
+        user?.departments?.name?.toLowerCase() === dept.toLowerCase()
+      )
 
     // For admin users, use selectedCompany; for others, use their assigned company
     const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
@@ -106,9 +111,10 @@ export default function ProductsPage() {
     }
   }, [searchParams])
 
-  const fetchData = async (companyId: string) => {
+  const fetchData = async (companyId: string, isRefresh = false) => {
     try {
-      setLoading(true)
+      if (isRefresh) setRefreshing(true)
+      else setLoading(true)
 
       // Obtener productos
       const { data: productsData, error: productsError } = await supabase
@@ -132,76 +138,32 @@ export default function ProductsPage() {
         .eq("company_id", companyId)
         .order("name")
 
-      if (productsError) {
-        console.error("Products error:", productsError)
-
-        if (productsError.code === "42501") {
-          // Error de permisos
-          throw new Error("No tienes permisos para ver los productos de esta empresa")
-        } else if (productsError.code === "PGRST301") {
-          // Error de conexión
-          throw new Error("Error de conexión. Verifica tu conexión a internet")
-        } else {
-          throw new Error("Error al cargar los productos")
-        }
-      }
+      if (productsError) throw productsError
 
       // Obtener marcas
-      const { data: brandsData, error: brandsError } = await supabase
+      const { data: brandsData } = await supabase
         .from("brands")
         .select("id, name, color")
         .eq("company_id", companyId)
         .order("name")
 
-      if (brandsError) {
-        console.error("Brands error:", brandsError)
-        // No lanzar error, solo mostrar advertencia
-        console.warn("No se pudieron cargar las marcas para filtros")
-      }
-
       // Obtener categorías
-      const { data: categoriesData, error: categoriesError } = await supabase
+      const { data: categoriesData } = await supabase
         .from("product_categories")
         .select("id, name, color")
         .eq("company_id", companyId)
         .order("name")
 
-      if (categoriesError) {
-        console.error("Categories error:", categoriesError)
-        // No lanzar error, solo mostrar advertencia
-        console.warn("No se pudieron cargar las categorías para filtros")
-      }
-
       setProducts(productsData || [])
       setBrands(brandsData || [])
       setCategories(categoriesData || [])
 
-      // Mostrar notificación de éxito solo si hay productos
-      if (productsData && productsData.length > 0) {
-        // Solo mostrar en la primera carga
-        if (products.length === 0) {
-          console.log(`${productsData.length} productos cargados correctamente`)
-        }
-      }
     } catch (error: any) {
       console.error("Error fetching data:", error)
-
-      // Mostrar notificación de error específica
-      if (error.message) {
-        // Error personalizado
-        if (typeof window !== "undefined") {
-          const toast = (await import("sonner")).toast
-          toast.error(error.message)
-        }
-      } else {
-        // Error genérico
-        if (typeof window !== "undefined") {
-          const toast = (await import("sonner")).toast
-          toast.error("Error al cargar los datos. Intenta recargar la página")
-        }
-      }
+      toast.error(error.message || "Error al cargar los datos")
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -231,170 +193,49 @@ export default function ProductsPage() {
   }
 
   const getStockStatus = (current: number, minimum: number) => {
-    if (current === 0) return { label: "Sin stock", variant: "destructive" as const }
-    if (current <= minimum) return { label: "Stock bajo", variant: "secondary" as const }
-    return { label: "Disponible", variant: "default" as const }
-  }
-
-  // Check if user has warehouse access
-  const hasWarehouseAccess =
-    user?.role === "admin" ||
-    user?.role === "supervisor" ||
-    user?.departments?.name === "Almacén" ||
-    user?.departments?.name === "almacén" ||
-    user?.departments?.name === "Contabilidad" ||
-    user?.departments?.name === "contabilidad" ||
-    user?.departments?.name === "Operaciones" ||
-    user?.departments?.name === "operaciones" ||
-    user?.departments?.name === "Acuerdos Marco" ||
-    user?.departments?.name === "acuerdos marco" ||
-    user?.departments?.name === "Administración" ||
-    user?.departments?.name === "administración" ||
-    user?.departments?.name === "administracion" ||
-    user?.departments?.name === "Ventas" ||
-    user?.departments?.name === "ventas" ||
-    user?.departments?.name === "Gerencia Logística" ||
-    user?.departments?.name === "gerencia logística" ||
-    user?.departments?.name === "gerencia logistica" ||
-    user?.departments?.name === "Jefatura de Ventas" ||
-    user?.departments?.name === "jefatura de ventas"
-
-  // Get the company to use
-  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
-
-  // Función para detectar errores de red
-  const handleNetworkError = () => {
-    toast.error("Error de conexión. Verifica tu conexión a internet y recarga la página")
-  }
-
-  // Agregar listener para errores de red
-  useEffect(() => {
-    const handleOnline = () => {
-      if (products.length === 0) {
-        // Reintentar cargar datos cuando vuelva la conexión
-        const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
-        if (companyId) {
-          fetchData(companyId)
-        }
-      }
-    }
-
-    const handleOffline = () => {
-      toast.error("Sin conexión a internet. Algunas funciones pueden no estar disponibles")
-    }
-
-    window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
-
-    return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
-    }
-  }, [user, selectedCompany, products.length])
-
-  if (!hasWarehouseAccess) {
-    return (
-      <div className="min-h-screen">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
-                Productos
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
-            </div>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="h-8 w-8 text-slate-500 dark:text-slate-300" />
-                </div>
-                <p className="text-slate-600 dark:text-slate-300">No tienes permisos para acceder a los productos.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  if (!companyToUse) {
-    return (
-      <div className="min-h-screen">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
-                Productos
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
-            </div>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
-                  <Package className="h-8 w-8 text-slate-500 dark:text-slate-300" />
-                </div>
-                <p className="text-slate-600 dark:text-slate-300">
-                  {user?.role === "admin"
-                    ? "Selecciona una empresa para ver sus productos."
-                    : "No tienes una empresa asignada. Contacta al administrador."}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
-                Productos
-              </h1>
-              <p className="text-slate-600 dark:text-slate-300">Gestión de productos del inventario</p>
-            </div>
-            <Button disabled className="bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
-            </Button>
-          </div>
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center text-slate-600 dark:text-slate-300">Cargando productos...</div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
+    if (current === 0) return { label: "Sin stock", variant: "destructive" as const, color: "text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" }
+    if (current <= minimum) return { label: "Stock bajo", variant: "secondary" as const, color: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" }
+    return { label: "Disponible", variant: "default" as const, color: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800" }
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent">
-              Productos
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300">
-              {isSalesUser ? "Consulta de productos" : "Gestión de productos del inventario"}
-              {user?.role === "admin" && selectedCompany && (
-                <span className="ml-2 text-slate-700 dark:text-slate-200 font-medium">- {selectedCompany.name}</span>
-              )}
-            </p>
-          </div>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Package className="h-8 w-8 text-indigo-500" />
+            Catálogo de Productos
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            {isSalesUser ? "Consulta de disponibilidad y precios" : "Gestión maestra de inventario"}
+            {user?.role === "admin" && selectedCompany && (
+              <span className="ml-2 font-medium text-indigo-600 dark:text-indigo-400">- {selectedCompany.name}</span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button 
+             variant="outline" 
+             onClick={() => {
+                const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+                if (companyId) fetchData(companyId, true)
+             }}
+             disabled={refreshing}
+             className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+             Actualizar
+          </Button>
           {!isSalesUser && (
             <Button
               asChild
-              className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white"
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
             >
               <Link href="/warehouse/products/new">
                 <Plus className="h-4 w-4 mr-2" />
@@ -403,248 +244,235 @@ export default function ProductsPage() {
             </Button>
           )}
         </div>
+      </motion.div>
 
-        {isSalesUser && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2 text-blue-700">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm font-medium">Modo consulta - Solo visualización de productos</span>
-            </div>
+      {isSalesUser && (
+        <motion.div variants={itemVariants} className="p-4 bg-blue-50/80 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl flex items-center gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+             <Eye className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           </div>
-        )}
+          <div>
+             <h4 className="font-semibold text-blue-700 dark:text-blue-300 text-sm">Modo Consulta</h4>
+             <p className="text-xs text-blue-600 dark:text-blue-400">Visualización de stock y precios en tiempo real</p>
+          </div>
+        </motion.div>
+      )}
 
-        <Card className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-700/50 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-md flex items-center justify-center">
-                <Package className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-              </div>
-              Lista de Productos
-            </CardTitle>
-            <CardDescription className="text-slate-600 dark:text-slate-300">
-              {filteredProducts.length} de {products.length} productos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Filtros */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
-                  <Input
-                    placeholder="Buscar por nombre, código o código de barras..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                  />
+      <motion.div variants={itemVariants}>
+        <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden rounded-2xl">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+             <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                <div className="relative w-full lg:max-w-md group">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                   <Input
+                     placeholder="Buscar por nombre, código o código de barras..."
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                     className="pl-10 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                   />
                 </div>
-              </div>
-              <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <SelectValue placeholder="Todas las marcas" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
-                    Todas las marcas
-                  </SelectItem>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id} className="text-slate-900 dark:text-slate-100">
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <SelectValue placeholder="Todas las categorías" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
-                    Todas las categorías
-                  </SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id} className="text-slate-900 dark:text-slate-100">
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={stockFilter} onValueChange={setStockFilter}>
-                <SelectTrigger className="w-full sm:w-48 border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 focus:ring-slate-500 dark:focus:ring-slate-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <SelectValue placeholder="Estado del stock" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                  <SelectItem value="all" className="text-slate-900 dark:text-slate-100">
-                    Todos los estados
-                  </SelectItem>
-                  <SelectItem value="available" className="text-slate-900 dark:text-slate-100">
-                    Disponible
-                  </SelectItem>
-                  <SelectItem value="low" className="text-slate-900 dark:text-slate-100">
-                    Stock bajo
-                  </SelectItem>
-                  <SelectItem value="out" className="text-slate-900 dark:text-slate-100">
-                    Sin stock
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                
+                <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <Filter className="h-4 w-4 text-slate-500" />
+                      <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                        <SelectTrigger className="w-[140px] border-none bg-transparent h-8 p-0 focus:ring-0">
+                          <SelectValue placeholder="Marca" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas las marcas</SelectItem>
+                          {brands.map((brand) => (
+                            <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                   </div>
 
-            {/* Tabla de productos */}
-            <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-700">
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Producto</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Código</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Marca/Categoría</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Stock</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Precios</TableHead>
-                    <TableHead className="text-slate-700 dark:text-slate-200 font-semibold">Estado</TableHead>
-                    <TableHead className="text-right text-slate-700 dark:text-slate-200 font-semibold">
-                      Acciones
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => {
-                      const stockStatus = getStockStatus(product.current_stock, product.minimum_stock)
-                      return (
-                        <TableRow
-                          key={product.id}
-                          className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 border-slate-200 dark:border-slate-700"
-                        >
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-slate-800 dark:text-slate-100">{product.name}</div>
-                              {product.description && (
-                                <div className="text-sm text-slate-500 dark:text-slate-400">{product.description}</div>
-                              )}
-                              {product.location && (
-                                <div className="text-xs text-slate-500 dark:text-slate-400">📍 {product.location}</div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <Badge
-                                variant="outline"
-                                className="font-mono border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
-                              >
-                                {product.code}
-                              </Badge>
-                              {product.barcode && (
-                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{product.barcode}</div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {product.brands && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs"
-                                  style={{
-                                    backgroundColor: `${product.brands.color}20`,
-                                    color: product.brands.color,
-                                  }}
-                                >
-                                  {product.brands.name}
-                                </Badge>
-                              )}
-                              {product.product_categories && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                  style={{
-                                    borderColor: product.product_categories.color,
-                                    color: product.product_categories.color,
-                                  }}
-                                >
-                                  {product.product_categories.name}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-right">
-                              <div className="font-medium text-slate-800 dark:text-slate-100">
-                                {product.current_stock} {product.unit_of_measure}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Mín: {product.minimum_stock}
-                              </div>
-                              {product.current_stock <= product.minimum_stock && (
-                                <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 text-xs mt-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Stock bajo
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-right">
-                              <div className="font-medium text-slate-800 dark:text-slate-100">
-                                {formatCurrency(product.sale_price)}
-                              </div>
-                              <div className="text-xs text-green-600 dark:text-green-400">
-                                Con IGV: {formatCurrency(product.sale_price * 1.18)}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Costo: {formatCurrency(product.cost_price)}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={stockStatus.variant}>{stockStatus.label}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                                className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              >
-                                <Link href={`/warehouse/products/${product.id}`}>
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              {!isSalesUser && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  asChild
-                                  className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                                >
-                                  <Link href={`/warehouse/products/edit/${product.id}`}>
-                                    <Edit className="h-4 w-4" />
-                                  </Link>
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="text-slate-500 dark:text-slate-400">
-                          {products.length === 0
-                            ? "No hay productos registrados"
-                            : "No se encontraron productos con los filtros aplicados"}
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <Archive className="h-4 w-4 text-slate-500" />
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-[140px] border-none bg-transparent h-8 p-0 focus:ring-0">
+                          <SelectValue placeholder="Categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas las categorías</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                   </div>
+
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+                      <Select value={stockFilter} onValueChange={setStockFilter}>
+                        <SelectTrigger className="w-[140px] border-none bg-transparent h-8 p-0 focus:ring-0">
+                          <SelectValue placeholder="Estado Stock" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los estados</SelectItem>
+                          <SelectItem value="available">Disponible</SelectItem>
+                          <SelectItem value="low">Stock bajo</SelectItem>
+                          <SelectItem value="out">Sin stock</SelectItem>
+                        </SelectContent>
+                      </Select>
+                   </div>
+                </div>
+             </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+               <div className="p-8 space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                     <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-lg" />
+                        <div className="space-y-2 flex-1">
+                           <Skeleton className="h-4 w-1/3" />
+                           <Skeleton className="h-3 w-1/4" />
                         </div>
-                      </TableCell>
+                        <Skeleton className="h-8 w-24 rounded-full" />
+                     </div>
+                  ))}
+               </div>
+            ) : filteredProducts.length === 0 ? (
+               <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-full mb-4">
+                     <Search className="h-10 w-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">No se encontraron productos</h3>
+                  <p className="text-slate-500 max-w-sm mt-1">
+                     Prueba ajustando los filtros o buscando con otros términos.
+                  </p>
+               </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                    <TableRow className="hover:bg-transparent border-slate-100 dark:border-slate-800">
+                      <TableHead className="pl-6 font-semibold text-slate-700 dark:text-slate-200">Producto</TableHead>
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-200">Clasificación</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200">Stock</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200">Precio Venta</TableHead>
+                      <TableHead className="text-center font-semibold text-slate-700 dark:text-slate-200">Estado</TableHead>
+                      <TableHead className="text-right pr-6 font-semibold text-slate-700 dark:text-slate-200">Acciones</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    <AnimatePresence>
+                       {filteredProducts.map((product, index) => {
+                         const stockStatus = getStockStatus(product.current_stock, product.minimum_stock)
+                         return (
+                           <motion.tr
+                             key={product.id}
+                             initial={{ opacity: 0, y: 10 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             transition={{ delay: index * 0.03 }}
+                             className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                           >
+                             <TableCell className="pl-6 py-4">
+                               <div className="flex items-start gap-3">
+                                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400 mt-1">
+                                     <Package className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                     <div className="font-semibold text-slate-800 dark:text-slate-100">{product.name}</div>
+                                     <div className="flex items-center gap-2 mt-1">
+                                        <Badge variant="outline" className="font-mono text-[10px] h-5 border-slate-200 dark:border-slate-700 text-slate-500">
+                                           {product.code}
+                                        </Badge>
+                                        {product.location && (
+                                           <span className="text-xs text-slate-500 flex items-center gap-1">
+                                              📍 {product.location}
+                                           </span>
+                                        )}
+                                     </div>
+                                  </div>
+                               </div>
+                             </TableCell>
+                             <TableCell className="py-4">
+                               <div className="flex flex-col gap-1.5">
+                                 {product.brands && (
+                                   <Badge
+                                     variant="secondary"
+                                     className="w-fit text-[10px] font-normal"
+                                     style={{
+                                       backgroundColor: `${product.brands.color}15`,
+                                       color: product.brands.color,
+                                       border: `1px solid ${product.brands.color}30`
+                                     }}
+                                   >
+                                     {product.brands.name}
+                                   </Badge>
+                                 )}
+                                 {product.product_categories && (
+                                   <span className="text-xs text-slate-500">
+                                      {product.product_categories.name}
+                                   </span>
+                                 )}
+                               </div>
+                             </TableCell>
+                             <TableCell className="text-right py-4">
+                               <div className="flex flex-col items-end">
+                                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                                     {product.current_stock}
+                                  </span>
+                                  <span className="text-xs text-slate-500 lowercase">{product.unit_of_measure}</span>
+                               </div>
+                             </TableCell>
+                             <TableCell className="text-right py-4">
+                               <div className="flex flex-col items-end">
+                                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                                     {formatCurrency(product.sale_price)}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                     + IGV: {formatCurrency(product.sale_price * 1.18)}
+                                  </span>
+                               </div>
+                             </TableCell>
+                             <TableCell className="text-center py-4">
+                               <div className="flex justify-center">
+                                  <Badge className={`border-none ${stockStatus.color}`}>
+                                     {stockStatus.label}
+                                  </Badge>
+                               </div>
+                             </TableCell>
+                             <TableCell className="text-right pr-6 py-4">
+                               <div className="flex items-center justify-end gap-1">
+                                 <Button
+                                   variant="ghost"
+                                   size="icon"
+                                   asChild
+                                   className="h-8 w-8 rounded-full hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors"
+                                 >
+                                   <Link href={`/warehouse/products/${product.id}`}>
+                                     <Eye className="h-4 w-4" />
+                                   </Link>
+                                 </Button>
+                                 {!isSalesUser && (
+                                   <Button
+                                     variant="ghost"
+                                     size="icon"
+                                     asChild
+                                     className="h-8 w-8 rounded-full hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 transition-colors"
+                                   >
+                                     <Link href={`/warehouse/products/edit/${product.id}`}>
+                                       <Edit className="h-4 w-4" />
+                                     </Link>
+                                   </Button>
+                                 )}
+                               </div>
+                             </TableCell>
+                           </motion.tr>
+                         )
+                       })}
+                    </AnimatePresence>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
