@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,6 +38,42 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [documentSearchOpen, setDocumentSearchOpen] = useState(false)
+
+  // Datos para el gráfico
+  const chartData = [
+    { name: "Pendientes", value: stats.pendingDocuments, color: "#f59e0b" }, // Amber-500
+    { name: "Completados", value: stats.completedDocuments, color: "#10b981" }, // Emerald-500
+  ]
+
+  // Saludo basado en la hora
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Buenos días"
+    if (hour < 18) return "Buenas tardes"
+    return "Buenas noches"
+  }
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -76,10 +114,34 @@ export default function DashboardPage() {
         .select("id", { count: "exact", head: true })
         .eq("status", "completed")
 
-      if (shouldFilterByCompany && companyFilter) {
-        documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
-        pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
-        completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
+      // Apply filters for non-admins
+      const isAdmin = user?.role === "admin" || user?.role === "supervisor"
+      
+      if (!isAdmin && user) {
+        // Ensure we filter by company if not already handled
+        if (user.company_id) {
+             documentsCountQuery = documentsCountQuery.eq("company_id", user.company_id)
+             pendingCountQuery = pendingCountQuery.eq("company_id", user.company_id)
+             completedCountQuery = completedCountQuery.eq("company_id", user.company_id)
+        }
+
+        if (user.department_id) {
+            // Filter: Created by me OR Currently in my department
+            const filterCondition = `current_department_id.eq.${user.department_id},created_by.eq.${user.id}`
+            documentsCountQuery = documentsCountQuery.or(filterCondition)
+            pendingCountQuery = pendingCountQuery.or(filterCondition)
+            completedCountQuery = completedCountQuery.or(filterCondition)
+        } else {
+            documentsCountQuery = documentsCountQuery.eq("created_by", user.id)
+            pendingCountQuery = pendingCountQuery.eq("created_by", user.id)
+            completedCountQuery = completedCountQuery.eq("created_by", user.id)
+        }
+      } else if (shouldFilterByCompany && companyFilter) {
+         // Only apply generic company filter if we haven't already applied specific user filters 
+         // (though user filters above are stricter/orthogonal, let's keep it safe)
+         documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
+         pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
+         completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
       }
 
       const today = new Date().toISOString().split("T")[0]
@@ -111,8 +173,7 @@ export default function DashboardPage() {
         ])
 
       let allMovements: any[] = []
-      const isAdmin = user?.role === "admin" || user?.role === "supervisor"
-
+      
       if (user && !isAdmin && user.department_id) {
         const baseSelect = `
           *,
@@ -298,123 +359,147 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <motion.div 
+      className="space-y-6 w-full"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div 
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+      >
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-700 via-slate-600 to-slate-500 dark:from-slate-200 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent">
-            Dashboard
+          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-slate-800 via-slate-600 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+            {getGreeting()}, {user?.full_name?.split(" ")[0] || "Usuario"}
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1">
-            Bienvenido de vuelta, {user?.full_name || "Usuario"}
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-2 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
           </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-3 w-full sm:w-auto">
           <Button
             onClick={() => setDocumentSearchOpen(true)}
-            className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 hover:-translate-y-0.5"
           >
             <Search className="h-4 w-4 mr-2" />
-            <span className="sm:hidden">Buscar Doc</span>
+            <span className="sm:hidden">Buscar</span>
             <span className="hidden sm:inline">Buscar Documento</span>
           </Button>
           <Button
             variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex-1 sm:flex-none w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 hover:scale-105"
+            className="flex-1 sm:flex-none w-full sm:w-auto border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-300"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             <span className="sm:hidden">{refreshing ? "..." : "Act"}</span>
             <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Actualizar"}</span>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                  Total Documentos
+            <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white relative group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <FileText className="h-24 w-24" />
+              </div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-indigo-100">
+                    {user?.role === "admin" ? "Total Documentos" : "Documentos de mi Área"}
                 </CardTitle>
-                <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.totalDocuments}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.pendingDocuments} pendientes, {stats.completedDocuments} completados
-                </p>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">{stats.totalDocuments}</div>
+                <div className="mt-2 h-1 w-full bg-indigo-900/30 rounded-full overflow-hidden">
+                   <div className="h-full bg-white/50 w-3/4 rounded-full" />
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Usuarios</CardTitle>
-                <Users className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            {(user?.role === "admin" || user?.role === "supervisor") && (
+            <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white relative group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <Users className="h-24 w-24" />
+              </div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-emerald-100">Usuarios Activos</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.totalUsers}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total en el sistema</p>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">{stats.totalUsers}</div>
+                <p className="text-xs text-emerald-100 mt-1">En {stats.totalDepartments} departamentos</p>
               </CardContent>
             </Card>
+            )}
 
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Departamentos</CardTitle>
-                <TrendingUp className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white relative group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <Activity className="h-24 w-24" />
+              </div>
+              <CardHeader className="pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-orange-100">Actividad</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.totalDepartments}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Áreas activas</p>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold">{stats.recentMovements}</div>
+                <p className="text-xs text-orange-100 mt-1">Movimientos recientes</p>
               </CardContent>
             </Card>
-
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Actividad</CardTitle>
-                <Activity className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.recentMovements}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Movimientos recientes</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Presentes Hoy</CardTitle>
-                <Clock className="h-4 w-4 text-green-500 dark:text-green-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.presentToday}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Asistencias registradas</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Tardanzas Hoy</CardTitle>
-                <Clock className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">{stats.lateToday}</div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Llegadas tarde</p>
-              </CardContent>
-            </Card>
+            
+             {/* Mini Stats Row */}
+             <Card className="sm:col-span-2 lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-md">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                      <FileText className="h-5 w-5" />
+                   </div>
+                   <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Pendientes</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.pendingDocuments}</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                   <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
+                      <FileText className="h-5 w-5" />
+                   </div>
+                   <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Completados</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.completedDocuments}</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+                      <Clock className="h-5 w-5" />
+                   </div>
+                   <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Asistencia</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.presentToday}</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                   <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+                      <Clock className="h-5 w-5" />
+                   </div>
+                   <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Tardanzas</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.lateToday}</p>
+                   </div>
+                </div>
+             </Card>
           </div>
 
-          <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-700 p-4 sm:p-6">
+          <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-700 p-4 sm:p-6 bg-slate-50/50 dark:bg-slate-800/50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">
-                    <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                    <FileText className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Noticias</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Noticias Corporativas</CardTitle>
                     <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
-                      Últimas actualizaciones del sistema
+                      Mantente informado con las últimas actualizaciones
                     </CardDescription>
                   </div>
                 </div>
@@ -424,15 +509,53 @@ export default function DashboardPage() {
               <NewsCarousel />
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
 
-        <div className="lg:col-span-1 space-y-6">
+        <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
+           {/* Chart Widget */}
+           <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardHeader className="pb-2">
+                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado de Documentos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                 <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+                          <Pie
+                             data={chartData}
+                             cx="50%"
+                             cy="50%"
+                             innerRadius={60}
+                             outerRadius={80}
+                             paddingAngle={5}
+                             dataKey="value"
+                          >
+                             {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                             ))}
+                          </Pie>
+                          <RechartsTooltip 
+                             contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                                borderRadius: '8px', 
+                                border: 'none', 
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' 
+                             }} 
+                          />
+                          <Legend verticalAlign="bottom" height={36}/>
+                       </PieChart>
+                    </ResponsiveContainer>
+                 </div>
+              </CardContent>
+           </Card>
+
           <AttendanceWidget />
           <UpcomingEventsWidget />
-        </div>
+        </motion.div>
       </div>
 
-      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50 hover:shadow-xl transition-all duration-300">
+      <motion.div variants={itemVariants}>
+      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 sm:p-6">
           <Tabs defaultValue="documents" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
@@ -608,8 +731,9 @@ export default function DashboardPage() {
           </Tabs>
         </CardContent>
       </Card>
+      </motion.div>
 
       <DocumentSearchDialog open={documentSearchOpen} onOpenChange={setDocumentSearchOpen} />
-    </div>
+    </motion.div>
   )
 }
