@@ -102,6 +102,7 @@ export async function getMarketStats(period: Period = "6months") {
     
     let totalDeliveryDays = 0
     let deliveryCount = 0
+    let missingDateCount = 0
 
     // 4. Process Data
     // Filter duplicates manually if needed, or rely on unique IDs.
@@ -140,8 +141,7 @@ export async function getMarketStats(period: Period = "6months") {
                 orders: current.orders + 1 
             })
         } else {
-             // Fallback for missing dates if necessary, or log
-             // console.log("Missing date for item", item)
+             missingDateCount++
         }
 
 
@@ -175,6 +175,10 @@ export async function getMarketStats(period: Period = "6months") {
             deliveryCount++
         }
     })
+
+    if (missingDateCount > 0) {
+        console.warn(`[getMarketStats] Warning: ${missingDateCount} items found with missing or invalid dates. These items are included in total counts but excluded from monthly trend analysis.`)
+    }
 
     // 5. Fill Missing Months for Trend Chart
     // Create an array of all months between start and now
