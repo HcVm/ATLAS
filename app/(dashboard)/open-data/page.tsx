@@ -80,21 +80,29 @@ async function getOpenDataStats() {
       console.error("Error fetching total count:", countError)
     }
 
-    const acuerdosCount: Record<string, number> = {}
-
-    for (const acuerdo of ACUERDOS_MARCO) {
+    // Execute all agreement counts in parallel
+    const agreementsPromises = ACUERDOS_MARCO.map(async (acuerdo) => {
       const { count, error } = await supabase
         .from("open_data_entries")
         .select("*", { count: "exact", head: true })
         .eq("codigo_acuerdo_marco", acuerdo.id)
 
-      if (error) {
-        console.error(`Error fetching count for ${acuerdo.id}:`, error)
-        acuerdosCount[acuerdo.id] = 0
-      } else {
-        acuerdosCount[acuerdo.id] = count || 0
+      return {
+        id: acuerdo.id,
+        count: count || 0,
+        error
       }
-    }
+    })
+
+    const results = await Promise.all(agreementsPromises)
+
+    const acuerdosCount: Record<string, number> = {}
+    results.forEach(result => {
+      if (result.error) {
+        console.error(`Error fetching count for ${result.id}:`, result.error)
+      }
+      acuerdosCount[result.id] = result.count
+    })
 
     return {
       totalRecords: totalCount || 0,
@@ -154,8 +162,8 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
     <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "block h-full" : "block h-full cursor-pointer"}>
       <Card
         className={`group relative h-full transition-all duration-300 overflow-hidden border-slate-200/60 dark:border-slate-800/60 ${isActive
-            ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md"
-            : "bg-slate-50/50 dark:bg-slate-900/20 grayscale opacity-80 hover:opacity-100 hover:grayscale-0"
+          ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md"
+          : "bg-slate-50/50 dark:bg-slate-900/20 grayscale opacity-80 hover:opacity-100 hover:grayscale-0"
           }`}
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${acuerdo.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />

@@ -15,14 +15,26 @@ interface BrandAlert {
   updated_at: string
 }
 
-async function getBrandAlertsPreview() {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/brand-alerts`, {
-      cache: "no-store",
-    })
-    const result = await response.json()
+import { createServerClient } from "@/lib/supabase-server"
 
-    if (!response.ok) {
+async function getBrandAlertsPreview() {
+  const supabase = createServerClient()
+
+  try {
+    // Fetch only necessary fields for stats to minimize payload
+    const { data: alertsData, error: statsError } = await supabase
+      .from("brand_alerts")
+      .select("id, brand_name, status")
+
+    // Fetch recent alerts with full details, limited to 5
+    const { data: recentData, error: recentError } = await supabase
+      .from("brand_alerts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5)
+
+    if (statsError || recentError) {
+      console.error("Error fetching brand alerts:", statsError || recentError)
       return {
         totalAlerts: 0,
         pendingAlerts: 0,
@@ -32,8 +44,7 @@ async function getBrandAlertsPreview() {
       }
     }
 
-    const alerts: BrandAlert[] = result.data || []
-
+    const alerts = alertsData || []
     const totalAlerts = alerts.length
     const pendingAlerts = alerts.filter((alert) => alert.status === "pending").length
     const attendedAlerts = alerts.filter((alert) => alert.status === "attended").length
@@ -44,14 +55,12 @@ async function getBrandAlertsPreview() {
       return acc
     }, {})
 
-    const recentAlerts = alerts.slice(0, 5)
-
     return {
       totalAlerts,
       pendingAlerts,
       attendedAlerts,
       brandCounts,
-      recentAlerts,
+      recentAlerts: (recentData as BrandAlert[]) || [],
     }
   } catch (error) {
     console.error("Error in getBrandAlertsPreview:", error)
@@ -166,13 +175,12 @@ export async function BrandAlertsPreview() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        alert.status === "pending" ? "bg-orange-500" :
-                        alert.status === "attended" ? "bg-green-500" : "bg-red-500"
-                      }`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${alert.status === "pending" ? "bg-orange-500" :
+                          alert.status === "attended" ? "bg-green-500" : "bg-red-500"
+                        }`} />
                       <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-                        {alert.status === "pending" ? "Pendiente" : 
-                         alert.status === "attended" ? "Atendida" : "Rechazada"}
+                        {alert.status === "pending" ? "Pendiente" :
+                          alert.status === "attended" ? "Atendida" : "Rechazada"}
                       </span>
                     </div>
                   </div>
