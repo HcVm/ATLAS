@@ -4,7 +4,7 @@ import type React from "react"
 
 import type { ReactElement } from "react"
 import { useState, use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -174,6 +174,9 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
 
   const resolvedParams = use(params)
+  const searchParams = useSearchParams()
+  const dateParam = searchParams.get("date")
+
   const requestType = REQUEST_TYPES[resolvedParams.type as keyof typeof REQUEST_TYPES]
 
   const schema = getSchemaForType(resolvedParams.type)
@@ -193,6 +196,10 @@ export default function NewRequestTypePage({ params }: { params: Promise<{ type:
         items_requeridos: [{ item: 1, especificaciones: "", cantidad: 1 }],
         urgencia: "normal",
       }),
+      ...(resolvedParams.type === "absence_justification" &&
+        dateParam && {
+          incident_date: dateParam,
+        }),
     },
   })
 

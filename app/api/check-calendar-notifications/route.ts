@@ -32,6 +32,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "No upcoming events found for notification." })
     }
 
+    const notificationsToInsert = []
+    const eventIdsToUpdate = []
+
     for (const event of upcomingEvents) {
       const notificationTitle =
         format(new Date(event.event_date), "yyyy-MM-dd") === todayFormatted
@@ -39,17 +42,38 @@ export async function GET(request: NextRequest) {
           : "Evento próximo mañana"
       const notificationMessage = `"${event.title}" - ${event.description || "Sin descripción"}`
 
-      await createNotification({
-        userId: event.user_id,
+      notificationsToInsert.push({
+        user_id: event.user_id,
         title: notificationTitle,
         message: notificationMessage,
         type: "calendar_event_reminder",
-        relatedId: event.id,
-        companyId: event.company_id,
+        related_id: event.id,
+        company_id: event.company_id || null,
+        read: false,
       })
 
-      // Mark notification as sent for this event
-      await supabase.from("calendar_events").update({ notification_sent: true }).eq("id", event.id)
+      eventIdsToUpdate.push(event.id)
+    }
+
+    if (notificationsToInsert.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notificationsToInsert)
+      if (insertError) {
+        console.error("Error batch inserting notifications:", insertError)
+        // If insert fails, we probably shouldn't update the events as sent,
+        // or we should handle partial failures. For now, let's just log it.
+        // We'll throw to avoid updating the calendar events if notifications weren't sent.
+        throw insertError
+      }
+
+      const { error: updateError } = await supabase
+        .from("calendar_events")
+        .update({ notification_sent: true })
+        .in("id", eventIdsToUpdate)
+
+      if (updateError) {
+        console.error("Error batch updating calendar events:", updateError)
+        throw updateError
+      }
     }
 
     return NextResponse.json({ message: `Processed ${upcomingEvents.length} upcoming events for notification.` })

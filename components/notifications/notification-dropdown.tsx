@@ -212,7 +212,7 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
   }
 
   const handleNotificationClick = async (notification: any) => {
-    if (!notification.type || !notification.related_id) {
+    if (!notification.type || (!notification.related_id && notification.type !== "attendance_missing")) {
       console.warn("Notification missing type or related_id, cannot navigate.", notification)
       toast({
         title: "Información incompleta",
@@ -267,8 +267,13 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
           router.push(`/sales?voucher=${notification.related_id}`)
           break
         case "attendance":
-        case "attendance_missing":
           router.push(`/requests/new/justificacion-ausencia`)
+          break
+        case "attendance_missing":
+          const dateParam = notification.created_at
+            ? `?date=${format(new Date(notification.created_at), "yyyy-MM-dd")}`
+            : ""
+          router.push(`/requests/new/absence_justification${dateParam}`)
           break
         default:
           console.warn("Unhandled notification type for navigation:", relatedInfo.type)
@@ -365,6 +370,7 @@ export function NotificationDropdown({ onCountChange }: NotificationDropdownProp
   }
 
   const isNavigable = (notification: any) => {
+    if (notification.type === "attendance_missing") return true
     return notification.type && notification.related_id
   }
 
