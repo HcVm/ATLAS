@@ -27,7 +27,7 @@ export default function AddTicketCommentsPage() {
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-4 max-w-5xl mx-auto w-full"
       >
         <Link href="/documentation" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -55,7 +55,7 @@ export default function AddTicketCommentsPage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid gap-8 max-w-5xl"
+        className="grid gap-8 max-w-5xl mx-auto"
       >
         <motion.div variants={item}>
           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden border-l-4 border-l-cyan-500">
@@ -147,3 +147,5 @@ export default function AddTicketCommentsPage() {
     </div>
   )
 }
+
+

@@ -141,7 +141,7 @@ export default function DashboardLayoutClient({
         <SidebarInset className="bg-transparent">
           {/* Fondo global con gradiente sutil */}
           <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100/20 via-slate-50/10 to-transparent dark:from-indigo-900/20 dark:via-slate-900/10 pointer-events-none -z-10" />
-          
+
           <header className="flex h-16 shrink-0 items-center gap-2 transition-all ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" />
@@ -161,12 +161,12 @@ export default function DashboardLayoutClient({
                   </Suspense>
                 </div>
               )}
-              
+
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
-              
+
               <ThemeToggle />
               <NotificationBadge />
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:ring-2 focus:ring-indigo-500/20">
@@ -210,7 +210,7 @@ export default function DashboardLayoutClient({
             </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6 lg:p-8 pt-6 overflow-x-hidden relative z-10">
-            <main className="flex-1 w-full max-w-[1600px] mx-auto animate-in fade-in zoom-in-95 duration-500">
+            <main className="flex-1 w-full max-w-full mx-auto animate-in fade-in zoom-in-95 duration-500">
               {children}
             </main>
           </div>

@@ -51,7 +51,7 @@ export default async function RankingsPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-[1600px] space-y-8">
+    <div className="w-full p-6 space-y-8 pb-20">
       {/* Top Navigation: Executive vs Analyst */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
@@ -62,20 +62,20 @@ export default async function RankingsPage({ searchParams }: PageProps) {
             Plataforma estratégica de compras públicas
           </p>
         </div>
-        
+
         <div className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl flex gap-1">
-            <Link href={`/open-data/rankings?period=${period}&view=executive`}>
-                <Button variant={view === "executive" ? "white" : "ghost"} className={`rounded-lg ${view === "executive" ? "shadow-sm bg-white dark:bg-slate-800 text-indigo-600" : "text-slate-500"}`}>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Vista Ejecutiva
-                </Button>
-            </Link>
-            <Link href={`/open-data/rankings?period=${period}&view=analyst`}>
-                <Button variant={view === "analyst" ? "white" : "ghost"} className={`rounded-lg ${view === "analyst" ? "shadow-sm bg-white dark:bg-slate-800 text-indigo-600" : "text-slate-500"}`}>
-                    <LineChart className="h-4 w-4 mr-2" />
-                    Vista de Analista
-                </Button>
-            </Link>
+          <Link href={`/open-data/rankings?period=${period}&view=executive`}>
+            <Button variant={view === "executive" ? "white" : "ghost"} className={`rounded-lg ${view === "executive" ? "shadow-sm bg-white dark:bg-slate-800 text-indigo-600" : "text-slate-500"}`}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Vista Ejecutiva
+            </Button>
+          </Link>
+          <Link href={`/open-data/rankings?period=${period}&view=analyst`}>
+            <Button variant={view === "analyst" ? "white" : "ghost"} className={`rounded-lg ${view === "analyst" ? "shadow-sm bg-white dark:bg-slate-800 text-indigo-600" : "text-slate-500"}`}>
+              <LineChart className="h-4 w-4 mr-2" />
+              Vista de Analista
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -92,8 +92,8 @@ export default async function RankingsPage({ searchParams }: PageProps) {
             { label: "Anual", value: "1year" }
           ].map((opt) => (
             <Link key={opt.value} href={`/open-data/rankings?period=${opt.value}&view=${view}&tab=${tab}`}>
-              <Button 
-                variant={period === opt.value ? "secondary" : "ghost"} 
+              <Button
+                variant={period === opt.value ? "secondary" : "ghost"}
                 size="sm"
                 className={`rounded-lg text-xs ${period === opt.value ? "bg-white dark:bg-slate-700 shadow-sm" : "text-slate-500"}`}
               >
@@ -107,85 +107,85 @@ export default async function RankingsPage({ searchParams }: PageProps) {
       {/* === EXECUTIVE VIEW === */}
       {view === "executive" && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 1. Market Pulse & Trends */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <MarketTrendChart period={period} />
-                </div>
-                <div className="lg:col-span-1">
-                    <MarketStatsDashboard />
-                </div>
+          {/* 1. Market Pulse & Trends */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <MarketTrendChart period={period} />
             </div>
+            <div className="lg:col-span-1">
+              <MarketStatsDashboard />
+            </div>
+          </div>
 
-            {/* 2. Geographic & Leaderboards */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-                    <GeographicHeatmap data={marketStats?.topRegions || []} />
-                </div>
-                <div className="lg:col-span-2">
-                    <Leaderboard 
-                        entities={marketStats?.topEntities || []} 
-                        suppliers={marketStats?.topSuppliers || []} 
-                    />
-                </div>
+          {/* 2. Geographic & Leaderboards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <GeographicHeatmap data={marketStats?.topRegions || []} />
             </div>
+            <div className="lg:col-span-2">
+              <Leaderboard
+                entities={marketStats?.topEntities || []}
+                suppliers={marketStats?.topSuppliers || []}
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {/* === ANALYST VIEW === */}
       {view === "analyst" && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Tabs value={tab} className="w-full" defaultValue="overview">
-                <div className="flex items-center justify-between mb-6">
-                <TabsList className="bg-slate-100 dark:bg-slate-800">
-                    <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=overview`}>
-                    <TabsTrigger value="overview" className="gap-2">
-                        <Target className="h-4 w-4" /> Matriz de Oportunidad
-                    </TabsTrigger>
-                    </Link>
-                    <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=brands`}>
-                    <TabsTrigger value="brands" className="gap-2">
-                        <Award className="h-4 w-4" /> Análisis de Marcas
-                    </TabsTrigger>
-                    </Link>
-                    <Link href={`/open-data/rankings?period=${period}&view=categories`}>
-                    <TabsTrigger value="categories" className="gap-2">
-                        <BarChart3 className="h-4 w-4" /> Categorías
-                    </TabsTrigger>
-                    </Link>
-                    <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=catalogs`}>
-                    <TabsTrigger value="catalogs" className="gap-2">
-                        <Package className="h-4 w-4" /> Catálogos
-                    </TabsTrigger>
-                    </Link>
-                    <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=agreements`}>
-                    <TabsTrigger value="agreements" className="gap-2">
-                        <FolderOpen className="h-4 w-4" /> Acuerdos Marco
-                    </TabsTrigger>
-                    </Link>
-                </TabsList>
-                </div>
+          <Tabs value={tab} className="w-full" defaultValue="overview">
+            <div className="flex items-center justify-between mb-6">
+              <TabsList className="bg-slate-100 dark:bg-slate-800">
+                <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=overview`}>
+                  <TabsTrigger value="overview" className="gap-2">
+                    <Target className="h-4 w-4" /> Matriz de Oportunidad
+                  </TabsTrigger>
+                </Link>
+                <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=brands`}>
+                  <TabsTrigger value="brands" className="gap-2">
+                    <Award className="h-4 w-4" /> Análisis de Marcas
+                  </TabsTrigger>
+                </Link>
+                <Link href={`/open-data/rankings?period=${period}&view=categories`}>
+                  <TabsTrigger value="categories" className="gap-2">
+                    <BarChart3 className="h-4 w-4" /> Categorías
+                  </TabsTrigger>
+                </Link>
+                <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=catalogs`}>
+                  <TabsTrigger value="catalogs" className="gap-2">
+                    <Package className="h-4 w-4" /> Catálogos
+                  </TabsTrigger>
+                </Link>
+                <Link href={`/open-data/rankings?period=${period}&view=analyst&tab=agreements`}>
+                  <TabsTrigger value="agreements" className="gap-2">
+                    <FolderOpen className="h-4 w-4" /> Acuerdos Marco
+                  </TabsTrigger>
+                </Link>
+              </TabsList>
+            </div>
 
-                <TabsContent value="overview" className="space-y-6">
-                    <OpportunityMatrix period={period} />
-                </TabsContent>
+            <TabsContent value="overview" className="space-y-6">
+              <OpportunityMatrix period={period} />
+            </TabsContent>
 
-                <TabsContent value="categories" className="space-y-6">
-                    <Suspense fallback={<div>Cargando...</div>}><RankingsByCategory period={period} /></Suspense>
-                </TabsContent>
+            <TabsContent value="categories" className="space-y-6">
+              <Suspense fallback={<div>Cargando...</div>}><RankingsByCategory period={period} /></Suspense>
+            </TabsContent>
 
-                <TabsContent value="brands" className="space-y-6">
-                    {brandData ? <BrandRankings data={brandData} /> : <div>Cargando...</div>}
-                </TabsContent>
+            <TabsContent value="brands" className="space-y-6">
+              {brandData ? <BrandRankings data={brandData} /> : <div>Cargando...</div>}
+            </TabsContent>
 
-                <TabsContent value="catalogs" className="space-y-6">
-                    <Suspense fallback={<div>Cargando...</div>}><RankingsByCatalog period={period} /></Suspense>
-                </TabsContent>
+            <TabsContent value="catalogs" className="space-y-6">
+              <Suspense fallback={<div>Cargando...</div>}><RankingsByCatalog period={period} /></Suspense>
+            </TabsContent>
 
-                <TabsContent value="agreements" className="space-y-6">
-                    <Suspense fallback={<div>Cargando...</div>}><RankingsByAgreement period={period} /></Suspense>
-                </TabsContent>
-            </Tabs>
+            <TabsContent value="agreements" className="space-y-6">
+              <Suspense fallback={<div>Cargando...</div>}><RankingsByAgreement period={period} /></Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>

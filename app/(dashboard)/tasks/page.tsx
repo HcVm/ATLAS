@@ -249,7 +249,7 @@ export default function TasksPage() {
         return { success: true, migratedTasks: result.data.migratedTasks }
       } else {
         console.error("Error en migración:", result.error)
-        
+
         if (retryCount === maxRetries) {
           toast({
             title: "⚠️ Error en migración automática",
@@ -530,10 +530,10 @@ export default function TasksPage() {
         tasks.map((task) =>
           task.id === taskId
             ? {
-                ...task,
-                status: newStatus,
-                completed_at: newStatus === "completed" ? new Date().toISOString() : undefined,
-              }
+              ...task,
+              status: newStatus,
+              completed_at: newStatus === "completed" ? new Date().toISOString() : undefined,
+            }
             : task,
         ),
       )
@@ -596,25 +596,25 @@ export default function TasksPage() {
     // Optimistic update
     const newStatus = destination.droppableId as Task["status"]
     const newTasks = Array.from(tasks)
-    
+
     // If moving to a different column
     if (source.droppableId !== destination.droppableId) {
-      const updatedTask = { 
-        ...task, 
+      const updatedTask = {
+        ...task,
         status: newStatus,
-        completed_at: newStatus === "completed" ? new Date().toISOString() : 
-                      (newStatus === "in_progress" || newStatus === "pending") ? undefined : task.completed_at
+        completed_at: newStatus === "completed" ? new Date().toISOString() :
+          (newStatus === "in_progress" || newStatus === "pending") ? undefined : task.completed_at
       }
-      
+
       setTasks(tasks.map(t => t.id === draggableId ? updatedTask : t))
-      
+
       // Call API
       try {
         await updateTaskStatus(draggableId, newStatus)
       } catch (error) {
         // Revert on error (could be improved with a proper revert)
         console.error("Failed to update status on drag", error)
-        loadTasks(currentBoard?.id!) 
+        loadTasks(currentBoard?.id!)
       }
     }
   }
@@ -662,14 +662,14 @@ export default function TasksPage() {
   const boardProgress = calculateBoardProgress(currentBoardTasks)
 
   return (
-    <motion.div 
-      className="container mx-auto p-6 space-y-8"
+    <motion.div
+      className="w-full max-w-full p-6 space-y-8"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* Header */}
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl"
       >
@@ -685,12 +685,12 @@ export default function TasksPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-             <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-auto border-none shadow-none focus-visible:ring-0 bg-transparent"
-             />
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-auto border-none shadow-none focus-visible:ring-0 bg-transparent"
+            />
           </div>
 
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -728,10 +728,10 @@ export default function TasksPage() {
 
           {/* Botón para migración manual (solo para admins o en desarrollo) */}
           {(canViewAllBoards || process.env.NODE_ENV === "development") && (
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={forceMigration} 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={forceMigration}
               className="h-12 w-12 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-colors"
               title="Forzar migración"
             >
@@ -753,8 +753,8 @@ export default function TasksPage() {
               <p className="text-slate-600 dark:text-slate-400 text-center mb-8 max-w-md">
                 No tienes un pizarrón activo para hoy. Crea uno nuevo para empezar a organizar tus tareas y aumentar tu productividad.
               </p>
-              <Button 
-                onClick={createTodayBoard} 
+              <Button
+                onClick={createTodayBoard}
                 className="h-12 px-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:-translate-y-1"
               >
                 <Plus className="h-5 w-5 mr-2" />
@@ -782,84 +782,84 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="max-h-[600px] overflow-y-auto p-4 space-y-3 custom-scrollbar">
-              {boards.length === 0 ? (
-                <div className="text-center py-12 px-6">
-                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="h-8 w-8 text-slate-400" />
+                {boards.length === 0 ? (
+                  <div className="text-center py-12 px-6">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                      <Calendar className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">No hay pizarrones para esta fecha</p>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">No hay pizarrones para esta fecha</p>
-                </div>
-              ) : (
-                boards.map((board) => {
-                  const boardTasks = board.id === currentBoard?.id ? tasks : []
-                  const isActive = currentBoard?.id === board.id
-                  const progress = isActive ? calculateBoardProgress(tasks) : 0
-                  
-                  return (
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      key={board.id}
-                      className={`
-                        p-5 rounded-xl cursor-pointer transition-all duration-200 border
-                        ${isActive 
-                          ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 shadow-md" 
-                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-md"
-                        }
-                      `}
-                      onClick={() => setCurrentBoard(board)}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className={`font-bold ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
-                            {board.title}
-                          </h4>
-                          {viewMode === "all" && (
-                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {board.user_profile?.full_name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {board.status === "closed" ? (
-                            <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                              Cerrado
-                            </Badge>
-                          ) : (
-                             <Badge className="bg-green-100 text-green-700 border-green-200">Activo</Badge>
-                          )}
-                        </div>
-                      </div>
+                ) : (
+                  boards.map((board) => {
+                    const boardTasks = board.id === currentBoard?.id ? tasks : []
+                    const isActive = currentBoard?.id === board.id
+                    const progress = isActive ? calculateBoardProgress(tasks) : 0
 
-                      {isActive && (
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center text-xs font-medium">
-                            <span className="text-slate-500">Progreso diario</span>
-                            <span className="text-indigo-600 dark:text-indigo-400">{progress}%</span>
+                    return (
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        key={board.id}
+                        className={`
+                        p-5 rounded-xl cursor-pointer transition-all duration-200 border
+                        ${isActive
+                            ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 shadow-md"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-md"
+                          }
+                      `}
+                        onClick={() => setCurrentBoard(board)}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className={`font-bold ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
+                              {board.title}
+                            </h4>
+                            {viewMode === "all" && (
+                              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {board.user_profile?.full_name}
+                              </p>
+                            )}
                           </div>
-                          <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <motion.div 
-                              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${progress}%` }}
-                              transition={{ duration: 1, ease: "easeOut" }}
-                            />
-                          </div>
-                          <div className="flex justify-between text-xs text-slate-500">
-                            <span>{tasks.filter((t) => t.status === "completed").length} completadas</span>
-                            <span>{tasks.length} total</span>
+                          <div className="flex items-center gap-2">
+                            {board.status === "closed" ? (
+                              <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                Cerrado
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-700 border-green-200">Activo</Badge>
+                            )}
                           </div>
                         </div>
-                      )}
-                      
-                      {!isActive && (
-                         <p className="text-xs text-slate-400 mt-2 text-right">Click para ver detalles</p>
-                      )}
-                    </motion.div>
-                  )
-                })
-              )}
+
+                        {isActive && (
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center text-xs font-medium">
+                              <span className="text-slate-500">Progreso diario</span>
+                              <span className="text-indigo-600 dark:text-indigo-400">{progress}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-slate-500">
+                              <span>{tasks.filter((t) => t.status === "completed").length} completadas</span>
+                              <span>{tasks.length} total</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {!isActive && (
+                          <p className="text-xs text-slate-400 mt-2 text-right">Click para ver detalles</p>
+                        )}
+                      </motion.div>
+                    )
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -877,12 +877,12 @@ export default function TasksPage() {
                       <div className="flex items-center justify-between mb-4 p-2 bg-yellow-50/80 dark:bg-yellow-900/10 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
                         <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400">
-                             <Circle className="h-4 w-4" />
+                            <Circle className="h-4 w-4" />
                           </div>
                           Pendientes
                         </h3>
                         <Badge variant="outline" className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-mono">
-                           {tasksByStatus.pending.length}
+                          {tasksByStatus.pending.length}
                         </Badge>
                       </div>
                       <Droppable droppableId="pending">
@@ -890,11 +890,10 @@ export default function TasksPage() {
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
-                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${
-                              snapshot.isDraggingOver 
-                                ? "bg-yellow-50/80 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 shadow-inner" 
+                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${snapshot.isDraggingOver
+                                ? "bg-yellow-50/80 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 shadow-inner"
                                 : "bg-slate-50/50 dark:bg-slate-800/30 border border-transparent"
-                            }`}
+                              }`}
                           >
                             <div className="space-y-4">
                               {tasksByStatus.pending.map((task, index) => (
@@ -931,14 +930,14 @@ export default function TasksPage() {
                                           <div className="flex items-center gap-2">
                                             {task.migrated_from_board && (
                                               <div className="flex items-center text-xs text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
-                                                 <ArrowUpRight className="h-3 w-3 mr-1" /> Migrada
+                                                <ArrowUpRight className="h-3 w-3 mr-1" /> Migrada
                                               </div>
                                             )}
                                           </div>
                                           <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0">
-                                            <Button 
-                                              size="sm" 
-                                              variant="ghost" 
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
                                               className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
                                               onClick={(e) => {
                                                 e.stopPropagation()
@@ -967,12 +966,12 @@ export default function TasksPage() {
                       <div className="flex items-center justify-between mb-4 p-2 bg-blue-50/80 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30">
                         <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                             <Clock className="h-4 w-4" />
+                            <Clock className="h-4 w-4" />
                           </div>
                           En Progreso
                         </h3>
                         <Badge variant="outline" className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-mono">
-                           {tasksByStatus.in_progress.length}
+                          {tasksByStatus.in_progress.length}
                         </Badge>
                       </div>
                       <Droppable droppableId="in_progress">
@@ -980,11 +979,10 @@ export default function TasksPage() {
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
-                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${
-                              snapshot.isDraggingOver 
-                                ? "bg-blue-50/80 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700 shadow-inner" 
+                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${snapshot.isDraggingOver
+                                ? "bg-blue-50/80 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700 shadow-inner"
                                 : "bg-slate-50/50 dark:bg-slate-800/30 border border-transparent"
-                            }`}
+                              }`}
                           >
                             <div className="space-y-4">
                               {tasksByStatus.in_progress.map((task, index) => (
@@ -1021,14 +1019,14 @@ export default function TasksPage() {
                                           <div className="flex items-center gap-2">
                                             {task.migrated_from_board && (
                                               <div className="flex items-center text-xs text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
-                                                 <ArrowUpRight className="h-3 w-3 mr-1" /> Migrada
+                                                <ArrowUpRight className="h-3 w-3 mr-1" /> Migrada
                                               </div>
                                             )}
                                           </div>
                                           <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0">
-                                            <Button 
-                                              size="sm" 
-                                              variant="ghost" 
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
                                               className="h-8 w-8 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400"
                                               onClick={(e) => {
                                                 e.stopPropagation()
@@ -1057,12 +1055,12 @@ export default function TasksPage() {
                       <div className="flex items-center justify-between mb-4 p-2 bg-green-50/80 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/30">
                         <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400">
-                             <CheckCircle className="h-4 w-4" />
+                            <CheckCircle className="h-4 w-4" />
                           </div>
                           Completadas
                         </h3>
                         <Badge variant="outline" className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-mono">
-                           {tasksByStatus.completed.length}
+                          {tasksByStatus.completed.length}
                         </Badge>
                       </div>
                       <Droppable droppableId="completed">
@@ -1070,11 +1068,10 @@ export default function TasksPage() {
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
-                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${
-                              snapshot.isDraggingOver 
-                                ? "bg-green-50/80 dark:bg-green-900/20 border-2 border-dashed border-green-300 dark:border-green-700 shadow-inner" 
+                            className={`p-3 rounded-2xl min-h-[500px] transition-all duration-300 ${snapshot.isDraggingOver
+                                ? "bg-green-50/80 dark:bg-green-900/20 border-2 border-dashed border-green-300 dark:border-green-700 shadow-inner"
                                 : "bg-slate-50/50 dark:bg-slate-800/30 border border-transparent"
-                            }`}
+                              }`}
                           >
                             <div className="space-y-4">
                               {tasksByStatus.completed.map((task, index) => (
@@ -1124,187 +1121,187 @@ export default function TasksPage() {
                 </DragDropContext>
               </div>
             ) : (
-            <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
-              <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-3 text-2xl font-bold text-slate-800 dark:text-slate-200">
-                      {currentBoard.title}
-                      <div className="flex items-center gap-2">
-                        <Badge className={`
+              <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+                <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center gap-3 text-2xl font-bold text-slate-800 dark:text-slate-200">
+                        {currentBoard.title}
+                        <div className="flex items-center gap-2">
+                          <Badge className={`
                            px-3 py-1 text-sm font-medium
                            ${currentBoard.status === "active" ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-slate-100 text-slate-600"}
                         `}>
-                           {currentBoard.status === "active" ? "Activo" : "Cerrado"}
-                        </Badge>
-                      </div>
-                    </CardTitle>
+                            {currentBoard.status === "active" ? "Activo" : "Cerrado"}
+                          </Badge>
+                        </div>
+                      </CardTitle>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{boardStats.total}</div>
-                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Total</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <div className="text-2xl font-bold text-slate-700 dark:text-slate-200">{boardStats.total}</div>
+                          <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Total</div>
+                        </div>
+                        <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl border border-green-100 dark:border-green-900/30">
+                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{boardStats.completed}</div>
+                          <div className="text-xs font-medium text-green-600/70 dark:text-green-400/70 uppercase tracking-wider mt-1">Completadas</div>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{boardStats.inProgress}</div>
+                          <div className="text-xs font-medium text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider mt-1">En Progreso</div>
+                        </div>
+                        <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
+                          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{boardStats.pending}</div>
+                          <div className="text-xs font-medium text-yellow-600/70 dark:text-yellow-400/70 uppercase tracking-wider mt-1">Pendientes</div>
+                        </div>
                       </div>
-                      <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-xl border border-green-100 dark:border-green-900/30">
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{boardStats.completed}</div>
-                        <div className="text-xs font-medium text-green-600/70 dark:text-green-400/70 uppercase tracking-wider mt-1">Completadas</div>
-                      </div>
-                      <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{boardStats.inProgress}</div>
-                        <div className="text-xs font-medium text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider mt-1">En Progreso</div>
-                      </div>
-                      <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
-                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{boardStats.pending}</div>
-                        <div className="text-xs font-medium text-yellow-600/70 dark:text-yellow-400/70 uppercase tracking-wider mt-1">Pendientes</div>
+
+                      <div className="space-y-2 mt-6">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Progreso General</span>
+                          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{boardProgress}%</span>
+                        </div>
+                        <Progress value={boardProgress} className="h-3 rounded-full bg-slate-100 dark:bg-slate-700" />
                       </div>
                     </div>
 
-                    <div className="space-y-2 mt-6">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Progreso General</span>
-                        <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{boardProgress}%</span>
-                      </div>
-                      <Progress value={boardProgress} className="h-3 rounded-full bg-slate-100 dark:bg-slate-700" />
-                    </div>
-                  </div>
+                    {canEditBoard && (
+                      <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
+                        <DialogTrigger asChild>
+                          <Button className="h-12 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all hover:-translate-y-0.5 ml-6">
+                            <Plus className="h-5 w-5 mr-2" />
+                            Nueva Tarea
+                          </Button>
+                        </DialogTrigger>
 
-                  {canEditBoard && (
-                    <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="h-12 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all hover:-translate-y-0.5 ml-6">
-                          <Plus className="h-5 w-5 mr-2" />
-                          Nueva Tarea
-                        </Button>
-                      </DialogTrigger>
+                        <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+                          <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Crear Nueva Tarea</DialogTitle>
+                            <DialogDescription className="text-slate-500">Agrega una nueva tarea al pizarrón</DialogDescription>
+                          </DialogHeader>
 
-                      <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-                        <DialogHeader>
-                          <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">Crear Nueva Tarea</DialogTitle>
-                          <DialogDescription className="text-slate-500">Agrega una nueva tarea al pizarrón</DialogDescription>
-                        </DialogHeader>
-
-                        <div className="space-y-6 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="title" className="text-slate-700 dark:text-slate-300 font-medium">Título de la tarea <span className="text-red-500">*</span></Label>
-                            <Input
-                              id="title"
-                              value={newTask.title}
-                              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                              placeholder="Ej: Revisar documentación mensual"
-                              className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="description" className="text-slate-700 dark:text-slate-300 font-medium">Descripción</Label>
-                            <Textarea
-                              id="description"
-                              value={newTask.description}
-                              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                              placeholder="Detalles adicionales sobre la tarea..."
-                              className="min-h-[100px] rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500 resize-none"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-6 py-4">
                             <div className="space-y-2">
-                              <Label htmlFor="priority" className="text-slate-700 dark:text-slate-300 font-medium">Prioridad</Label>
-                              <Select
-                                value={newTask.priority}
-                                onValueChange={(value: any) => setNewTask({ ...newTask, priority: value })}
-                              >
-                                <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="low">Baja</SelectItem>
-                                  <SelectItem value="medium">Media</SelectItem>
-                                  <SelectItem value="high">Alta</SelectItem>
-                                  <SelectItem value="urgent">Urgente</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <Label htmlFor="title" className="text-slate-700 dark:text-slate-300 font-medium">Título de la tarea <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="title"
+                                value={newTask.title}
+                                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                                placeholder="Ej: Revisar documentación mensual"
+                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
+                              />
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor="estimated_time" className="text-slate-700 dark:text-slate-300 font-medium">Tiempo estimado (min)</Label>
-                              <div className="relative">
-                                <Clock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-                                <Input
-                                  id="estimated_time"
-                                  type="number"
-                                  value={newTask.estimated_time}
-                                  onChange={(e) => setNewTask({ ...newTask, estimated_time: e.target.value })}
-                                  placeholder="60"
-                                  className="h-11 pl-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
-                                />
+                              <Label htmlFor="description" className="text-slate-700 dark:text-slate-300 font-medium">Descripción</Label>
+                              <Textarea
+                                id="description"
+                                value={newTask.description}
+                                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                                placeholder="Detalles adicionales sobre la tarea..."
+                                className="min-h-[100px] rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500 resize-none"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <Label htmlFor="priority" className="text-slate-700 dark:text-slate-300 font-medium">Prioridad</Label>
+                                <Select
+                                  value={newTask.priority}
+                                  onValueChange={(value: any) => setNewTask({ ...newTask, priority: value })}
+                                >
+                                  <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="low">Baja</SelectItem>
+                                    <SelectItem value="medium">Media</SelectItem>
+                                    <SelectItem value="high">Alta</SelectItem>
+                                    <SelectItem value="urgent">Urgente</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="estimated_time" className="text-slate-700 dark:text-slate-300 font-medium">Tiempo estimado (min)</Label>
+                                <div className="relative">
+                                  <Clock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                                  <Input
+                                    id="estimated_time"
+                                    type="number"
+                                    value={newTask.estimated_time}
+                                    onChange={(e) => setNewTask({ ...newTask, estimated_time: e.target.value })}
+                                    placeholder="60"
+                                    className="h-11 pl-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
+                                  />
+                                </div>
                               </div>
                             </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="due_time" className="text-slate-700 dark:text-slate-300 font-medium">Hora límite</Label>
+                              <Input
+                                id="due_time"
+                                type="time"
+                                value={newTask.due_time}
+                                onChange={(e) => setNewTask({ ...newTask, due_time: e.target.value })}
+                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
+                              />
+                            </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="due_time" className="text-slate-700 dark:text-slate-300 font-medium">Hora límite</Label>
-                            <Input
-                              id="due_time"
-                              type="time"
-                              value={newTask.due_time}
-                              onChange={(e) => setNewTask({ ...newTask, due_time: e.target.value })}
-                              className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-indigo-500"
-                            />
-                          </div>
-                        </div>
-
-                        <DialogFooter className="gap-2 sm:gap-0">
-                          <Button variant="ghost" onClick={() => setIsCreateTaskOpen(false)} className="rounded-xl h-11 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600">
-                            Cancelar
-                          </Button>
-                          <Button onClick={createTask} disabled={!newTask.title.trim()} className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 text-white px-8 shadow-lg shadow-indigo-500/20">
-                            Crear Tarea
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4 p-6">
-                {tasks.length === 0 ? (
-                  <div className="text-center py-16 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                    <div className="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="h-10 w-10 text-indigo-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">No hay tareas</h3>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-2">Este pizarrón está vacío. ¡Crea tu primera tarea para comenzar!</p>
+                          <DialogFooter className="gap-2 sm:gap-0">
+                            <Button variant="ghost" onClick={() => setIsCreateTaskOpen(false)} className="rounded-xl h-11 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600">
+                              Cancelar
+                            </Button>
+                            <Button onClick={createTask} disabled={!newTask.title.trim()} className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 text-white px-8 shadow-lg shadow-indigo-500/20">
+                              Crear Tarea
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
-                ) : (
-                  tasks.map((task) => {
-                    const isActuallyMigrated =
-                      task.status === "cancelled" && task.migrated_from_board && task.migrated_at
-                    const effectiveStatus = isActuallyMigrated ? "migrated" : task.status
-                    const StatusIcon = statusIcons[effectiveStatus]
-                    const isMigratedFromPast = task.migrated_from_board && task.migrated_from_date
+                </CardHeader>
 
-                    return (
-                      <div key={task.id} className="group flex flex-col sm:flex-row gap-4 p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-700 transition-all duration-200">
-                        <div className={`w-1.5 self-stretch rounded-full priority-${task.priority}`} />
-                        
-                        <div className="flex-1">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                             <div className="flex items-center gap-3">
+                <CardContent className="space-y-4 p-6">
+                  {tasks.length === 0 ? (
+                    <div className="text-center py-16 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                      <div className="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle className="h-10 w-10 text-indigo-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">No hay tareas</h3>
+                      <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-2">Este pizarrón está vacío. ¡Crea tu primera tarea para comenzar!</p>
+                    </div>
+                  ) : (
+                    tasks.map((task) => {
+                      const isActuallyMigrated =
+                        task.status === "cancelled" && task.migrated_from_board && task.migrated_at
+                      const effectiveStatus = isActuallyMigrated ? "migrated" : task.status
+                      const StatusIcon = statusIcons[effectiveStatus]
+                      const isMigratedFromPast = task.migrated_from_board && task.migrated_from_date
+
+                      return (
+                        <div key={task.id} className="group flex flex-col sm:flex-row gap-4 p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-700 transition-all duration-200">
+                          <div className={`w-1.5 self-stretch rounded-full priority-${task.priority}`} />
+
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-3">
                                 <h4 className={`font-bold text-lg ${effectiveStatus === "completed" ? "line-through text-slate-400" : "text-slate-800 dark:text-slate-200"}`}>
                                   {task.title}
                                 </h4>
                                 <Badge className={`status-badge status-${task.priority} text-[10px] px-2 py-0.5 uppercase tracking-wider`}>
                                   {task.priority}
                                 </Badge>
-                             </div>
-                             
-                             <div className="flex items-center gap-2">
+                              </div>
+
+                              <div className="flex items-center gap-2">
                                 <Badge className={`
                                    flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
-                                   ${effectiveStatus === "completed" ? "bg-green-50 text-green-700 border-green-200" : 
-                                     effectiveStatus === "in_progress" ? "bg-blue-50 text-blue-700 border-blue-200" : 
-                                     effectiveStatus === "pending" ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-slate-100 text-slate-600 border-slate-200"}
+                                   ${effectiveStatus === "completed" ? "bg-green-50 text-green-700 border-green-200" :
+                                    effectiveStatus === "in_progress" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                      effectiveStatus === "pending" ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-slate-100 text-slate-600 border-slate-200"}
                                 `}>
                                   <StatusIcon className="h-3.5 w-3.5" />
                                   {effectiveStatus === "pending" && "Pendiente"}
@@ -1313,14 +1310,14 @@ export default function TasksPage() {
                                   {effectiveStatus === "cancelled" && "Cancelada"}
                                   {effectiveStatus === "migrated" && "Migrada"}
                                 </Badge>
-                             </div>
-                          </div>
+                              </div>
+                            </div>
 
-                          {task.description && (
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 line-clamp-2">{task.description}</p>
-                          )}
-                          
-                          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                            {task.description && (
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 line-clamp-2">{task.description}</p>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
                               {task.estimated_time && (
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="h-3.5 w-3.5 text-indigo-400" />
@@ -1339,18 +1336,18 @@ export default function TasksPage() {
                                   <span>Completada: <span className="font-medium text-slate-700 dark:text-slate-300">{format(new Date(task.completed_at), "HH:mm")}</span></span>
                                 </div>
                               )}
-                              
+
                               {isMigratedFromPast && (
                                 <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
                                   <ArrowUpRight className="h-3 w-3" />
                                   <span>Migrada</span>
                                 </div>
                               )}
+                            </div>
                           </div>
-                        </div>
 
-                        {!isActuallyMigrated && task.status !== "completed" && (
-                          <div className="flex flex-row sm:flex-col gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                          {!isActuallyMigrated && task.status !== "completed" && (
+                            <div className="flex flex-row sm:flex-col gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1372,17 +1369,17 @@ export default function TasksPage() {
                                   <Clock className="h-4 w-4" />
                                 </Button>
                               )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })
-                )}
-              </CardContent>
-            </Card>
-          )
-        ) : (
-          <Card className="border-none shadow-xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            )
+          ) : (
+            <Card className="border-none shadow-xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
               <CardContent className="flex flex-col items-center justify-center py-24">
                 <div className="w-24 h-24 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-6 animate-pulse">
                   <LayoutGrid className="h-12 w-12 text-indigo-300" />

@@ -275,7 +275,7 @@ export default function RequestsPage() {
                 <CalendarIcon className="h-3.5 w-3.5" />
                 <span>{formatDate(request.created_at)}</span>
               </div>
-              
+
               {expired && (
                 <div className="flex items-center gap-1.5 text-red-500 font-medium">
                   <Clock className="h-3.5 w-3.5" />
@@ -313,11 +313,11 @@ export default function RequestsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+      className="w-full max-w-full space-y-8 p-6 pb-20"
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">

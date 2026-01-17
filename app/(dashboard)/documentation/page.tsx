@@ -211,8 +211,8 @@ const item = {
 
 export default function DocumentationPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6 md:p-12">
-      <div className="max-w-7xl mx-auto space-y-12">
+    <div className="w-full p-6 space-y-8">
+      <div className="w-full space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <motion.div
@@ -225,8 +225,8 @@ export default function DocumentationPage() {
               <FileText className="h-8 w-8 text-white" />
             </div>
           </motion.div>
-          
-          <motion.h1 
+
+          <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -234,14 +234,14 @@ export default function DocumentationPage() {
           >
             Manual de Procedimientos
           </motion.h1>
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
             className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed"
           >
-            Bienvenido al centro de conocimiento de la plataforma. Encuentra guías detalladas, 
+            Bienvenido al centro de conocimiento de la plataforma. Encuentra guías detalladas,
             paso a paso y recursos para dominar todas las funcionalidades del sistema.
           </motion.p>
         </div>
@@ -249,7 +249,7 @@ export default function DocumentationPage() {
         <Separator className="bg-slate-200 dark:bg-slate-800" />
 
         {/* Grid Section */}
-        <motion.div 
+        <motion.div
           variants={container}
           initial="hidden"
           animate="show"
@@ -276,8 +276,8 @@ export default function DocumentationPage() {
                   <ul className="space-y-3">
                     {section.pages.map((page, pageIndex) => (
                       <li key={pageIndex}>
-                        <Link 
-                          href={page.href} 
+                        <Link
+                          href={page.href}
                           className="group/link flex items-center text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         >
                           <ArrowRight className="h-3 w-3 mr-2 opacity-0 -ml-5 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all duration-300" />

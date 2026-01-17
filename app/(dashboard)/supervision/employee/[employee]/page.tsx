@@ -220,7 +220,7 @@ export default function EmployeeDetailPage() {
     const avgCompletionTime =
       completedTasks.length > 0
         ? completedTasks.reduce((sum, task) => sum + (task.actual_time || task.estimated_time || 0), 0) /
-          completedTasks.length
+        completedTasks.length
         : 0
 
     const midPoint = Math.floor(boards.length / 2)
@@ -230,15 +230,15 @@ export default function EmployeeDetailPage() {
     const recentCompletionRate =
       recentBoards.length > 0
         ? (recentBoards.flatMap((b) => b.tasks).filter((t) => t.status === "completed").length /
-            recentBoards.flatMap((b) => b.tasks).length) *
-          100
+          recentBoards.flatMap((b) => b.tasks).length) *
+        100
         : 0
 
     const olderCompletionRate =
       olderBoards.length > 0
         ? (olderBoards.flatMap((b) => b.tasks).filter((t) => t.status === "completed").length /
-            olderBoards.flatMap((b) => b.tasks).length) *
-          100
+          olderBoards.flatMap((b) => b.tasks).length) *
+        100
         : 0
 
     const productivityTrend = recentCompletionRate - olderCompletionRate
@@ -333,7 +333,7 @@ export default function EmployeeDetailPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full max-w-full p-6">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
@@ -356,7 +356,7 @@ export default function EmployeeDetailPage() {
 
   if (!employee) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full max-w-full p-6">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Empleado no encontrado</h2>
           <p className="text-gray-600 mb-4">El empleado solicitado no existe o no tienes permisos para verlo.</p>
@@ -367,7 +367,7 @@ export default function EmployeeDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full max-w-full p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

@@ -508,11 +508,11 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+      className="w-full max-w-full space-y-8 p-6 pb-20"
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

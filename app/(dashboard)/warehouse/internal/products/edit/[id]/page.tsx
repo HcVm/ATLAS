@@ -353,7 +353,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
 
   if (loading) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="w-full max-w-full p-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="h-8 w-8 bg-muted animate-pulse rounded" />
           <div className="h-8 w-48 bg-muted animate-pulse rounded" />
@@ -368,7 +368,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
 
   if (!product) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="w-full max-w-full p-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Producto no encontrado</h1>
           <Button onClick={() => router.push("/warehouse/internal/products")}>
@@ -381,7 +381,7 @@ export default function EditInternalProductPage({ params }: { params: { id: stri
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="w-full max-w-full p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

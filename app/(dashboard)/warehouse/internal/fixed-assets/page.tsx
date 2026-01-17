@@ -78,7 +78,7 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
   damaged: { label: "Dañado", variant: "destructive" },
 }
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -88,7 +88,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -265,7 +265,7 @@ export default function FixedAssetsPage() {
           <p className="text-muted-foreground">Gestión de activos fijos con depreciación - Año {selectedYear}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild className="bg-white/50 backdrop-blur-sm border-gray-200">
+          <Button variant="outline" asChild className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-gray-200 dark:border-slate-700">
             <Link href="/warehouse/internal/fixed-assets/depreciation">
               <Calculator className="h-4 w-4 mr-2" />
               Calcular Depreciación
@@ -285,29 +285,29 @@ export default function FixedAssetsPage() {
 
       {/* Stats Cards */}
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-5">
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Activos</CardTitle>
             <Building2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{stats.total}</div>
             <p className="text-xs text-muted-foreground">{stats.active} activos</p>
           </CardContent>
         </Card>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Costo Adquisición</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
               S/ {stats.totalAcquisition.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total</p>
           </CardContent>
         </Card>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Depre. Acumulada</CardTitle>
             <TrendingDown className="h-4 w-4 text-orange-500" />
@@ -319,7 +319,7 @@ export default function FixedAssetsPage() {
             <p className="text-xs text-muted-foreground">Total acumulado</p>
           </CardContent>
         </Card>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Valor en Libros</CardTitle>
             <FileSpreadsheet className="h-4 w-4 text-indigo-500" />
@@ -331,13 +331,13 @@ export default function FixedAssetsPage() {
             <p className="text-xs text-muted-foreground">Saldo neto</p>
           </CardContent>
         </Card>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Cuentas</CardTitle>
             <CardDescription className="sr-only">Categorías contables</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">{accounts.length}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{accounts.length}</div>
             <p className="text-xs text-muted-foreground">Categorías contables</p>
           </CardContent>
         </Card>
@@ -345,9 +345,9 @@ export default function FixedAssetsPage() {
 
       {/* Filters */}
       <motion.div variants={itemVariants}>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-800">Filtros</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">Filtros</CardTitle>
             <CardDescription>Busca y filtra activos fijos para encontrar lo que necesitas.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -359,12 +359,12 @@ export default function FixedAssetsPage() {
                     placeholder="Buscar por nombre o código..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    className="pl-8 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                   />
                 </div>
               </div>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[120px] bg-white/50 border-gray-200">
+                <SelectTrigger className="w-[120px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
                   <SelectValue placeholder="Año" />
                 </SelectTrigger>
                 <SelectContent>
@@ -376,7 +376,7 @@ export default function FixedAssetsPage() {
                 </SelectContent>
               </Select>
               <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                <SelectTrigger className="w-[250px] bg-white/50 border-gray-200">
+                <SelectTrigger className="w-[250px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
                   <SelectValue placeholder="Todas las cuentas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,7 +389,7 @@ export default function FixedAssetsPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] bg-white/50 border-gray-200">
+                <SelectTrigger className="w-[150px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -409,32 +409,32 @@ export default function FixedAssetsPage() {
       <motion.div variants={containerVariants} className="space-y-6">
         {Object.entries(groupedByAccount).map(([accountId, { account, assets: accountAssets, totals }]) => (
           <motion.div key={accountId} variants={itemVariants}>
-            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm overflow-hidden">
-              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm overflow-hidden">
+              <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-lg font-bold text-gray-800">
+                    <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">
                       {account?.code} - {account?.name}
                     </CardTitle>
                     <CardDescription>
                       {accountAssets.length} activo(s) | Tasa: {account?.depreciation_rate}% anual
                     </CardDescription>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm bg-white/50 p-2 rounded-lg border border-gray-100">
+                  <div className="flex flex-wrap gap-4 text-sm bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg border border-gray-100 dark:border-slate-700">
                     <div>
                       <span className="text-muted-foreground mr-1">Total:</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
                         S/ {totals.acquisitionCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
-                    <div className="w-px h-4 bg-gray-200 my-auto hidden sm:block"></div>
+                    <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 my-auto hidden sm:block"></div>
                     <div>
                       <span className="text-muted-foreground mr-1">Depre. {selectedYear}:</span>
                       <span className="font-semibold text-orange-600">
                         S/ {totals.yearlyDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
-                    <div className="w-px h-4 bg-gray-200 my-auto hidden sm:block"></div>
+                    <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 my-auto hidden sm:block"></div>
                     <div>
                       <span className="text-muted-foreground mr-1">Saldo Neto:</span>
                       <span className="font-semibold text-green-600">
@@ -448,32 +448,32 @@ export default function FixedAssetsPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[100px] font-semibold text-gray-700">Código</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Nombre</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Fecha Adq.</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Factura</TableHead>
-                        <TableHead className="text-right font-semibold text-gray-700">Costo</TableHead>
-                        <TableHead className="text-right font-semibold text-gray-700">% Depre.</TableHead>
-                        <TableHead className="text-right font-semibold text-gray-700">Depre. Acum.</TableHead>
-                        <TableHead className="text-right font-semibold text-gray-700">Saldo Neto</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                        <TableHead className="text-right font-semibold text-gray-700">Acciones</TableHead>
+                      <TableRow className="hover:bg-transparent border-gray-100 dark:border-slate-800">
+                        <TableHead className="w-[100px] font-semibold text-gray-700 dark:text-gray-300">Código</TableHead>
+                        <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Nombre</TableHead>
+                        <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Fecha Adq.</TableHead>
+                        <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Factura</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Costo</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">% Depre.</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Depre. Acum.</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Saldo Neto</TableHead>
+                        <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Estado</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {accountAssets.map((asset) => (
-                        <TableRow key={asset.id} className="hover:bg-gray-50/50 transition-colors">
+                        <TableRow key={asset.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors border-gray-100 dark:border-slate-800">
                           <TableCell className="font-mono text-xs text-muted-foreground">{asset.code}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium text-gray-900">{asset.name}</div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100">{asset.name}</div>
                               {asset.supplier_name && (
                                 <div className="text-xs text-muted-foreground">{asset.supplier_name}</div>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                          <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                             {(() => {
                               const dateStr = asset.acquisition_date
                               const [year, month, day] = dateStr.split("T")[0].split("-")
@@ -489,11 +489,11 @@ export default function FixedAssetsPage() {
                               })
                             })()}
                           </TableCell>
-                          <TableCell className="text-sm text-gray-600">{asset.invoice_number || "-"}</TableCell>
-                          <TableCell className="text-right font-mono text-sm text-gray-900">
+                          <TableCell className="text-sm text-gray-600 dark:text-gray-400">{asset.invoice_number || "-"}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-gray-900 dark:text-gray-100">
                             S/ {asset.acquisition_cost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell className="text-right text-sm text-gray-600">
+                          <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
                             {asset.depreciation_rate}%
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm text-orange-600">
@@ -510,12 +510,12 @@ export default function FixedAssetsPage() {
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-slate-800">
                                   <span className="sr-only">Abrir menú</span>
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48 bg-white/95 dark:bg-slate-900/95 border-gray-200 dark:border-slate-800">
                                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
                                   <Link href={`/warehouse/internal/fixed-assets/${asset.id}`}>
@@ -547,12 +547,12 @@ export default function FixedAssetsPage() {
 
       {filteredAssets.length === 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="bg-gray-100 p-4 rounded-full mb-4">
+              <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-full mb-4">
                 <Building2 className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800">No hay activos fijos</h3>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">No hay activos fijos</h3>
               <p className="text-muted-foreground text-center mt-2 max-w-sm">
                 Comienza agregando tu primer activo fijo para gestionar la depreciación y el inventario.
               </p>

@@ -303,7 +303,7 @@ export default function SupervisionPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-8 min-h-screen">
+    <div className="w-full max-w-full p-4 sm:p-6 space-y-8 min-h-screen">
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -323,25 +323,25 @@ export default function SupervisionPage() {
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-sm p-1 rounded-xl">
-          <TabsTrigger 
+          <TabsTrigger
             value="overview"
             className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
           >
             Vista General
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="boards"
             className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
           >
             Pizarrones
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="analytics"
             className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
           >
             Análisis
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="alerts"
             className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
           >
@@ -496,8 +496,8 @@ export default function SupervisionPage() {
                       >
                         Ver Detalles
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="flex-1 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 shadow-sm"
                         onClick={() => handleAssignTask(board.user_id, board.id)}
                       >

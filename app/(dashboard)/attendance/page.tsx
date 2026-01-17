@@ -41,7 +41,7 @@ interface AttendanceRecord {
   worked_hours: number
   check_in_location?: string
   check_out_location?: string
-  user_profile: {
+  user_profile?: {
     full_name: string
     email: string
     role: string
@@ -192,7 +192,12 @@ export default function AttendancePage() {
       // Combine attendance data with profiles
       const processedAttendanceData = (attendanceData || []).map((record) => ({
         ...record,
-        user_profile: profilesMap.get(record.user_id) || null,
+        user_profile: profilesMap.get(record.user_id) || undefined,
+        is_late: record.is_late || false,
+        worked_hours: record.worked_hours || 0,
+        late_minutes: record.late_minutes || 0,
+        check_in_location: record.check_in_location || undefined,
+        check_out_location: record.check_out_location || undefined,
       }))
 
       setAttendanceRecords(processedAttendanceData)
@@ -420,7 +425,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full p-6 space-y-6">
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -607,7 +612,7 @@ export default function AttendancePage() {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
-                      label={({ name, value, total }) => `${name}: ${value}/${total}`}
+                      label={({ name, value, payload }: any) => `${name}: ${value}/${payload.total}`}
                     >
                       {departmentStats.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -678,7 +683,7 @@ export default function AttendancePage() {
                       outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
-                      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                      label={({ name, value, percent }: any) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
                     >
                       <Cell fill="#10b981" />
                       <Cell fill="#f59e0b" />

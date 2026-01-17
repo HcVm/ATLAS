@@ -37,10 +37,10 @@ interface Department {
 interface Category {
   id: string
   name: string
-  color: string
+  color: string | null
 }
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -50,7 +50,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -124,7 +124,7 @@ export default function NewFixedAssetPage() {
       const { data: deptData, error: deptError } = await supabase
         .from("departments")
         .select("id, name")
-        .eq("company_id", companyId)
+        .eq("company_id", companyId!)
         .order("name")
 
       if (!deptError) {
@@ -134,7 +134,7 @@ export default function NewFixedAssetPage() {
       const { data: catData, error: catError } = await supabase
         .from("internal_product_categories")
         .select("id, name, color")
-        .or(`company_id.eq.${companyId},company_id.is.null`)
+        .or(`company_id.eq.${companyId!},company_id.is.null`)
         .order("name")
 
       if (!catError) {
@@ -342,7 +342,7 @@ export default function NewFixedAssetPage() {
       className="space-y-6 mt-10 w-full max-w-[95%] mx-auto"
     >
       <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <Button variant="outline" asChild className="bg-white/50 backdrop-blur-sm border-gray-200">
+        <Button variant="outline" asChild className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-gray-200 dark:border-slate-700">
           <Link href="/warehouse/internal/fixed-assets">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Volver a Activos Fijos
@@ -368,15 +368,15 @@ export default function NewFixedAssetPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Información básica */}
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
-            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
-              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-                <CardTitle className="text-lg font-bold text-gray-800">Información del Activo</CardTitle>
+            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
+              <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+                <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Información del Activo</CardTitle>
                 <CardDescription>Datos básicos del activo fijo</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Nombre del Activo *
                     </Label>
                     <Input
@@ -385,15 +385,15 @@ export default function NewFixedAssetPage() {
                       onChange={handleChange}
                       placeholder="Ej: Laptop HP ProBook 450 G9"
                       required
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="account_id" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="account_id" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Cuenta Contable *
                     </Label>
                     <Select value={formData.account_id} onValueChange={handleAccountChange} required>
-                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                      <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                         <SelectValue placeholder="Seleccionar cuenta" />
                       </SelectTrigger>
                       <SelectContent>
@@ -406,7 +406,7 @@ export default function NewFixedAssetPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Descripción
                     </Label>
                     <Textarea
@@ -415,11 +415,11 @@ export default function NewFixedAssetPage() {
                       onChange={handleChange}
                       placeholder="Descripción detallada del activo"
                       rows={3}
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="current_location" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="current_location" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Ubicación
                     </Label>
                     <Input
@@ -427,18 +427,18 @@ export default function NewFixedAssetPage() {
                       value={formData.current_location}
                       onChange={handleChange}
                       placeholder="Ej: Oficina Principal, Piso 2"
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="assigned_department_id" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="assigned_department_id" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Departamento Asignado
                     </Label>
                     <Select
                       value={formData.assigned_department_id}
                       onValueChange={(value) => handleSelectChange("assigned_department_id", value)}
                     >
-                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                      <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                         <SelectValue placeholder="Seleccionar departamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -453,7 +453,7 @@ export default function NewFixedAssetPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="acquisition_date" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="acquisition_date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Fecha de Adquisición *
                     </Label>
                     <Input
@@ -462,11 +462,11 @@ export default function NewFixedAssetPage() {
                       value={formData.acquisition_date}
                       onChange={handleChange}
                       required
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="invoice_number" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="invoice_number" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Número de Factura
                     </Label>
                     <Input
@@ -474,11 +474,11 @@ export default function NewFixedAssetPage() {
                       value={formData.invoice_number}
                       onChange={handleChange}
                       placeholder="Ej: F001-0944"
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="supplier_ruc" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="supplier_ruc" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       RUC Proveedor
                     </Label>
                     <Input
@@ -487,11 +487,11 @@ export default function NewFixedAssetPage() {
                       onChange={handleChange}
                       placeholder="Ej: 20123456789"
                       maxLength={11}
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="supplier_name" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="supplier_name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Nombre Proveedor
                     </Label>
                     <Input
@@ -499,7 +499,7 @@ export default function NewFixedAssetPage() {
                       value={formData.supplier_name}
                       onChange={handleChange}
                       placeholder="Ej: Tech Solutions S.A.C."
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                 </div>
@@ -509,16 +509,16 @@ export default function NewFixedAssetPage() {
 
           {/* Resumen de depreciación */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm h-full">
-              <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-                <CardTitle className="text-lg font-bold text-gray-800">Resumen de Depreciación</CardTitle>
+            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm h-full">
+              <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+                <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Resumen de Depreciación</CardTitle>
                 <CardDescription>Cálculo estimado basado en los datos ingresados</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 p-6">
                 {selectedAccount && (
-                  <Alert className="bg-blue-50 border-blue-100">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
+                  <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
                       <strong>{selectedAccount.code}</strong>
                       <br />
                       Tasa: {selectedAccount.depreciation_rate}% anual
@@ -529,47 +529,47 @@ export default function NewFixedAssetPage() {
                 )}
 
                 <div className="space-y-3">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Costo Total:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       S/ {totalCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Costo Unitario:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       S/ {unitCost.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Cantidad:</span>
-                    <span className="font-semibold text-gray-900">{formData.quantity} unidad(es)</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{formData.quantity} unidad(es)</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Valor Residual:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       S/{" "}
                       {(Number.parseFloat(formData.salvage_value) || 0).toLocaleString("es-PE", {
                         minimumFractionDigits: 2,
                       })}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Base Depreciable:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       S/{" "}
                       {(totalCost - (Number.parseFloat(formData.salvage_value) || 0)).toLocaleString("es-PE", {
                         minimumFractionDigits: 2,
                       })}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
                     <span className="text-muted-foreground">Tasa Anual:</span>
-                    <span className="font-semibold text-gray-900">{formData.depreciation_rate || 0}%</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{formData.depreciation_rate || 0}%</span>
                   </div>
-                  <div className="flex justify-between py-2 bg-orange-50 rounded-lg px-3 border border-orange-100">
-                    <span className="text-orange-700 font-medium">Depre. Mensual Est.:</span>
-                    <span className="font-bold text-orange-600">
+                  <div className="flex justify-between py-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg px-3 border border-orange-100 dark:border-orange-800">
+                    <span className="text-orange-700 dark:text-orange-300 font-medium">Depre. Mensual Est.:</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">
                       S/ {estimatedMonthlyDep.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -580,22 +580,22 @@ export default function NewFixedAssetPage() {
         </div>
 
         <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-blue-200">
-            <CardHeader className="bg-blue-50/50 border-b border-blue-100">
+          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm border-blue-200 dark:border-blue-900">
+            <CardHeader className="bg-blue-50/50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Package className="h-5 w-5 text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                    <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-gray-800">Integración con Inventario Interno</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Integración con Inventario Interno</CardTitle>
                     <CardDescription>
                       Registra automáticamente el activo en el inventario interno con números de serie únicos
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full border border-blue-100">
-                  <Label htmlFor="create_inventory_product" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900">
+                  <Label htmlFor="create_inventory_product" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                     Crear en inventario
                   </Label>
                   <Switch
@@ -610,10 +610,10 @@ export default function NewFixedAssetPage() {
             </CardHeader>
             {formData.create_inventory_product && (
               <CardContent className="pt-6">
-                <Alert className="mb-6 bg-blue-50 border-blue-100 text-blue-800">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                <Alert className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-blue-800 dark:text-blue-200">
+                  <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   <AlertTitle className="font-semibold">Detección Inteligente de Duplicados</AlertTitle>
-                  <AlertDescription className="text-blue-700">
+                  <AlertDescription className="text-blue-700 dark:text-blue-300">
                     El sistema verificará si existe un producto similar antes de crear uno nuevo. Podrás elegir agregar
                     stock al producto existente o crear uno independiente.
                   </AlertDescription>
@@ -621,7 +621,7 @@ export default function NewFixedAssetPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="quantity" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Cantidad de Unidades *
                     </Label>
                     <Input
@@ -632,12 +632,12 @@ export default function NewFixedAssetPage() {
                       onChange={handleChange}
                       placeholder="1"
                       required={formData.create_inventory_product}
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                     />
                     <p className="text-xs text-muted-foreground mt-1">Número de unidades según factura</p>
                   </div>
                   <div>
-                    <Label htmlFor="category_id" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="category_id" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Categoría de Producto *
                     </Label>
                     <Select
@@ -647,14 +647,14 @@ export default function NewFixedAssetPage() {
                       onOpenChange={setCategorySelectOpen}
                       required={formData.create_inventory_product}
                     >
-                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5">
+                      <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5">
                         <SelectValue placeholder="Seleccionar categoría" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color || "#ccc" }} />
                               {category.name}
                             </div>
                           </SelectItem>
@@ -677,7 +677,7 @@ export default function NewFixedAssetPage() {
                     <p className="text-xs text-muted-foreground mt-1">Categoría para organizar en inventario</p>
                   </div>
                   <div>
-                    <Label htmlFor="unit_of_measure" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="unit_of_measure" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Unidad de Medida
                     </Label>
                     <Input
@@ -685,14 +685,14 @@ export default function NewFixedAssetPage() {
                       value={formData.unit_of_measure}
                       onChange={handleChange}
                       placeholder="unidad"
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                     />
                   </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-700 mb-2 text-sm">Formato de Series Generadas:</h4>
-                  <code className="text-sm bg-white px-3 py-1.5 rounded border border-gray-200 font-mono text-gray-600 block w-fit">
+                <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
+                  <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">Formato de Series Generadas:</h4>
+                  <code className="text-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded border border-gray-200 dark:border-slate-700 font-mono text-gray-600 dark:text-gray-400 block w-fit">
                     [CÓDIGO_PRODUCTO]-AF[AÑO][CORR_ACTIVO]-S[CORR_SERIE]
                   </code>
                   <p className="text-xs text-muted-foreground mt-2">Ejemplo: ARMTEC2025001-AF20250001-S0001</p>
@@ -704,16 +704,16 @@ export default function NewFixedAssetPage() {
 
         {/* Valores contables */}
         <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-              <CardTitle className="text-lg font-bold text-gray-800">Valores Contables</CardTitle>
+          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
+            <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+              <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Valores Contables</CardTitle>
               <CardDescription>
                 Ingresa los valores de adquisición del activo. El costo total se calculará automáticamente.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
               <div>
-                <Label htmlFor="initial_balance" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="initial_balance" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Saldos Iniciales (S/)
                 </Label>
                 <Input
@@ -724,12 +724,12 @@ export default function NewFixedAssetPage() {
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                  className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Valor de activos existentes</p>
               </div>
               <div>
-                <Label htmlFor="purchases" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="purchases" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Compras del Período (S/)
                 </Label>
                 <Input
@@ -740,12 +740,12 @@ export default function NewFixedAssetPage() {
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                  className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Adquisiciones nuevas</p>
               </div>
               <div>
-                <Label htmlFor="acquisition_cost" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="acquisition_cost" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Costo Directo (S/)
                 </Label>
                 <Input
@@ -756,12 +756,12 @@ export default function NewFixedAssetPage() {
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                  className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Otros costos directos</p>
               </div>
               <div>
-                <Label htmlFor="salvage_value" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="salvage_value" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Valor Residual (S/)
                 </Label>
                 <Input
@@ -772,7 +772,7 @@ export default function NewFixedAssetPage() {
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
+                  className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Valor al final de vida útil</p>
               </div>
@@ -782,36 +782,36 @@ export default function NewFixedAssetPage() {
 
         {/* Configuración de depreciación */}
         <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-              <CardTitle className="text-lg font-bold text-gray-800">Configuración de Depreciación</CardTitle>
+          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
+            <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+              <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Configuración de Depreciación</CardTitle>
               <CardDescription>
                 La tasa se establece automáticamente según la cuenta contable seleccionada
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
               <div>
-                <Label htmlFor="depreciation_rate" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="depreciation_rate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Tasa de Depreciación Anual (%)
                 </Label>
                 <Input
                   id="depreciation_rate"
                   type="number"
                   step="0.01"
+                  className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 mt-1.5"
                   value={formData.depreciation_rate}
                   onChange={handleChange}
                   placeholder="10.00"
                   min="0"
                   max="100"
-                  className="bg-white/50 border-gray-200 focus:ring-blue-500/20 mt-1.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Según normativa peruana de la Ley del Impuesto a la Renta
                 </p>
               </div>
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2 text-sm">Tasas de Depreciación (Perú)</h4>
-                <ul className="text-xs text-blue-800 space-y-1">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 rounded-lg">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2 text-sm">Tasas de Depreciación (Perú)</h4>
+                <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
                   <li>• Edificios: 5% anual (desde 01-01-2010)</li>
                   <li>• Vehículos de transporte: 20%</li>
                   <li>• Maquinaria y equipo: 10%</li>
@@ -829,7 +829,7 @@ export default function NewFixedAssetPage() {
             type="button"
             variant="outline"
             onClick={() => router.back()}
-            className="bg-white hover:bg-gray-50 border-gray-200"
+            className="bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200"
           >
             Cancelar
           </Button>

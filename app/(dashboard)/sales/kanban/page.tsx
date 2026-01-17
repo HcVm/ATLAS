@@ -480,11 +480,10 @@ const DeliveryCard = memo(
         ref={provided?.innerRef}
         {...(provided?.draggableProps || {})}
         {...(provided?.dragHandleProps || {})}
-        className={`group relative mb-3 rounded-2xl border backdrop-blur-xl transition-all duration-300 ease-out will-change-transform max-w-full overflow-hidden ${
-          snapshot?.isDragging
-            ? "shadow-2xl scale-105 z-50 bg-white/95 dark:bg-slate-900/95 border-primary/50 ring-2 ring-primary/20"
-            : "hover:shadow-xl hover:shadow-slate-200/40 dark:hover:shadow-slate-900/40 hover:-translate-y-1 shadow-sm"
-        } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${cardColorClass}`}
+        className={`group relative mb-3 rounded-2xl border backdrop-blur-xl transition-all duration-300 ease-out will-change-transform max-w-full overflow-hidden ${snapshot?.isDragging
+          ? "shadow-2xl scale-105 z-50 bg-white/95 dark:bg-slate-900/95 border-primary/50 ring-2 ring-primary/20"
+          : "hover:shadow-xl hover:shadow-slate-200/40 dark:hover:shadow-slate-900/40 hover:-translate-y-1 shadow-sm"
+          } ${!canEditDeliveryStatus || !isDraggable ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${cardColorClass}`}
         style={provided?.draggableProps?.style}
       >
         {/* Decorative Gradient Background on Hover */}
@@ -494,12 +493,11 @@ const DeliveryCard = memo(
           {/* Header: Sale Number & Date */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shadow-inner flex-shrink-0 ${
-                isCancelled ? "bg-red-100 dark:bg-red-900/30 text-red-600" :
+              <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shadow-inner flex-shrink-0 ${isCancelled ? "bg-red-100 dark:bg-red-900/30 text-red-600" :
                 isSignedGuide ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600" :
-                isDelivered ? "bg-green-100 dark:bg-green-900/30 text-green-600" :
-                "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 transition-colors"
-              }`}>
+                  isDelivered ? "bg-green-100 dark:bg-green-900/30 text-green-600" :
+                    "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 transition-colors"
+                }`}>
                 <Package2 className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
@@ -518,10 +516,10 @@ const DeliveryCard = memo(
                 </div>
               </div>
             </div>
-            
+
             <div className="flex gap-1">
-               {/* Actions */}
-               <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Actions */}
+              <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -540,81 +538,80 @@ const DeliveryCard = memo(
                 >
                   <Maximize2 className="h-3 w-3" />
                 </Button>
-               </div>
+              </div>
             </div>
           </div>
 
           {/* Content: Client & Details */}
           <div className="space-y-2 mb-3">
-             <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                <User className="h-4 w-4 text-slate-400 group-hover/item:text-indigo-500 transition-colors flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                   <p className="font-medium truncate leading-tight">{delivery.sales.entity_name}</p>
-                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">RUC: {delivery.sales.entity_ruc}</p>
-                </div>
-             </div>
+            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
+              <User className="h-4 w-4 text-slate-400 group-hover/item:text-indigo-500 transition-colors flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-medium truncate leading-tight">{delivery.sales.entity_name}</p>
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">RUC: {delivery.sales.entity_ruc}</p>
+              </div>
+            </div>
 
-             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                <DollarSign className="h-4 w-4 text-slate-400 group-hover/item:text-emerald-500 transition-colors flex-shrink-0" />
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
-                   S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                </span>
-             </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
+              <DollarSign className="h-4 w-4 text-slate-400 group-hover/item:text-emerald-500 transition-colors flex-shrink-0" />
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
 
-             {delivery.sales.final_destination && (
-                <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 group/item">
-                   <MapPin className="h-3.5 w-3.5 text-slate-400 group-hover/item:text-red-500 transition-colors flex-shrink-0 mt-0.5" />
-                   <p className="truncate leading-relaxed">{delivery.sales.final_destination}</p>
-                </div>
-             )}
+            {delivery.sales.final_destination && (
+              <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 group/item">
+                <MapPin className="h-3.5 w-3.5 text-slate-400 group-hover/item:text-red-500 transition-colors flex-shrink-0 mt-0.5" />
+                <p className="truncate leading-relaxed">{delivery.sales.final_destination}</p>
+              </div>
+            )}
           </div>
 
           {/* Footer: Tags & Status */}
           <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50 mt-2">
             <div className="flex items-center gap-2">
-               {delivery.sales.warehouse_manager && (
-                  <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-100 dark:border-slate-800">
-                     <User className="h-3 w-3" />
-                     <span className="truncate max-w-[80px]">{delivery.sales.warehouse_manager}</span>
-                  </div>
-               )}
+              {delivery.sales.warehouse_manager && (
+                <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-100 dark:border-slate-800">
+                  <User className="h-3 w-3" />
+                  <span className="truncate max-w-[80px]">{delivery.sales.warehouse_manager}</span>
+                </div>
+              )}
             </div>
-            
+
             {delivery.actual_delivery_date && (
-               <Badge variant="outline" className={`text-[10px] font-medium border-0 ${
-                  isSignedGuide ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : 
-                  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-               }`}>
-                  {isSignedGuide ? "Firmado: " : "Entregado: "}
-                  {format(parseDate(delivery.actual_delivery_date), "dd/MM", { locale: es })}
-               </Badge>
+              <Badge variant="outline" className={`text-[10px] font-medium border-0 ${isSignedGuide ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                }`}>
+                {isSignedGuide ? "Firmado: " : "Entregado: "}
+                {format(parseDate(delivery.actual_delivery_date), "dd/MM", { locale: es })}
+              </Badge>
             )}
           </div>
 
-            {!isDraggable && canEditDeliveryStatus && onMoveCard && (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 mt-2">
-                <Label className="text-[10px] text-muted-foreground mb-1 block">Mover a:</Label>
-                <Select value={delivery.delivery_status} onValueChange={(value) => onMoveCard(delivery.id, value)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {KANBAN_COLUMNS.map(
-                      (
-                        col,
-                      ) => (
-                        <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <col.icon className="h-3 w-3" />
-                            {col.title}
-                          </div>
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          {!isDraggable && canEditDeliveryStatus && onMoveCard && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 mt-2">
+              <Label className="text-[10px] text-muted-foreground mb-1 block">Mover a:</Label>
+              <Select value={delivery.delivery_status} onValueChange={(value) => onMoveCard(delivery.id, value)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {KANBAN_COLUMNS.map(
+                    (
+                      col,
+                    ) => (
+                      <SelectItem key={col.deliveryStatus} value={col.deliveryStatus} className="text-xs">
+                        <div className="flex items-center gap-2">
+                          <col.icon className="h-3 w-3" />
+                          {col.title}
+                        </div>
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1228,323 +1225,322 @@ export default function SalesKanbanPage() {
   return (
     <>
       <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-800/50 p-2 sm:p-4 overflow-hidden">
-        <motion.div 
+        <motion.div
           className="space-y-4 flex-shrink-0 mb-4"
           variants={containerVariants}
           initial="hidden"
           animate="show"
         >
-        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
-              <Truck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              Tablero de Entregas
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-              Gestión de: <span className="font-semibold text-foreground">{companyToUse?.name || "N/A"}</span>
-              {!canViewAllSales && <span className="ml-2 text-xs text-orange-600 font-medium">(Tus ventas)</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg flex items-center">
-              <Button
-                variant={viewMode === "board" ? "white" : "ghost"}
-                size="sm"
-                className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "board" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
-                onClick={() => setViewMode("board")}
-              >
-                <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
-                Tablero
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "white" : "ghost"}
-                size="sm"
-                className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-3.5 w-3.5 mr-1.5" />
-                Lista
-              </Button>
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+                <Truck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                Tablero de Entregas
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                Gestión de: <span className="font-semibold text-foreground">{companyToUse?.name || "N/A"}</span>
+                {!canViewAllSales && <span className="ml-2 text-xs text-orange-600 font-medium">(Tus ventas)</span>}
+              </p>
             </div>
-            
-            <div className="flex items-center gap-1.5">
-              {canEditDeliveryStatus ? (
-                <Badge variant="default" className="text-[10px] h-7 px-2">
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edición
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] h-7 px-2">
-                  <Eye className="h-3 w-3 mr-1" />
-                  Lectura
-                </Badge>
-              )}
-            </div>
-            <Button
-              onClick={fetchDeliveries}
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-            >
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Actualizar
-            </Button>
-          </div>
-        </motion.div>
+            <div className="flex items-center gap-2">
+              <div className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg flex items-center">
+                <Button
+                  variant={viewMode === "board" ? "white" : "ghost"}
+                  size="sm"
+                  className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "board" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
+                  onClick={() => setViewMode("board")}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                  Tablero
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "white" : "ghost"}
+                  size="sm"
+                  className={`h-7 px-2 text-xs rounded-md transition-all ${viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-sm" : ""}`}
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-3.5 w-3.5 mr-1.5" />
+                  Lista
+                </Button>
+              </div>
 
-        {viewMode === "board" ? (
-          /* Kanban Board View */
-          <div className="flex-1 overflow-x-auto overflow-y-hidden">
-            <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
-              <div className="flex h-full min-w-full w-max gap-3 pb-2 px-1">
-                {columns.map((column) => (
-                  <div key={column.id} className="w-[310px] 2xl:w-[350px] flex-shrink-0 flex flex-col h-full max-h-full">
-                    <Droppable droppableId={column.id} isDropDisabled={!canEditDeliveryStatus}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`rounded-xl border-2 ${column.color} flex flex-col h-full max-h-full transition-all duration-300 ${
-                            snapshot.isDraggingOver && canEditDeliveryStatus
+              <div className="flex items-center gap-1.5">
+                {canEditDeliveryStatus ? (
+                  <Badge variant="default" className="text-[10px] h-7 px-2">
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edición
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] h-7 px-2">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Lectura
+                  </Badge>
+                )}
+              </div>
+              <Button
+                onClick={fetchDeliveries}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Actualizar
+              </Button>
+            </div>
+          </motion.div>
+
+          {viewMode === "board" ? (
+            /* Kanban Board View */
+            <div className="flex-1 overflow-x-auto overflow-y-hidden">
+              <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
+                <div className="flex h-full min-w-full gap-3 pb-2 px-1">
+                  {columns.map((column) => (
+                    <div key={column.id} className="min-w-[220px] flex-1 flex flex-col h-full max-h-full">
+                      <Droppable droppableId={column.id} isDropDisabled={!canEditDeliveryStatus}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`rounded-xl border-2 ${column.color} flex flex-col h-full max-h-full transition-all duration-300 ${snapshot.isDraggingOver && canEditDeliveryStatus
                               ? "ring-2 ring-primary/50 scale-[1.01] bg-slate-50/80 dark:bg-slate-900/80 z-10"
                               : ""
-                          }`}
-                        >
-                          <div className="flex-shrink-0 p-3 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                            <h3 className="font-bold text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                              <column.icon className="h-4 w-4" />
-                              {column.title}
-                            </h3>
-                            <Badge variant="secondary" className="bg-white/50 dark:bg-black/20 backdrop-blur-sm font-mono text-[10px] h-5 min-w-[1.25rem] flex items-center justify-center px-1">
-                              {column.deliveries.length}
-                            </Badge>
-                          </div>
+                              }`}
+                          >
+                            <div className="flex-shrink-0 p-3 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                              <h3 className="font-bold text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <column.icon className="h-4 w-4" />
+                                {column.title}
+                              </h3>
+                              <Badge variant="secondary" className="bg-white/50 dark:bg-black/20 backdrop-blur-sm font-mono text-[10px] h-5 min-w-[1.25rem] flex items-center justify-center px-1">
+                                {column.deliveries.length}
+                              </Badge>
+                            </div>
 
-                          <div className="flex-1 overflow-y-auto p-2 min-h-0 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-                            <div className="space-y-2">
-                              {column.deliveries.map((delivery, index) => (
-                                <DeliveryCard
-                                  key={delivery.id}
-                                  delivery={delivery}
-                                  index={index}
-                                  canEditDeliveryStatus={canEditDeliveryStatus}
-                                  getProductDisplayName={getProductDisplayName}
-                                  canViewAllSales={canViewAllSales}
-                                  onEditDelivery={handleEditDelivery}
-                                  onViewDetails={handleViewDetails}
-                                  isDraggable={true}
-                                />
-                              ))}
-                              {provided.placeholder}
-                              {column.deliveries.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground opacity-50 border-2 border-dashed rounded-lg border-slate-200 dark:border-slate-700 m-1">
-                                  <column.icon className="h-6 w-6 mb-1" />
-                                  <p className="text-xs font-medium">Vacío</p>
-                                </div>
-                              )}
+                            <div className="flex-1 overflow-y-auto p-2 min-h-0 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                              <div className="space-y-2">
+                                {column.deliveries.map((delivery, index) => (
+                                  <DeliveryCard
+                                    key={delivery.id}
+                                    delivery={delivery}
+                                    index={index}
+                                    canEditDeliveryStatus={canEditDeliveryStatus}
+                                    getProductDisplayName={getProductDisplayName}
+                                    canViewAllSales={canViewAllSales}
+                                    onEditDelivery={handleEditDelivery}
+                                    onViewDetails={handleViewDetails}
+                                    isDraggable={true}
+                                  />
+                                ))}
+                                {provided.placeholder}
+                                {column.deliveries.length === 0 && (
+                                  <div className="flex flex-col items-center justify-center h-32 text-muted-foreground opacity-50 border-2 border-dashed rounded-lg border-slate-200 dark:border-slate-700 m-1">
+                                    <column.icon className="h-6 w-6 mb-1" />
+                                    <p className="text-xs font-medium">Vacío</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </Droppable>
-                  </div>
-                ))}
-              </div>
-            </DragDropContext>
-          </div>
-        ) : (
-          /* List View */
-          <div className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shadow-lg">
-            <table className="w-full text-sm text-left relative">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-medium sticky top-0 z-10 backdrop-blur-md">
-                <tr>
-                  <th className="px-4 py-3">Venta</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Fecha Venta</th>
-                  <th className="px-4 py-3">Entrega</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {columns.flatMap(col => col.deliveries).map((delivery) => (
-                  <tr key={delivery.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">
-                        #{delivery.sales.sale_number || "S/N"}
-                      </div>
-                      {delivery.sales.ocam && (
-                        <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
-                          OCAM: {delivery.sales.ocam}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium max-w-[200px] truncate" title={delivery.sales.entity_name}>
-                        {delivery.sales.entity_name}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        {delivery.sales.entity_ruc}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {canEditDeliveryStatus ? (
-                        <Select
-                          value={delivery.delivery_status}
-                          onValueChange={(value) => handleMoveCard(delivery.id, value)}
-                          disabled={delivery.delivery_status === "cancelled"}
-                        >
-                          <SelectTrigger className={`h-8 w-fit min-w-[140px] border-0 ${getStatusBadge(delivery.delivery_status)}`}>
-                            <SelectValue>{getStatusLabel(delivery.delivery_status)}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {KANBAN_COLUMNS.map((col) => (
-                              <SelectItem key={col.deliveryStatus} value={col.deliveryStatus}>
-                                <div className="flex items-center gap-2">
-                                  <col.icon className="h-4 w-4" />
-                                  {col.title}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="outline" className={`${getStatusBadge(delivery.delivery_status)} font-normal`}>
-                          {getStatusLabel(delivery.delivery_status)}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {format(new Date(delivery.sales.sale_date), "dd MMM yyyy", { locale: es })}
-                    </td>
-                    <td className="px-4 py-3">
-                      {delivery.actual_delivery_date ? (
-                        <span className="text-green-600 font-medium flex items-center gap-1.5">
-                          <CheckCircle className="h-3.5 w-3.5" />
-                          {format(new Date(delivery.actual_delivery_date), "dd/MM", { locale: es })}
-                        </span>
-                      ) : delivery.sales.delivery_end_date ? (
-                        <span className="text-blue-600 flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs italic">Sin fecha</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-indigo-600"
-                          onClick={() => handleEditDelivery(delivery)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-indigo-600"
-                          onClick={() => handleViewDetails(delivery)}
-                        >
-                          <Maximize2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {columns.every(col => col.deliveries.length === 0) && (
+                        )}
+                      </Droppable>
+                    </div>
+                  ))}
+                </div>
+              </DragDropContext>
+            </div>
+          ) : (
+            /* List View */
+            <div className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shadow-lg">
+              <table className="w-full text-sm text-left relative">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-medium sticky top-0 z-10 backdrop-blur-md">
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                      No se encontraron entregas
-                    </td>
+                    <th className="px-4 py-3">Venta</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Fecha Venta</th>
+                    <th className="px-4 py-3">Entrega</th>
+                    <th className="px-4 py-3">Total</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {columns.flatMap(col => col.deliveries).map((delivery) => (
+                    <tr key={delivery.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                          #{delivery.sales.sale_number || "S/N"}
+                        </div>
+                        {delivery.sales.ocam && (
+                          <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
+                            OCAM: {delivery.sales.ocam}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium max-w-[200px] truncate" title={delivery.sales.entity_name}>
+                          {delivery.sales.entity_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {delivery.sales.entity_ruc}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {canEditDeliveryStatus ? (
+                          <Select
+                            value={delivery.delivery_status}
+                            onValueChange={(value) => handleMoveCard(delivery.id, value)}
+                            disabled={delivery.delivery_status === "cancelled"}
+                          >
+                            <SelectTrigger className={`h-8 w-fit min-w-[140px] border-0 ${getStatusBadge(delivery.delivery_status)}`}>
+                              <SelectValue>{getStatusLabel(delivery.delivery_status)}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {KANBAN_COLUMNS.map((col) => (
+                                <SelectItem key={col.deliveryStatus} value={col.deliveryStatus}>
+                                  <div className="flex items-center gap-2">
+                                    <col.icon className="h-4 w-4" />
+                                    {col.title}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="outline" className={`${getStatusBadge(delivery.delivery_status)} font-normal`}>
+                            {getStatusLabel(delivery.delivery_status)}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {format(new Date(delivery.sales.sale_date), "dd MMM yyyy", { locale: es })}
+                      </td>
+                      <td className="px-4 py-3">
+                        {delivery.actual_delivery_date ? (
+                          <span className="text-green-600 font-medium flex items-center gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            {format(new Date(delivery.actual_delivery_date), "dd/MM", { locale: es })}
+                          </span>
+                        ) : delivery.sales.delivery_end_date ? (
+                          <span className="text-blue-600 flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(new Date(delivery.sales.delivery_end_date), "dd/MM", { locale: es })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs italic">Sin fecha</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        S/ {delivery.sales.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-indigo-600"
+                            onClick={() => handleEditDelivery(delivery)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-indigo-600"
+                            onClick={() => handleViewDetails(delivery)}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {columns.every(col => col.deliveries.length === 0) && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                        No se encontraron entregas
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        <DeliveryDetailsDialog
-          delivery={viewingDelivery}
-          open={!!viewingDelivery}
-          onClose={() => setViewingDelivery(null)}
-        />
+          <DeliveryDetailsDialog
+            delivery={viewingDelivery}
+            open={!!viewingDelivery}
+            onClose={() => setViewingDelivery(null)}
+          />
 
-        <Dialog open={!!selectedDelivery} onOpenChange={(open) => !open && setSelectedDelivery(null)}>
-          <DialogContent className="sm:max-w-[425px] rounded-2xl">
-            <DialogHeader>
-              <DialogTitle>Editar Entrega</DialogTitle>
-              <DialogDescription>Actualiza los detalles de la entrega.</DialogDescription>
-            </DialogHeader>
-            {selectedDelivery && (
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="tracking">Número de Tracking</Label>
-                  <Input
-                    id="tracking"
-                    value={editingDelivery.tracking_number || ""}
-                    onChange={(e) => setEditingDelivery({ ...editingDelivery, tracking_number: e.target.value })}
-                    placeholder="Ej: 123456789"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="assigned">Asignado a</Label>
-                  <Input
-                    id="assigned"
-                    value={editingDelivery.assigned_to || ""}
-                    onChange={(e) => setEditingDelivery({ ...editingDelivery, assigned_to: e.target.value })}
-                    placeholder="Nombre del repartidor"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Notas</Label>
-                  <Textarea
-                    id="notes"
-                    value={editingDelivery.notes || ""}
-                    onChange={(e) => setEditingDelivery({ ...editingDelivery, notes: e.target.value })}
-                    placeholder="Notas adicionales..."
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Documentos</Label>
-                  <DeliveryDocumentsLink 
-                    deliveryId={selectedDelivery.id} 
-                    linkedDocuments={selectedDelivery.delivery_documents || []}
-                    onDocumentsChange={(docs: any) => {
+          <Dialog open={!!selectedDelivery} onOpenChange={(open) => !open && setSelectedDelivery(null)}>
+            <DialogContent className="sm:max-w-[425px] rounded-2xl">
+              <DialogHeader>
+                <DialogTitle>Editar Entrega</DialogTitle>
+                <DialogDescription>Actualiza los detalles de la entrega.</DialogDescription>
+              </DialogHeader>
+              {selectedDelivery && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="tracking">Número de Tracking</Label>
+                    <Input
+                      id="tracking"
+                      value={editingDelivery.tracking_number || ""}
+                      onChange={(e) => setEditingDelivery({ ...editingDelivery, tracking_number: e.target.value })}
+                      placeholder="Ej: 123456789"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="assigned">Asignado a</Label>
+                    <Input
+                      id="assigned"
+                      value={editingDelivery.assigned_to || ""}
+                      onChange={(e) => setEditingDelivery({ ...editingDelivery, assigned_to: e.target.value })}
+                      placeholder="Nombre del repartidor"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="notes">Notas</Label>
+                    <Textarea
+                      id="notes"
+                      value={editingDelivery.notes || ""}
+                      onChange={(e) => setEditingDelivery({ ...editingDelivery, notes: e.target.value })}
+                      placeholder="Notas adicionales..."
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Documentos</Label>
+                    <DeliveryDocumentsLink
+                      deliveryId={selectedDelivery.id}
+                      linkedDocuments={selectedDelivery.delivery_documents || []}
+                      onDocumentsChange={(docs: any) => {
                         setSelectedDelivery((prev) => prev ? ({ ...prev, delivery_documents: docs }) : null)
-                    }}
-                    companyId={selectedDelivery.sales.company_id}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Adjuntos</Label>
-                  <DeliveryAttachments
-                    deliveryId={selectedDelivery.id}
-                    attachments={selectedDelivery.delivery_attachments || []}
-                    onAttachmentsChange={(atts: any) => {
+                      }}
+                      companyId={selectedDelivery.sales.company_id}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Adjuntos</Label>
+                    <DeliveryAttachments
+                      deliveryId={selectedDelivery.id}
+                      attachments={selectedDelivery.delivery_attachments || []}
+                      onAttachmentsChange={(atts: any) => {
                         setSelectedDelivery((prev) => prev ? ({ ...prev, delivery_attachments: atts }) : null)
-                    }}
-                    canEdit={canEditDeliveryStatus}
-                  />
+                      }}
+                      canEdit={canEditDeliveryStatus}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedDelivery(null)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleUpdateDelivery}>Guardar Cambios</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </motion.div>
-    </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedDelivery(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateDelivery}>Guardar Cambios</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </motion.div>
+      </div>
     </>
   )
 }

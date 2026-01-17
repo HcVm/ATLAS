@@ -10,6 +10,7 @@ import Link from "next/link"
 import { BrandAlertsStats } from "@/components/open-data/brand-alerts-stats"
 import { BrandAlertsTable } from "@/components/open-data/brand-alerts-table"
 import { BrandAlertsRepairButton } from "@/components/open-data/brand-alerts-repair-button"
+import { Badge } from "@/components/ui/badge"
 import { generateBrandAlertsPDF } from "@/lib/brand-alerts-pdf-generator"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -81,7 +82,7 @@ export default function BrandAlertsPage() {
       const report = data.data || data
       setReportData(report)
 
-      const total = Object.values(report.frameworks || {}).reduce((sum, fw) => sum + fw.totalOrders, 0)
+      const total: number = Object.values(report.frameworks || {}).reduce((sum: number, fw: any) => sum + (fw.totalOrders || 0), 0)
       setTotalOrders(total)
     } catch (err: any) {
       console.error("Error al cargar reporte:", err)
@@ -142,11 +143,11 @@ export default function BrandAlertsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="container mx-auto p-6 max-w-7xl min-h-screen pb-20"
+      className="w-full p-6 space-y-8 pb-20"
     >
       {/* Header */}
       <div className="mb-8">
@@ -158,7 +159,7 @@ export default function BrandAlertsPage() {
             </Link>
           </Button>
         </div>
-        
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">

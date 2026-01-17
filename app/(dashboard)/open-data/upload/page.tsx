@@ -76,7 +76,7 @@ export default function OpenDataUploadPage() {
 
   // Ya no hay límite estricto de 5MB, el navegador puede manejar archivos grandes
   // pero ponemos un límite razonable de 100MB para no colgar el navegador
-  const MAX_FILE_SIZE = 100 * 1024 * 1024 
+  const MAX_FILE_SIZE = 100 * 1024 * 1024
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes"
@@ -171,7 +171,7 @@ export default function OpenDataUploadPage() {
       // 3. Resetear acuerdo marco en BD
       setCurrentAction("Limpiando datos anteriores...")
       const codigoAcuerdoMarco = selectedAcuerdo.split(" ")[0].trim()
-      
+
       const resetRes = await fetch("/api/open-data/reset-acuerdo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,7 +197,7 @@ export default function OpenDataUploadPage() {
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]
         setCurrentAction(`Procesando lote ${i + 1}/${chunks.length}...`)
-        
+
         // Procesar en cliente
         const chunkResult = await processDataChunk(
           chunk,
@@ -237,7 +237,7 @@ export default function OpenDataUploadPage() {
         // El progreso va del 20% al 100%
         const progressPercent = 20 + ((i + 1) / chunks.length) * 80
         setProgress(progressPercent)
-        
+
         // Pequeña pausa para no bloquear la UI
         await new Promise(r => setTimeout(r, 10))
       }
@@ -279,11 +279,11 @@ export default function OpenDataUploadPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="container mx-auto p-6 max-w-6xl min-h-screen pb-20"
+      className="w-full p-6 space-y-8 pb-20"
     >
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -320,7 +320,7 @@ export default function OpenDataUploadPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              
+
               {/* Selección de acuerdo marco */}
               <div className="space-y-3">
                 <Label htmlFor="acuerdo" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -348,10 +348,10 @@ export default function OpenDataUploadPage() {
                 <Label htmlFor="file-upload" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Archivo Excel (.xlsx)
                 </Label>
-                <div 
+                <div
                   className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-300 flex flex-col items-center justify-center text-center group
-                    ${file 
-                      ? "border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10" 
+                    ${file
+                      ? "border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10"
                       : "border-slate-200 dark:border-slate-700 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
                     }
                   `}
@@ -365,7 +365,7 @@ export default function OpenDataUploadPage() {
                     disabled={uploading}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  
+
                   {file ? (
                     <div className="space-y-3">
                       <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto animate-in zoom-in duration-300">
@@ -399,7 +399,7 @@ export default function OpenDataUploadPage() {
               {/* Progreso */}
               <AnimatePresence>
                 {uploading && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
@@ -430,9 +430,9 @@ export default function OpenDataUploadPage() {
 
               {/* Botones */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={!file || !selectedAcuerdo || uploading} 
+                <Button
+                  onClick={handleUpload}
+                  disabled={!file || !selectedAcuerdo || uploading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 h-12 text-base font-medium transition-all hover:scale-[1.02]"
                 >
                   {uploading ? "Procesando..." : "Iniciar Carga Segura"}

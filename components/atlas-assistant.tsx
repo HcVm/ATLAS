@@ -297,7 +297,12 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
       setIsVisible(false)
       setIsClosing(false)
       onClose?.()
-    }, 800)
+      // Re-appear after 5 minutes if closed manually
+      const reappearTimer = setTimeout(() => {
+        setIsVisible(true)
+      }, 300000)
+      return () => clearTimeout(reappearTimer)
+    }, 500) // Match animation duration
   }
 
   const handleMinimize = () => {
@@ -317,19 +322,22 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ease-in-out ${
-        isClosing ? "atlix-disintegrate opacity-0 pointer-events-none" : "atlix-entrance opacity-100"
-      } ${isMinimized ? "scale-75" : "scale-100"}`}
+      className={`fixed bottom-6 right-24 z-50 transition-all duration-500 ease-in-out flex flex-col items-end ${isClosing ? "atlix-exit opacity-0 pointer-events-none" : "atlix-entrance opacity-100"
+        } ${isMinimized ? "scale-75" : "scale-100"}`}
     >
-      <div className="relative">
+      <div className="relative flex flex-col items-end">
         <div
           className={`w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 shadow-2xl flex items-center justify-center mb-2 atlix-float border-4 border-white relative overflow-hidden ${isMinimized ? "cursor-pointer hover:scale-110 transition-transform" : ""}`}
           onClick={handleAvatarClick}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-          <div className="text-white font-bold text-lg z-10">Ax</div>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce"></div>
-          <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-yellow-400 rounded-full border border-white animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse rounded-full"></div>
+          <div className="text-white font-bold text-2xl z-10 font-sans tracking-tight drop-shadow-md">Ax</div>
+
+          {/* Animated decorative rings */}
+          <div className="atlix-ring" style={{ animationDelay: '0s' }}></div>
+          <div className="atlix-ring" style={{ animationDelay: '1.5s' }}></div>
+
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white dark:border-slate-900 shadow-sm animate-bounce z-20"></div>
 
           {isMinimized && (
             <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center">
@@ -339,8 +347,8 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
         </div>
 
         {!isMinimized && (
-          <div className="relative atlix-bubble rounded-2xl shadow-2xl p-4 max-w-sm animate-fadeIn">
-            <div className="absolute -top-2 right-6 w-4 h-4 bg-white dark:bg-slate-800 border-l border-t border-purple-200 dark:border-purple-600 transform rotate-45"></div>
+          <div className="relative atlix-bubble rounded-2xl shadow-xl p-5 max-w-sm bg-white dark:bg-slate-900 border border-purple-100 dark:border-purple-900/50 backdrop-blur-sm mr-2">
+            <div className="absolute -top-2 right-6 w-4 h-4 bg-white dark:bg-slate-900 border-l border-t border-purple-100 dark:border-purple-900/50 transform rotate-45"></div>
 
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -398,11 +406,10 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
                     chatMessages.map((msg, idx) => (
                       <div
                         key={idx}
-                        className={`p-2 rounded-lg text-xs ${
-                          msg.role === "user"
-                            ? "bg-purple-100 dark:bg-purple-900/30 ml-4"
-                            : "bg-blue-100 dark:bg-blue-900/30 mr-4"
-                        }`}
+                        className={`p-2 rounded-lg text-xs ${msg.role === "user"
+                          ? "bg-purple-100 dark:bg-purple-900/30 ml-4"
+                          : "bg-blue-100 dark:bg-blue-900/30 mr-4"
+                          }`}
                       >
                         <div className="font-semibold mb-1 text-gray-700 dark:text-gray-300">
                           {msg.role === "user" ? "Tú" : "Atlix"}
@@ -485,7 +492,9 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
                   </div>
                 )}
 
-                <div className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">{currentMsg}</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300 mb-4 leading-relaxed font-medium atlix-message-enter">
+                  {currentMsg}
+                </div>
 
                 <div className="flex gap-2 flex-wrap mb-3">
                   {unreadCount > 0 && (
@@ -616,9 +625,8 @@ export function AtlasAssistant({ onClose }: AtlixAssistantProps) {
                     {messages.map((_, index) => (
                       <div
                         key={index}
-                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                          index === currentMessage ? "bg-purple-500" : "bg-gray-300 dark:bg-gray-600"
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${index === currentMessage ? "bg-purple-500" : "bg-gray-300 dark:bg-gray-600"
+                          }`}
                       />
                     ))}
                   </div>

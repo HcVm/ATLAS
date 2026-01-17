@@ -3,20 +3,20 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { 
-  ArrowLeft, 
-  Download, 
-  Edit, 
-  FileText, 
-  MoveRight, 
-  Eye, 
-  Paperclip, 
-  CheckCircle, 
-  BarChart3, 
-  Calendar, 
-  Building, 
-  User, 
-  History, 
+import {
+  ArrowLeft,
+  Download,
+  Edit,
+  FileText,
+  MoveRight,
+  Eye,
+  Paperclip,
+  CheckCircle,
+  BarChart3,
+  Calendar,
+  Building,
+  User,
+  History,
   Share2,
   MoreVertical,
   Clock,
@@ -91,8 +91,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4 }
   }
@@ -106,13 +106,13 @@ const DepartmentBadge = ({ department, isDestination = false }: { department: an
       </span>
     )
   }
-  
+
   return (
     <span
       className={cn(
         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shadow-sm",
-        isDestination 
-          ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800" 
+        isDestination
+          ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800"
           : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
       )}
     >
@@ -127,25 +127,25 @@ export default function DocumentDetailsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { toast } = useToast()
-  
+
   // State
   const [document, setDocument] = useState<any>(null)
   const [movements, setMovements] = useState<any[]>([])
   const [attachments, setAttachments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Dialogs
   const [movementDialogOpen, setMovementDialogOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [downloadStatsOpen, setDownloadStatsOpen] = useState(false)
   const [viewerOpen, setViewerOpen] = useState(false)
-  
+
   // Loading states
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [statusLoading, setStatusLoading] = useState(false)
   const [statsLoading, setStatsLoading] = useState(false)
-  
+
   // Form states
   const [newStatus, setNewStatus] = useState("")
   const [statusNotes, setStatusNotes] = useState("")
@@ -208,7 +208,7 @@ export default function DocumentDetailsPage() {
         const hasHistoricalAccess = data.document_movements?.some(
           (movement: any) => movement.to_department_id === user?.department_id || movement.from_department_id === user?.department_id
         )
-        
+
         if (
           user?.role !== "admin" &&
           user?.role !== "supervisor" &&
@@ -243,7 +243,7 @@ export default function DocumentDetailsPage() {
         `)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
-      
+
       if (error) throw error
       setMovements(data || [])
     } catch (error) {
@@ -258,7 +258,7 @@ export default function DocumentDetailsPage() {
         .select(`*, profiles!document_attachments_uploaded_by_fkey (id, full_name)`)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
-      
+
       if (error) throw error
       setAttachments(data || [])
     } catch (error) {
@@ -274,7 +274,7 @@ export default function DocumentDetailsPage() {
         .select(`*, profiles(full_name)`)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
-      
+
       if (error) throw error
       setDownloadStats(data || [])
     } catch (error: any) {
@@ -294,9 +294,9 @@ export default function DocumentDetailsPage() {
         .from("documents")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", document.id)
-      
+
       if (updateError) throw updateError
-      
+
       if (statusNotes.trim()) {
         await supabase.from("document_movements").insert({
           document_id: document.id,
@@ -307,7 +307,7 @@ export default function DocumentDetailsPage() {
           created_at: new Date().toISOString(),
         })
       }
-      
+
       setDocument((prev: any) => ({ ...prev, status: newStatus }))
       fetchDocument()
       fetchMovements()
@@ -340,7 +340,7 @@ export default function DocumentDetailsPage() {
   const viewFile = async (fileUrl: string) => {
     try {
       const { bucket, path } = getStorageDetails(fileUrl)
-      
+
       const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600)
       if (data?.signedUrl) {
         setViewerUrl(data.signedUrl)
@@ -361,10 +361,10 @@ export default function DocumentDetailsPage() {
     try {
       setDownloadLoading(true)
       const { bucket, path } = getStorageDetails(fileUrl)
-      
+
       const { data, error } = await supabase.storage.from(bucket).download(path)
       if (error) throw error
-      
+
       if (user) {
         await trackDownload({
           documentId: document.id,
@@ -374,7 +374,7 @@ export default function DocumentDetailsPage() {
           fileSize: data.size
         })
       }
-      
+
       const url = URL.createObjectURL(data)
       const a = window.document.createElement("a")
       a.href = url
@@ -386,7 +386,7 @@ export default function DocumentDetailsPage() {
     } catch (error: any) {
       console.error("Download error:", error)
       toast({ title: "Error", description: "No se pudo descargar el archivo", variant: "destructive" })
-      
+
       // Fallback: Open in new tab if download via API fails
       window.open(fileUrl, "_blank")
     } finally {
@@ -397,7 +397,7 @@ export default function DocumentDetailsPage() {
   // --- Helpers ---
 
   const getStatusLabel = (status: string) => statusOptions.find(o => o.value === status)?.label || status
-  
+
   const getStatusBadge = (status: string) => {
     const option = statusOptions.find(o => o.value === status)
     if (!option) return <Badge variant="outline">{status}</Badge>
@@ -437,13 +437,13 @@ export default function DocumentDetailsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <div className="lg:col-span-2 space-y-6">
-              <Skeleton className="h-64 rounded-2xl" />
-              <Skeleton className="h-96 rounded-2xl" />
-           </div>
-           <div className="space-y-6">
-              <Skeleton className="h-80 rounded-2xl" />
-           </div>
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-96 rounded-2xl" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-80 rounded-2xl" />
+          </div>
         </div>
       </div>
     )
@@ -455,7 +455,7 @@ export default function DocumentDetailsPage() {
         <Card className="max-w-md w-full border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
           <CardContent className="p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-               <FileText className="h-8 w-8 text-red-500" />
+              <FileText className="h-8 w-8 text-red-500" />
             </div>
             <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{error || "Documento no encontrado"}</h3>
             <p className="text-slate-500 dark:text-slate-400">
@@ -473,11 +473,11 @@ export default function DocumentDetailsPage() {
   }
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
+    <motion.div
+      initial="hidden"
+      animate="visible"
       variants={containerVariants}
-      className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-8"
+      className="p-4 sm:p-6 lg:p-8 w-full max-w-full mx-auto space-y-8"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -500,41 +500,41 @@ export default function DocumentDetailsPage() {
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
-                 <Calendar className="h-3.5 w-3.5" />
-                 {format(new Date(document.created_at), "PPP", { locale: es })}
+                <Calendar className="h-3.5 w-3.5" />
+                {format(new Date(document.created_at), "PPP", { locale: es })}
               </span>
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
-           {/* Mobile Actions Dropdown */}
-           <div className="sm:hidden">
-              <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                 </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end">
-                    {canEdit() && <DropdownMenuItem onClick={() => router.push(`/documents/edit/${document.id}`)}>Editar</DropdownMenuItem>}
-                    {canMove() && <DropdownMenuItem onClick={() => setMovementDialogOpen(true)}>Mover</DropdownMenuItem>}
-                    {canChangeStatus() && <DropdownMenuItem onClick={() => setStatusDialogOpen(true)}>Cambiar Estado</DropdownMenuItem>}
-                 </DropdownMenuContent>
-              </DropdownMenu>
-           </div>
-           
-           {/* Desktop Actions */}
-           <div className="hidden sm:flex items-center gap-2">
-              {canChangeStatus() && (
-                 <Button variant="outline" onClick={() => setStatusDialogOpen(true)} className="rounded-xl border-slate-200 dark:border-slate-700">
-                    Cambiar Estado
-                 </Button>
-              )}
-              {canMove() && (
-                 <Button onClick={() => setMovementDialogOpen(true)} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
-                    <MoveRight className="h-4 w-4 mr-2" /> Mover
-                 </Button>
-              )}
-           </div>
+          {/* Mobile Actions Dropdown */}
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEdit() && <DropdownMenuItem onClick={() => router.push(`/documents/edit/${document.id}`)}>Editar</DropdownMenuItem>}
+                {canMove() && <DropdownMenuItem onClick={() => setMovementDialogOpen(true)}>Mover</DropdownMenuItem>}
+                {canChangeStatus() && <DropdownMenuItem onClick={() => setStatusDialogOpen(true)}>Cambiar Estado</DropdownMenuItem>}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Desktop Actions */}
+          <div className="hidden sm:flex items-center gap-2">
+            {canChangeStatus() && (
+              <Button variant="outline" onClick={() => setStatusDialogOpen(true)} className="rounded-xl border-slate-200 dark:border-slate-700">
+                Cambiar Estado
+              </Button>
+            )}
+            {canMove() && (
+              <Button onClick={() => setMovementDialogOpen(true)} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <MoveRight className="h-4 w-4 mr-2" /> Mover
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -542,13 +542,13 @@ export default function DocumentDetailsPage() {
       <AnimatePresence>
         {!canEdit() && !canMove() && user?.role !== "admin" && (
           <motion.div variants={itemVariants} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex gap-3">
-             <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-             <div>
-                <h4 className="font-semibold text-amber-900 dark:text-amber-100">Modo Solo Lectura</h4>
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                   Este documento no se encuentra en tu departamento actual. Tienes acceso de lectura pero no puedes editarlo ni moverlo.
-                </p>
-             </div>
+            <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-amber-900 dark:text-amber-100">Modo Solo Lectura</h4>
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Este documento no se encuentra en tu departamento actual. Tienes acceso de lectura pero no puedes editarlo ni moverlo.
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -556,14 +556,14 @@ export default function DocumentDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content - Left Column */}
         <motion.div variants={itemVariants} className="lg:col-span-2 space-y-8">
-          
+
           {/* Main File Card */}
           {document.file_url && (
             <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl overflow-hidden group">
               <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
-                     <FileText className="h-5 w-5" />
+                    <FileText className="h-5 w-5" />
                   </div>
                   Archivo Principal
                 </CardTitle>
@@ -571,7 +571,7 @@ export default function DocumentDetailsPage() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-colors">
                   <div className="h-12 w-12 rounded-lg bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-red-500">
-                     <FileText className="h-7 w-7" />
+                    <FileText className="h-7 w-7" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{document.file_name || "Documento Adjunto"}</p>
@@ -593,41 +593,41 @@ export default function DocumentDetailsPage() {
           {/* Details Card */}
           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
             <CardHeader>
-               <CardTitle>Detalles del Documento</CardTitle>
+              <CardTitle>Detalles del Documento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div>
-                     <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Departamento Actual</Label>
-                     <div className="mt-1 flex items-center gap-2">
-                        <Building className="h-4 w-4 text-slate-400" />
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{document.departments?.name || "Sin asignar"}</span>
-                     </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div>
+                  <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Departamento Actual</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Building className="h-4 w-4 text-slate-400" />
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{document.departments?.name || "Sin asignar"}</span>
                   </div>
-                  <div>
-                     <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Creado Por</Label>
-                     <div className="mt-1 flex items-center gap-2">
-                        <User className="h-4 w-4 text-slate-400" />
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{document.profiles?.full_name}</span>
-                     </div>
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Creado Por</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{document.profiles?.full_name}</span>
                   </div>
-                  {document.creator_company && (
-                     <div>
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Empresa Origen</Label>
-                        <div className="mt-1 font-medium text-slate-800 dark:text-slate-200">
-                           {document.creator_company.name}
-                        </div>
-                     </div>
-                  )}
-                  {document.description && (
-                     <div className="md:col-span-2">
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Descripción</Label>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                           {document.description}
-                        </p>
-                     </div>
-                  )}
-               </div>
+                </div>
+                {document.creator_company && (
+                  <div>
+                    <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Empresa Origen</Label>
+                    <div className="mt-1 font-medium text-slate-800 dark:text-slate-200">
+                      {document.creator_company.name}
+                    </div>
+                  </div>
+                )}
+                {document.description && (
+                  <div className="md:col-span-2">
+                    <Label className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Descripción</Label>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                      {document.description}
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -635,80 +635,80 @@ export default function DocumentDetailsPage() {
           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                 <History className="h-5 w-5 text-indigo-500" />
-                 Historial de Movimientos
+                <History className="h-5 w-5 text-indigo-500" />
+                Historial de Movimientos
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-8 ml-2">
-                 {movements.map((movement, index) => (
-                    <div key={movement.id} className="relative">
-                       <div className={cn(
-                          "absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900",
-                          index === 0 ? "bg-indigo-500 ring-4 ring-indigo-100 dark:ring-indigo-900/30" : "bg-slate-300 dark:bg-slate-600"
-                       )} />
-                       
-                       <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                             <div className="flex items-center gap-2 flex-wrap">
-                                <DepartmentBadge department={movement.from_departments} />
-                                <MoveRight className="h-4 w-4 text-slate-400" />
-                                <DepartmentBadge department={movement.to_departments} isDestination />
-                             </div>
-                             <span className="text-xs text-slate-500 whitespace-nowrap">
-                                {format(new Date(movement.created_at), "dd MMM yyyy, HH:mm", { locale: es })}
-                             </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 mb-2">
-                             <User className="h-3 w-3" />
-                             <span>{movement.profiles?.full_name || "Sistema"}</span>
-                          </div>
+                {movements.map((movement, index) => (
+                  <div key={movement.id} className="relative">
+                    <div className={cn(
+                      "absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900",
+                      index === 0 ? "bg-indigo-500 ring-4 ring-indigo-100 dark:ring-indigo-900/30" : "bg-slate-300 dark:bg-slate-600"
+                    )} />
 
-                          {movement.notes && (
-                             <div className="text-sm bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 italic">
-                                "{movement.notes}"
-                             </div>
-                          )}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <DepartmentBadge department={movement.from_departments} />
+                          <MoveRight className="h-4 w-4 text-slate-400" />
+                          <DepartmentBadge department={movement.to_departments} isDestination />
+                        </div>
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                          {format(new Date(movement.created_at), "dd MMM yyyy, HH:mm", { locale: es })}
+                        </span>
+                      </div>
 
-                          {attachments.filter(att => att.movement_id === movement.id).length > 0 && (
-                             <div className="mt-3 space-y-2">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                   <Paperclip className="h-3 w-3" /> Adjuntos
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                   {attachments
-                                      .filter(att => att.movement_id === movement.id)
-                                      .map(att => (
-                                         <div key={att.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 group hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
-                                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
-                                               <FileText className="h-3.5 w-3.5" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                               <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title={att.file_name}>
-                                                  {att.file_name}
-                                               </p>
-                                               <p className="text-[10px] text-slate-400">
-                                                  {(att.file_size / 1024 / 1024).toFixed(2)} MB
-                                               </p>
-                                            </div>
-                                            <div className="flex">
-                                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20" onClick={() => viewFile(att.file_url)}>
-                                                  <Eye className="h-3.5 w-3.5" />
-                                               </Button>
-                                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={() => downloadFile(att.file_url, att.file_name)}>
-                                                  <Download className="h-3.5 w-3.5" />
-                                               </Button>
-                                            </div>
-                                         </div>
-                                      ))
-                                   }
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 mb-2">
+                        <User className="h-3 w-3" />
+                        <span>{movement.profiles?.full_name || "Sistema"}</span>
+                      </div>
+
+                      {movement.notes && (
+                        <div className="text-sm bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 italic">
+                          "{movement.notes}"
+                        </div>
+                      )}
+
+                      {attachments.filter(att => att.movement_id === movement.id).length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <Paperclip className="h-3 w-3" /> Adjuntos
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {attachments
+                              .filter(att => att.movement_id === movement.id)
+                              .map(att => (
+                                <div key={att.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 group hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+                                  <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
+                                    <FileText className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title={att.file_name}>
+                                      {att.file_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {(att.file_size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                  </div>
+                                  <div className="flex">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20" onClick={() => viewFile(att.file_url)}>
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={() => downloadFile(att.file_url, att.file_name)}>
+                                      <Download className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 </div>
-                             </div>
-                          )}
-                       </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
                     </div>
-                 ))}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -716,74 +716,74 @@ export default function DocumentDetailsPage() {
 
         {/* Sidebar - Right Column */}
         <motion.div variants={itemVariants} className="space-y-6">
-           {/* Actions Card */}
-           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
-              <CardHeader>
-                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Acciones Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                 {canEdit() ? (
-                    <Button variant="outline" className="w-full justify-start h-11 rounded-xl" asChild>
-                       <Link href={`/documents/edit/${document.id}`}>
-                          <Edit className="h-4 w-4 mr-2" /> Editar Documento
-                       </Link>
-                    </Button>
-                 ) : (
-                    <Button variant="outline" className="w-full justify-start h-11 rounded-xl opacity-50 cursor-not-allowed">
-                       <Edit className="h-4 w-4 mr-2" /> Editar (No permitido)
-                    </Button>
-                 )}
-                 
-                 {user?.role === "admin" && (
-                    <Button variant="outline" className="w-full justify-start h-11 rounded-xl" onClick={() => { fetchDownloadStats(); setDownloadStatsOpen(true); }}>
-                       <BarChart3 className="h-4 w-4 mr-2" /> Estadísticas
-                    </Button>
-                 )}
-              </CardContent>
-           </Card>
+          {/* Actions Card */}
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Acciones Rápidas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {canEdit() ? (
+                <Button variant="outline" className="w-full justify-start h-11 rounded-xl" asChild>
+                  <Link href={`/documents/edit/${document.id}`}>
+                    <Edit className="h-4 w-4 mr-2" /> Editar Documento
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" className="w-full justify-start h-11 rounded-xl opacity-50 cursor-not-allowed">
+                  <Edit className="h-4 w-4 mr-2" /> Editar (No permitido)
+                </Button>
+              )}
 
-           {/* QR Code */}
-           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
-              <CardHeader>
-                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Acceso Público</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center p-6 pt-0">
-                 {document.qr_code ? (
-                    <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                       <img src={document.qr_code} alt="QR Code" className="w-32 h-32 object-contain" />
-                    </div>
-                 ) : (
-                    <div className="w-32 h-32 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs">
-                       Sin QR
-                    </div>
-                 )}
-                 <p className="text-xs text-center text-slate-500 mt-4 max-w-[200px]">
-                    Escanea este código para acceder a la versión pública del documento.
-                 </p>
-              </CardContent>
-           </Card>
+              {user?.role === "admin" && (
+                <Button variant="outline" className="w-full justify-start h-11 rounded-xl" onClick={() => { fetchDownloadStats(); setDownloadStatsOpen(true); }}>
+                  <BarChart3 className="h-4 w-4 mr-2" /> Estadísticas
+                </Button>
+              )}
+            </CardContent>
+          </Card>
 
-           {/* Stickers Generator */}
-           {document.profiles?.full_name && (
-              <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
-                 <CardHeader>
-                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Etiquetas</CardTitle>
-                 </CardHeader>
-                 <CardContent>
-                    <DocumentStickerGenerator
-                      documentId={document.id}
-                      documentNumber={document.document_number}
-                      createdAt={document.created_at}
-                      creatorName={document.profiles.full_name}
-                      trackingHash={document.tracking_hash || ""}
-                      companyName={document.companies?.name}
-                      departmentName={document.creator_department?.name}
-                      creatorCompanyName={document.creator_company?.name}
-                      creatorDepartmentName={document.creator_department?.name}
-                    />
-                 </CardContent>
-              </Card>
-           )}
+          {/* QR Code */}
+          <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Acceso Público</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-6 pt-0">
+              {document.qr_code ? (
+                <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+                  <img src={document.qr_code} alt="QR Code" className="w-32 h-32 object-contain" />
+                </div>
+              ) : (
+                <div className="w-32 h-32 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs">
+                  Sin QR
+                </div>
+              )}
+              <p className="text-xs text-center text-slate-500 mt-4 max-w-[200px]">
+                Escanea este código para acceder a la versión pública del documento.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Stickers Generator */}
+          {document.profiles?.full_name && (
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Etiquetas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DocumentStickerGenerator
+                  documentId={document.id}
+                  documentNumber={document.document_number}
+                  createdAt={document.created_at}
+                  creatorName={document.profiles.full_name}
+                  trackingHash={document.tracking_hash || ""}
+                  companyName={document.companies?.name}
+                  departmentName={document.creator_department?.name}
+                  creatorCompanyName={document.creator_company?.name}
+                  creatorDepartmentName={document.creator_department?.name}
+                />
+              </CardContent>
+            </Card>
+          )}
         </motion.div>
       </div>
 
@@ -796,41 +796,41 @@ export default function DocumentDetailsPage() {
           </DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="space-y-2">
-               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nuevo Estado</Label>
-               <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-                     <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                     {statusOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                           <div className="flex items-center gap-2">
-                              <opt.icon className="h-4 w-4" />
-                              {opt.label}
-                           </div>
-                        </SelectItem>
-                     ))}
-                  </SelectContent>
-               </Select>
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nuevo Estado</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {statusOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex items-center gap-2">
+                        <opt.icon className="h-4 w-4" />
+                        {opt.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Notas (Opcional)</Label>
-               <Textarea 
-                  value={statusNotes} 
-                  onChange={e => setStatusNotes(e.target.value)} 
-                  placeholder="Justificación o detalles adicionales..."
-                  className="rounded-xl resize-none bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 min-h-[100px]" 
-               />
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Notas (Opcional)</Label>
+              <Textarea
+                value={statusNotes}
+                onChange={e => setStatusNotes(e.target.value)}
+                placeholder="Justificación o detalles adicionales..."
+                className="rounded-xl resize-none bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 min-h-[100px]"
+              />
             </div>
             <div className="flex gap-3 pt-2">
-               <Button variant="ghost" onClick={() => setStatusDialogOpen(false)} className="flex-1 rounded-xl">Cancelar</Button>
-               <Button onClick={handleStatusChange} disabled={statusLoading || !newStatus} className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
-                  {statusLoading ? (
-                     <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Actualizando...
-                     </>
-                  ) : "Confirmar Cambio"}
-               </Button>
+              <Button variant="ghost" onClick={() => setStatusDialogOpen(false)} className="flex-1 rounded-xl">Cancelar</Button>
+              <Button onClick={handleStatusChange} disabled={statusLoading || !newStatus} className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                {statusLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Actualizando...
+                  </>
+                ) : "Confirmar Cambio"}
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -840,8 +840,8 @@ export default function DocumentDetailsPage() {
         <DialogContent className="max-w-2xl rounded-2xl p-6">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-               <MoveRight className="h-5 w-5 text-indigo-500" />
-               Mover Documento
+              <MoveRight className="h-5 w-5 text-indigo-500" />
+              Mover Documento
             </DialogTitle>
             <DialogDescription>Transfiere este documento a otro departamento.</DialogDescription>
           </DialogHeader>
@@ -849,33 +849,33 @@ export default function DocumentDetailsPage() {
             documentId={document.id}
             currentDepartmentId={document.current_department_id || document.departments?.id}
             onComplete={() => {
-               setMovementDialogOpen(false)
-               fetchDocument()
-               fetchMovements()
+              setMovementDialogOpen(false)
+              fetchDocument()
+              fetchMovements()
             }}
           />
         </DialogContent>
       </Dialog>
-      
+
       {/* File Viewer Dialog */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-         <DialogContent className="max-w-5xl h-[80vh] rounded-2xl p-0 overflow-hidden">
-            <DialogHeader className="sr-only">
-               <DialogTitle>Vista Previa de Archivo</DialogTitle>
-               <DialogDescription>Visor de documentos para archivos adjuntos y principales</DialogDescription>
-            </DialogHeader>
-            <div className="h-full w-full bg-slate-100 dark:bg-slate-900 flex flex-col">
-               <div className="p-4 border-b bg-white dark:bg-slate-800 flex justify-between items-center">
-                  <h3 className="font-semibold">Vista Previa</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setViewerOpen(false)}>Cerrar</Button>
-               </div>
-               <div className="flex-1 p-4 overflow-hidden">
-                  {viewerUrl && <iframe src={viewerUrl} className="w-full h-full rounded-lg border bg-white" title="Preview" />}
-               </div>
+        <DialogContent className="max-w-5xl h-[80vh] rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Vista Previa de Archivo</DialogTitle>
+            <DialogDescription>Visor de documentos para archivos adjuntos y principales</DialogDescription>
+          </DialogHeader>
+          <div className="h-full w-full bg-slate-100 dark:bg-slate-900 flex flex-col">
+            <div className="p-4 border-b bg-white dark:bg-slate-800 flex justify-between items-center">
+              <h3 className="font-semibold">Vista Previa</h3>
+              <Button variant="ghost" size="sm" onClick={() => setViewerOpen(false)}>Cerrar</Button>
             </div>
-         </DialogContent>
+            <div className="flex-1 p-4 overflow-hidden">
+              {viewerUrl && <iframe src={viewerUrl} className="w-full h-full rounded-lg border bg-white" title="Preview" />}
+            </div>
+          </div>
+        </DialogContent>
       </Dialog>
-      
+
       {/* Download Stats Dialog */}
       <Dialog open={downloadStatsOpen} onOpenChange={setDownloadStatsOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-2xl">
@@ -884,32 +884,32 @@ export default function DocumentDetailsPage() {
             <DialogDescription>Historial de accesos y descargas de este documento</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-             {statsLoading ? (
-                <div className="p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>
-             ) : downloadStats.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl">No hay descargas registradas</div>
-             ) : (
-                <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-                   <Table>
-                      <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-                         <TableRow>
-                            <TableHead>Usuario</TableHead>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Tipo</TableHead>
-                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                         {downloadStats.map(stat => (
-                            <TableRow key={stat.id}>
-                               <TableCell className="font-medium">{stat.profiles?.full_name || "Anónimo"}</TableCell>
-                               <TableCell>{format(new Date(stat.created_at), "dd MMM yyyy, HH:mm", { locale: es })}</TableCell>
-                               <TableCell><Badge variant="outline">{stat.download_type || "Archivo Principal"}</Badge></TableCell>
-                            </TableRow>
-                         ))}
-                      </TableBody>
-                   </Table>
-                </div>
-             )}
+            {statsLoading ? (
+              <div className="p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>
+            ) : downloadStats.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl">No hay descargas registradas</div>
+            ) : (
+              <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {downloadStats.map(stat => (
+                      <TableRow key={stat.id}>
+                        <TableCell className="font-medium">{stat.profiles?.full_name || "Anónimo"}</TableCell>
+                        <TableCell>{format(new Date(stat.created_at), "dd MMM yyyy, HH:mm", { locale: es })}</TableCell>
+                        <TableCell><Badge variant="outline">{stat.download_type || "Archivo Principal"}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

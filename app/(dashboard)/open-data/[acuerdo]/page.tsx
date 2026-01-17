@@ -250,7 +250,7 @@ function StatsCards({ stats, colorClass, bgClass }: { stats: any, colorClass: st
           </div>
         </CardContent>
       </Card>
-      
+
       <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
@@ -302,12 +302,12 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-8xl min-h-screen pb-20">
+    <div className="w-full p-6 space-y-8 pb-20">
       {/* Header */}
       <div className="mb-8 relative overflow-hidden rounded-3xl bg-slate-900 text-white p-8 md:p-12 shadow-2xl">
         <div className={`absolute inset-0 bg-gradient-to-br ${acuerdoInfo.color} opacity-20`} />
         <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10" />
-        
+
         <div className="relative z-10">
           <Button asChild variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 mb-6 -ml-2">
             <Link href="/open-data">
@@ -338,15 +338,15 @@ export default async function AcuerdoMarcoPage({ params, searchParams }: PagePro
             </div>
 
             {!isInactive && (
-               <div className="bg-white/10 backdrop-blur-md rounded-xl p-1">
-                 <ExportButtons
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-1">
+                <ExportButtons
                   data={data}
                   acuerdoMarco={acuerdoInfo.name}
                   searchParams={resolvedSearchParams}
                   acuerdoMarcoFullString={acuerdoMarco}
                   variant="ghost"
                 />
-               </div>
+              </div>
             )}
           </div>
         </div>

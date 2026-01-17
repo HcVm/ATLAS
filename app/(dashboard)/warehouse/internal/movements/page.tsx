@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface InternalProduct {
+interface LocalInternalProduct {
   id: string
   code: string
   name: string
@@ -114,7 +114,7 @@ const MOVEMENT_TYPES = [
   { value: "baja", label: "Baja del Sistema", icon: Trash, color: "text-orange-600", bgColor: "bg-orange-50" },
 ]
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -124,7 +124,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -160,7 +160,7 @@ export default function InternalMovementsPage() {
     sale_price: 0,
     reason: "",
     notes: "",
-    requested_by: user?.user_metadata?.full_name || "",
+    requested_by: user?.full_name || "",
     department_requesting_id: "",
     supplier: "",
     movement_date: format(new Date(), "yyyy-MM-dd"),
@@ -169,7 +169,7 @@ export default function InternalMovementsPage() {
     condition: "nuevo" as "nuevo" | "usado",
   })
 
-  const [selectedProductModel, setSelectedProductModel] = useState<InternalProduct | null>(null)
+  const [selectedProductModel, setSelectedProductModel] = useState<LocalInternalProduct | null>(null)
 
   const selectedDepartmentName = useMemo(() => {
     return departments.find((dept) => dept.id === formData.department_requesting_id)?.name || ""
@@ -217,11 +217,11 @@ export default function InternalMovementsPage() {
           )
         `,
         )
-        .eq("company_id", selectedCompany?.id)
+        .eq("company_id", selectedCompany?.id || "")
         .order("created_at", { ascending: false })
 
       if (error) throw error
-      setMovements(data || [])
+      setMovements((data as any) || [])
     } catch (error) {
       console.error("Error fetching movements:", error)
       toast.error("Error al cargar los movimientos.")
@@ -235,7 +235,7 @@ export default function InternalMovementsPage() {
       const { data, error } = await supabase
         .from("internal_product_categories")
         .select("id, name")
-        .eq("company_id", selectedCompany?.id)
+        .eq("company_id", selectedCompany?.id || "")
         .order("name")
 
       if (error) throw error
@@ -278,12 +278,12 @@ export default function InternalMovementsPage() {
         .from("internal_product_serials")
         .select("id, serial_number, status, current_location, product_id, condition")
         .eq("product_id", productId)
-        .eq("company_id", selectedCompany?.id)
+        .eq("company_id", selectedCompany?.id || "")
         .eq("status", "in_stock")
         .order("serial_number", { ascending: true })
 
       if (error) throw error
-      setAvailableSerials(data || [])
+      setAvailableSerials((data as any) || [])
     } catch (error) {
       console.error("Error fetching available serials:", error)
       toast.error("Error al cargar los números de serie disponibles.")
@@ -308,7 +308,7 @@ export default function InternalMovementsPage() {
     }
   }
 
-  const handleProductSelect = (product: InternalProduct | null) => {
+  const handleProductSelect = (product: any | null) => {
     setSelectedProductModel(product)
     if (product) {
       setFormData((prev) => ({
@@ -365,12 +365,12 @@ export default function InternalMovementsPage() {
       // Show confirmation before proceeding
       const confirmed = window.confirm(
         `Confirmación de Baja del Sistema\n\n` +
-          `Estás a punto de dar de baja: ${itemDetails} de ${productInfo}\n\n` +
-          `Esta acción:\n` +
-          `- Disminuirá el stock disponible\n` +
-          `- Marcará los productos como retirados del sistema\n` +
-          `- Generará un movimiento de salida permanente\n\n` +
-          `¿Deseas continuar?`,
+        `Estás a punto de dar de baja: ${itemDetails} de ${productInfo}\n\n` +
+        `Esta acción:\n` +
+        `- Disminuirá el stock disponible\n` +
+        `- Marcará los productos como retirados del sistema\n` +
+        `- Generará un movimiento de salida permanente\n\n` +
+        `¿Deseas continuar?`,
       )
 
       if (!confirmed) {
@@ -460,7 +460,7 @@ export default function InternalMovementsPage() {
         sale_price: 0,
         reason: "",
         notes: "",
-        requested_by: user?.user_metadata?.full_name || "",
+        requested_by: user?.full_name || "",
         department_requesting_id: "",
         supplier: "",
         movement_date: format(new Date(), "yyyy-MM-dd"),
@@ -638,7 +638,7 @@ export default function InternalMovementsPage() {
                 Registrar Movimiento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-800 shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                   Registrar Nuevo Movimiento
@@ -659,7 +659,7 @@ export default function InternalMovementsPage() {
                       handleProductSelect(null)
                     }}
                   >
-                    <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                       <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
                     <SelectContent>
@@ -691,7 +691,7 @@ export default function InternalMovementsPage() {
                     onValueChange={(value) => handleSelectChange("movement_type", value)}
                     required
                   >
-                    <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                    <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                       <SelectValue placeholder="Selecciona el tipo de movimiento" />
                     </SelectTrigger>
                     <SelectContent>
@@ -717,7 +717,7 @@ export default function InternalMovementsPage() {
                         setFormData((prev) => ({ ...prev, condition: value as "nuevo" | "usado" }))
                       }
                     >
-                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                      <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                         <SelectValue placeholder="Selecciona el estado" />
                       </SelectTrigger>
                       <SelectContent>
@@ -744,7 +744,7 @@ export default function InternalMovementsPage() {
                           onChange={handleQuantityChange}
                           min={1}
                           required
-                          className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                          className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                         />
                         <p className="text-xs text-muted-foreground">
                           Se generarán automáticamente {formData.quantity} números de serie únicos.
@@ -755,49 +755,49 @@ export default function InternalMovementsPage() {
                     {(formData.movement_type === "salida" ||
                       formData.movement_type === "ajuste" ||
                       formData.movement_type === "baja") && (
-                      <div className="space-y-2">
-                        <Label htmlFor="selected_serials">
-                          {formData.movement_type === "baja"
-                            ? "Seleccionar Números de Serie para Baja"
-                            : "Seleccionar Números de Serie"}
-                        </Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between bg-white/50 border-gray-200">
-                              {formData.selected_serials.length > 0
-                                ? `${formData.selected_serials.length} serial(es) seleccionado(s)`
-                                : "Seleccionar seriales..."}
-                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                              <CommandInput placeholder="Buscar número de serie..." />
-                              <CommandList>
-                                <CommandEmpty>No se encontraron seriales.</CommandEmpty>
-                                <CommandGroup>
-                                  {availableSerials.map((serial) => (
-                                    <CommandItem
-                                      key={serial.id}
-                                      onSelect={() => handleSerialSelection(serial.id)}
-                                      className="flex items-center justify-between"
-                                    >
-                                      <span>{serial.serial_number}</span>
-                                      {formData.selected_serials.includes(serial.id) ? (
-                                        <Check className="ml-auto h-4 w-4 text-green-600" />
-                                      ) : null}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <p className="text-xs text-muted-foreground">
-                          Cantidad seleccionada: {formData.selected_serials.length}
-                        </p>
-                      </div>
-                    )}
+                        <div className="space-y-2">
+                          <Label htmlFor="selected_serials">
+                            {formData.movement_type === "baja"
+                              ? "Seleccionar Números de Serie para Baja"
+                              : "Seleccionar Números de Serie"}
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700">
+                                {formData.selected_serials.length > 0
+                                  ? `${formData.selected_serials.length} serial(es) seleccionado(s)`
+                                  : "Seleccionar seriales..."}
+                                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command>
+                                <CommandInput placeholder="Buscar número de serie..." />
+                                <CommandList>
+                                  <CommandEmpty>No se encontraron seriales.</CommandEmpty>
+                                  <CommandGroup>
+                                    {availableSerials.map((serial) => (
+                                      <CommandItem
+                                        key={serial.id}
+                                        onSelect={() => handleSerialSelection(serial.id)}
+                                        className="flex items-center justify-between"
+                                      >
+                                        <span>{serial.serial_number}</span>
+                                        {formData.selected_serials.includes(serial.id) ? (
+                                          <Check className="ml-auto h-4 w-4 text-green-600" />
+                                        ) : null}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <p className="text-xs text-muted-foreground">
+                            Cantidad seleccionada: {formData.selected_serials.length}
+                          </p>
+                        </div>
+                      )}
                   </>
                 ) : (
                   <div className="space-y-2">
@@ -812,7 +812,7 @@ export default function InternalMovementsPage() {
                       onChange={handleQuantityChange}
                       min={1}
                       required
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                 )}
@@ -828,7 +828,7 @@ export default function InternalMovementsPage() {
                     onChange={handleChange}
                     required
                     disabled
-                    className="bg-gray-100/50"
+                    className="bg-gray-100/50 dark:bg-slate-800/50 dark:text-slate-400"
                   />
                 </div>
 
@@ -845,7 +845,7 @@ export default function InternalMovementsPage() {
                         : "Ej: Venta, Consumo interno, Devolución, etc."
                     }
                     required
-                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -857,7 +857,7 @@ export default function InternalMovementsPage() {
                     value={formData.notes}
                     onChange={handleChange}
                     placeholder="Notas adicionales sobre el movimiento"
-                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20 min-h-[80px]"
+                    className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 min-h-[80px]"
                   />
                 </div>
 
@@ -869,7 +869,7 @@ export default function InternalMovementsPage() {
                     value={formData.requested_by}
                     onChange={handleChange}
                     required
-                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -881,7 +881,7 @@ export default function InternalMovementsPage() {
                       value={formData.department_requesting_id}
                       onValueChange={(value) => handleSelectChange("department_requesting_id", value)}
                     >
-                      <SelectTrigger className="bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                      <SelectTrigger className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                         <SelectValue placeholder="Selecciona un departamento" />
                       </SelectTrigger>
                       <SelectContent>
@@ -904,7 +904,7 @@ export default function InternalMovementsPage() {
                       value={formData.supplier}
                       onChange={handleChange}
                       placeholder="Nombre del proveedor"
-                      className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                      className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                     />
                   </div>
                 )}
@@ -918,7 +918,7 @@ export default function InternalMovementsPage() {
                     value={formData.movement_date}
                     onChange={handleChange}
                     required
-                    className="bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                    className="bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -944,11 +944,11 @@ export default function InternalMovementsPage() {
 
       {/* Movement History Table */}
       <motion.div variants={itemVariants}>
-        <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md overflow-hidden">
-          <CardHeader className="bg-gray-50/30 border-b border-gray-100">
+        <Card className="border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
+          <CardHeader className="bg-gray-50/30 dark:bg-slate-800/30 border-b border-gray-100 dark:border-slate-800">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-xl font-bold text-gray-800">Historial de Movimientos</CardTitle>
+                <CardTitle className="text-xl font-bold text-gray-800 dark:text-gray-100">Historial de Movimientos</CardTitle>
                 <CardDescription>Todos los movimientos de inventario registrados.</CardDescription>
               </div>
               <div className="relative w-full md:w-72">
@@ -956,7 +956,7 @@ export default function InternalMovementsPage() {
                 <Input
                   type="search"
                   placeholder="Buscar por producto, serie, solicitante..."
-                  className="pl-9 bg-white/50 border-gray-200 focus:ring-blue-500/20"
+                  className="pl-9 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -969,7 +969,7 @@ export default function InternalMovementsPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
                   <Package className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                   {searchTerm ? "No se encontraron coincidencias" : "No hay movimientos registrados"}
                 </h3>
                 <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -982,17 +982,17 @@ export default function InternalMovementsPage() {
               <div className="overflow-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="hover:bg-transparent border-gray-100">
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Fecha</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Producto</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Tipo</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Cantidad</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">
+                    <TableRow className="hover:bg-transparent border-gray-100 dark:border-slate-800">
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Fecha</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Producto</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Tipo</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Cantidad</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">
                         N° Serie / Seriales Generados
                       </TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Motivo</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700">Solicitante</TableHead>
-                      <TableHead className="bg-gray-50/50 font-semibold text-gray-700 text-right">Acciones</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Motivo</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300">Solicitante</TableHead>
+                      <TableHead className="bg-gray-50/50 dark:bg-slate-800/50 font-semibold text-gray-700 dark:text-gray-300 text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1038,11 +1038,11 @@ export default function InternalMovementsPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="group hover:bg-gray-50/50 transition-colors border-gray-100"
+                            className="group hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors border-gray-100 dark:border-slate-800"
                           >
                             <TableCell className="font-medium">
                               <div className="flex flex-col">
-                                <span className="font-medium text-gray-800">
+                                <span className="font-medium text-gray-800 dark:text-gray-200">
                                   {format(new Date(movement.movement_date), "dd/MM/yyyy", { locale: es })}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
@@ -1051,7 +1051,7 @@ export default function InternalMovementsPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium text-gray-800">{movement.internal_products?.name}</div>
+                              <div className="font-medium text-gray-800 dark:text-gray-200">{movement.internal_products?.name}</div>
                               <div className="text-sm text-muted-foreground">{movement.internal_products?.code}</div>
                             </TableCell>
                             <TableCell>
@@ -1102,12 +1102,12 @@ export default function InternalMovementsPage() {
                                       </Tooltip>
                                     </TooltipProvider>
                                   ) : (
-                                    <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded-md">
+                                    <span className="text-sm font-mono bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                       {serialsArray[0]}
                                     </span>
                                   )
                                 ) : (
-                                  <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded-md">
+                                  <span className="text-sm font-mono bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                     {directSerial}
                                   </span>
                                 )}
@@ -1119,15 +1119,15 @@ export default function InternalMovementsPage() {
                                   Compra Activo Fijo
                                 </Badge>
                               ) : (
-                                <span className="text-gray-700">{movement.reason}</span>
+                                <span className="text-gray-700 dark:text-gray-300">{movement.reason}</span>
                               )}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
                                   <User className="h-3 w-3 text-gray-500" />
                                 </div>
-                                <span className="text-sm text-gray-700">{movement.requested_by}</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{movement.requested_by}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -1136,7 +1136,7 @@ export default function InternalMovementsPage() {
                                   variant="ghost"
                                   size="sm"
                                   asChild
-                                  className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                                  className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
                                 >
                                   <Link href={`/warehouse/internal/movements/${movement.id}`}>
                                     <Eye className="h-4 w-4" />
@@ -1147,7 +1147,7 @@ export default function InternalMovementsPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleDeleteClick(movement.id)}
-                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                  className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
                                 >
                                   <Trash className="h-4 w-4" />
                                   <span className="sr-only">Eliminar</span>

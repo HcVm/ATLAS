@@ -458,11 +458,11 @@ export default function AdminRequestsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+      className="w-full max-w-full space-y-8 p-6 pb-20"
     >
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -474,7 +474,7 @@ export default function AdminRequestsPage() {
             Gestiona todas las solicitudes del sistema - {selectedCompany.name}
           </p>
         </div>
-        <Button 
+        <Button
           onClick={() => setShowApproverDialog(true)}
           className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 shadow-lg shadow-slate-900/10 transition-all hover:scale-105"
         >
@@ -614,7 +614,7 @@ export default function AdminRequestsPage() {
                   const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.ingresada
                   const StatusIcon = statusConfig.icon
                   const typeConfig = REQUEST_TYPES_CONFIG[request.request_type as keyof typeof REQUEST_TYPES_CONFIG]
-                  
+
                   return (
                     <motion.div
                       key={request.id}
@@ -641,7 +641,7 @@ export default function AdminRequestsPage() {
                                   <Badge variant="destructive" className="bg-red-500">Expirada</Badge>
                                 )}
                               </div>
-                              
+
                               <div>
                                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                                   {request.requester_name}
@@ -652,13 +652,13 @@ export default function AdminRequestsPage() {
                                   <span>{request.requester_email}</span>
                                 </div>
                               </div>
-                              
+
                               <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                 <p className="text-sm text-slate-700 dark:text-slate-300 italic">
                                   "{request.reason}"
                                 </p>
                               </div>
-                              
+
                               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                                 <div className="flex items-center gap-1.5">
                                   <Calendar className="h-3.5 w-3.5" />
@@ -676,11 +676,11 @@ export default function AdminRequestsPage() {
                                 )}
                               </div>
                             </div>
-                            
+
                             <div className="flex gap-2 w-full md:w-auto">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setSelectedRequest(request)}
                                 className="flex-1 md:flex-none"
                               >
@@ -688,9 +688,9 @@ export default function AdminRequestsPage() {
                                 Ver Detalles
                               </Button>
                               {(request.status === "ingresada" || request.status === "en_gestion") && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => setSelectedRequest(request)}
                                   className="flex-1 md:flex-none"
                                 >

@@ -67,7 +67,7 @@ function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -77,7 +77,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -211,7 +211,7 @@ export default function DepreciationCalculatorPage() {
       className="space-y-6 mt-10 w-full max-w-[95%] mx-auto"
     >
       <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <Button variant="outline" asChild className="bg-white/50 backdrop-blur-sm border-gray-200">
+        <Button variant="outline" asChild className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-gray-200 dark:border-slate-700">
           <Link href="/warehouse/internal/fixed-assets">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Volver a Activos Fijos
@@ -225,9 +225,9 @@ export default function DepreciationCalculatorPage() {
 
       {/* Configuración */}
       <motion.div variants={itemVariants}>
-        <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-            <CardTitle className="text-lg font-bold text-gray-800">Configuración del Cálculo</CardTitle>
+        <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
+          <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+            <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Configuración del Cálculo</CardTitle>
             <CardDescription>
               Selecciona el período y método para calcular la depreciación mensual de los activos fijos
             </CardDescription>
@@ -235,9 +235,9 @@ export default function DepreciationCalculatorPage() {
           <CardContent className="space-y-4 p-6">
             <div className="flex flex-wrap gap-4 items-end">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Año</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Año</label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-[120px] bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                  <SelectTrigger className="w-[120px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                     <SelectValue placeholder="Año" />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,9 +250,9 @@ export default function DepreciationCalculatorPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Mes</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mes</label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[150px] bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                  <SelectTrigger className="w-[150px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                     <SelectValue placeholder="Mes" />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,9 +265,9 @@ export default function DepreciationCalculatorPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Cuenta (Opcional)</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Cuenta (Opcional)</label>
                 <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                  <SelectTrigger className="w-[250px] bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                  <SelectTrigger className="w-[250px] bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                     <SelectValue placeholder="Todas las cuentas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -283,9 +283,9 @@ export default function DepreciationCalculatorPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Método de Cálculo</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Método de Cálculo</label>
               <Select value={calculationMethod} onValueChange={setCalculationMethod}>
-                <SelectTrigger className="w-full max-w-md bg-white/50 border-gray-200 focus:ring-blue-500/20">
+                <SelectTrigger className="w-full max-w-md bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:ring-blue-500/20">
                   <SelectValue placeholder="Selecciona método" />
                 </SelectTrigger>
                 <SelectContent>
@@ -301,9 +301,9 @@ export default function DepreciationCalculatorPage() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <Info className="h-4 w-4 text-blue-600 shrink-0" />
-              <div className="text-sm text-blue-800">
+            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 rounded-lg">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <div className="text-sm text-blue-800 dark:text-blue-200">
                 {calculationMethod === "monthly" ? (
                   <span>
                     <strong>Fórmula:</strong> Depreciación Anual ÷ 12 meses
@@ -343,10 +343,10 @@ export default function DepreciationCalculatorPage() {
 
       {/* Información */}
       <motion.div variants={itemVariants}>
-        <Alert className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm">
+        <Alert className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm">
           <FileSpreadsheet className="h-4 w-4 text-indigo-500" />
-          <AlertTitle className="font-semibold text-gray-800">Métodos de Depreciación</AlertTitle>
-          <AlertDescription className="space-y-2 text-gray-600">
+          <AlertTitle className="font-semibold text-gray-800 dark:text-gray-100">Métodos de Depreciación</AlertTitle>
+          <AlertDescription className="space-y-2 text-gray-600 dark:text-gray-300">
             <p>
               <strong>Mensual (÷12):</strong> Divide la depreciación anual entre 12 meses iguales. Es el método más común
               y simplificado.
@@ -364,53 +364,53 @@ export default function DepreciationCalculatorPage() {
         <motion.div variants={containerVariants} className="space-y-4">
           {/* Resumen */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-l-4 border-l-green-500">
+            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm border-l-4 border-l-green-500">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Procesados</p>
-                    <p className="text-2xl font-bold text-green-600">{results.processed}</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-500">{results.processed}</p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-500/20" />
+                  <CheckCircle className="h-8 w-8 text-green-500/20 dark:text-green-500/40" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-l-4 border-l-red-500">
+            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm border-l-4 border-l-red-500">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Errores</p>
-                    <p className="text-2xl font-bold text-red-600">{results.errors}</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-500">{results.errors}</p>
                   </div>
-                  <AlertCircle className="h-8 w-8 text-red-500/20" />
+                  <AlertCircle className="h-8 w-8 text-red-500/20 dark:text-red-500/40" />
                 </div>
               </CardContent>
             </Card>
             {results.skipped > 0 && (
-              <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-l-4 border-l-yellow-500">
+              <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm border-l-4 border-l-yellow-500">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Omitidos</p>
-                      <p className="text-2xl font-bold text-yellow-600">{results.skipped}</p>
+                      <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">{results.skipped}</p>
                     </div>
-                    <Info className="h-8 w-8 text-yellow-500/20" />
+                    <Info className="h-8 w-8 text-yellow-500/20 dark:text-yellow-500/40" />
                   </div>
                 </CardContent>
               </Card>
             )}
             <Card
-              className={`bg-white/80 backdrop-blur-md border-white/20 shadow-sm border-l-4 border-l-orange-500 ${results.skipped > 0 ? "" : "md:col-span-2"}`}
+              className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm border-l-4 border-l-orange-500 ${results.skipped > 0 ? "" : "md:col-span-2"}`}
             >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Depreciación del Período</p>
-                    <p className="text-2xl font-bold text-orange-600">
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-500">
                       S/ {totalDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <Calculator className="h-8 w-8 text-orange-500/20" />
+                  <Calculator className="h-8 w-8 text-orange-500/20 dark:text-orange-500/40" />
                 </div>
               </CardContent>
             </Card>
@@ -418,8 +418,8 @@ export default function DepreciationCalculatorPage() {
 
           {results.calculation_info && (
             <motion.div variants={itemVariants}>
-              <Alert className="bg-blue-50 border-blue-100 text-blue-800">
-                <Info className="h-4 w-4 text-blue-600" />
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription>
                   Período: {MONTHS[results.calculation_info.month - 1]?.label} {results.calculation_info.year} | Días
                   del mes: {results.calculation_info.days_in_month} | Días del año:{" "}
@@ -440,9 +440,9 @@ export default function DepreciationCalculatorPage() {
           {/* Tabla de resultados */}
           {results.results && results.results.length > 0 && (
             <motion.div variants={itemVariants}>
-              <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-sm overflow-hidden">
-                <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-                  <CardTitle className="text-lg font-bold text-gray-800">Detalle de Depreciación</CardTitle>
+              <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-white/20 dark:border-slate-800 shadow-sm overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+                  <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">Detalle de Depreciación</CardTitle>
                   <CardDescription>
                     {MONTHS[Number.parseInt(selectedMonth)].label} {selectedYear}
                   </CardDescription>
@@ -451,27 +451,27 @@ export default function DepreciationCalculatorPage() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="font-semibold text-gray-700">Activo</TableHead>
-                          <TableHead className="font-semibold text-gray-700">Método</TableHead>
-                          <TableHead className="text-right font-semibold text-gray-700">Depreciación Mensual</TableHead>
-                          <TableHead className="text-right font-semibold text-gray-700">Depre. Acumulada</TableHead>
-                          <TableHead className="text-right font-semibold text-gray-700">Saldo Neto</TableHead>
+                        <TableRow className="hover:bg-transparent border-gray-100 dark:border-slate-800">
+                          <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Activo</TableHead>
+                          <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Método</TableHead>
+                          <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Depreciación Mensual</TableHead>
+                          <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Depre. Acumulada</TableHead>
+                          <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Saldo Neto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {results.results.map((result: any) => (
-                          <TableRow key={result.asset_id} className="hover:bg-gray-50/50 transition-colors">
-                            <TableCell className="font-medium text-gray-900">
+                          <TableRow key={result.asset_id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors border-gray-100 dark:border-slate-800">
+                            <TableCell className="font-medium text-gray-900 dark:text-gray-100">
                               {result.asset_name}
                               {result.is_first_month && (
-                                <Badge variant="secondary" className="ml-2 text-xs bg-blue-100 text-blue-700">
+                                <Badge variant="secondary" className="ml-2 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                                   1er mes
                                 </Badge>
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">
+                              <Badge variant="outline" className="text-xs border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400">
                                 {result.calculation_method === "daily"
                                   ? result.is_first_month
                                     ? `Diario (${result.days_in_month}/${result.total_days_in_month}d)`
@@ -481,10 +481,10 @@ export default function DepreciationCalculatorPage() {
                                     : "Mensual"}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-medium text-gray-900">
+                            <TableCell className="text-right font-mono font-medium text-gray-900 dark:text-gray-100">
                               S/ {result.depreciation_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="text-right font-mono text-orange-600">
+                            <TableCell className="text-right font-mono text-orange-600 dark:text-orange-500">
                               S/ {result.accumulated_depreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-right font-mono text-green-600 font-medium">
@@ -492,10 +492,10 @@ export default function DepreciationCalculatorPage() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        <TableRow className="bg-gray-50 font-bold border-t border-gray-200">
+                        <TableRow className="bg-gray-50 dark:bg-slate-800/50 font-bold border-t border-gray-200 dark:border-slate-800">
                           <TableCell>TOTAL</TableCell>
                           <TableCell />
-                          <TableCell className="text-right font-mono text-gray-900">
+                          <TableCell className="text-right font-mono text-gray-900 dark:text-gray-100">
                             S/ {totalDepreciation.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right text-gray-400">-</TableCell>
@@ -512,19 +512,19 @@ export default function DepreciationCalculatorPage() {
           {/* Activos Omitidos */}
           {results.skippedDetails && results.skippedDetails.length > 0 && (
             <motion.div variants={itemVariants}>
-              <Card className="bg-white/80 backdrop-blur-md border-yellow-200 shadow-sm">
-                <CardHeader className="bg-yellow-50/30 border-b border-yellow-100">
-                  <CardTitle className="text-yellow-700">Activos Omitidos</CardTitle>
-                  <CardDescription className="text-yellow-600/80">
+              <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-yellow-200 dark:border-yellow-900/50 shadow-sm">
+                <CardHeader className="bg-yellow-50/30 dark:bg-yellow-900/10 border-b border-yellow-100 dark:border-yellow-900/30">
+                  <CardTitle className="text-yellow-700 dark:text-yellow-500">Activos Omitidos</CardTitle>
+                  <CardDescription className="text-yellow-600/80 dark:text-yellow-500/80">
                     Activos que no se depreciaron porque fueron adquiridos después del período seleccionado
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="space-y-2">
                     {results.skippedDetails.map((item: any, index: number) => (
-                      <Alert key={index} className="border-yellow-200 bg-yellow-50">
-                        <Info className="h-4 w-4 text-yellow-600" />
-                        <AlertDescription className="text-yellow-800">
+                      <Alert key={index} className="border-yellow-200 dark:border-yellow-900/50 bg-yellow-50 dark:bg-yellow-900/20">
+                        <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
                           <strong>{item.asset_name}:</strong> {item.reason}
                         </AlertDescription>
                       </Alert>
@@ -538,16 +538,16 @@ export default function DepreciationCalculatorPage() {
           {/* Errores */}
           {results.errorDetails && results.errorDetails.length > 0 && (
             <motion.div variants={itemVariants}>
-              <Card className="bg-white/80 backdrop-blur-md border-red-200 shadow-sm">
-                <CardHeader className="bg-red-50/30 border-b border-red-100">
-                  <CardTitle className="text-red-700">Errores en el Proceso</CardTitle>
+              <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-red-200 dark:border-red-900/50 shadow-sm">
+                <CardHeader className="bg-red-50/30 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/30">
+                  <CardTitle className="text-red-700 dark:text-red-500">Errores en el Proceso</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="space-y-2">
                     {results.errorDetails.map((err: any, index: number) => (
-                      <Alert key={index} variant="destructive" className="bg-red-50 border-red-200">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <AlertDescription className="text-red-800">
+                      <Alert key={index} variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50">
+                        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        <AlertDescription className="text-red-800 dark:text-red-200">
                           <strong>{err.asset_name}:</strong> {err.error}
                         </AlertDescription>
                       </Alert>

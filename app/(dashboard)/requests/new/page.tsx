@@ -93,11 +93,11 @@ export default function NewRequestPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-8 p-6 pb-20 max-w-7xl mx-auto"
+      className="w-full max-w-full space-y-8 p-6 pb-20"
     >
       {/* Header */}
       <div className="flex flex-col gap-4">
@@ -148,7 +148,7 @@ export default function NewRequestPage() {
             >
               <Card className="h-full cursor-pointer group hover:shadow-xl transition-all duration-300 border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl overflow-hidden relative">
                 <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${type.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                
+
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className={`p-3.5 rounded-2xl ${type.bg} ${type.color} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
@@ -174,7 +174,7 @@ export default function NewRequestPage() {
                     {type.description}
                   </CardDescription>
                 </CardHeader>
-                
+
                 <CardContent>
                   <div className="space-y-4">
                     <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">

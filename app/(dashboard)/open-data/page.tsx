@@ -153,14 +153,13 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
   return (
     <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "block h-full" : "block h-full cursor-pointer"}>
       <Card
-        className={`group relative h-full transition-all duration-300 overflow-hidden border-slate-200/60 dark:border-slate-800/60 ${
-          isActive 
-            ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md" 
+        className={`group relative h-full transition-all duration-300 overflow-hidden border-slate-200/60 dark:border-slate-800/60 ${isActive
+            ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md"
             : "bg-slate-50/50 dark:bg-slate-900/20 grayscale opacity-80 hover:opacity-100 hover:grayscale-0"
-        }`}
+          }`}
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${acuerdo.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-        
+
         <CardHeader className="pb-3">
           <div className="flex justify-between items-start">
             <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${acuerdo.color} flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300`}>
@@ -186,7 +185,7 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
             {acuerdo.description}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/50">
             <div className="flex flex-col">
@@ -196,9 +195,9 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
                 <FileText className="h-3 w-3 text-slate-400" />
               </span>
             </div>
-            
-            <Button 
-              size="sm" 
+
+            <Button
+              size="sm"
               variant={isActive ? "default" : "secondary"}
               className={`rounded-full px-4 ${isActive ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900" : ""}`}
             >
@@ -224,7 +223,7 @@ export default async function OpenDataPage() {
   const stats = await getOpenDataStats()
 
   return (
-    <div className="mx-auto p-6 max-w-7xl space-y-8 pb-20">
+    <div className="w-full p-6 space-y-8 pb-20">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">

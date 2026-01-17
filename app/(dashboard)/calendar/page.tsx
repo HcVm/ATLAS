@@ -349,9 +349,9 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-8">
+    <div className="w-full max-w-full p-4 sm:p-6 space-y-8">
       {/* Header Section */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl"
@@ -365,7 +365,7 @@ export default function CalendarPage() {
             Organiza tus tareas y eventos importantes
           </p>
         </div>
-        
+
         <div className="flex gap-3">
           <Button
             className="h-12 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:-translate-y-1"
@@ -374,7 +374,7 @@ export default function CalendarPage() {
             <Plus className="h-5 w-5 mr-2" />
             <span>Nuevo Evento</span>
           </Button>
-          
+
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -406,7 +406,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
                   <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
                     <Filter className="h-4 w-4 text-indigo-500" /> Categoría
@@ -435,7 +435,7 @@ export default function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
         {/* Sidebar Filters */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
@@ -472,7 +472,7 @@ export default function CalendarPage() {
                   ))}
                 </div>
               </div>
-              
+
               <div>
                 <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Categoría</h3>
                 <div className="flex flex-wrap gap-2">
@@ -515,7 +515,7 @@ export default function CalendarPage() {
               >
                 <ChevronLeft className="h-6 w-6 text-slate-600 dark:text-slate-400" />
               </Button>
-              
+
               <motion.div
                 key={currentMonth.toISOString()}
                 initial={{ y: -20, opacity: 0 }}
@@ -539,7 +539,7 @@ export default function CalendarPage() {
                 <ChevronRight className="h-6 w-6 text-slate-600 dark:text-slate-400" />
               </Button>
             </CardHeader>
-            
+
             <CardContent className="p-6">
               <div className="grid grid-cols-7 mb-4">
                 {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
@@ -548,7 +548,7 @@ export default function CalendarPage() {
                   </div>
                 ))}
               </div>
-              
+
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
                   key={currentMonth.toISOString()}
@@ -573,8 +573,8 @@ export default function CalendarPage() {
                         whileHover={{ scale: 1.02, zIndex: 10 }}
                         className={`
                           relative min-h-[120px] rounded-2xl p-3 flex flex-col items-start justify-start cursor-pointer transition-colors duration-200 border
-                          ${isCurrentMonth 
-                            ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800" 
+                          ${isCurrentMonth
+                            ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800"
                             : "bg-slate-50/50 dark:bg-slate-900/30 border-transparent text-slate-300 dark:text-slate-600"
                           }
                           ${isTodayDate ? "ring-2 ring-indigo-500 border-transparent bg-indigo-50/30 dark:bg-indigo-900/10" : ""}
@@ -584,15 +584,15 @@ export default function CalendarPage() {
                         <span
                           className={`
                             text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mb-2
-                            ${isTodayDate 
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" 
+                            ${isTodayDate
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
                               : isCurrentMonth ? "text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700" : "text-slate-400 dark:text-slate-600"
                             }
                           `}
                         >
                           {format(day, "d")}
                         </span>
-                        
+
                         <div className="w-full space-y-1.5 overflow-hidden">
                           {dayEvents.slice(0, 3).map((event) => (
                             <div
