@@ -154,7 +154,7 @@ export async function markAllNotificationsAsRead(userId: string, companyId?: str
 
 // Función para obtener información relacionada basada en el tipo y ID
 export async function getRelatedInfo(type: string, relatedId: string | null) {
-  if (!relatedId) return null
+  if (!relatedId && type !== "attendance_missing") return null
 
   try {
     switch (type) {
