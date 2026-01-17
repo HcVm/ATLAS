@@ -40,9 +40,10 @@ interface BrandAlert {
 interface BrandAlertsTableProps {
   status?: "pending" | "attended" | "observed"
   onAlertsUpdated?: () => void
+  refreshTrigger?: number
 }
 
-export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTableProps) {
+export function BrandAlertsTable({ status, onAlertsUpdated, refreshTrigger }: BrandAlertsTableProps) {
   const [alerts, setAlerts] = useState<BrandAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -55,35 +56,35 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
 
   useEffect(() => {
     fetchAlerts()
-  }, [status])
+  }, [status, refreshTrigger])
 
   const handleOpenPeruCompras = (orden: string) => {
-  const form = document.createElement("form")
-  form.method = "POST"
-  form.action = "https://www.catalogos.perucompras.gob.pe/ConsultaOrdenesPub"
-  form.target = "_blank"
+    const form = document.createElement("form")
+    form.method = "POST"
+    form.action = "https://www.catalogos.perucompras.gob.pe/ConsultaOrdenesPub"
+    form.target = "_blank"
 
-  // Campo principal
-  const inputOrden = document.createElement("input")
-  inputOrden.type = "hidden"
-  inputOrden.name = "consultaOrdenes"   // este nombre debe ser EXACTO
-  inputOrden.value = orden
-  form.appendChild(inputOrden)
+    // Campo principal
+    const inputOrden = document.createElement("input")
+    inputOrden.type = "hidden"
+    inputOrden.name = "consultaOrdenes"   // este nombre debe ser EXACTO
+    inputOrden.value = orden
+    form.appendChild(inputOrden)
 
-  // Otros campos obligatorios (aunque vacíos)
-  const otrosCampos = ["acuerdoMarco", "proveedor", "fechaInicio", "fechaFin"]
-  otrosCampos.forEach((name) => {
-    const input = document.createElement("input")
-    input.type = "hidden"
-    input.name = name
-    input.value = ""
-    form.appendChild(input)
-  })
+    // Otros campos obligatorios (aunque vacíos)
+    const otrosCampos = ["acuerdoMarco", "proveedor", "fechaInicio", "fechaFin"]
+    otrosCampos.forEach((name) => {
+      const input = document.createElement("input")
+      input.type = "hidden"
+      input.name = name
+      input.value = ""
+      form.appendChild(input)
+    })
 
-  document.body.appendChild(form)
-  form.submit()
-  document.body.removeChild(form)
-}
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+  }
 
 
 
@@ -100,7 +101,7 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
 
       if (error) throw error
 
-      setAlerts(data || [])
+      setAlerts((data as unknown as BrandAlert[]) || [])
     } catch (error) {
       console.error("Error fetching brand alerts:", error)
       toast({
@@ -490,10 +491,10 @@ export function BrandAlertsTable({ status, onAlertsUpdated }: BrandAlertsTablePr
                               )}
                             </div>
                             <DialogFooter>
-                            <DialogClose asChild>
-                              <Button variant="outline">Cerrar</Button>
-                            </DialogClose>
-                          </DialogFooter>
+                              <DialogClose asChild>
+                                <Button variant="outline">Cerrar</Button>
+                              </DialogClose>
+                            </DialogFooter>
                           </DialogContent>
                         </Dialog>
                       )}
