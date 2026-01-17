@@ -550,8 +550,38 @@ export async function POST(request: NextRequest) {
             ),
           )
 
-          const needsChunking = dataRows.length > MAX_ROWS_PER_CHUNK || fileSize > 10 * 1024 * 1024
-          const chunks = needsChunking ? divideDataIntoChunks(dataRows, MAX_ROWS_PER_CHUNK) : [dataRows]
+          const ordenElectronicaIndex = columnIndexes.orden_electronica
+          if (ordenElectronicaIndex === undefined) {
+            throw new Error("La columna 'orden_electronica' es necesaria para la deduplicación y no se encontró.")
+          }
+
+          const uniqueOrdenes = new Set<string>()
+          const deduplicatedDataRows = dataRows.filter((row) => {
+            const ordenElectronica = row[ordenElectronicaIndex]
+            if (ordenElectronica && !uniqueOrdenes.has(ordenElectronica)) {
+              uniqueOrdenes.add(ordenElectronica)
+              return true
+            }
+            return false
+          })
+
+          const duplicatesCount = dataRows.length - deduplicatedDataRows.length
+          if (duplicatesCount > 0) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "progress",
+                  progress: 0.25,
+                  message: `Se encontraron y eliminaron ${duplicatesCount} duplicados.`,
+                })}\n\n`,
+              ),
+            )
+          }
+
+          const needsChunking = deduplicatedDataRows.length > MAX_ROWS_PER_CHUNK || fileSize > 10 * 1024 * 1024
+          const chunks = needsChunking
+            ? divideDataIntoChunks(deduplicatedDataRows, MAX_ROWS_PER_CHUNK)
+            : [deduplicatedDataRows]
 
 
           const { error: deleteError } = await supabase
