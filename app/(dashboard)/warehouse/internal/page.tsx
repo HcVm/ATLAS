@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Package, TrendingUp, TrendingDown, AlertTriangle, Search, Plus, FileText, BarChart3, AlertCircle, ArrowRight } from "lucide-react"
+import { Package, TrendingUp, TrendingDown, AlertTriangle, Search, Plus, FileText, BarChart3, AlertCircle, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -36,6 +36,7 @@ interface StockAlert {
   current_stock: number
   minimum_stock: number
   unit_of_measure: string
+  is_serialized?: boolean
 }
 
 interface RecentMovement {
@@ -48,7 +49,7 @@ interface RecentMovement {
   internal_products: {
     name: string
     code: string
-  }
+  } | null
   internal_product_serials: {
     serial_number: string
   } | null
@@ -69,8 +70,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4 }
   }
@@ -81,9 +82,16 @@ export default function InternalWarehousePage() {
   const [products, setProducts] = useState<InternalProduct[]>([])
   const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([])
   const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
+  // const [equipmentByDepartment, setEquipmentByDepartment] = useState<EquipmentByDepartment[]>([]) // Removed unused state if not used, but keeping for safety strictly as per file content if needed, but standard logic implies I should keep it if I don't touch it. Wait, I see it in defined states.
   const [equipmentByDepartment, setEquipmentByDepartment] = useState<EquipmentByDepartment[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalProductsCount, setTotalProductsCount] = useState(0)
+  const ITEMS_PER_PAGE = 12
+
   const [stats, setStats] = useState({
     totalProducts: 0,
     lowStockItems: 0,
@@ -91,53 +99,137 @@ export default function InternalWarehousePage() {
     recentMovements: 0,
   })
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+      setPage(1) // Reset to first page on search
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     if (user?.company_id) {
       fetchData()
     }
-  }, [user?.company_id])
+  }, [user?.company_id, page, debouncedSearchTerm])
+
+  // Cache for products pages
+  const productsCache = useRef<Map<number, InternalProduct[]>>(new Map())
+
+  // Helper function to fetch products for a specific page
+  const getProductsForPage = async (pageNumber: number) => {
+    // Check cache first
+    if (productsCache.current.has(pageNumber) && !debouncedSearchTerm) {
+      return { data: productsCache.current.get(pageNumber), count: totalProductsCount }
+    }
+
+    let query = supabase
+      .from("internal_products")
+      .select(`
+        *,
+        internal_product_categories (
+          name,
+          color
+        )
+      `, { count: 'exact' })
+      .eq("company_id", user?.company_id ?? "")
+      .eq("is_active", true)
+      .order("name")
+
+    if (debouncedSearchTerm) {
+      query = query.or(`name.ilike.%${debouncedSearchTerm}%,code.ilike.%${debouncedSearchTerm}%`)
+    }
+
+    const from = (pageNumber - 1) * ITEMS_PER_PAGE
+    const to = from + ITEMS_PER_PAGE - 1
+
+    const { data: productsData, error: productsError, count } = await query.range(from, to)
+
+    if (productsError) throw productsError
+
+    // Optimize Serialized Stock Fetching (Bulk Query)
+    const serializedProductIds = (productsData || [])
+      .filter(p => p.is_serialized)
+      .map(p => p.id)
+
+    const productStockMap = new Map<string, number>()
+
+    if (serializedProductIds.length > 0) {
+      const { data: serialsData, error: serialsError } = await supabase
+        .from("internal_product_serials")
+        .select("product_id")
+        .in("product_id", serializedProductIds)
+        .eq("status", "in_stock")
+        .eq("company_id", user?.company_id ?? "")
+
+      if (serialsError) {
+        console.error("Error fetching serials:", serialsError)
+      } else {
+        serialsData?.forEach(serial => {
+          const currentCount = productStockMap.get(serial.product_id) || 0
+          productStockMap.set(serial.product_id, currentCount + 1)
+        })
+      }
+    }
+
+    const processedProducts = (productsData || []).map(product => {
+      if (product.is_serialized) {
+        return {
+          ...product,
+          current_stock: productStockMap.get(product.id) || 0
+        }
+      }
+      return product
+    })
+
+    const validProducts = processedProducts.map(p => ({
+      ...p,
+      current_stock: p.current_stock || 0,
+      minimum_stock: p.minimum_stock || 0,
+      cost_price: p.cost_price || 0,
+      internal_product_categories: p.internal_product_categories || null
+    })) as unknown as InternalProduct[]
+
+    // Update cache if safely possible (e.g. no search term to keep consistent pagination)
+    if (!debouncedSearchTerm) {
+      productsCache.current.set(pageNumber, validProducts)
+    }
+
+    return { data: validProducts, count }
+  }
+
+  // Prefetch effect
+  useEffect(() => {
+    if (user?.company_id && !debouncedSearchTerm && page < totalPages) {
+      const nextPage = page + 1
+      if (!productsCache.current.has(nextPage)) {
+        getProductsForPage(nextPage).catch(err => console.error("Prefetch error:", err))
+      }
+    }
+  }, [page, user?.company_id, totalPages, debouncedSearchTerm])
+
 
   const fetchData = async () => {
     try {
       setLoading(true)
 
-      const { data: productsData, error: productsError } = await supabase
+      // 1. Fetch Products (from cache or DB)
+      const { data: productsWithAggregatedStock, count } = await getProductsForPage(page)
+
+      // 2. Fetch Aggregated Data (Stats & Alerts)
+      // Only fetch if stats are empty to save bandwidth, or always fetch if real-time important. 
+      // Keeping original logic but optimized: fetch only if needed or parallellize.
+      // Let's run movements and stats in parallel with products for speed
+
+      const statsPromise = supabase
         .from("internal_products")
-        .select(`
-          *,
-          internal_product_categories (
-            name,
-            color
-          )
-        `)
-        .eq("company_id", user?.company_id)
+        .select("id, name, code, unit_of_measure, current_stock, minimum_stock, cost_price, is_serialized")
+        .eq("company_id", user?.company_id ?? "")
         .eq("is_active", true)
-        .order("name")
 
-      if (productsError) throw productsError
-
-      const productsWithAggregatedStock = await Promise.all(
-        (productsData || []).map(async (product) => {
-          if (product.is_serialized) {
-            const { count, error: serialCountError } = await supabase
-              .from("internal_product_serials")
-              .select("id", { count: "exact", head: true })
-              .eq("product_id", product.id)
-              .eq("status", "in_stock")
-              .eq("company_id", user?.company_id)
-
-            if (serialCountError) {
-              console.error(`Error fetching serial count for product ${product.id}:`, serialCountError)
-              return { ...product, current_stock: 0 }
-            }
-            return { ...product, current_stock: count || 0 }
-          }
-          return product
-        }),
-      )
-      const lowStockProducts = productsWithAggregatedStock?.filter((p) => p.current_stock <= p.minimum_stock) || []
-
-      const { data: movementsData, error: movementsError } = await supabase
+      const movementsPromise = supabase
         .from("internal_inventory_movements")
         .select(`
           *,
@@ -149,20 +241,29 @@ export default function InternalWarehousePage() {
             serial_number
           )
         `)
-        .eq("company_id", user?.company_id)
+        .eq("company_id", user?.company_id ?? "")
         .order("created_at", { ascending: false })
         .limit(10)
 
-      if (movementsError) throw movementsError
+      const [statsResult, movementsResult] = await Promise.all([statsPromise, movementsPromise])
 
-      const totalValue =
-        productsWithAggregatedStock?.reduce((sum, product) => sum + product.current_stock * product.cost_price, 0) || 0
+      if (statsResult.error) throw statsResult.error
+      if (movementsResult.error) throw movementsResult.error
+
+      const allProductsBasic = statsResult.data
+      const movementsData = movementsResult.data
+
+      const lowStockProducts = (allProductsBasic || []).filter((p) => (p.current_stock || 0) <= (p.minimum_stock || 0))
+      const totalValue = (allProductsBasic || []).reduce((sum, product) => sum + (product.current_stock || 0) * (product.cost_price || 0), 0)
 
       setProducts(productsWithAggregatedStock || [])
-      setStockAlerts(lowStockProducts)
-      setRecentMovements(movementsData || [])
+      setStockAlerts(lowStockProducts as unknown as StockAlert[])
+      setRecentMovements((movementsData || []) as any[])
+      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
+      setTotalProductsCount(count || 0)
+
       setStats({
-        totalProducts: productsWithAggregatedStock?.length || 0,
+        totalProducts: count || 0,
         lowStockItems: lowStockProducts.length,
         totalValue,
         recentMovements: movementsData?.length || 0,
@@ -175,11 +276,9 @@ export default function InternalWarehousePage() {
     }
   }
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Removed client-side filteredProducts as we now filter on server
+  // keeping the variable name if it was used elsewhere, but simply pointing to products since that is now the "view"
+  const filteredProducts = products;
 
   const getMovementTypeColor = (type: string) => {
     switch (type) {
@@ -205,7 +304,7 @@ export default function InternalWarehousePage() {
     }
   }
 
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
         <div className="flex items-center gap-4 mb-8">
@@ -225,7 +324,7 @@ export default function InternalWarehousePage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -349,8 +448,39 @@ export default function InternalWarehousePage() {
               </Button>
             </div>
 
+            {products.length > 0 && (
+              <div className="flex items-center justify-between pb-4">
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                  Total: {totalProductsCount} productos
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mx-2">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages || loading}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.slice(0, 9).map((product) => (
+              {filteredProducts.map((product) => (
                 <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-md overflow-hidden">
                   <div className={`h-1 w-full ${product.current_stock <= product.minimum_stock ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                   <CardHeader className="pb-3">
@@ -374,14 +504,13 @@ export default function InternalWarehousePage() {
                       <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Stock Actual:</span>
                         <span
-                          className={`font-bold ${
-                            product.current_stock <= product.minimum_stock ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
-                          }`}
+                          className={`font-bold ${product.current_stock <= product.minimum_stock ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                            }`}
                         >
                           {product.current_stock} {product.unit_of_measure}
                         </span>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex flex-col p-2 rounded-lg border border-slate-100 dark:border-slate-800">
                           <span className="text-xs text-slate-500">Mínimo</span>
@@ -413,16 +542,46 @@ export default function InternalWarehousePage() {
               ))}
             </div>
 
-            {filteredProducts.length > 9 && (
-              <div className="flex justify-center pt-4">
-                <Button variant="outline" asChild className="rounded-full px-8 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <Link href="/warehouse/internal/products">
-                    Ver todos los productos ({filteredProducts.length})
-                  </Link>
-                </Button>
+            {products.length > 0 && (
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                  Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(page * ITEMS_PER_PAGE, totalProductsCount)} de {totalProductsCount} productos
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      // Logic to show pages around current page could be more complex, 
+                      // for now showing simple start range or sliding window if needed, 
+                      // but keeping it simple: just page numbers if few, or just current.
+                      // Let's implement a simple sliding window or just Prev/Next with Page X of Y text to be safe with space
+                      return null;
+                    })}
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mx-2">
+                      Página {page} de {totalPages}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages || loading}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
-            
+
             {filteredProducts.length === 0 && (
               <div className="text-center py-16 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                 <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
@@ -487,7 +646,7 @@ export default function InternalWarehousePage() {
                             </p>
                           </div>
                           <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-                           <div className="text-center">
+                          <div className="text-center">
                             <p className="text-xs text-slate-500 uppercase font-semibold">Unidad</p>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                               {product.unit_of_measure}
@@ -533,11 +692,11 @@ export default function InternalWarehousePage() {
                           </div>
                           <div>
                             <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-                              {movement.internal_products.name}
+                              {movement.internal_products?.name || 'Producto desconocido'}
                             </h4>
                             <div className="flex flex-wrap gap-2 items-center mt-1">
                               <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-mono text-[10px]">
-                                {movement.internal_products.code}
+                                {movement.internal_products?.code || 'N/A'}
                               </Badge>
                               {movement.internal_product_serials?.serial_number && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-indigo-200 font-mono text-[10px]">
@@ -552,14 +711,13 @@ export default function InternalWarehousePage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 w-full sm:w-auto justify-between sm:justify-start pl-14 sm:pl-0">
                           <div className="flex items-center gap-2">
-                             <span className={`text-lg font-bold ${
-                                movement.movement_type === "salida" ? "text-rose-600 dark:text-rose-400" : 
-                                movement.movement_type === "entrada" ? "text-emerald-600 dark:text-emerald-400" : 
+                            <span className={`text-lg font-bold ${movement.movement_type === "salida" ? "text-rose-600 dark:text-rose-400" :
+                              movement.movement_type === "entrada" ? "text-emerald-600 dark:text-emerald-400" :
                                 "text-blue-600 dark:text-blue-400"
-                             }`}>
+                              }`}>
                               {movement.movement_type === "salida" ? "-" : "+"}
                               {movement.quantity}
                             </span>
@@ -567,7 +725,7 @@ export default function InternalWarehousePage() {
                               {movement.movement_type}
                             </Badge>
                           </div>
-                          
+
                           {movement.requested_by && (
                             <div className="text-xs text-slate-500 text-right">
                               Solicitado por: <span className="font-medium text-slate-700 dark:text-slate-300">{movement.requested_by}</span>
@@ -583,6 +741,6 @@ export default function InternalWarehousePage() {
           </TabsContent>
         </Tabs>
       </motion.div>
-    </motion.div>
+    </motion.div >
   )
 }
