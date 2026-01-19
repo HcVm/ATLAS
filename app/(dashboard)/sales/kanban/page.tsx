@@ -644,6 +644,8 @@ export default function SalesKanbanPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [viewingDelivery, setViewingDelivery] = useState<Delivery | null>(null)
   const [viewMode, setViewMode] = useState<"board" | "list">("board")
+  const [selectedYear, setSelectedYear] = useState<string>("2026")
+  const isReadOnlyYear = selectedYear === "2025"
 
   const companyToUse = useMemo(() => {
     if (user?.role === "admin") {
@@ -673,7 +675,7 @@ export default function SalesKanbanPage() {
     [user?.role, user?.departments?.name],
   )
 
-  const canEditDeliveryStatus = canSupervise || user?.departments?.name === "Ventas"
+  const canEditDeliveryStatus = (canSupervise || user?.departments?.name === "Ventas") && !isReadOnlyYear
 
   const fetchSingleDelivery = useCallback(async (deliveryId: string) => {
     try {
@@ -792,6 +794,8 @@ export default function SalesKanbanPage() {
       `)
         .eq("company_id", companyToUse.id)
         .neq("sale_status", "rechazada")
+        .gte("sale_date", `${selectedYear}-01-01`)
+        .lte("sale_date", `${selectedYear}-12-31`)
 
       if (!canViewAllSales && user?.id) {
         salesQuery = salesQuery.eq("created_by", user.id)
@@ -860,7 +864,7 @@ export default function SalesKanbanPage() {
     } finally {
       setLoading(false)
     }
-  }, [companyToUse, canViewAllSales, user?.id])
+  }, [companyToUse, canViewAllSales, user?.id, selectedYear])
 
   useEffect(() => {
     if (companyToUse && hasSalesAccess) {
@@ -1243,6 +1247,15 @@ export default function SalesKanbanPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[100px] h-8 text-xs rounded-lg bg-white/80 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Año" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg flex items-center">
                 <Button
                   variant={viewMode === "board" ? "white" : "ghost"}

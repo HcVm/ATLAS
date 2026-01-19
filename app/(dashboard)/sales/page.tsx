@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -165,8 +166,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4 }
   }
@@ -181,6 +182,9 @@ export default function SalesPage() {
 
   // State
   const [sales, setSales] = useState<Sale[]>([])
+  const [selectedYear, setSelectedYear] = useState<string>("2026")
+  const isReadOnlyYear = selectedYear === "2025"
+  const canModify = !isReadOnlyYear
   const [stats, setStats] = useState<SalesStats>({
     totalSales: 0,
     totalAmount: 0,
@@ -190,7 +194,7 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  
+
   // Dialog States
   const [showNewSaleDialog, setShowNewSaleDialog] = useState(false)
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
@@ -206,7 +210,7 @@ export default function SalesPage() {
   const [showVoucherDialog, setShowVoucherDialog] = useState(false)
   const [voucherSale, setVoucherSale] = useState<Sale | null>(null)
   const [showSalesEntityManagementDialog, setShowSalesEntityManagementDialog] = useState(false)
-  
+
   // Lot/Serial States
   const [showLotsDialog, setShowLotsDialog] = useState(false)
   const [lotsSale, setLotsSale] = useState<Sale | null>(null)
@@ -239,12 +243,12 @@ export default function SalesPage() {
   useEffect(() => {
     const companyId = companyToUse?.id
     if (companyId && hasSalesAccess) {
-      fetchSales(companyId)
-      fetchStats(companyId)
+      fetchSales(companyId, false, selectedYear)
+      fetchStats(companyId, selectedYear)
     } else {
       setLoading(false)
     }
-  }, [user, selectedCompany])
+  }, [user, selectedCompany, selectedYear])
 
   // Voucher Param Handling
   useEffect(() => {
@@ -262,7 +266,7 @@ export default function SalesPage() {
     }
   }, [voucherParam, sales, router, companyToUse])
 
-  const fetchSales = async (companyId: string, isRefresh = false) => {
+  const fetchSales = async (companyId: string, isRefresh = false, year = selectedYear) => {
     try {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
@@ -278,6 +282,8 @@ export default function SalesPage() {
           payment_vouchers (id, status, admin_confirmed, accounting_confirmed, file_name, file_url, uploaded_at, uploaded_by, notes, profiles!payment_vouchers_uploaded_by_fkey (full_name))
         `)
         .eq("company_id", companyId)
+        .gte("sale_date", `${year}-01-01`)
+        .lte("sale_date", `${year}-12-31`)
 
       if (!canViewAllSales && user?.id) {
         query = query.eq("created_by", user.id)
@@ -295,12 +301,14 @@ export default function SalesPage() {
     }
   }
 
-  const fetchStats = async (companyId: string) => {
+  const fetchStats = async (companyId: string, year = selectedYear) => {
     try {
       let query = supabase
         .from("sales_with_items")
         .select("total_sale, delivery_end_date, created_by")
         .eq("company_id", companyId)
+        .gte("sale_date", `${year}-01-01`)
+        .lte("sale_date", `${year}-12-31`)
 
       if (!canViewAllSales && user?.id) {
         query = query.eq("created_by", user.id)
@@ -376,8 +384,8 @@ export default function SalesPage() {
       toast.success(`Estado actualizado a ${newStatus.toUpperCase()}`)
       setShowStatusDialog(false)
       setStatusSale(null)
-      fetchSales(companyToUse.id)
-      fetchStats(companyToUse.id)
+      fetchSales(companyToUse.id, false, selectedYear)
+      fetchStats(companyToUse.id, selectedYear)
     } catch (error: any) {
       toast.error("Error: " + error.message)
     }
@@ -390,7 +398,7 @@ export default function SalesPage() {
   }
 
   const handleVoucherUploaded = async () => {
-    if (companyToUse?.id) fetchSales(companyToUse.id)
+    if (companyToUse?.id) fetchSales(companyToUse.id, true, selectedYear)
   }
 
   // --- Render Helpers ---
@@ -419,7 +427,7 @@ export default function SalesPage() {
     return <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"><Clock className="h-3 w-3 mr-1" /> Pendiente</Badge>
   }
 
-  const filteredSales = sales.filter(sale => 
+  const filteredSales = sales.filter(sale =>
     sale.entity_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.quotation_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.display_product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -430,7 +438,7 @@ export default function SalesPage() {
   // --- Letter Generation Placeholders (Implementation details omitted for brevity, assumed same logic) ---
   const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date) => { /* Logic from original file */ }
   const handleGenerateCCILetter = async (sale: Sale, selectedDate?: Date) => { /* Logic from original file */ }
-  
+
   if (!hasSalesAccess || !companyToUse) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -446,9 +454,9 @@ export default function SalesPage() {
   }
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
+    <motion.div
+      initial="hidden"
+      animate="visible"
       variants={containerVariants}
       className="p-4 sm:p-6 lg:p-8 space-y-8 min-h-[calc(100vh-4rem)]"
     >
@@ -464,15 +472,27 @@ export default function SalesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[120px] rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder="Año" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" asChild className="rounded-xl border-slate-200 dark:border-slate-700">
             <Link href="/sales/crm"><Users className="h-4 w-4 mr-2" /> CRM</Link>
           </Button>
           <Button variant="outline" onClick={() => setShowSalesEntityManagementDialog(true)} className="rounded-xl border-slate-200 dark:border-slate-700">
             <Users className="h-4 w-4 mr-2" /> Entidades
           </Button>
-          <Button onClick={() => setShowNewSaleDialog(true)} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
-            <Plus className="h-4 w-4 mr-2" /> Nueva Venta
-          </Button>
+          {canModify && (
+            <Button onClick={() => setShowNewSaleDialog(true)} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+              <Plus className="h-4 w-4 mr-2" /> Nueva Venta
+            </Button>
+          )}
         </div>
       </motion.div>
 
@@ -511,7 +531,7 @@ export default function SalesPage() {
                 className="pl-10 h-11 rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
-            <Button variant="ghost" onClick={() => fetchSales(companyToUse.id, true)} disabled={refreshing} className="rounded-xl text-slate-500 hover:text-indigo-600">
+            <Button variant="ghost" onClick={() => fetchSales(companyToUse.id, true, selectedYear)} disabled={refreshing} className="rounded-xl text-slate-500 hover:text-indigo-600">
               <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
               Actualizar
             </Button>
@@ -550,11 +570,11 @@ export default function SalesPage() {
                   <CardContent className="p-0">
                     <div className="flex flex-col lg:flex-row">
                       {/* Left Stripe */}
-                      <div className={cn("w-full lg:w-2 transition-colors", 
-                        sale.sale_status === "firmado" ? "bg-emerald-500" : 
-                        sale.sale_status === "rechazada" ? "bg-red-500" : "bg-slate-300 dark:bg-slate-700 group-hover:bg-indigo-500"
+                      <div className={cn("w-full lg:w-2 transition-colors",
+                        sale.sale_status === "firmado" ? "bg-emerald-500" :
+                          sale.sale_status === "rechazada" ? "bg-red-500" : "bg-slate-300 dark:bg-slate-700 group-hover:bg-indigo-500"
                       )} />
-                      
+
                       <div className="flex-1 p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                         {/* Info Principal */}
                         <div className="lg:col-span-4 space-y-1">
@@ -608,7 +628,7 @@ export default function SalesPage() {
                               <DropdownMenuItem onClick={() => handleViewDetails(sale)}>
                                 <Eye className="mr-2 h-4 w-4" /> Ver Detalles
                               </DropdownMenuItem>
-                              {canEditSales && (
+                              {canModify && canEditSales && (
                                 <>
                                   <DropdownMenuItem onClick={() => handleEditSale(sale)} disabled={!canViewAllSales && sale.created_by !== user?.id}>
                                     <Edit className="mr-2 h-4 w-4" /> Editar Venta
@@ -621,9 +641,11 @@ export default function SalesPage() {
                               {!isAcuerdosMarco && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => { setVoucherSale(sale); setShowVoucherDialog(true); }}>
-                                    <Receipt className="mr-2 h-4 w-4 text-blue-600" /> Comprobante
-                                  </DropdownMenuItem>
+                                  {canModify && (
+                                    <DropdownMenuItem onClick={() => { setVoucherSale(sale); setShowVoucherDialog(true); }}>
+                                      <Receipt className="mr-2 h-4 w-4 text-blue-600" /> Comprobante
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handleGenerateWarrantyLetter(sale)}>
                                     <FileText className="mr-2 h-4 w-4 text-green-600" /> Carta Garantía
@@ -631,9 +653,11 @@ export default function SalesPage() {
                                 </>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setLotsSale(sale); setShowLotsDialog(true); }}>
-                                <Package className="mr-2 h-4 w-4 text-purple-600" /> Lotes y Series
-                              </DropdownMenuItem>
+                              {canModify && (
+                                <DropdownMenuItem onClick={() => { setLotsSale(sale); setShowLotsDialog(true); }}>
+                                  <Package className="mr-2 h-4 w-4 text-purple-600" /> Lotes y Series
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -649,7 +673,7 @@ export default function SalesPage() {
 
       {/* Dialogs - Kept mostly functionally same but with updated styling classes where applicable in child components */}
       {/* ... (Dialog implementations using the state variables defined above) ... */}
-      
+
       {/* New Sale Dialog */}
       <Dialog open={showNewSaleDialog} onOpenChange={setShowNewSaleDialog}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl">
@@ -657,12 +681,12 @@ export default function SalesPage() {
             <DialogTitle>Nueva Venta Multi-Producto</DialogTitle>
             <DialogDescription>Registra una nueva venta con múltiples productos</DialogDescription>
           </DialogHeader>
-          <MultiProductSaleForm 
+          <MultiProductSaleForm
             onSuccess={() => {
               setShowNewSaleDialog(false)
               if (companyToUse?.id) {
-                fetchSales(companyToUse.id)
-                fetchStats(companyToUse.id)
+                fetchSales(companyToUse.id, false, selectedYear)
+                fetchStats(companyToUse.id, selectedYear)
               }
             }}
             onCancel={() => setShowNewSaleDialog(false)}
@@ -678,7 +702,7 @@ export default function SalesPage() {
             <DialogDescription>Modifica los datos de la venta seleccionada</DialogDescription>
           </DialogHeader>
           {editingSale && (
-            <SaleEditForm sale={editingSale} onSuccess={() => { setShowEditDialog(false); setEditingSale(null); if(companyToUse?.id) fetchSales(companyToUse.id); }} onCancel={() => setShowEditDialog(false)} />
+            <SaleEditForm sale={editingSale} onSuccess={() => { setShowEditDialog(false); setEditingSale(null); if (companyToUse?.id) fetchSales(companyToUse.id, false, selectedYear); }} onCancel={() => setShowEditDialog(false)} />
           )}
         </DialogContent>
       </Dialog>
@@ -691,21 +715,21 @@ export default function SalesPage() {
             <DialogDescription>Selecciona el nuevo estado para la venta</DialogDescription>
           </DialogHeader>
           {statusSale && (
-             <div className="space-y-4 pt-4">
-                <div className="grid gap-2">
-                   {["comprometido", "devengado", "girado", "firmado", "rechazada"].map((status) => (
-                      <Button
-                         key={status}
-                         variant="outline"
-                         onClick={() => handleStatusUpdate(status)}
-                         className={cn("justify-start h-12 rounded-xl", status === "rechazada" && "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200")}
-                      >
-                         {renderStatusBadge(status)}
-                         <span className="ml-2 capitalize">{status}</span>
-                      </Button>
-                   ))}
-                </div>
-             </div>
+            <div className="space-y-4 pt-4">
+              <div className="grid gap-2">
+                {["comprometido", "devengado", "girado", "firmado", "rechazada"].map((status) => (
+                  <Button
+                    key={status}
+                    variant="outline"
+                    onClick={() => handleStatusUpdate(status)}
+                    className={cn("justify-start h-12 rounded-xl", status === "rechazada" && "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200")}
+                  >
+                    {renderStatusBadge(status)}
+                    <span className="ml-2 capitalize">{status}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -717,203 +741,203 @@ export default function SalesPage() {
             <DialogTitle>Editar Venta Multi-Producto</DialogTitle>
           </DialogHeader>
           {editingMultiSale && (
-            <MultiProductSaleEditForm sale={editingMultiSale} onSuccess={() => { setShowMultiEditDialog(false); if(companyToUse?.id) fetchSales(companyToUse.id); }} onCancel={() => setShowMultiEditDialog(false)} />
+            <MultiProductSaleEditForm sale={editingMultiSale} onSuccess={() => { setShowMultiEditDialog(false); if (companyToUse?.id) fetchSales(companyToUse.id, false, selectedYear); }} onCancel={() => setShowMultiEditDialog(false)} />
           )}
         </DialogContent>
       </Dialog>
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-2xl p-0">
-            <DialogHeader className="p-6 pb-2">
-               <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-                  Detalles de la Venta
-               </DialogTitle>
-            </DialogHeader>
-            {selectedSale && (
-               <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6 p-6 pt-2"
-               >
-                  {/* Header Summary */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 backdrop-blur-sm">
-                     <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">
-                              #{selectedSale.sale_number || "S/N"}
-                           </h3>
-                           {renderStatusBadge(selectedSale.sale_status)}
-                        </div>
-                        <p className="text-slate-500 flex items-center gap-2">
-                           <Calendar className="h-4 w-4" />
-                           {format(new Date(selectedSale.sale_date), "PPP", { locale: es })}
-                        </p>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monto Total</p>
-                        <p className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">
-                           S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                        </p>
-                        <div className="mt-2 flex justify-end">
-                           {renderVoucherStatus(selectedSale.payment_vouchers || [])}
-                        </div>
-                     </div>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 shadow-2xl p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+              Detalles de la Venta
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSale && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6 p-6 pt-2"
+            >
+              {/* Header Summary */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 backdrop-blur-sm">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white">
+                      #{selectedSale.sale_number || "S/N"}
+                    </h3>
+                    {renderStatusBadge(selectedSale.sale_status)}
                   </div>
-
-                  {/* Details Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     {/* Client Card */}
-                     <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
-                        <CardHeader className="pb-3">
-                           <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                              <Users className="h-4 w-4 text-indigo-500" /> Información del Cliente
-                           </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                           <div>
-                              <Label className="text-xs text-slate-400 uppercase">Razón Social</Label>
-                              <p className="font-medium text-slate-900 dark:text-slate-100">{selectedSale.entity_name}</p>
-                           </div>
-                           <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                 <Label className="text-xs text-slate-400 uppercase">RUC</Label>
-                                 <p className="font-medium text-slate-700 dark:text-slate-300 font-mono">{selectedSale.entity_ruc}</p>
-                              </div>
-                              <div>
-                                 <Label className="text-xs text-slate-400 uppercase">Cotización</Label>
-                                 <p className="font-medium text-slate-700 dark:text-slate-300 font-mono">{selectedSale.quotation_code}</p>
-                              </div>
-                           </div>
-                        </CardContent>
-                     </Card>
-
-                     {/* Logistics Card */}
-                     <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
-                        <CardHeader className="pb-3">
-                           <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                              <Package className="h-4 w-4 text-emerald-500" /> Detalles Logísticos
-                           </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                           <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                 <Label className="text-xs text-slate-400 uppercase">Fecha Entrega</Label>
-                                 <p className="font-medium text-slate-700 dark:text-slate-300">
-                                    {selectedSale.delivery_end_date ? format(new Date(selectedSale.delivery_end_date), "dd/MM/yyyy") : "---"}
-                                 </p>
-                              </div>
-                              <div>
-                                 <Label className="text-xs text-slate-400 uppercase">Encargado</Label>
-                                 <p className="font-medium text-slate-700 dark:text-slate-300">
-                                    {selectedSale.warehouse_manager || "---"}
-                                 </p>
-                              </div>
-                           </div>
-                           <div>
-                              <Label className="text-xs text-slate-400 uppercase">Destino Final</Label>
-                              <p className="font-medium text-slate-700 dark:text-slate-300">
-                                 {selectedSale.final_destination || "No especificado"}
-                              </p>
-                           </div>
-                        </CardContent>
-                     </Card>
+                  <p className="text-slate-500 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {format(new Date(selectedSale.sale_date), "PPP", { locale: es })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monto Total</p>
+                  <p className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                    S/ {selectedSale.total_sale.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="mt-2 flex justify-end">
+                    {renderVoucherStatus(selectedSale.payment_vouchers || [])}
                   </div>
+                </div>
+              </div>
 
-                  {/* Products Table */}
-                  <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm overflow-hidden">
-                     <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-                        <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                           <List className="h-4 w-4 text-blue-500" /> Productos Incluidos
-                        </CardTitle>
-                     </CardHeader>
-                     <div className="p-0 overflow-x-auto">
-                        <Table>
-                           <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-                              <TableRow>
-                                 <TableHead className="w-[100px]">Código</TableHead>
-                                 <TableHead>Descripción</TableHead>
-                                 <TableHead className="text-right">Cantidad</TableHead>
-                                 <TableHead className="text-right">Precio Unit.</TableHead>
-                                 <TableHead className="text-right">Total</TableHead>
-                              </TableRow>
-                           </TableHeader>
-                           <TableBody>
-                              {loadingDetails ? (
-                                 [...Array(3)].map((_, i) => (
-                                    <TableRow key={i}>
-                                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                                       <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                                       <TableCell><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
-                                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                                       <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                                    </TableRow>
-                                 ))
-                              ) : selectedSaleItems.length === 0 ? (
-                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
-                                       No hay items registrados
-                                    </TableCell>
-                                 </TableRow>
-                              ) : (
-                                 selectedSaleItems.map((item) => (
-                                    <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                                       <TableCell className="font-mono text-xs text-slate-500">{item.product_code}</TableCell>
-                                       <TableCell>
-                                          <div className="font-medium text-slate-700 dark:text-slate-200">{item.product_name}</div>
-                                          {item.product_description && (
-                                             <div className="text-xs text-slate-500 truncate max-w-[300px]">{item.product_description}</div>
-                                          )}
-                                       </TableCell>
-                                       <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                                       <TableCell className="text-right text-slate-500">
-                                          S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                                       </TableCell>
-                                       <TableCell className="text-right font-bold text-slate-700 dark:text-slate-200">
-                                          S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                                       </TableCell>
-                                    </TableRow>
-                                 ))
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Client Card */}
+                <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Users className="h-4 w-4 text-indigo-500" /> Información del Cliente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-slate-400 uppercase">Razón Social</Label>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">{selectedSale.entity_name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-400 uppercase">RUC</Label>
+                        <p className="font-medium text-slate-700 dark:text-slate-300 font-mono">{selectedSale.entity_ruc}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-400 uppercase">Cotización</Label>
+                        <p className="font-medium text-slate-700 dark:text-slate-300 font-mono">{selectedSale.quotation_code}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Logistics Card */}
+                <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <Package className="h-4 w-4 text-emerald-500" /> Detalles Logísticos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-400 uppercase">Fecha Entrega</Label>
+                        <p className="font-medium text-slate-700 dark:text-slate-300">
+                          {selectedSale.delivery_end_date ? format(new Date(selectedSale.delivery_end_date), "dd/MM/yyyy") : "---"}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-400 uppercase">Encargado</Label>
+                        <p className="font-medium text-slate-700 dark:text-slate-300">
+                          {selectedSale.warehouse_manager || "---"}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-400 uppercase">Destino Final</Label>
+                      <p className="font-medium text-slate-700 dark:text-slate-300">
+                        {selectedSale.final_destination || "No especificado"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Products Table */}
+              <Card className="border-slate-200/60 dark:border-slate-700/60 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm overflow-hidden">
+                <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                    <List className="h-4 w-4 text-blue-500" /> Productos Incluidos
+                  </CardTitle>
+                </CardHeader>
+                <div className="p-0 overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
+                      <TableRow>
+                        <TableHead className="w-[100px]">Código</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Cantidad</TableHead>
+                        <TableHead className="text-right">Precio Unit.</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingDetails ? (
+                        [...Array(3)].map((_, i) => (
+                          <TableRow key={i}>
+                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                          </TableRow>
+                        ))
+                      ) : selectedSaleItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                            No hay items registrados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        selectedSaleItems.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                            <TableCell className="font-mono text-xs text-slate-500">{item.product_code}</TableCell>
+                            <TableCell>
+                              <div className="font-medium text-slate-700 dark:text-slate-200">{item.product_name}</div>
+                              {item.product_description && (
+                                <div className="text-xs text-slate-500 truncate max-w-[300px]">{item.product_description}</div>
                               )}
-                           </TableBody>
-                        </Table>
-                     </div>
-                  </Card>
-                  
-                  {/* Footer Notes if any */}
-                  {selectedSale.observations && (
-                     <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-800 dark:text-amber-200">
-                        <span className="font-semibold mr-2">Observaciones:</span>
-                        {selectedSale.observations}
-                     </div>
-                  )}
-               </motion.div>
-            )}
-         </DialogContent>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                            <TableCell className="text-right text-slate-500">
+                              S/ {item.unit_price_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-700 dark:text-slate-200">
+                              S/ {item.total_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              {/* Footer Notes if any */}
+              {selectedSale.observations && (
+                <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-800 dark:text-amber-200">
+                  <span className="font-semibold mr-2">Observaciones:</span>
+                  {selectedSale.observations}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* Auxiliary Dialogs */}
       {voucherSale && (
         <PaymentVoucherDialog sale={voucherSale} open={showVoucherDialog} onOpenChange={setShowVoucherDialog} onVoucherUploaded={handleVoucherUploaded} />
       )}
-      
+
       {companyToUse?.id && (
         <SalesEntityManagementDialog open={showSalesEntityManagementDialog} onOpenChange={setShowSalesEntityManagementDialog} companyId={companyToUse.id} canEdit={hasSalesAccess} />
       )}
 
       <DateSelectorDialog open={warrantyDateDialog.open} onOpenChange={(open) => setWarrantyDateDialog({ open, sale: null, isGenerating: false })} onConfirm={(date) => warrantyDateDialog.sale && handleGenerateWarrantyLetter(warrantyDateDialog.sale, date)} title="Generar Garantía" description="Fecha de emisión" isGenerating={warrantyDateDialog.isGenerating} />
-      
+
       <DateSelectorDialog open={cciDateDialog.open} onOpenChange={(open) => setCciDateDialog({ open, sale: null, isGenerating: false })} onConfirm={(date) => cciDateDialog.sale && handleGenerateCCILetter(cciDateDialog.sale, date)} title="Generar CCI" description="Fecha de emisión" isGenerating={cciDateDialog.isGenerating} />
 
       <Dialog open={showLotsDialog} onOpenChange={setShowLotsDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Lotes y Series</DialogTitle></DialogHeader>
-          {lotsSale && <LotSerialManager saleId={lotsSale.id} onStatusChange={() => { if(companyToUse?.id) fetchSales(companyToUse.id) }} />}
+          {lotsSale && <LotSerialManager saleId={lotsSale.id} onStatusChange={() => { if (companyToUse?.id) fetchSales(companyToUse.id) }} />}
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={showLotConfirmDialog} onOpenChange={setShowLotConfirmDialog}>
-         {/* ... Alert Dialog Content (omitted for brevity, same as original) ... */}
+        {/* ... Alert Dialog Content (omitted for brevity, same as original) ... */}
       </AlertDialog>
 
     </motion.div>

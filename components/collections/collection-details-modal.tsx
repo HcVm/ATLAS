@@ -78,6 +78,7 @@ interface CollectionDetailsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onRefresh: () => void
+  readOnly?: boolean
 }
 
 function isValidUUID(id: string): boolean {
@@ -85,7 +86,7 @@ function isValidUUID(id: string): boolean {
   return uuidRegex.test(id);
 }
 
-export function CollectionDetailsModal({ collection, open, onOpenChange, onRefresh }: CollectionDetailsModalProps) {
+export function CollectionDetailsModal({ collection, open, onOpenChange, onRefresh, readOnly = false }: CollectionDetailsModalProps) {
   const { user } = useAuth()
   const [notes, setNotes] = useState<CollectionNote[]>([])
   const [loadingNotes, setLoadingNotes] = useState(false)
@@ -168,6 +169,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
   }
 
   const handleStatusUpdate = async (newSt: string) => {
+    if (readOnly) return;
     try {
       if (newSt === "verde" && collection.sales?.company_id && isValidUUID(collection.sales.company_id)) {
         try {
@@ -325,22 +327,24 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
                   </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Cambiar Estado</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {["pendiente", "verde", "amarillo", "rojo", "pagado"].map((status) => (
-                      <Button
-                        key={status}
-                        variant={newStatus === status ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleStatusUpdate(status)}
-                        className={newStatus === status ? getStatusColor(status) : ""}
-                      >
-                        {status === "pendiente" ? "A ESPERA" : status.toUpperCase()}
-                      </Button>
-                    ))}
+                {!readOnly && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cambiar Estado</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {["pendiente", "verde", "amarillo", "rojo", "pagado"].map((status) => (
+                        <Button
+                          key={status}
+                          variant={newStatus === status ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleStatusUpdate(status)}
+                          className={newStatus === status ? getStatusColor(status) : ""}
+                        >
+                          {status === "pendiente" ? "A ESPERA" : status.toUpperCase()}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Estado de Venta</p>
@@ -353,12 +357,14 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
           </TabsContent>
 
           <TabsContent value="seguimiento" className="space-y-4">
-            <div className="flex justify-end mb-4">
-              <Button onClick={() => setShowNoteForm(true)} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Nota
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setShowNoteForm(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Nota
+                </Button>
+              </div>
+            )}
 
             {showNoteForm && (
               <CollectionNoteForm
@@ -426,7 +432,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
               deliveryId={collection.delivery_id}
               linkedDocuments={linkedDocuments}
               onDocumentsChange={setLinkedDocuments}
-              canEdit={user?.role === "admin" || user?.role === "supervisor"}
+              canEdit={!readOnly && (user?.role === "admin" || user?.role === "supervisor")}
               companyId={collection.sales?.company_id}
             />
           </TabsContent>
@@ -436,7 +442,7 @@ export function CollectionDetailsModal({ collection, open, onOpenChange, onRefre
               deliveryId={collection.delivery_id}
               attachments={attachments}
               onAttachmentsChange={setAttachments}
-              canEdit={user?.role === "admin" || user?.role === "supervisor"}
+              canEdit={!readOnly && (user?.role === "admin" || user?.role === "supervisor")}
             />
           </TabsContent>
         </Tabs>

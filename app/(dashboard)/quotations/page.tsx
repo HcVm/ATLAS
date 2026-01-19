@@ -174,8 +174,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4 }
   }
@@ -231,6 +231,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
 export default function QuotationsPage() {
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
+  const [selectedYear, setSelectedYear] = useState<string>("2026")
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [stats, setStats] = useState<QuotationsStats>({
     totalQuotations: 0,
@@ -267,6 +268,9 @@ export default function QuotationsPage() {
     user?.role === "supervisor" ||
     ["Administración", "Operaciones", "Jefatura de Ventas"].includes(user?.departments?.name || "")
 
+  const isReadOnlyYear = selectedYear === "2025"
+  const canModify = !isReadOnlyYear
+
   const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id } : null
 
   useEffect(() => {
@@ -274,19 +278,19 @@ export default function QuotationsPage() {
     setCompanyId(companyId)
 
     if (companyId && hasQuotationsAccess) {
-      fetchQuotations(companyId)
-      fetchStats(companyId)
+      fetchQuotations(companyId, false, selectedYear)
+      fetchStats(companyId, selectedYear)
     } else {
       setLoading(false)
     }
-  }, [user, selectedCompany])
+  }, [user, selectedCompany, selectedYear])
 
-  const fetchQuotations = async (companyId: string, isRefresh = false) => {
+  const fetchQuotations = async (companyId: string, isRefresh = false, year = selectedYear) => {
     try {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
-      
-      console.log("Cargando cotizaciones para empresa:", companyId)
+
+      console.log("Cargando cotizaciones para empresa:", companyId, "Año:", year)
 
       let query = supabase
         .from("quotations")
@@ -318,6 +322,10 @@ export default function QuotationsPage() {
         `)
         .eq("company_id", companyId)
 
+      const startDate = `${year}-01-01T00:00:00Z`
+      const endDate = `${year}-12-31T23:59:59Z`
+      query = query.gte("quotation_date", startDate).lte("quotation_date", endDate)
+
       if (!canViewAllQuotations && user?.id) {
         query = query.eq("created_by", user.id)
       }
@@ -339,7 +347,7 @@ export default function QuotationsPage() {
     }
   }
 
-  const fetchStats = async (companyId: string) => {
+  const fetchStats = async (companyId: string, year = selectedYear) => {
     try {
       let query = supabase
         .from("quotations")
@@ -353,6 +361,10 @@ export default function QuotationsPage() {
           )
         `)
         .eq("company_id", companyId)
+
+      const startDate = `${year}-01-01T00:00:00Z`
+      const endDate = `${year}-12-31T23:59:59Z`
+      query = query.gte("quotation_date", startDate).lte("quotation_date", endDate)
 
       if (!canViewAllQuotations && user?.id) {
         query = query.eq("created_by", user.id)
@@ -401,7 +413,7 @@ export default function QuotationsPage() {
       rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
       expired: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     }
-    
+
     const labels: Record<string, string> = {
       draft: "Borrador",
       sent: "Enviada",
@@ -519,8 +531,8 @@ export default function QuotationsPage() {
       setEditingQuotation(null)
       setNewStatus("")
       if (companyId) {
-        fetchQuotations(companyId)
-        fetchStats(companyId)
+        fetchQuotations(companyId, false, selectedYear)
+        fetchStats(companyId, selectedYear)
       }
     } catch (error: any) {
       toast.error("Error al actualizar el estado: " + error.message)
@@ -537,8 +549,8 @@ export default function QuotationsPage() {
       setShowDeleteDialog(false)
       setQuotationToDelete(null)
       if (companyId) {
-        fetchQuotations(companyId)
-        fetchStats(companyId)
+        fetchQuotations(companyId, false, selectedYear)
+        fetchStats(companyId, selectedYear)
       }
     } catch (error: any) {
       toast.error("Error al eliminar la cotización: " + error.message)
@@ -586,7 +598,7 @@ export default function QuotationsPage() {
         if (data) {
           setSelectedQuotation(data)
           setQuotations((prev) => prev.map((q) => (q.id === data.id ? data : q)))
-          if (companyId) fetchStats(companyId)
+          if (companyId) fetchStats(companyId, selectedYear)
           toast.success("Información de ruta actualizada correctamente")
         }
       } catch (error) {
@@ -644,9 +656,9 @@ export default function QuotationsPage() {
   }
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
+    <motion.div
+      initial="hidden"
+      animate="visible"
       variants={containerVariants}
       className="p-4 sm:p-6 lg:p-8 space-y-8 min-h-[calc(100vh-4rem)]"
     >
@@ -663,12 +675,24 @@ export default function QuotationsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button 
-            onClick={() => setShowNewQuotationDialog(true)} 
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Nueva Cotización
-          </Button>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[120px] rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder="Año" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {canModify && (
+            <Button
+              onClick={() => setShowNewQuotationDialog(true)}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Nueva Cotización
+            </Button>
+          )}
         </div>
       </motion.div>
 
@@ -707,7 +731,7 @@ export default function QuotationsPage() {
                 className="pl-10 h-11 rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
-            <Button variant="ghost" onClick={() => { if(companyId) fetchQuotations(companyId, true) }} disabled={refreshing} className="rounded-xl text-slate-500 hover:text-indigo-600">
+            <Button variant="ghost" onClick={() => { if (companyId) fetchQuotations(companyId, true, selectedYear) }} disabled={refreshing} className="rounded-xl text-slate-500 hover:text-indigo-600">
               <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
               Actualizar
             </Button>
@@ -738,7 +762,7 @@ export default function QuotationsPage() {
             {filteredQuotations.map((quotation, index) => {
               const displayData = getQuotationDisplayData(quotation)
               const hasRoute = quotation.route_distance_km && quotation.route_distance_km > 0
-              
+
               return (
                 <motion.div
                   key={quotation.id}
@@ -750,14 +774,14 @@ export default function QuotationsPage() {
                     <CardContent className="p-0">
                       <div className="flex flex-col lg:flex-row">
                         {/* Status Stripe */}
-                        <div className={cn("w-full lg:w-2 transition-colors", 
-                          quotation.status === "approved" ? "bg-emerald-500" : 
-                          quotation.status === "rejected" ? "bg-red-500" : 
-                          quotation.status === "sent" ? "bg-blue-500" :
-                          quotation.status === "expired" ? "bg-orange-500" :
-                          "bg-slate-300 dark:bg-slate-700 group-hover:bg-indigo-500"
+                        <div className={cn("w-full lg:w-2 transition-colors",
+                          quotation.status === "approved" ? "bg-emerald-500" :
+                            quotation.status === "rejected" ? "bg-red-500" :
+                              quotation.status === "sent" ? "bg-blue-500" :
+                                quotation.status === "expired" ? "bg-orange-500" :
+                                  "bg-slate-300 dark:bg-slate-700 group-hover:bg-indigo-500"
                         )} />
-                        
+
                         <div className="flex-1 p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                           {/* Info Principal */}
                           <div className="lg:col-span-4 space-y-1">
@@ -812,18 +836,18 @@ export default function QuotationsPage() {
                                 <DropdownMenuItem onClick={() => { setSelectedQuotation(quotation); setShowDetailsDialog(true); }}>
                                   <Eye className="mr-2 h-4 w-4" /> Ver Detalles
                                 </DropdownMenuItem>
-                                
-                                {((quotation.status === "draft" && quotation.created_by === user?.id) ||
+
+                                {canModify && ((quotation.status === "draft" && quotation.created_by === user?.id) ||
                                   (quotation.status === "sent" &&
                                     (user?.departments?.name === "Jefatura de Ventas" ||
                                       user?.role === "admin" ||
                                       user?.role === "supervisor"))) && (
-                                  <DropdownMenuItem onClick={() => { setEditingQuotationContent(quotation); setShowEditContentDialog(true); }}>
-                                    <Edit className="mr-2 h-4 w-4" /> {quotation.status === "sent" ? "Revisar y Editar" : "Editar Contenido"}
-                                  </DropdownMenuItem>
-                                )}
+                                    <DropdownMenuItem onClick={() => { setEditingQuotationContent(quotation); setShowEditContentDialog(true); }}>
+                                      <Edit className="mr-2 h-4 w-4" /> {quotation.status === "sent" ? "Revisar y Editar" : "Editar Contenido"}
+                                    </DropdownMenuItem>
+                                  )}
 
-                                {(canViewAllQuotations || quotation.created_by === user?.id) && (
+                                {canModify && (canViewAllQuotations || quotation.created_by === user?.id) && (
                                   <DropdownMenuItem onClick={() => { setEditingQuotation(quotation); setNewStatus(quotation.status); setShowEditStatusDialog(true); }}>
                                     <Clock className="mr-2 h-4 w-4" /> Cambiar Estado
                                   </DropdownMenuItem>
@@ -876,7 +900,7 @@ export default function QuotationsPage() {
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
 
-                                {(quotation.status === "draft" || quotation.status === "rejected") &&
+                                {canModify && (quotation.status === "draft" || quotation.status === "rejected") &&
                                   (quotation.created_by === user?.id || canViewAllQuotations) && (
                                     <>
                                       <DropdownMenuSeparator />
@@ -900,7 +924,7 @@ export default function QuotationsPage() {
       </motion.div>
 
       {/* Dialogs */}
-      
+
       {/* New Quotation Dialog */}
       <Dialog open={showNewQuotationDialog} onOpenChange={setShowNewQuotationDialog}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl">
@@ -963,7 +987,7 @@ export default function QuotationsPage() {
                   variant="outline"
                   onClick={() => setNewStatus(status)}
                   className={cn(
-                    "justify-start h-12 rounded-xl", 
+                    "justify-start h-12 rounded-xl",
                     newStatus === status ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300" : ""
                   )}
                 >
@@ -997,9 +1021,11 @@ export default function QuotationsPage() {
                   <TabsTrigger value="details" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
                     <FileText className="h-4 w-4 mr-2" /> Detalles
                   </TabsTrigger>
-                  <TabsTrigger value="route" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
-                    <Route className="h-4 w-4 mr-2" /> Planificar Ruta
-                  </TabsTrigger>
+                  {canModify && (
+                    <TabsTrigger value="route" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+                      <Route className="h-4 w-4 mr-2" /> Planificar Ruta
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
