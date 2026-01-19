@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   File,
-  Calendar as CalendarIcon,
+
   ArrowUpDown,
   X,
   ChevronDown,
@@ -38,8 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DatePickerImproved } from "@/components/ui/date-picker-improved"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,7 +131,7 @@ export default function DocumentsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { selectedCompany } = useCompany()
-  
+
   // Data States
   const [documents, setDocuments] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
@@ -145,11 +144,11 @@ export default function DocumentsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
-  
+
   // View & Sort States
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "title_asc" | "title_desc">("date_desc")
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = viewMode === "grid" ? 9 : 10
@@ -216,7 +215,7 @@ export default function DocumentsPage() {
         throw error
       } else {
         let filteredData = data || []
-        
+
         // Client-side historical filter for regular users
         if (user && user.role !== "admin" && user.role !== "supervisor" && user.department_id) {
           filteredData = filteredData.filter((doc) => {
@@ -266,7 +265,7 @@ export default function DocumentsPage() {
 
       const matchesDepartment = selectedDepartment === "all" || doc.current_department_id === selectedDepartment
       const matchesStatus = selectedStatus === "all" || doc.status === selectedStatus
-      
+
       let matchesDate = true
       if (dateRange?.from) {
         const docDate = new Date(doc.created_at)
@@ -330,7 +329,7 @@ export default function DocumentsPage() {
       setDeleteDialog((prev) => ({ ...prev, isDeleting: true }))
       const { error } = await supabase.from("documents").delete().eq("id", deleteDialog.document.id)
       if (error) throw error
-      
+
       setDocuments(documents.filter((doc) => doc.id !== deleteDialog.document.id))
       toast({ title: "Documento eliminado", description: "El documento ha sido eliminado correctamente." })
       setDeleteDialog({ open: false, document: null, isDeleting: false })
@@ -357,7 +356,7 @@ export default function DocumentsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -396,8 +395,8 @@ export default function DocumentsPage() {
           { label: "Completados", value: stats.completed, icon: CheckCircle2, color: "emerald", filter: "completed" },
           { label: "Urgentes", value: stats.urgent, icon: AlertCircle, color: "red", filter: "urgent", isUrgent: true }
         ].map((stat, i) => (
-          <Card 
-            key={i} 
+          <Card
+            key={i}
             onClick={() => setSelectedStatus(stat.filter === "urgent" ? "pending" : stat.filter)}
             className={cn(
               "border-none shadow-sm cursor-pointer hover:scale-105 transition-all duration-200",
@@ -443,10 +442,10 @@ export default function DocumentsPage() {
                   className="pl-10 h-11 rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                 />
               </div>
-              
+
               <div className="flex gap-2">
-                 {/* Sort Dropdown */}
-                 <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                {/* Sort Dropdown */}
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
                   <SelectTrigger className="w-[180px] h-11 rounded-xl bg-white dark:bg-slate-800">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
@@ -483,34 +482,20 @@ export default function DocumentsPage() {
 
               <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("h-11 rounded-xl justify-start text-left font-normal w-full md:w-[240px]", !dateRange && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd", { locale: es })} - {format(dateRange.to, "LLL dd", { locale: es })}
-                        </>
-                      ) : (
-                        format(dateRange.from, "PPP", { locale: es })
-                      )
-                    ) : (
-                      <span>Filtrar por fecha</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center gap-2">
+                <DatePickerImproved
+                  date={dateRange?.from}
+                  setDate={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))}
+                  placeholder="Desde"
+                  className="w-[140px]"
+                />
+                <DatePickerImproved
+                  date={dateRange?.to}
+                  setDate={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))}
+                  placeholder="Hasta"
+                  className="w-[140px]"
+                />
+              </div>
 
               {user?.role === "admin" && (
                 <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
@@ -525,8 +510,8 @@ export default function DocumentsPage() {
               )}
 
               {(searchTerm || selectedStatus !== "all" || selectedDepartment !== "all" || dateRange) && (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setSearchTerm("")
                     setSelectedStatus("all")
@@ -616,12 +601,12 @@ export default function DocumentsPage() {
                           <TableCell>{getStatusBadge(document.status)}</TableCell>
                           <TableCell className="hidden lg:table-cell text-sm">{document.departments?.name || <span className="italic text-slate-400">Sin asignar</span>}</TableCell>
                           <TableCell className="hidden md:table-cell">
-                             <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600 uppercase">
-                                  {document.profiles?.full_name?.substring(0, 2) || "??"}
-                                </div>
-                                <span className="text-sm truncate max-w-[100px]">{document.profiles?.full_name?.split(' ')[0]}</span>
-                             </div>
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600 uppercase">
+                                {document.profiles?.full_name?.substring(0, 2) || "??"}
+                              </div>
+                              <span className="text-sm truncate max-w-[100px]">{document.profiles?.full_name?.split(' ')[0]}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-sm text-slate-500">
                             {format(new Date(document.created_at), "dd MMM, yyyy", { locale: es })}
@@ -671,29 +656,29 @@ export default function DocumentsPage() {
                     >
                       <Card className="h-full hover:shadow-lg transition-all duration-300 border-slate-200 dark:border-slate-700 group flex flex-col">
                         <CardHeader className="p-4 pb-2">
-                           <div className="flex justify-between items-start">
-                             <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                   <Badge variant="outline" className="text-[10px] font-mono">{document.document_number || "S/N"}</Badge>
-                                   {(() => {
-                                      const tl = getTrafficLightStatus(document.created_at, document.status, getLastMovementToCurrentDepartment(document))
-                                      return tl && user?.department_id === document.current_department_id ? <span title={tl.message}>{tl.icon}</span> : null
-                                    })()}
-                                </div>
-                                <Link href={`/documents/${document.id}`} className="font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 line-clamp-2">
-                                  {document.title || "Sin título"}
-                                </Link>
-                             </div>
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl">
-                                  <DropdownMenuItem onClick={() => router.push(`/documents/${document.id}`)}><Eye className="h-4 w-4 mr-2" /> Ver</DropdownMenuItem>
-                                  {(user?.role === "admin" || (document.created_by === user?.id && document.current_department_id === user?.department_id)) && (
-                                    <DropdownMenuItem onClick={() => router.push(`/documents/edit/${document.id}`)}><Edit className="h-4 w-4 mr-2" /> Editar</DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                             </DropdownMenu>
-                           </div>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="text-[10px] font-mono">{document.document_number || "S/N"}</Badge>
+                                {(() => {
+                                  const tl = getTrafficLightStatus(document.created_at, document.status, getLastMovementToCurrentDepartment(document))
+                                  return tl && user?.department_id === document.current_department_id ? <span title={tl.message}>{tl.icon}</span> : null
+                                })()}
+                              </div>
+                              <Link href={`/documents/${document.id}`} className="font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 line-clamp-2">
+                                {document.title || "Sin título"}
+                              </Link>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl">
+                                <DropdownMenuItem onClick={() => router.push(`/documents/${document.id}`)}><Eye className="h-4 w-4 mr-2" /> Ver</DropdownMenuItem>
+                                {(user?.role === "admin" || (document.created_by === user?.id && document.current_department_id === user?.department_id)) && (
+                                  <DropdownMenuItem onClick={() => router.push(`/documents/edit/${document.id}`)}><Edit className="h-4 w-4 mr-2" /> Editar</DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </CardHeader>
                         <CardContent className="p-4 pt-2 flex-1">
                           <p className="text-sm text-slate-500 line-clamp-3 mb-4">{document.description || "Sin descripción"}</p>
@@ -702,13 +687,13 @@ export default function DocumentsPage() {
                           </div>
                         </CardContent>
                         <CardFooter className="p-4 pt-0 border-t border-slate-100 dark:border-slate-800 mt-auto bg-slate-50/50 flex justify-between items-center text-xs text-slate-500 h-10">
-                           <span>{format(new Date(document.created_at), "dd MMM", { locale: es })}</span>
-                           <div className="flex items-center gap-1">
-                              <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center text-[8px] font-bold text-indigo-600">
-                                {document.profiles?.full_name?.charAt(0) || "?"}
-                              </div>
-                              <span className="truncate max-w-[80px]">{document.profiles?.full_name?.split(' ')[0]}</span>
-                           </div>
+                          <span>{format(new Date(document.created_at), "dd MMM", { locale: es })}</span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center text-[8px] font-bold text-indigo-600">
+                              {document.profiles?.full_name?.charAt(0) || "?"}
+                            </div>
+                            <span className="truncate max-w-[80px]">{document.profiles?.full_name?.split(' ')[0]}</span>
+                          </div>
                         </CardFooter>
                       </Card>
                     </motion.div>
@@ -723,16 +708,16 @@ export default function DocumentsPage() {
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         className={cn("cursor-pointer", currentPage === 1 && "pointer-events-none opacity-50")}
                       />
                     </PaginationItem>
-                    
+
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <PaginationItem key={page}>
-                        <PaginationLink 
-                          onClick={() => setCurrentPage(page)} 
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
                           isActive={currentPage === page}
                           className="cursor-pointer"
                         >
@@ -742,7 +727,7 @@ export default function DocumentsPage() {
                     ))}
 
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         className={cn("cursor-pointer", currentPage === totalPages && "pointer-events-none opacity-50")}
                       />
