@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { createNotification } from "@/lib/notifications"
 import { format, addHours } from "date-fns"
 
 export async function GET(request: NextRequest) {
@@ -70,23 +69,39 @@ async function checkLateArrivals(today: string) {
 
     console.log(`Found ${lateArrivals.length} late arrivals to notify`)
 
-    for (const attendance of lateArrivals) {
+    const notifications = lateArrivals.map((attendance) => {
       const checkInTime = new Date(attendance.check_in_time)
       const deadlineTime = addHours(checkInTime, 24)
 
-      await createNotification({
-        userId: attendance.user_id,
+      return {
+        user_id: attendance.user_id,
         title: "Justificación de Tardanza Requerida",
         message: `Has llegado ${attendance.late_minutes} minutos tarde hoy. Debes presentar una justificación de tardanza antes del ${format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")} (24 horas desde tu llegada).`,
         type: "attendance_late",
-        relatedId: attendance.id,
-        companyId: attendance.company_id,
-      })
+        related_id: attendance.id,
+        company_id: attendance.company_id,
+        read: false,
+      }
+    })
 
-      // Mark notification as sent
-      await supabase.from("attendance").update({ late_notification_sent: true }).eq("id", attendance.id)
+    if (notifications.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notifications)
 
-      console.log(`Late arrival notification sent to user ${attendance.user_id}`)
+      if (insertError) {
+        console.error("Error creating late arrival notifications:", insertError)
+      } else {
+        const attendanceIds = lateArrivals.map((a) => a.id)
+        const { error: updateError } = await supabase
+          .from("attendance")
+          .update({ late_notification_sent: true })
+          .in("id", attendanceIds)
+
+        if (updateError) {
+          console.error("Error updating attendance records:", updateError)
+        } else {
+          console.log(`Sent ${notifications.length} late arrival notifications`)
+        }
+      }
     }
   } catch (error) {
     console.error("Error checking late arrivals:", error)
@@ -129,19 +144,29 @@ async function checkMissingAttendance(today: string) {
 
     console.log(`Found ${absentEmployees.length} absent employees`)
 
-    for (const employee of absentEmployees) {
-      const deadlineTime = addHours(new Date(`${today} 17:30:00`), 24)
+    const deadlineTime = addHours(new Date(`${today} 17:30:00`), 24)
+    const formattedDeadline = format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")
 
-      await createNotification({
-        userId: employee.id,
+    const notifications = absentEmployees.map((employee) => {
+      return {
+        user_id: employee.id,
         title: "Justificación de Ausencia Requerida",
-        message: `No has marcado asistencia hoy. Debes presentar una justificación de ausencia antes del ${format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")} (24 horas desde las 5:30 PM).`,
+        message: `No has marcado asistencia hoy. Debes presentar una justificación de ausencia antes del ${formattedDeadline} (24 horas desde las 5:30 PM).`,
         type: "attendance_missing",
-        relatedId: null,
-        companyId: employee.company_id,
-      })
+        related_id: null,
+        company_id: employee.company_id,
+        read: false,
+      }
+    })
 
-      console.log(`Missing attendance notification sent to user ${employee.id}`)
+    if (notifications.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notifications)
+
+      if (insertError) {
+        console.error("Error creating missing attendance notifications:", insertError)
+      } else {
+        console.log(`Sent ${notifications.length} missing attendance notifications`)
+      }
     }
   } catch (error) {
     console.error("Error checking missing attendance:", error)
@@ -182,20 +207,34 @@ async function checkIncompleteAttendance(today: string) {
 
     console.log(`Found ${incompleteAttendance.length} incomplete attendance records`)
 
-    for (const attendance of incompleteAttendance) {
-      await createNotification({
-        userId: attendance.user_id,
-        title: "Recordatorio: Marcar Salida",
-        message: `Has marcado entrada hoy pero no has marcado salida. Recuerda marcar tu salida al finalizar tu jornada laboral.`,
-        type: "attendance_incomplete",
-        relatedId: attendance.id,
-        companyId: attendance.company_id,
-      })
+    const notifications = incompleteAttendance.map((attendance) => ({
+      user_id: attendance.user_id,
+      title: "Recordatorio: Marcar Salida",
+      message: `Has marcado entrada hoy pero no has marcado salida. Recuerda marcar tu salida al finalizar tu jornada laboral.`,
+      type: "attendance_incomplete",
+      related_id: attendance.id,
+      company_id: attendance.company_id,
+      read: false,
+    }))
 
-      // Mark notification as sent
-      await supabase.from("attendance").update({ incomplete_notification_sent: true }).eq("id", attendance.id)
+    if (notifications.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notifications)
 
-      console.log(`Incomplete attendance notification sent to user ${attendance.user_id}`)
+      if (insertError) {
+        console.error("Error creating incomplete attendance notifications:", insertError)
+      } else {
+        const attendanceIds = incompleteAttendance.map((a) => a.id)
+        const { error: updateError } = await supabase
+          .from("attendance")
+          .update({ incomplete_notification_sent: true })
+          .in("id", attendanceIds)
+
+        if (updateError) {
+          console.error("Error updating attendance records:", updateError)
+        } else {
+          console.log(`Sent ${notifications.length} incomplete attendance notifications`)
+        }
+      }
     }
   } catch (error) {
     console.error("Error checking incomplete attendance:", error)
