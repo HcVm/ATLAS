@@ -52,7 +52,7 @@ export default function InboundNotePDFGenerator({
           .eq("movement_id", movement.id)
           .eq("attachment_type", "factura")
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (data) {
           setInvoiceFile(data.file_name)
@@ -418,16 +418,15 @@ export default function InboundNotePDFGenerator({
                 </div>
                 
                 <!-- Notas -->
-                ${
-                  movement.notes
-                    ? `
+                ${movement.notes
+          ? `
                   <div class="notes-section">
                     <strong>Notas:</strong><br/>
                     ${movement.notes}
                   </div>
                 `
-                    : ""
-                }
+          : ""
+        }
                 
                 <!-- Información del Usuario -->
                 <div class="section" style="margin-top: 30px;">
