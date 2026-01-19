@@ -224,7 +224,7 @@ export default function ProfilePage() {
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
-        .eq("id", user?.id)
+        .eq("id", userId)
 
       if (updateError) {
         throw updateError
@@ -412,6 +412,12 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">{profile.full_name}</h2>
                 <div className="flex justify-center pt-1">
                   {getRoleBadge(user.role)}
+                </div>
+                <div className="flex justify-center items-center gap-1.5 pt-2 text-xs text-slate-500 dark:text-slate-400 font-medium opacity-80">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>
+                    Miembro desde {user.created_at ? format(new Date(user.created_at), "MMM yyyy", { locale: es }) : "Reciente"}
+                  </span>
                 </div>
               </div>
 
