@@ -19,6 +19,7 @@ import { NewsCarousel } from "@/components/news/news-carousel"
 import { AttendanceWidget } from "@/components/attendance/attendance-widget"
 import { UpcomingEventsWidget } from "@/components/calendar/upcoming-events-widget"
 import { DocumentSearchDialog } from "@/components/documents/document-search-dialog"
+import { PhotocheckCard } from "@/components/dashboard/photocheck-card"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [documentSearchOpen, setDocumentSearchOpen] = useState(false)
+  const [department, setDepartment] = useState<any>(null)
 
   // Datos para el gráfico
   const chartData = [
@@ -78,8 +80,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       fetchDashboardData()
+      fetchUserDepartment()
     }
   }, [user, selectedCompany])
+
+  const fetchUserDepartment = async () => {
+    if (user?.department_id) {
+      const { data } = await supabase.from("departments").select("name").eq("id", user.department_id).single()
+      if (data) setDepartment(data)
+    }
+  }
 
   const fetchDashboardData = async (isRefresh = false) => {
     try {
@@ -497,7 +507,9 @@ export default function DashboardPage() {
                     <FileText className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">Noticias Corporativas</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                      Noticias Corporativas
+                    </CardTitle>
                     <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
                       Mantente informado con las últimas actualizaciones
                     </CardDescription>
@@ -509,13 +521,33 @@ export default function DashboardPage() {
               <NewsCarousel />
             </CardContent>
           </Card>
+
+          <UpcomingEventsWidget />
         </motion.div>
 
         <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
+          <AttendanceWidget />
+
+          {/* Identity Card */}
+          <PhotocheckCard
+            user={user}
+            profile={{
+              full_name: user?.full_name || "",
+              email: user?.email || "",
+              avatar_url: user?.avatar_url || "",
+            }}
+            department={department}
+            selectedCompany={selectedCompany}
+            className="shadow-lg border-0"
+            compact={true}
+          />
+
           {/* Chart Widget */}
           <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado de Documentos</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Estado de Documentos
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex justify-center">
@@ -535,10 +567,10 @@ export default function DashboardPage() {
                   </Pie>
                   <RechartsTooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '8px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                     }}
                   />
                   <Legend verticalAlign="bottom" height={36} />
@@ -546,9 +578,6 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-
-          <AttendanceWidget />
-          <UpcomingEventsWidget />
         </motion.div>
       </div>
 
@@ -624,7 +653,7 @@ export default function DashboardPage() {
                                 Creado por {doc.profiles?.full_name || "Usuario"}
                               </p>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
+                                {format(new Date(doc.created_at || new Date()), "dd MMM yyyy", { locale: es })}
                               </p>
                             </div>
                           </div>
@@ -732,6 +761,6 @@ export default function DashboardPage() {
       </motion.div>
 
       <DocumentSearchDialog open={documentSearchOpen} onOpenChange={setDocumentSearchOpen} />
-    </motion.div >
+    </motion.div>
   )
 }
