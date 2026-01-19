@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabase"
 import { useCompany } from "@/lib/company-context"
 import { useAuth } from "@/lib/auth-context"
-import type { Database } from "@/lib/supabase"
+import type { Database } from "@/lib/database.types"
 
 type News = Database["public"]["Tables"]["news"]["Row"]
 
@@ -22,6 +22,7 @@ export function NewsCarousel() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
   const [isImageZoomed, setIsImageZoomed] = useState(false)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string>("")
 
   useEffect(() => {
@@ -96,6 +97,16 @@ export function NewsCarousel() {
     setZoomedImageUrl("")
   }
 
+  const openDetails = () => {
+    setIsPaused(true)
+    setIsDetailsOpen(true)
+  }
+
+  const closeDetails = () => {
+    setIsDetailsOpen(false)
+    setIsPaused(false)
+  }
+
   if (loading) {
     return (
       <Card className="min-h-80">
@@ -138,9 +149,8 @@ export function NewsCarousel() {
         <CardContent className="p-0 relative">
           <div className="flex flex-col">
             <div
-              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-50 dark:to-indigo-550 flex items-center justify-center ${
-                isImageOnly ? "h-[28rem]" : "h-48"
-              }`}
+              className={`relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-50 dark:to-indigo-550 flex items-center justify-center ${isImageOnly ? "h-[28rem]" : "h-48"
+                }`}
             >
               {currentNews.image_url ? (
                 <>
@@ -188,16 +198,22 @@ export function NewsCarousel() {
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-border flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={openDetails}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 -ml-2"
+                    >
+                      <FileText className="h-4 w-4 mr-1.5" />
+                      Leer noticia completa
+                    </Button>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
+                      {new Date(currentNews.created_at || new Date()).toLocaleDateString("es-ES", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
                       })}
                     </p>
-                    <div className="px-3 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium">
-                      Publicado
-                    </div>
                   </div>
                 </div>
               </div>
@@ -207,14 +223,21 @@ export function NewsCarousel() {
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
                 <h3 className="text-xl font-bold text-white mb-2">{currentNews.title}</h3>
                 <div className="flex items-center justify-between">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={openDetails}
+                    className="bg-white/90 hover:bg-white text-black border-none"
+                  >
+                    Leer más
+                  </Button>
                   <p className="text-sm text-white/90">
-                    {new Date(currentNews.created_at).toLocaleDateString("es-ES", {
+                    {new Date(currentNews.created_at || new Date()).toLocaleDateString("es-ES", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
                     })}
                   </p>
-                  <div className="px-3 py-1 text-xs rounded-full bg-green-500/80 text-white font-medium">Publicado</div>
                 </div>
               </div>
             )}
@@ -225,9 +248,8 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className={`absolute left-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
-                  isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
-                }`}
+                className={`absolute left-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
+                  }`}
                 onClick={prevSlide}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -235,9 +257,8 @@ export function NewsCarousel() {
               <Button
                 variant="outline"
                 size="icon"
-                className={`absolute right-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${
-                  isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
-                }`}
+                className={`absolute right-2 bg-background/90 hover:bg-background shadow-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isImageOnly ? "top-1/2 -translate-y-1/2" : "top-24"
+                  }`}
                 onClick={nextSlide}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -259,11 +280,10 @@ export function NewsCarousel() {
               {news.map((_, index) => (
                 <button
                   key={index}
-                  className={`relative w-2 h-2 rounded-full transition-all duration-200 ${
-                    index === currentIndex
-                      ? "bg-primary w-6 shadow-md"
-                      : "bg-muted-foreground hover:bg-muted-foreground/80"
-                  }`}
+                  className={`relative w-2 h-2 rounded-full transition-all duration-200 ${index === currentIndex
+                    ? "bg-primary w-6 shadow-md"
+                    : "bg-muted-foreground hover:bg-muted-foreground/80"
+                    }`}
                   onClick={() => setCurrentIndex(index)}
                 >
                   {index === currentIndex && !isPaused && (
@@ -286,6 +306,15 @@ export function NewsCarousel() {
           )}
         </CardContent>
       </Card>
+
+      <NewsDetailsDialog
+        open={isDetailsOpen}
+        onOpenChange={(open) => {
+          if (!open) closeDetails()
+          else setIsDetailsOpen(open)
+        }}
+        news={currentNews}
+      />
 
       <Dialog open={isImageZoomed} onOpenChange={setIsImageZoomed}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
@@ -315,5 +344,63 @@ export function NewsCarousel() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function NewsDetailsDialog({
+  open,
+  onOpenChange,
+  news
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  news: News
+}) {
+  if (!news) return null
+
+  // Extract URL if present
+  const content = news.content || ""
+  const urlMatch = content.match(/Leer completa en: (https?:\/\/[^\s]+)/)
+  const url = urlMatch ? urlMatch[1] : null
+
+  // Clean content by removing the link line if we found it
+  const cleanContent = url ? content.replace(/Leer completa en: https?:\/\/[^\s]+/, '').trim() : content
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogTitle className="text-2xl font-bold mb-4">{news.title}</DialogTitle>
+
+        {news.image_url && (
+          <div className="relative w-full h-64 md:h-80 mb-6 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+            <Image
+              src={news.image_url}
+              alt={news.title}
+              fill
+              className="object-contain"
+            />
+          </div>
+        )}
+
+        <div className="space-y-4 text-base leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line">
+          {cleanContent}
+        </div>
+
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <ZoomIn className="h-4 w-4" />
+            <span>Publicado el {new Date(news.created_at || new Date()).toLocaleDateString("es-ES", { dateStyle: 'long' })}</span>
+          </div>
+
+          {url && (
+            <Button asChild className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white">
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                Ver en sitio oficial <ChevronRight className="h-4 w-4 ml-2" />
+              </a>
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

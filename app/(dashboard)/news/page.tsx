@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Newspaper, Edit, Trash2, Eye, Calendar, User } from "lucide-react"
+import { Plus, Search, Newspaper, Edit, Trash2, Eye, Calendar, User, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,7 @@ export default function NewsPage() {
   const { selectedCompany } = useCompany()
   const [news, setNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
@@ -142,6 +143,34 @@ export default function NewsPage() {
     }
   }
 
+  const handleSync = async () => {
+    try {
+      setSyncing(true)
+      const response = await fetch("/api/webhooks/scrape-news", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || "Error en la sincronización")
+
+      toast({
+        title: "Sincronización completada",
+        description: data.message,
+      })
+
+      fetchNews() // Refresh list
+    } catch (error: any) {
+      console.error("Sync error:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Falló la sincronización",
+        variant: "destructive",
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const filteredNews = news.filter(
     (item) =>
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,6 +205,17 @@ export default function NewsPage() {
             <span className="sm:hidden">Crear</span>
           </Link>
         </Button>
+        {(user?.role === "admin" || user?.role === "supervisor") && (
+          <Button
+            variant="outline"
+            onClick={handleSync}
+            disabled={syncing}
+            className="w-full sm:w-auto rounded-xl border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Sincronizando..." : "Sincronizar Perú Compras"}
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/50 backdrop-blur-xl overflow-hidden">
@@ -214,92 +254,91 @@ export default function NewsPage() {
                   {/* Image Area */}
                   <div className="relative h-48 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     {item.image_url ? (
-                        <img 
-                            src={item.image_url} 
-                            alt={item.title} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
+                      <img
+                        src={item.image_url}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-                            <Newspaper className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                        </div>
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+                        <Newspaper className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+                      </div>
                     )}
                     <div className="absolute top-3 right-3">
-                        <Badge
-                            variant={item.published ? "default" : "secondary"}
-                            className={`cursor-pointer backdrop-blur-md border-0 ${
-                              item.published
-                                ? "bg-emerald-500/90 hover:bg-emerald-600/90 text-white"
-                                : "bg-slate-500/90 hover:bg-slate-600/90 text-white"
-                            }`}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                togglePublished(item.id, item.published)
-                            }}
-                          >
-                            {item.published ? "Publicado" : "Borrador"}
-                        </Badge>
+                      <Badge
+                        variant={item.published ? "default" : "secondary"}
+                        className={`cursor-pointer backdrop-blur-md border-0 ${item.published
+                          ? "bg-emerald-500/90 hover:bg-emerald-600/90 text-white"
+                          : "bg-slate-500/90 hover:bg-slate-600/90 text-white"
+                          }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          togglePublished(item.id, item.published)
+                        }}
+                      >
+                        {item.published ? "Publicado" : "Borrador"}
+                      </Badge>
                     </div>
                   </div>
 
                   {/* Content Area */}
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-3">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>{new Date(item.created_at).toLocaleDateString("es-ES", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>{new Date(item.created_at).toLocaleDateString("es-ES", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                     </div>
-                    
+
                     <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 mb-2 line-clamp-2 leading-tight group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                        {item.title}
+                      {item.title}
                     </h3>
-                    
+
                     <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 mb-4 flex-1">
-                        {item.content || "Sin contenido de texto..."}
+                      {item.content || "Sin contenido de texto..."}
                     </p>
 
                     <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto">
-                        <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center text-orange-700 dark:text-orange-300 text-xs font-bold">
-                                {item.profiles?.full_name?.charAt(0) || "U"}
-                            </div>
-                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate max-w-[100px]">
-                                {item.profiles?.full_name}
-                            </span>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center text-orange-700 dark:text-orange-300 text-xs font-bold">
+                          {item.profiles?.full_name?.charAt(0) || "U"}
                         </div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate max-w-[100px]">
+                          {item.profiles?.full_name}
+                        </span>
+                      </div>
 
-                        <div className="flex gap-1">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                asChild
-                            >
-                                <Link href={`/news/view/${item.id}`}>
-                                    <Eye className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                asChild
-                            >
-                                <Link href={`/news/edit/${item.id}`}>
-                                    <Edit className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            {(user?.role === "admin" || user?.role === "supervisor") && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    onClick={() => handleDeleteClick(item)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          asChild
+                        >
+                          <Link href={`/news/view/${item.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          asChild
+                        >
+                          <Link href={`/news/edit/${item.id}`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        {(user?.role === "admin" || user?.role === "supervisor") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => handleDeleteClick(item)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

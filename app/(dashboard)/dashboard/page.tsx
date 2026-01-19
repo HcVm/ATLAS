@@ -116,32 +116,32 @@ export default function DashboardPage() {
 
       // Apply filters for non-admins
       const isAdmin = user?.role === "admin" || user?.role === "supervisor"
-      
+
       if (!isAdmin && user) {
         // Ensure we filter by company if not already handled
         if (user.company_id) {
-             documentsCountQuery = documentsCountQuery.eq("company_id", user.company_id)
-             pendingCountQuery = pendingCountQuery.eq("company_id", user.company_id)
-             completedCountQuery = completedCountQuery.eq("company_id", user.company_id)
+          documentsCountQuery = documentsCountQuery.eq("company_id", user.company_id)
+          pendingCountQuery = pendingCountQuery.eq("company_id", user.company_id)
+          completedCountQuery = completedCountQuery.eq("company_id", user.company_id)
         }
 
         if (user.department_id) {
-            // Filter: Created by me OR Currently in my department
-            const filterCondition = `current_department_id.eq.${user.department_id},created_by.eq.${user.id}`
-            documentsCountQuery = documentsCountQuery.or(filterCondition)
-            pendingCountQuery = pendingCountQuery.or(filterCondition)
-            completedCountQuery = completedCountQuery.or(filterCondition)
+          // Filter: Created by me OR Currently in my department
+          const filterCondition = `current_department_id.eq.${user.department_id},created_by.eq.${user.id}`
+          documentsCountQuery = documentsCountQuery.or(filterCondition)
+          pendingCountQuery = pendingCountQuery.or(filterCondition)
+          completedCountQuery = completedCountQuery.or(filterCondition)
         } else {
-            documentsCountQuery = documentsCountQuery.eq("created_by", user.id)
-            pendingCountQuery = pendingCountQuery.eq("created_by", user.id)
-            completedCountQuery = completedCountQuery.eq("created_by", user.id)
+          documentsCountQuery = documentsCountQuery.eq("created_by", user.id)
+          pendingCountQuery = pendingCountQuery.eq("created_by", user.id)
+          completedCountQuery = completedCountQuery.eq("created_by", user.id)
         }
       } else if (shouldFilterByCompany && companyFilter) {
-         // Only apply generic company filter if we haven't already applied specific user filters 
-         // (though user filters above are stricter/orthogonal, let's keep it safe)
-         documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
-         pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
-         completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
+        // Only apply generic company filter if we haven't already applied specific user filters 
+        // (though user filters above are stricter/orthogonal, let's keep it safe)
+        documentsCountQuery = documentsCountQuery.eq("company_id", companyFilter)
+        pendingCountQuery = pendingCountQuery.eq("company_id", companyFilter)
+        completedCountQuery = completedCountQuery.eq("company_id", companyFilter)
       }
 
       const today = new Date().toISOString().split("T")[0]
@@ -173,7 +173,7 @@ export default function DashboardPage() {
         ])
 
       let allMovements: any[] = []
-      
+
       if (user && !isAdmin && user.department_id) {
         const baseSelect = `
           *,
@@ -359,13 +359,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6 w-full"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm"
       >
@@ -405,39 +405,39 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white relative group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <FileText className="h-24 w-24" />
+                <FileText className="h-24 w-24" />
               </div>
               <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-sm font-medium text-indigo-100">
-                    {user?.role === "admin" ? "Total Documentos" : "Documentos de mi Área"}
+                  {user?.role === "admin" ? "Total Documentos" : "Documentos de mi Área"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="relative z-10">
                 <div className="text-3xl font-bold">{stats.totalDocuments}</div>
                 <div className="mt-2 h-1 w-full bg-indigo-900/30 rounded-full overflow-hidden">
-                   <div className="h-full bg-white/50 w-3/4 rounded-full" />
+                  <div className="h-full bg-white/50 w-3/4 rounded-full" />
                 </div>
               </CardContent>
             </Card>
 
             {(user?.role === "admin" || user?.role === "supervisor") && (
-            <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white relative group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <Users className="h-24 w-24" />
-              </div>
-              <CardHeader className="pb-2 relative z-10">
-                <CardTitle className="text-sm font-medium text-emerald-100">Usuarios Activos</CardTitle>
-              </CardHeader>
-              <CardContent className="relative z-10">
-                <div className="text-3xl font-bold">{stats.totalUsers}</div>
-                <p className="text-xs text-emerald-100 mt-1">En {stats.totalDepartments} departamentos</p>
-              </CardContent>
-            </Card>
+              <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white relative group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Users className="h-24 w-24" />
+                </div>
+                <CardHeader className="pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium text-emerald-100">Usuarios Activos</CardTitle>
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="text-3xl font-bold">{stats.totalUsers}</div>
+                  <p className="text-xs text-emerald-100 mt-1">En {stats.totalDepartments} departamentos</p>
+                </CardContent>
+              </Card>
             )}
 
             <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white relative group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <Activity className="h-24 w-24" />
+                <Activity className="h-24 w-24" />
               </div>
               <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-sm font-medium text-orange-100">Actividad</CardTitle>
@@ -447,46 +447,46 @@ export default function DashboardPage() {
                 <p className="text-xs text-orange-100 mt-1">Movimientos recientes</p>
               </CardContent>
             </Card>
-            
-             {/* Mini Stats Row */}
-             <Card className="sm:col-span-2 lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-md">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-                      <FileText className="h-5 w-5" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Pendientes</p>
-                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.pendingDocuments}</p>
-                   </div>
+
+            {/* Mini Stats Row */}
+            <Card className="sm:col-span-2 lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-md">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                  <FileText className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                   <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
-                      <FileText className="h-5 w-5" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Completados</p>
-                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.completedDocuments}</p>
-                   </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Pendientes</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.pendingDocuments}</p>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
-                      <Clock className="h-5 w-5" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Asistencia</p>
-                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.presentToday}</p>
-                   </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
+                  <FileText className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                   <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
-                      <Clock className="h-5 w-5" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Tardanzas</p>
-                      <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.lateToday}</p>
-                   </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Completados</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.completedDocuments}</p>
                 </div>
-             </Card>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Asistencia</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.presentToday}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Tardanzas</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{stats.lateToday}</p>
+                </div>
+              </div>
+            </Card>
           </div>
 
           <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
@@ -512,42 +512,40 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
-           {/* Chart Widget */}
-           <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardHeader className="pb-2">
-                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado de Documentos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                 <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                       <PieChart>
-                          <Pie
-                             data={chartData}
-                             cx="50%"
-                             cy="50%"
-                             innerRadius={60}
-                             outerRadius={80}
-                             paddingAngle={5}
-                             dataKey="value"
-                          >
-                             {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                             ))}
-                          </Pie>
-                          <RechartsTooltip 
-                             contentStyle={{ 
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                                borderRadius: '8px', 
-                                border: 'none', 
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' 
-                             }} 
-                          />
-                          <Legend verticalAlign="bottom" height={36}/>
-                       </PieChart>
-                    </ResponsiveContainer>
-                 </div>
-              </CardContent>
-           </Card>
+          {/* Chart Widget */}
+          <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado de Documentos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center">
+                <PieChart width={300} height={200}>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </div>
+            </CardContent>
+          </Card>
 
           <AttendanceWidget />
           <UpcomingEventsWidget />
@@ -555,185 +553,185 @@ export default function DashboardPage() {
       </div>
 
       <motion.div variants={itemVariants}>
-      <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-xl transition-all duration-300">
-        <CardContent className="p-4 sm:p-6">
-          <Tabs defaultValue="documents" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
-              <TabsTrigger
-                value="documents"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-sm text-slate-700 dark:text-slate-300"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                <span className="sm:hidden">Docs</span>
-                <span className="hidden sm:inline">Documentos Recientes</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="movements"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-sm text-slate-700 dark:text-slate-300"
-              >
-                <ArrowRight className="h-4 w-4 mr-2" />
-                <span className="sm:hidden">Movs</span>
-                <span className="hidden sm:inline">Movimientos</span>
-              </TabsTrigger>
-            </TabsList>
+        <Card className="shadow-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-4 sm:p-6">
+            <Tabs defaultValue="documents" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
+                <TabsTrigger
+                  value="documents"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-sm text-slate-700 dark:text-slate-300"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span className="sm:hidden">Docs</span>
+                  <span className="hidden sm:inline">Documentos Recientes</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="movements"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white transition-all duration-300 text-sm text-slate-700 dark:text-slate-300"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  <span className="sm:hidden">Movs</span>
+                  <span className="hidden sm:inline">Movimientos</span>
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="documents" className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Documentos Recientes</h3>
-                <Button asChild size="sm" variant="outline" className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800">
-                  <Link href="/documents">
-                    <span className="sm:hidden">Ver todos</span>
-                    <span className="hidden sm:inline">Ver todos los documentos</span>
-                  </Link>
-                </Button>
-              </div>
-              {recentDocuments.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
-                      <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
-                    </div>
-                    <div>
-                      <p className="text-slate-600 dark:text-slate-300 font-medium">No hay documentos recientes</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Los documentos que crees o que pasen por tu departamento aparecerán aquí
-                      </p>
-                    </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/documents/new">Crear documento</Link>
-                    </Button>
-                  </div>
+              <TabsContent value="documents" className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Documentos Recientes</h3>
+                  <Button asChild size="sm" variant="outline" className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800">
+                    <Link href="/documents">
+                      <span className="sm:hidden">Ver todos</span>
+                      <span className="hidden sm:inline">Ver todos los documentos</span>
+                    </Link>
+                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-900/50 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">{doc.title}</h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">#{doc.document_number}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              {getStatusBadge(doc.status)}
-                              {doc.departments && getDepartmentBadge(doc.departments)}
-                            </div>
-                          </div>
-                          <div className="flex flex-col sm:items-end gap-1">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Creado por {doc.profiles?.full_name || "Usuario"}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
-                            </p>
-                          </div>
-                        </div>
+                {recentDocuments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
+                        <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                       </div>
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        className="w-full sm:w-auto flex-shrink-0 bg-transparent"
-                      >
-                        <Link href={`/documents/${doc.id}`}>
-                          <span className="sm:hidden">Ver</span>
-                          <span className="hidden sm:inline">Ver documento</span>
-                        </Link>
+                      <div>
+                        <p className="text-slate-600 dark:text-slate-300 font-medium">No hay documentos recientes</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          Los documentos que crees o que pasen por tu departamento aparecerán aquí
+                        </p>
+                      </div>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/documents/new">Crear documento</Link>
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="movements" className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Movimientos Recientes</h3>
-                <Button asChild size="sm" variant="outline" className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800">
-                  <Link href="/movements">
-                    <span className="sm:hidden">Ver todos</span>
-                    <span className="hidden sm:inline">Ver todos los movimientos</span>
-                  </Link>
-                </Button>
-              </div>
-              {recentMovements.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
-                      <ArrowRight className="h-8 w-8 text-slate-400 dark:text-slate-500" />
-                    </div>
-                    <div>
-                      <p className="text-slate-600 dark:text-slate-300 font-medium">No hay movimientos recientes</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Los movimientos de documentos aparecerán aquí
-                      </p>
-                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentMovements.map((movement) => (
-                    <div
-                      key={movement.id}
-                      className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-900/50 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                ) : (
+                  <div className="space-y-3">
+                    {recentDocuments.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-900/50 hover:shadow-md transition-all duration-200"
+                      >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <ArrowRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                            <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">
-                              {movement.documents?.title || "Documento"}
-                            </h4>
+                          <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">{doc.title}</h4>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">#{doc.document_number}</p>
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                                {getStatusBadge(doc.status)}
+                                {doc.departments && getDepartmentBadge(doc.departments)}
+                              </div>
+                            </div>
+                            <div className="flex flex-col sm:items-end gap-1">
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Creado por {doc.profiles?.full_name || "Usuario"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            {movement.from_departments && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-                                De: {movement.from_departments.name}
-                              </span>
-                            )}
-                            <ArrowRight className="h-3 w-3 text-slate-400" />
-                            {movement.to_departments && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                                A: {movement.to_departments.name}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span>Por: {movement.profiles?.full_name || "Usuario"}</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span>{format(new Date(movement.created_at), "dd MMM yyyy HH:mm", { locale: es })}</span>
-                          </div>
-                          {movement.notes && (
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">"{movement.notes}"</p>
-                          )}
                         </div>
-                        {movement.documents && (
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="outline"
-                            className="w-full sm:w-auto flex-shrink-0 bg-transparent"
-                          >
-                            <Link href={`/documents/${movement.document_id}`}>
-                              <span className="sm:hidden">Ver</span>
-                              <span className="hidden sm:inline">Ver documento</span>
-                            </Link>
-                          </Button>
-                        )}
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="w-full sm:w-auto flex-shrink-0 bg-transparent"
+                        >
+                          <Link href={`/documents/${doc.id}`}>
+                            <span className="sm:hidden">Ver</span>
+                            <span className="hidden sm:inline">Ver documento</span>
+                          </Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="movements" className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Movimientos Recientes</h3>
+                  <Button asChild size="sm" variant="outline" className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800">
+                    <Link href="/movements">
+                      <span className="sm:hidden">Ver todos</span>
+                      <span className="hidden sm:inline">Ver todos los movimientos</span>
+                    </Link>
+                  </Button>
+                </div>
+                {recentMovements.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
+                        <ArrowRight className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-slate-600 dark:text-slate-300 font-medium">No hay movimientos recientes</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          Los movimientos de documentos aparecerán aquí
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentMovements.map((movement) => (
+                      <div
+                        key={movement.id}
+                        className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-900/50 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ArrowRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                              <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                                {movement.documents?.title || "Documento"}
+                              </h4>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              {movement.from_departments && (
+                                <span className="text-xs px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                  De: {movement.from_departments.name}
+                                </span>
+                              )}
+                              <ArrowRight className="h-3 w-3 text-slate-400" />
+                              {movement.to_departments && (
+                                <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                  A: {movement.to_departments.name}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span>Por: {movement.profiles?.full_name || "Usuario"}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span>{format(new Date(movement.created_at), "dd MMM yyyy HH:mm", { locale: es })}</span>
+                            </div>
+                            {movement.notes && (
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">"{movement.notes}"</p>
+                            )}
+                          </div>
+                          {movement.documents && (
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="w-full sm:w-auto flex-shrink-0 bg-transparent"
+                            >
+                              <Link href={`/documents/${movement.document_id}`}>
+                                <span className="sm:hidden">Ver</span>
+                                <span className="hidden sm:inline">Ver documento</span>
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </motion.div>
 
       <DocumentSearchDialog open={documentSearchOpen} onOpenChange={setDocumentSearchOpen} />
-    </motion.div>
+    </motion.div >
   )
 }
