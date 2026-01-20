@@ -38,8 +38,8 @@ const formSchema = z.object({
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4, ease: "easeOut" }
   }
@@ -47,8 +47,8 @@ const containerVariants = {
 
 const formItemVariants = {
   hidden: { opacity: 0, x: -10 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     x: 0,
     transition: { duration: 0.3 }
   }
@@ -225,7 +225,7 @@ export default function NewDocumentPage() {
       try {
         await supabase.from("document_movements").insert({
           document_id: document.id,
-          from_department_id: values.department_id,
+          from_department_id: user.department_id,
           to_department_id: values.department_id,
           moved_by: user.id,
           notes: "Documento creado",
@@ -265,24 +265,24 @@ export default function NewDocumentPage() {
 
       // Notificar al departamento destino
       try {
-         const { data: departmentData } = await supabase.from("departments").select("name").eq("id", values.department_id).single()
-         const departmentName = departmentData?.name || "un departamento"
-         const { data: usersInDepartment } = await supabase.from("profiles").select("id").eq("department_id", values.department_id).eq("company_id", companyToUse)
-         
-         if (usersInDepartment) {
-            for (const deptUser of usersInDepartment) {
-               if (deptUser.id !== user.id) {
-                  await createNotification({
-                     userId: deptUser.id,
-                     title: "Nuevo Documento Recibido",
-                     message: `Se ha creado un nuevo documento "${values.title}" en tu departamento (${departmentName}).`,
-                     type: "document_created",
-                     relatedId: document.id,
-                     companyId: companyToUse,
-                  })
-               }
+        const { data: departmentData } = await supabase.from("departments").select("name").eq("id", values.department_id).single()
+        const departmentName = departmentData?.name || "un departamento"
+        const { data: usersInDepartment } = await supabase.from("profiles").select("id").eq("department_id", values.department_id).eq("company_id", companyToUse)
+
+        if (usersInDepartment) {
+          for (const deptUser of usersInDepartment) {
+            if (deptUser.id !== user.id) {
+              await createNotification({
+                userId: deptUser.id,
+                title: "Nuevo Documento Recibido",
+                message: `Se ha creado un nuevo documento "${values.title}" en tu departamento (${departmentName}).`,
+                type: "document_created",
+                relatedId: document.id,
+                companyId: companyToUse,
+              })
             }
-         }
+          }
+        }
       } catch (e) { console.error(e) }
 
       try {
@@ -308,9 +308,9 @@ export default function NewDocumentPage() {
   }
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
+    <motion.div
+      initial="hidden"
+      animate="visible"
       variants={containerVariants}
       className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 flex justify-center items-start"
     >
@@ -354,7 +354,7 @@ export default function NewDocumentPage() {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-6 lg:p-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -416,7 +416,7 @@ export default function NewDocumentPage() {
 
                   {/* Visibilidad */}
                   <motion.div variants={formItemVariants}>
-                     <FormField
+                    <FormField
                       control={form.control}
                       name="is_public"
                       render={({ field }) => (
@@ -467,8 +467,8 @@ export default function NewDocumentPage() {
                 {/* Archivos */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
-                     <UploadCloud className="h-5 w-5 text-indigo-500" />
-                     <h3 className="font-semibold text-slate-800 dark:text-slate-100">Archivos Adjuntos</h3>
+                    <UploadCloud className="h-5 w-5 text-indigo-500" />
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">Archivos Adjuntos</h3>
                   </div>
 
                   {/* Archivo Principal */}
@@ -480,14 +480,14 @@ export default function NewDocumentPage() {
                         <FormItem>
                           <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400">Archivo Principal</FormLabel>
                           <FormControl>
-                             <div className="relative group">
-                                <Input
-                                  type="file"
-                                  className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
-                                  onChange={(e) => onChange(e.target.files)}
-                                  {...field}
-                                />
-                             </div>
+                            <div className="relative group">
+                              <Input
+                                type="file"
+                                className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
+                                onChange={(e) => onChange(e.target.files)}
+                                {...field}
+                              />
+                            </div>
                           </FormControl>
                           <FormDescription>Formato recomendado: PDF. Máx 10MB.</FormDescription>
                           <FormMessage />
@@ -498,56 +498,56 @@ export default function NewDocumentPage() {
 
                   {/* Otros Adjuntos */}
                   <motion.div variants={formItemVariants}>
-                     <div className="space-y-3">
-                        <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Archivos Adicionales</label>
-                        <Input
-                          type="file"
-                          multiple
-                          className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
-                          onChange={handleAttachmentAdd}
-                        />
-                     </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Archivos Adicionales</label>
+                      <Input
+                        type="file"
+                        multiple
+                        className="h-14 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300 transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl"
+                        onChange={handleAttachmentAdd}
+                      />
+                    </div>
 
-                     {/* Lista de adjuntos */}
-                     <AnimatePresence>
-                        {attachments.length > 0 && (
-                           <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="mt-4 grid gap-2"
-                           >
-                              {attachments.map((file, index) => (
-                                 <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800"
-                                 >
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                       <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600">
-                                          <File className="h-4 w-4" />
-                                       </div>
-                                       <div className="min-w-0">
-                                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{file.name}</p>
-                                          <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
-                                       </div>
-                                    </div>
-                                    <Button
-                                       type="button"
-                                       variant="ghost"
-                                       size="icon"
-                                       onClick={() => removeAttachment(index)}
-                                       className="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
-                                    >
-                                       <X className="h-4 w-4" />
-                                    </Button>
-                                 </motion.div>
-                              ))}
-                           </motion.div>
-                        )}
-                     </AnimatePresence>
+                    {/* Lista de adjuntos */}
+                    <AnimatePresence>
+                      {attachments.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 grid gap-2"
+                        >
+                          {attachments.map((file, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800"
+                            >
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600">
+                                  <File className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{file.name}</p>
+                                  <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeAttachment(index)}
+                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 </div>
 
@@ -568,13 +568,13 @@ export default function NewDocumentPage() {
                   >
                     {loading || uploading || uploadingAttachments ? (
                       <>
-                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         <span>Procesando...</span>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <span>Procesando...</span>
                       </>
                     ) : (
                       <>
-                         <CheckCircle2 className="mr-2 h-4 w-4" />
-                         <span>Crear Documento</span>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        <span>Crear Documento</span>
                       </>
                     )}
                   </Button>
