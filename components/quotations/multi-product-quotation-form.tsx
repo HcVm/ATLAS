@@ -110,8 +110,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.3 }
   }
@@ -369,11 +369,11 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
   }
 
   return (
-    <motion.form 
+    <motion.form
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      onSubmit={handleSubmit} 
+      onSubmit={handleSubmit}
       className="space-y-8 pb-8"
     >
       {/* Información de la Empresa y Cliente */}
@@ -453,54 +453,54 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                 <div>
-                    <Label htmlFor="contact_person">Nombre del Contacto/Vendedor</Label>
-                    <div className="relative mt-1">
-                      <Users className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="contact_person"
-                        className="pl-9 rounded-xl"
-                        value={formData.contact_person}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, contact_person: e.target.value }))}
-                        placeholder="Ej: Juan Pérez"
-                      />
-                    </div>
-                 </div>
-                 <div>
-                    <Label htmlFor="commission_percentage">Porcentaje (%)</Label>
-                    <div className="relative mt-1">
-                      <Input
-                        id="commission_percentage"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        className="rounded-xl pr-9"
-                        value={formData.commission_percentage}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, commission_percentage: e.target.value }))}
-                        placeholder="Ej: 5.0"
-                      />
-                      <Percent className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
-                    </div>
-                 </div>
+                <div>
+                  <Label htmlFor="contact_person">Nombre del Contacto/Vendedor</Label>
+                  <div className="relative mt-1">
+                    <Users className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="contact_person"
+                      className="pl-9 rounded-xl"
+                      value={formData.contact_person}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, contact_person: e.target.value }))}
+                      placeholder="Ej: Juan Pérez"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="commission_percentage">Porcentaje (%)</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="commission_percentage"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      className="rounded-xl pr-9"
+                      value={formData.commission_percentage}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, commission_percentage: e.target.value }))}
+                      placeholder="Ej: 5.0"
+                    />
+                    <Percent className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                  </div>
+                </div>
               </div>
-              
+
               <div className="bg-slate-50/80 dark:bg-slate-800/50 rounded-xl p-4 space-y-3 border border-slate-100 dark:border-slate-700">
                 <Label className="text-slate-500">Resumen de Comisión</Label>
                 {totals.commission_base_amount > 0 ? (
                   <div className="grid grid-cols-3 gap-2 text-center">
-                     <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
-                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Base (Sin IGV)</p>
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">S/ {totals.commission_base_amount.toLocaleString("es-PE", { maximumFractionDigits: 0 })}</p>
-                     </div>
-                     <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
-                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tasa</p>
-                        <p className="text-sm font-bold text-violet-600">{formData.commission_percentage || "0"}%</p>
-                     </div>
-                     <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800/50">
-                        <p className="text-[10px] uppercase text-violet-400 font-bold mb-1">A Pagar</p>
-                        <p className="text-sm font-bold text-violet-700 dark:text-violet-300">S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
-                     </div>
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
+                      <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Base (Sin IGV)</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">S/ {totals.commission_base_amount.toLocaleString("es-PE", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
+                      <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tasa</p>
+                      <p className="text-sm font-bold text-violet-600">{formData.commission_percentage || "0"}%</p>
+                    </div>
+                    <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800/50">
+                      <p className="text-[10px] uppercase text-violet-400 font-bold mb-1">A Pagar</p>
+                      <p className="text-sm font-bold text-violet-700 dark:text-violet-300">S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-24 text-slate-400 text-sm italic">
@@ -540,123 +540,123 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
           <CardContent className="space-y-6">
             <div className="p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                 <div className="md:col-span-8">
-                    <ProductSelector
-                      value={currentItem.product_id || ""}
-                      onSelect={(product) => {
-                        const priceWithTax = product.sale_price * 1.18
-                        setCurrentItem((prev) => ({
-                          ...prev,
-                          product_id: product.id,
-                          product_code: product.code,
-                          product_name: product.name,
-                          product_description: product.description || product.name,
-                          product_brand: product.brands?.name || "",
-                          platform_unit_price_with_tax: priceWithTax,
-                          reference_image_url: product.image_url || null,
-                        }))
-                      }}
-                      label="Seleccionar Producto"
-                      placeholder="Buscar por nombre o código..."
-                      required
-                      showStock={true}
-                      showPrice={true}
-                    />
-                 </div>
-                 <div className="md:col-span-4">
-                    <Label htmlFor="quantity">Cantidad</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      className="mt-1 rounded-xl"
-                      value={currentItem.quantity || ""}
-                      onChange={(e) =>
-                        setCurrentItem((prev) => ({
-                          ...prev,
-                          quantity: Number.parseInt(e.target.value) || 0,
-                        }))
-                      }
-                    />
-                 </div>
+                <div className="md:col-span-8">
+                  <ProductSelector
+                    value={currentItem.product_id || ""}
+                    onSelect={(product) => {
+                      const priceWithTax = product.sale_price * 1.18
+                      setCurrentItem((prev) => ({
+                        ...prev,
+                        product_id: product.id,
+                        product_code: product.code,
+                        product_name: product.name,
+                        product_description: product.description || product.name,
+                        product_brand: product.brands?.name || "",
+                        platform_unit_price_with_tax: priceWithTax,
+                        reference_image_url: product.image_url || null,
+                      }))
+                    }}
+                    label="Seleccionar Producto"
+                    placeholder="Buscar por nombre o código..."
+                    required
+                    showStock={true}
+                    showPrice={true}
+                  />
+                </div>
+                <div className="md:col-span-4">
+                  <Label htmlFor="quantity">Cantidad</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    className="mt-1 rounded-xl"
+                    value={currentItem.quantity || ""}
+                    onChange={(e) =>
+                      setCurrentItem((prev) => ({
+                        ...prev,
+                        quantity: Number.parseInt(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <div>
-                    <Label className="text-xs text-slate-500">Precio Plataforma</Label>
-                    <div className="relative mt-1">
-                       <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
-                       <Input
-                         type="number"
-                         step="0.0001"
-                         className="pl-7 rounded-xl"
-                         value={currentItem.platform_unit_price_with_tax || ""}
-                         onChange={(e) =>
-                           setCurrentItem((prev) => ({
-                             ...prev,
-                             platform_unit_price_with_tax: Number.parseFloat(e.target.value) || 0,
-                           }))
-                         }
-                       />
-                    </div>
-                 </div>
-                 <div>
-                    <Label className="text-xs text-slate-500">Precio Proveedor (Opc)</Label>
-                    <div className="relative mt-1">
-                       <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
-                       <Input
-                         type="number"
-                         step="0.0001"
-                         className="pl-7 rounded-xl"
-                         value={currentItem.supplier_unit_price_with_tax || ""}
-                         onChange={(e) =>
-                           setCurrentItem((prev) => ({
-                             ...prev,
-                             supplier_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                           }))
-                         }
-                         placeholder="0.00"
-                       />
-                    </div>
-                 </div>
-                 <div>
-                    <Label className="text-xs text-slate-500">Precio Oferta (Opc)</Label>
-                    <div className="relative mt-1">
-                       <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
-                       <Input
-                         type="number"
-                         step="0.0001"
-                         className="pl-7 rounded-xl border-blue-200 focus:border-blue-400"
-                         value={currentItem.offer_unit_price_with_tax || ""}
-                         onChange={(e) =>
-                           setCurrentItem((prev) => ({
-                             ...prev,
-                             offer_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                           }))
-                         }
-                         placeholder="0.00"
-                       />
-                    </div>
-                 </div>
-                 <div>
-                    <Label className="text-xs text-slate-500">Techo Presupuestal</Label>
-                    <div className="relative mt-1">
-                       <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
-                       <Input
-                         type="number"
-                         step="0.0001"
-                         className="pl-7 rounded-xl"
-                         value={currentItem.budget_ceiling_unit_price_with_tax || ""}
-                         onChange={(e) =>
-                           setCurrentItem((prev) => ({
-                             ...prev,
-                             budget_ceiling_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
-                           }))
-                         }
-                         placeholder="Max"
-                       />
-                    </div>
-                 </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Precio Plataforma</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      className="pl-7 rounded-xl"
+                      value={currentItem.platform_unit_price_with_tax || ""}
+                      onChange={(e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          platform_unit_price_with_tax: Number.parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Precio Proveedor (Opc)</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      className="pl-7 rounded-xl"
+                      value={currentItem.supplier_unit_price_with_tax || ""}
+                      onChange={(e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          supplier_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
+                        }))
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Precio Oferta (Opc)</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      className="pl-7 rounded-xl border-blue-200 focus:border-blue-400"
+                      value={currentItem.offer_unit_price_with_tax || ""}
+                      onChange={(e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          offer_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
+                        }))
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Techo Presupuestal</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-xs">S/</span>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      className="pl-7 rounded-xl"
+                      value={currentItem.budget_ceiling_unit_price_with_tax || ""}
+                      onChange={(e) =>
+                        setCurrentItem((prev) => ({
+                          ...prev,
+                          budget_ceiling_unit_price_with_tax: e.target.value ? Number.parseFloat(e.target.value) : null,
+                        }))
+                      }
+                      placeholder="Max"
+                    />
+                  </div>
+                </div>
               </div>
 
               <Button
@@ -673,7 +673,7 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
             {/* Lista de Productos */}
             <AnimatePresence>
               {items.length > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -735,26 +735,26 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Card className="border-none bg-slate-50 dark:bg-slate-800 shadow-sm">
                       <CardContent className="p-4 text-center">
-                         <p className="text-xs uppercase text-slate-500 font-bold">Items</p>
-                         <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{totals.total_items}</p>
+                        <p className="text-xs uppercase text-slate-500 font-bold">Items</p>
+                        <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{totals.total_items}</p>
                       </CardContent>
                     </Card>
                     <Card className="border-none bg-slate-50 dark:bg-slate-800 shadow-sm">
                       <CardContent className="p-4 text-center">
-                         <p className="text-xs uppercase text-slate-500 font-bold">Total Plataforma</p>
-                         <p className="text-lg font-bold text-slate-600">S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 0 })}</p>
+                        <p className="text-xs uppercase text-slate-500 font-bold">Total Plataforma</p>
+                        <p className="text-lg font-bold text-slate-600">S/ {totals.platform_total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       </CardContent>
                     </Card>
                     <Card className="border-none bg-blue-50 dark:bg-blue-900/20 shadow-sm">
                       <CardContent className="p-4 text-center">
-                         <p className="text-xs uppercase text-blue-500 font-bold">Total Ofertado</p>
-                         <p className="text-xl font-bold text-blue-700 dark:text-blue-300">S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xs uppercase text-blue-500 font-bold">Total Ofertado</p>
+                        <p className="text-xl font-bold text-blue-700 dark:text-blue-300">S/ {totals.offer_total_with_tax.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
                       </CardContent>
                     </Card>
                     <Card className="border-none bg-emerald-50 dark:bg-emerald-900/20 shadow-sm">
                       <CardContent className="p-4 text-center">
-                         <p className="text-xs uppercase text-emerald-600 font-bold">Comisión Estimada</p>
-                         <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xs uppercase text-emerald-600 font-bold">Comisión Estimada</p>
+                        <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">S/ {totals.commission_amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -767,98 +767,98 @@ export default function MultiProductQuotationForm({ onSuccess, onCancel }: Multi
 
       {/* Información de Entrega y Estado */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         <Card className="border-none shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardHeader className="pb-3">
-               <CardTitle className="text-base flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-orange-500" /> Logística
-               </CardTitle>
-            </CardHeader>
-            <CardContent>
-               <Label htmlFor="delivery_location">Lugar de Entrega *</Label>
-               <Textarea
-                 id="delivery_location"
-                 className="mt-1 rounded-xl resize-none"
-                 rows={3}
-                 value={formData.delivery_location}
-                 onChange={(e) => setFormData((prev) => ({ ...prev, delivery_location: e.target.value }))}
-                 placeholder="Dirección exacta de entrega..."
-                 required
-               />
-            </CardContent>
-         </Card>
+        <Card className="border-none shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-orange-500" /> Logística
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Label htmlFor="delivery_location">Lugar de Entrega *</Label>
+            <Textarea
+              id="delivery_location"
+              className="mt-1 rounded-xl resize-none"
+              rows={3}
+              value={formData.delivery_location}
+              onChange={(e) => setFormData((prev) => ({ ...prev, delivery_location: e.target.value }))}
+              placeholder="Dirección exacta de entrega..."
+              required
+            />
+          </CardContent>
+        </Card>
 
-         <Card className="border-none shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardHeader className="pb-3">
-               <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-slate-500" /> Detalles Finales
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                     <Label>Estado</Label>
-                     <Select
-                       value={formData.status}
-                       onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
-                     >
-                       <SelectTrigger className="mt-1 rounded-xl">
-                         <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="draft">Borrador</SelectItem>
-                         <SelectItem value="sent">Enviada</SelectItem>
-                         <SelectItem value="approved">Aprobada</SelectItem>
-                       </SelectContent>
-                     </Select>
-                  </div>
-                  <div>
-                     <Label>Válida Hasta</Label>
-                     <div className="mt-1">
-                        <DatePickerImproved
-                          date={formData.valid_until}
-                          setDate={(date) => setFormData((prev) => ({ ...prev, valid_until: date }))}
-                          placeholder="Vencimiento"
-                        />
-                     </div>
-                  </div>
-               </div>
-               <div>
-                  <Label htmlFor="observations">Observaciones</Label>
-                  <Input
-                    id="observations"
-                    className="mt-1 rounded-xl"
-                    value={formData.observations}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
-                    placeholder="Notas adicionales..."
+        <Card className="border-none shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-slate-500" /> Detalles Finales
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Estado</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Borrador</SelectItem>
+                    <SelectItem value="sent">Enviada</SelectItem>
+                    <SelectItem value="approved">Aprobada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Válida Hasta</Label>
+                <div className="mt-1">
+                  <DatePickerImproved
+                    date={formData.valid_until}
+                    setDate={(date) => setFormData((prev) => ({ ...prev, valid_until: date }))}
+                    placeholder="Vencimiento"
                   />
-               </div>
-            </CardContent>
-         </Card>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="observations">Observaciones</Label>
+              <Input
+                id="observations"
+                className="mt-1 rounded-xl"
+                value={formData.observations}
+                onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
+                placeholder="Notas adicionales..."
+              />
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Footer Actions */}
       <motion.div variants={itemVariants} className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel || onSuccess} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel || onSuccess}
           className="rounded-xl px-6"
         >
           Cancelar
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           disabled={loading || items.length === 0}
           className="rounded-xl px-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
         >
           {loading ? (
-             <>
-               <span className="animate-spin mr-2">⟳</span> Procesando...
-             </>
+            <>
+              <span className="animate-spin mr-2">⟳</span> Procesando...
+            </>
           ) : (
-             <>
-               <Check className="h-4 w-4 mr-2" /> Crear Cotización
-             </>
+            <>
+              <Check className="h-4 w-4 mr-2" /> Crear Cotización
+            </>
           )}
         </Button>
       </motion.div>

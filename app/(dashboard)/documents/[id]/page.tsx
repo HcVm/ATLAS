@@ -270,7 +270,7 @@ export default function DocumentDetailsPage() {
     try {
       setStatsLoading(true)
       const { data, error } = await supabase
-        .from("download_logs")
+        .from("document_downloads")
         .select(`*, profiles(full_name)`)
         .eq("document_id", id)
         .order("created_at", { ascending: false })
