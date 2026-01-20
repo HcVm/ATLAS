@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { createNotification } from "@/lib/notifications"
 import { format, addHours } from "date-fns"
 
 export async function GET(request: NextRequest) {
@@ -70,23 +69,44 @@ async function checkLateArrivals(today: string) {
 
     console.log(`Found ${lateArrivals.length} late arrivals to notify`)
 
+    const notificationsToInsert = []
+    const attendanceIdsToUpdate = []
+
     for (const attendance of lateArrivals) {
       const checkInTime = new Date(attendance.check_in_time)
       const deadlineTime = addHours(checkInTime, 24)
 
-      await createNotification({
-        userId: attendance.user_id,
+      notificationsToInsert.push({
+        user_id: attendance.user_id,
         title: "Justificación de Tardanza Requerida",
         message: `Has llegado ${attendance.late_minutes} minutos tarde hoy. Debes presentar una justificación de tardanza antes del ${format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")} (24 horas desde tu llegada).`,
         type: "attendance_late",
-        relatedId: attendance.id,
-        companyId: attendance.company_id,
+        related_id: attendance.id,
+        company_id: attendance.company_id,
+        read: false,
       })
 
-      // Mark notification as sent
-      await supabase.from("attendance").update({ late_notification_sent: true }).eq("id", attendance.id)
+      attendanceIdsToUpdate.push(attendance.id)
+    }
 
-      console.log(`Late arrival notification sent to user ${attendance.user_id}`)
+    if (notificationsToInsert.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notificationsToInsert)
+
+      if (insertError) {
+        console.error("Error batch inserting late arrival notifications:", insertError)
+        return
+      }
+
+      const { error: updateError } = await supabase
+        .from("attendance")
+        .update({ late_notification_sent: true })
+        .in("id", attendanceIdsToUpdate)
+
+      if (updateError) {
+        console.error("Error batch updating attendance late_notification_sent:", updateError)
+      } else {
+        console.log(`Sent ${notificationsToInsert.length} late arrival notifications`)
+      }
     }
   } catch (error) {
     console.error("Error checking late arrivals:", error)
@@ -129,19 +149,30 @@ async function checkMissingAttendance(today: string) {
 
     console.log(`Found ${absentEmployees.length} absent employees`)
 
+    const notificationsToInsert = []
+
     for (const employee of absentEmployees) {
       const deadlineTime = addHours(new Date(`${today} 17:30:00`), 24)
 
-      await createNotification({
-        userId: employee.id,
+      notificationsToInsert.push({
+        user_id: employee.id,
         title: "Justificación de Ausencia Requerida",
         message: `No has marcado asistencia hoy. Debes presentar una justificación de ausencia antes del ${format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")} (24 horas desde las 5:30 PM).`,
         type: "attendance_missing",
-        relatedId: null,
-        companyId: employee.company_id,
+        related_id: null,
+        company_id: employee.company_id,
+        read: false,
       })
+    }
 
-      console.log(`Missing attendance notification sent to user ${employee.id}`)
+    if (notificationsToInsert.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notificationsToInsert)
+
+      if (insertError) {
+        console.error("Error batch inserting missing attendance notifications:", insertError)
+      } else {
+        console.log(`Sent ${notificationsToInsert.length} missing attendance notifications`)
+      }
     }
   } catch (error) {
     console.error("Error checking missing attendance:", error)
@@ -182,20 +213,41 @@ async function checkIncompleteAttendance(today: string) {
 
     console.log(`Found ${incompleteAttendance.length} incomplete attendance records`)
 
+    const notificationsToInsert = []
+    const attendanceIdsToUpdate = []
+
     for (const attendance of incompleteAttendance) {
-      await createNotification({
-        userId: attendance.user_id,
+      notificationsToInsert.push({
+        user_id: attendance.user_id,
         title: "Recordatorio: Marcar Salida",
         message: `Has marcado entrada hoy pero no has marcado salida. Recuerda marcar tu salida al finalizar tu jornada laboral.`,
         type: "attendance_incomplete",
-        relatedId: attendance.id,
-        companyId: attendance.company_id,
+        related_id: attendance.id,
+        company_id: attendance.company_id,
+        read: false,
       })
 
-      // Mark notification as sent
-      await supabase.from("attendance").update({ incomplete_notification_sent: true }).eq("id", attendance.id)
+      attendanceIdsToUpdate.push(attendance.id)
+    }
 
-      console.log(`Incomplete attendance notification sent to user ${attendance.user_id}`)
+    if (notificationsToInsert.length > 0) {
+      const { error: insertError } = await supabase.from("notifications").insert(notificationsToInsert)
+
+      if (insertError) {
+        console.error("Error batch inserting incomplete attendance notifications:", insertError)
+        return
+      }
+
+      const { error: updateError } = await supabase
+        .from("attendance")
+        .update({ incomplete_notification_sent: true })
+        .in("id", attendanceIdsToUpdate)
+
+      if (updateError) {
+        console.error("Error batch updating attendance incomplete_notification_sent:", updateError)
+      } else {
+        console.log(`Sent ${notificationsToInsert.length} incomplete attendance notifications`)
+      }
     }
   } catch (error) {
     console.error("Error checking incomplete attendance:", error)
