@@ -130,7 +130,7 @@ export function EntitySelector({
         .order("name")
 
       if (error) throw error
-      setEntities(data || [])
+      setEntities((data as unknown as SalesEntity[]) || [])
     } catch (error: any) {
       console.error("Error fetching entities:", error)
       toast.error("Error al cargar entidades")
@@ -170,9 +170,10 @@ export function EntitySelector({
 
       toast.success("Entidad creada exitosamente")
 
-      setEntities((prev) => [...prev, data])
-      onSelect(data)
-      setSelectedEntity(data)
+      const newEntityData = data as unknown as SalesEntity
+      setEntities((prev) => [...prev, newEntityData])
+      onSelect(newEntityData)
+      setSelectedEntity(newEntityData)
 
       setNewEntity({
         name: "",
@@ -264,7 +265,7 @@ export function EntitySelector({
         </PopoverTrigger>
 
         <PopoverContent className="w-full p-0" align="start">
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput
               placeholder="Buscar por nombre, RUC, unidad ejecutora, dirección fiscal, correo electrónico o persona de contacto..."
               value={searchValue}
