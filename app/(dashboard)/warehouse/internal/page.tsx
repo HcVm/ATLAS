@@ -12,6 +12,14 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
+import { exportToExcel } from "@/lib/export-utils"
+import { generateInternalProductReportPDF } from "@/lib/internal-product-report-generator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface InternalProduct {
   id: string
@@ -304,6 +312,98 @@ export default function InternalWarehousePage() {
     }
   }
 
+  const fetchAllProductsForExport = async () => {
+    let query = supabase
+      .from("internal_products")
+      .select(`
+          *,
+          internal_product_categories (
+            name,
+            color
+          )
+        `)
+      .eq("company_id", user?.company_id ?? "")
+      .eq("is_active", true)
+      .order("name")
+
+    if (debouncedSearchTerm) {
+      query = query.or(`name.ilike.%${debouncedSearchTerm}%,code.ilike.%${debouncedSearchTerm}%`)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      toast.error("Error al obtener datos para exportar")
+      return []
+    }
+    return data
+  }
+
+  const handleExportExcel = async () => {
+    toast.info("Generando reporte Excel...")
+    const allProducts = await fetchAllProductsForExport()
+
+    if (!allProducts || allProducts.length === 0) {
+      toast.warning("No hay datos para exportar")
+      return
+    }
+
+    const dataToExport = allProducts.map((product: any) => ({
+      "Código": product.code,
+      "Producto": product.name,
+      "Categoría": product.internal_product_categories?.name || "-",
+      "Ubicación": product.location || "-",
+      "Stock Actual": product.current_stock,
+      "Stock Mínimo": product.minimum_stock,
+      "Unidad": product.unit_of_measure,
+      "Costo Unitario": product.cost_price,
+      "Valor Total": (product.current_stock || 0) * (product.cost_price || 0),
+      "Serializado": product.is_serialized ? "SI" : "NO",
+      "Estado": (product.current_stock || 0) <= (product.minimum_stock || 0) ? "STOCK BAJO" : "OK"
+    }))
+
+    exportToExcel(dataToExport, {
+      filename: `reporte-almacen-interno-${new Date().toISOString().split('T')[0]}`,
+      sheetName: "Almacen Interno",
+    })
+
+    toast.success("Reporte Excel generado")
+  }
+
+  const handleExportPDF = async () => {
+    toast.info("Generando reporte PDF...")
+    const allProducts = await fetchAllProductsForExport()
+
+    if (!allProducts || allProducts.length === 0) {
+      toast.warning("No hay datos para exportar")
+      return
+    }
+
+    const reportProducts = allProducts.map((p: any) => ({
+      code: p.code,
+      name: p.name,
+      category: p.internal_product_categories?.name || "Sin Categoría",
+      location: p.location,
+      current_stock: p.current_stock || 0,
+      minimum_stock: p.minimum_stock || 0,
+      unit_of_measure: p.unit_of_measure,
+      cost_price: p.cost_price || 0,
+      is_serialized: p.is_serialized,
+      stock_status: (p.current_stock || 0) <= 0 ? "critical" : (p.current_stock || 0) <= (p.minimum_stock || 0) ? "low" : "ok"
+    }))
+
+    generateInternalProductReportPDF({
+      companyName: "Almacén Interno", // Customize if real company name accessible
+      generatedBy: user?.full_name || "Usuario",
+      products: reportProducts as any,
+      filters: {
+        search: debouncedSearchTerm
+      }
+    })
+
+    toast.success("Reporte PDF generado")
+  }
+
   if (loading && products.length === 0) {
     return (
       <div className="space-y-8 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
@@ -346,6 +446,26 @@ export default function InternalWarehousePage() {
               Nuevo Producto
             </Link>
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex-1 sm:flex-none border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <FileText className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportExcel} className="cursor-pointer">
+                <FileText className="h-4 w-4 mr-2 text-indigo-500" />
+                <span>Exportar a Excel</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
+                <FileText className="h-4 w-4 mr-2 text-red-500" />
+                <span>Exportar a PDF</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button variant="outline" asChild className="flex-1 sm:flex-none border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
             <Link href="/warehouse/internal/movements">
               <FileText className="h-4 w-4 mr-2" />
