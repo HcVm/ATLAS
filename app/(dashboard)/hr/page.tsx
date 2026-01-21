@@ -281,16 +281,16 @@ export default function HumanResourcesPage() {
                             </Button>
 
                             <Button
-                                className="w-full justify-start text-left h-auto py-3 opacity-50 cursor-not-allowed"
+                                className="w-full justify-start text-left h-auto py-3 bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 border-slate-200"
                                 variant="outline"
-                                disabled
+                                onClick={() => router.push("/hr/recruitment")}
                             >
-                                <div className="bg-orange-100 p-2 rounded-md mr-3">
-                                    <Briefcase className="h-5 w-5 text-orange-600" />
+                                <div className="bg-slate-100 p-2 rounded-md mr-3">
+                                    <Briefcase className="h-5 w-5 text-slate-700" />
                                 </div>
                                 <div>
-                                    <div className="font-semibold">Reclutamiento</div>
-                                    <div className="text-xs text-muted-foreground">Próximamente</div>
+                                    <div className="font-semibold text-slate-700">Reclutamiento</div>
+                                    <div className="text-xs text-muted-foreground">Gestionar vacantes</div>
                                 </div>
                             </Button>
                         </CardContent>
