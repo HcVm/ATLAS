@@ -15,6 +15,11 @@ const nextConfig = {
     return config;
   },
   images: { unoptimized: true },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
   async headers() {
     return [
       {
