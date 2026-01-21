@@ -2308,6 +2308,323 @@ export type Database = {
           },
         ]
       }
+      hr_candidates: {
+        Row: {
+          created_at: string | null
+          cv_url: string | null
+          department_id: string | null
+          email: string | null
+          first_name: string
+          id: string
+          interview_date: string | null
+          last_name: string
+          notes: string | null
+          phone: string | null
+          position_applied: string | null
+          rating: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cv_url?: string | null
+          department_id?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          interview_date?: string | null
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          position_applied?: string | null
+          rating?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cv_url?: string | null
+          department_id?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          interview_date?: string | null
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          position_applied?: string | null
+          rating?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_candidates_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_documents: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          document_type: string
+          expiry_date: string | null
+          file_url: string
+          id: string
+          is_verified: boolean | null
+          name: string
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          document_type: string
+          expiry_date?: string | null
+          file_url: string
+          id?: string
+          is_verified?: boolean | null
+          name: string
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          document_type?: string
+          expiry_date?: string | null
+          file_url?: string
+          id?: string
+          is_verified?: boolean | null
+          name?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_employee_details: {
+        Row: {
+          address: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          birth_date: string | null
+          contract_type: string | null
+          created_at: string | null
+          document_number: string | null
+          document_type: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          end_date: string | null
+          id: string
+          job_title: string | null
+          personal_email: string | null
+          phone_secondary: string | null
+          salary_amount: number | null
+          salary_currency: string | null
+          start_date: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          end_date?: string | null
+          id: string
+          job_title?: string | null
+          personal_email?: string | null
+          phone_secondary?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          end_date?: string | null
+          id?: string
+          job_title?: string | null
+          personal_email?: string | null
+          phone_secondary?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employee_details_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_details_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_details_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_requests: {
+        Row: {
+          approved_by: string | null
+          created_at: string | null
+          days_count: number | null
+          end_date: string
+          id: string
+          leave_type: string
+          profile_id: string | null
+          reason: string | null
+          rejection_reason: string | null
+          start_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string | null
+          days_count?: number | null
+          end_date: string
+          id?: string
+          leave_type: string
+          profile_id?: string | null
+          reason?: string | null
+          rejection_reason?: string | null
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string | null
+          days_count?: number | null
+          end_date?: string
+          id?: string
+          leave_type?: string
+          profile_id?: string | null
+          reason?: string | null
+          rejection_reason?: string | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_inventory_movements: {
         Row: {
           company_id: string | null
@@ -4680,6 +4997,7 @@ export type Database = {
           fiscal_address: string | null
           id: string
           name: string
+          presentation_letter_number: string | null
           ruc: string
           updated_at: string | null
         }
@@ -4693,6 +5011,7 @@ export type Database = {
           fiscal_address?: string | null
           id?: string
           name: string
+          presentation_letter_number?: string | null
           ruc: string
           updated_at?: string | null
         }
@@ -4706,6 +5025,7 @@ export type Database = {
           fiscal_address?: string | null
           id?: string
           name?: string
+          presentation_letter_number?: string | null
           ruc?: string
           updated_at?: string | null
         }
@@ -4715,6 +5035,79 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sticker_prints: {
+        Row: {
+          company_id: string
+          id: string
+          printed_at: string
+          printed_by: string
+          product_id: string | null
+          quantity_printed: number
+          serial_id: string | null
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          printed_at: string
+          printed_by: string
+          product_id?: string | null
+          quantity_printed?: number
+          serial_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          printed_at?: string
+          printed_by?: string
+          product_id?: string | null
+          quantity_printed?: number
+          serial_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sticker_prints_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_prints_printed_by_fkey"
+            columns: ["printed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_prints_printed_by_fkey"
+            columns: ["printed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_prints_printed_by_fkey"
+            columns: ["printed_by"]
+            isOneToOne: false
+            referencedRelation: "tech_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_prints_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "internal_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sticker_prints_serial_id_fkey"
+            columns: ["serial_id"]
+            isOneToOne: false
+            referencedRelation: "internal_product_serials"
             referencedColumns: ["id"]
           },
         ]
@@ -6456,7 +6849,26 @@ export type Database = {
               entity_name: string
             }[]
           }
+      get_filters_summary: {
+        Args: { filter_type: string }
+        Returns: {
+          count: number
+          value: string
+        }[]
+      }
       get_initials_from_name: { Args: { p_name: string }; Returns: string }
+      get_open_data_rankings: {
+        Args: {
+          p_acuerdo?: string
+          p_catalogo?: string
+          p_categoria?: string
+          p_date_end?: string
+          p_date_start: string
+          p_limit: number
+          p_type: string
+        }
+        Returns: Json
+      }
       get_product_image_url: { Args: { image_path: string }; Returns: string }
       get_quotation_products_summary: {
         Args: { quotation_uuid: string }
@@ -6597,6 +7009,7 @@ export type Database = {
       }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
+      is_hr_admin_or_manager: { Args: never; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
       is_ticket_closed: { Args: { ticket_uuid: string }; Returns: boolean }
       mark_expired_requests: { Args: never; Returns: undefined }

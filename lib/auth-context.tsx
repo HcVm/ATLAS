@@ -6,7 +6,12 @@ import { supabase } from "./supabase"
 import type { Database } from "./database.types"
 import type { User } from "@supabase/supabase-js"
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
+  departments?: {
+    id: string
+    name: string
+  } | null
+}
 
 export interface AuthContextType {
   user: (Profile & { selectedCompanyId?: string }) | null
@@ -35,7 +40,7 @@ export function useAuth() {
   return context
 }
 
-async function fetchUserProfile(authUser: User): Promise<Profile | null> {
+async function fetchUserProfile(authUser: User): Promise<(Profile & { selectedCompanyId?: string }) | null> {
   try {
     const adminClient = supabase.auth.admin
     const { data: profileData, error: profileError } = await supabase

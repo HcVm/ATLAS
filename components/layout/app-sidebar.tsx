@@ -338,6 +338,32 @@ const menuSections = {
       },
     ],
   },
+  hr: {
+    title: "RECURSOS HUMANOS",
+    items: [
+      {
+        title: "Panel RRHH",
+        url: "/hr",
+        icon: Users,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["recursos humanos", "rrhh", "administración", "administracion", "gerencia"],
+      },
+      {
+        title: "Personal",
+        url: "/hr/personnel",
+        icon: User,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["recursos humanos", "rrhh", "administración", "administracion", "gerencia"],
+      },
+      {
+        title: "Asistencia",
+        url: "/hr/attendance",
+        icon: Clock,
+        roles: ["admin", "supervisor", "user"],
+        departments: ["recursos humanos", "rrhh", "administración", "administracion", "gerencia"],
+      },
+    ],
+  },
   support: {
     title: "SOPORTE",
     items: [
@@ -426,6 +452,7 @@ export function AppSidebar() {
     sales: false,
     warehouse: false,
     internal_warehouse: false,
+    hr: false,
     support: false,
     analytics: false,
     admin: false,
@@ -493,7 +520,7 @@ export function AppSidebar() {
       <SidebarHeader className="shrink-0 p-4 border-b border-slate-200/50 dark:border-slate-800/50 z-20">
         <div className="rounded-xl p-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900/50">
           <div className="flex flex-col items-center justify-center gap-2">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center justify-center rounded-lg overflow-hidden shadow-lg shadow-blue-500/10"
@@ -546,11 +573,10 @@ export function AppSidebar() {
                                 <SidebarMenuButton asChild isActive={isActive} className="w-full">
                                   <Link
                                     href={item.url}
-                                    className={`relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 group overflow-hidden ${
-                                      isActive
+                                    className={`relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 group overflow-hidden ${isActive
                                         ? "text-white shadow-sm shadow-blue-500/10"
                                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
-                                    }`}
+                                      }`}
                                   >
                                     {isActive && (
                                       <motion.div
@@ -614,11 +640,10 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild isActive={isActive}>
                       <Link
                         href={item.url}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                          isActive
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${isActive
                             ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium"
                             : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
-                        }`}
+                          }`}
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
