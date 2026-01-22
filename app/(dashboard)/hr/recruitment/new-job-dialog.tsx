@@ -62,7 +62,7 @@ export function NewJobDialog({ open, onOpenChange, onJobCreated, jobToEdit }: Ne
         resolver: zodResolver(formSchema),
         defaultValues: {
             title: "",
-            location: "Lima, Híbrido",
+            location: "Lima, Los Olivos",
             salary_min: "",
             salary_max: "",
             description: "",
@@ -85,7 +85,7 @@ export function NewJobDialog({ open, onOpenChange, onJobCreated, jobToEdit }: Ne
             } else {
                 form.reset({
                     title: "",
-                    location: "Lima, Híbrido",
+                    location: "Lima, Los Olivos",
                     salary_min: "",
                     salary_max: "",
                     description: "",

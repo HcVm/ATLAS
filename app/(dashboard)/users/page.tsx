@@ -2,7 +2,7 @@
 
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from "react"
-import { Search, Filter, User, Edit, Trash2, Users, Mail, Calendar, Building2, MoreHorizontal, LayoutGrid, List } from "lucide-react"
+import { Search, Filter, User, Edit, Trash2, Users, Mail, Calendar, Building2, MoreHorizontal, LayoutGrid, List, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,17 @@ import { useCompany } from "@/lib/company-context"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { resetUserPassword } from "@/app/actions/reset-password"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function UsersPage() {
   const { user } = useAuth()
@@ -39,13 +50,38 @@ export default function UsersPage() {
     user: null,
     isDeleting: false,
   })
+
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetResult, setResetResult] = useState<{ message: string } | null>(null)
+
+  const [confirmResetDialog, setConfirmResetDialog] = useState<{
+    open: boolean
+    userId: string | null
+    company: any | null
+  }>({
+    open: false,
+    userId: null,
+    company: null
+  })
+
   const router = useRouter()
 
   useEffect(() => {
-    if (user && user.role === "admin") {
+    // Modified to allow support role as well
+    if (user && (user.role === "admin" || (user.role as string) === "support")) {
       fetchUsers()
     }
   }, [user, selectedCompany])
+
+  // ... (fetchUsers and badges remain unchanged, user view_file if needed but I'm skipping to handlers) ...
+
+  // Need to use view_file to skip unchanged block, but tool only supports replace.
+  // I will rely on context from previous turns. 
+  // Wait, I cannot skip large chunks in replace_file_content properly if I don't provide them.
+  // I will just add the handlers AFTER the badges/fetch logic, finding where `handlePasswordReset` WAS.
+
+  // Let's assume lines ~154 is where handleDeleteConfirm ends.
+
 
   const fetchUsers = async () => {
     try {
@@ -89,6 +125,8 @@ export default function UsersPage() {
         return <Badge className="bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-sm">Supervisor</Badge>
       case "user":
         return <Badge variant="secondary" className="bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 shadow-sm">Usuario</Badge>
+      case "support":
+        return <Badge className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-sm">Soporte</Badge>
       default:
         return <Badge variant="outline">{role}</Badge>
     }
@@ -133,7 +171,7 @@ export default function UsersPage() {
 
       const { data: movements } = await supabase.from("document_movements").select("id").eq("moved_by", deleteDialog.user.id).limit(1)
       if (movements && movements.length > 0) {
-        toast({ title: "No se puede eliminar", description: "Este usuario tiene movimientos de documentos asociados.", variant: "destructive"})
+        toast({ title: "No se puede eliminar", description: "Este usuario tiene movimientos de documentos asociados.", variant: "destructive" })
         setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
         return
       }
@@ -142,12 +180,55 @@ export default function UsersPage() {
       if (error) throw error
 
       setUsers(users.filter((u) => u.id !== deleteDialog.user.id))
-      toast({ title: "Usuario eliminado", description: "El usuario ha sido eliminado correctamente."})
+      toast({ title: "Usuario eliminado", description: "El usuario ha sido eliminado correctamente." })
       setDeleteDialog({ open: false, user: null, isDeleting: false })
     } catch (error: any) {
       console.error("Error deleting user:", error)
       toast({ title: "Error al eliminar", description: "No se pudo eliminar el usuario: " + error.message, variant: "destructive" })
       setDeleteDialog((prev) => ({ ...prev, isDeleting: false }))
+    }
+  }
+
+  const handlePasswordResetClick = (userId: string, company: any) => {
+    if (!company?.code) {
+      toast({ title: "Error", description: "El usuario no tiene una empresa asignada o código de empresa para determinar la contraseña predeterminada.", variant: "destructive" })
+      return
+    }
+    setConfirmResetDialog({ open: true, userId, company })
+  }
+
+  const executePasswordReset = async () => {
+    const { userId, company } = confirmResetDialog
+    if (!userId || !company) return
+
+    setResettingPassword(true)
+    try {
+      const result = await resetUserPassword(userId, company.code)
+      if (result.success) {
+        toast({
+          title: "Contraseña Restablecida Exitosamente",
+          description: "La contraseña ha sido actualizada.",
+          className: "bg-green-50 border-green-200 text-green-900"
+        })
+
+        try {
+          const pass = result.message?.split(': ')[1]
+          if (pass) {
+            await navigator.clipboard.writeText(pass.trim())
+            toast({ title: "Copiado", description: "Nueva contraseña copiada al portapapeles" })
+          }
+        } catch (e) {
+          console.error("Clipboard error", e)
+        }
+        alert(result.message)
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" })
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Ocurrió un error inesperado al contactar con el servidor.", variant: "destructive" })
+    } finally {
+      setResettingPassword(false)
+      setConfirmResetDialog({ open: false, userId: null, company: null })
     }
   }
 
@@ -160,11 +241,12 @@ export default function UsersPage() {
       user.companies?.code?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  if (user?.role !== "admin") {
+  // Allow admin AND support
+  if (user?.role !== "admin" && (user?.role as string) !== "support") {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
-        <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+        <p className="text-muted-foreground">No tienes permisos para acceder a esta página. Se requiere rol de Administrador o Soporte.</p>
       </div>
     )
   }
@@ -201,34 +283,34 @@ export default function UsersPage() {
               />
             </div>
             <div className="flex items-center gap-2">
-                <div className="bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 flex">
-                    <Button
-                        variant={viewMode === "table" ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setViewMode("table")}
-                        className={`h-8 w-8 p-0 rounded-lg ${viewMode === "table" ? "bg-white dark:bg-slate-700 shadow-sm" : "hover:bg-slate-200/50 dark:hover:bg-slate-700/50"}`}
-                        title="Vista de lista"
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={viewMode === "grid" ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setViewMode("grid")}
-                        className={`h-8 w-8 p-0 rounded-lg ${viewMode === "grid" ? "bg-white dark:bg-slate-700 shadow-sm" : "hover:bg-slate-200/50 dark:hover:bg-slate-700/50"}`}
-                        title="Vista de tarjetas"
-                    >
-                        <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                </div>
+              <div className="bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 flex">
                 <Button
+                  variant={viewMode === "table" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className={`h-8 w-8 p-0 rounded-lg ${viewMode === "table" ? "bg-white dark:bg-slate-700 shadow-sm" : "hover:bg-slate-200/50 dark:hover:bg-slate-700/50"}`}
+                  title="Vista de lista"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className={`h-8 w-8 p-0 rounded-lg ${viewMode === "grid" ? "bg-white dark:bg-slate-700 shadow-sm" : "hover:bg-slate-200/50 dark:hover:bg-slate-700/50"}`}
+                  title="Vista de tarjetas"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button
                 variant="outline"
                 size="icon"
                 className="h-10 w-10 rounded-xl border-slate-200/50 bg-white/50 hover:bg-slate-50 dark:border-slate-800/50 dark:bg-slate-900/50 dark:hover:bg-slate-800 transition-all duration-200 shadow-sm"
                 onClick={fetchUsers}
-                >
+              >
                 <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </Button>
+              </Button>
             </div>
           </div>
 
@@ -258,236 +340,255 @@ export default function UsersPage() {
               {/* === VISTA DE ESCRITORIO (md y superior) === */}
               {viewMode === "table" ? (
                 <>
-                <div className="hidden md:block rounded-xl border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-sm bg-white/40 dark:bg-slate-900/40">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-800/50">
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Usuario</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Email</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Departamento</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Empresa</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Rol</TableHead>
-                        <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Registro</TableHead>
-                        <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((userItem) => (
-                        <TableRow key={userItem.id} className="border-b border-slate-100/60 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group">
-                          <TableCell className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="relative flex-shrink-0">
-                                <Avatar className="h-10 w-10 ring-2 ring-white dark:ring-slate-950 shadow-sm transition-transform group-hover:scale-105 duration-300">
-                                  <AvatarImage src={userItem.avatar_url || ""} />
-                                  <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-200 font-bold text-xs">
-                                    {userItem.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"></div>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{userItem.full_name || "Sin nombre"}</div>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                  <User className="h-3 w-3" />
-                                  <span className="truncate font-mono opacity-70">ID: {userItem.id.slice(0, 8)}...</span>
+                  <div className="hidden md:block rounded-xl border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-sm bg-white/40 dark:bg-slate-900/40">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-800/50">
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Usuario</TableHead>
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Email</TableHead>
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Departamento</TableHead>
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Empresa</TableHead>
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Rol</TableHead>
+                            <TableHead className="font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Registro</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wider py-4">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers.map((userItem) => (
+                            <TableRow key={userItem.id} className="border-b border-slate-100/60 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 group">
+                              <TableCell className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="relative flex-shrink-0">
+                                    <Avatar className="h-10 w-10 ring-2 ring-white dark:ring-slate-950 shadow-sm transition-transform group-hover:scale-105 duration-300">
+                                      <AvatarImage src={userItem.avatar_url || ""} />
+                                      <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-200 font-bold text-xs">
+                                        {userItem.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"></div>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{userItem.full_name || "Sin nombre"}</div>
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                      <User className="h-3 w-3" />
+                                      <span className="truncate font-mono opacity-70">ID: {userItem.id.slice(0, 8)}...</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-4">
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                              <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"><Mail className="h-3.5 w-3.5" /></div>
-                              <span className="truncate max-w-[180px] font-medium">{userItem.email}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-4">
-                            {userItem.departments ? (
-                                <div className="flex items-center gap-2">
+                              </TableCell>
+                              <TableCell className="p-4">
+                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                  <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"><Mail className="h-3.5 w-3.5" /></div>
+                                  <span className="truncate max-w-[180px] font-medium">{userItem.email}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="p-4">
+                                {userItem.departments ? (
+                                  <div className="flex items-center gap-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{userItem.departments.name}</span>
-                                </div>
-                            ) : (
-                                <span className="text-slate-400 text-sm italic flex items-center gap-1.5">
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 text-sm italic flex items-center gap-1.5">
                                     <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
                                     Sin asignar
-                                </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="p-4">{getCompanyBadge(userItem.companies)}</TableCell>
-                          <TableCell className="p-4">{getRoleBadge(userItem.role)}</TableCell>
-                          <TableCell className="p-4">
-                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                <Calendar className="h-3.5 w-3.5 opacity-70" />
-                                <span>{new Date(userItem.created_at).toLocaleDateString("es-ES", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right p-4">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 p-1 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl">
-                                <DropdownMenuItem onClick={() => router.push(`/users/edit/${userItem.id}`)} className="rounded-lg focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer py-2">
-                                    <Edit className="mr-2 h-4 w-4 text-blue-500" />
-                                    <span className="font-medium">Editar Perfil</span>
-                                </DropdownMenuItem>
-                                {userItem.id !== user?.id && (
-                                    <>
-                                        <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-800/50" />
-                                        <DropdownMenuItem onClick={() => handleDeleteClick(userItem)} className="rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer py-2">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            <span className="font-medium">Eliminar Usuario</span>
-                                        </DropdownMenuItem>
-                                    </>
+                                  </span>
                                 )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:hidden">
-                {filteredUsers.map((userItem) => (
-                  <div key={userItem.id} className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-5 space-y-4 shadow-sm">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="relative flex-shrink-0">
-                            <Avatar className="h-12 w-12 ring-2 ring-white dark:ring-slate-950 shadow-sm">
+                              </TableCell>
+                              <TableCell className="p-4">{getCompanyBadge(userItem.companies)}</TableCell>
+                              <TableCell className="p-4">{getRoleBadge(userItem.role)}</TableCell>
+                              <TableCell className="p-4">
+                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                  <Calendar className="h-3.5 w-3.5 opacity-70" />
+                                  <span>{new Date(userItem.created_at).toLocaleDateString("es-ES", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right p-4">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56 p-2 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl">
+                                    <DropdownMenuItem onClick={() => router.push(`/users/edit/${userItem.id}`)} className="rounded-lg focus:bg-slate-100 dark:focus:bg-slate-800 cursor-pointer py-2">
+                                      <Edit className="mr-2 h-4 w-4 text-blue-500" />
+                                      <span className="font-medium">Editar Perfil</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem onClick={() => handlePasswordResetClick(userItem.id, userItem.companies)} className="rounded-lg focus:bg-amber-50 dark:focus:bg-amber-950/30 cursor-pointer py-2 text-amber-600 dark:text-amber-500">
+                                      <KeyRound className="mr-2 h-4 w-4" />
+                                      <span className="font-medium">Restablecer Contraseña</span>
+                                    </DropdownMenuItem>
+
+                                    {userItem.id !== user?.id && (
+                                      <>
+                                        <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-800/50 my-1" />
+                                        <DropdownMenuItem onClick={() => handleDeleteClick(userItem)} className="rounded-lg text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer py-2">
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          <span className="font-medium">Eliminar Usuario</span>
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {filteredUsers.map((userItem) => (
+                      <div key={userItem.id} className="rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-5 space-y-4 shadow-sm">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="relative flex-shrink-0">
+                              <Avatar className="h-12 w-12 ring-2 ring-white dark:ring-slate-950 shadow-sm">
                                 <AvatarImage src={userItem.avatar_url || ""} />
                                 <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-200 font-bold">{userItem.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??"}</AvatarFallback>
-                            </Avatar>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900"></div>
+                              </Avatar>
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900"></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight truncate mb-1">{userItem.full_name || "Sin nombre"}</h3>
+                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                <Mail className="h-3 w-3" />
+                                <span className="truncate">{userItem.email}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="-mt-1 -mr-1 h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl">
+                              <DropdownMenuItem onClick={() => router.push(`/users/edit/${userItem.id}`)} className="py-2.5"><Edit className="mr-2 h-4 w-4 text-blue-500" /> Editar</DropdownMenuItem>
+
+                              <DropdownMenuItem onClick={() => handlePasswordResetClick(userItem.id, userItem.companies)} className="py-2.5 text-amber-600"><KeyRound className="mr-2 h-4 w-4" /> Reset Contraseña</DropdownMenuItem>
+
+                              {userItem.id !== user?.id && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleDeleteClick(userItem)} className="text-red-600 focus:text-red-600 focus:bg-red-50 py-2.5"><Trash2 className="mr-2 h-4 w-4" /> Eliminar</DropdownMenuItem></>)}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight truncate mb-1">{userItem.full_name || "Sin nombre"}</h3>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                             <Mail className="h-3 w-3" />
-                             <span className="truncate">{userItem.email}</span>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <div className="bg-slate-50/50 dark:bg-slate-800/30 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Rol</span>
+                            {getRoleBadge(userItem.role)}
+                          </div>
+                          <div className="bg-slate-50/50 dark:bg-slate-800/30 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Empresa</span>
+                            {getCompanyBadge(userItem.companies)}
+                          </div>
+                        </div>
+
+                        <div className="border-t border-slate-100/60 dark:border-slate-800/60 pt-3 space-y-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Departamento</span>
+                            {userItem.departments ? (<span className="font-medium text-slate-700 dark:text-slate-200">{userItem.departments.name}</span>) : (<span className="text-slate-400 italic">N/A</span>)}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Registrado</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(userItem.created_at).toLocaleDateString("es-ES")}</span>
                           </div>
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="-mt-1 -mr-1 h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 shadow-xl border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl rounded-xl">
-                          <DropdownMenuItem onClick={() => router.push(`/users/edit/${userItem.id}`)} className="py-2.5"><Edit className="mr-2 h-4 w-4 text-blue-500" /> Editar</DropdownMenuItem>
-                          {userItem.id !== user?.id && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleDeleteClick(userItem)} className="text-red-600 focus:text-red-600 focus:bg-red-50 py-2.5"><Trash2 className="mr-2 h-4 w-4" /> Eliminar</DropdownMenuItem></>)}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="bg-slate-50/50 dark:bg-slate-800/30 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
-                             <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Rol</span>
-                             {getRoleBadge(userItem.role)}
-                        </div>
-                         <div className="bg-slate-50/50 dark:bg-slate-800/30 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
-                             <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Empresa</span>
-                             {getCompanyBadge(userItem.companies)}
-                        </div>
-                    </div>
-
-                    <div className="border-t border-slate-100/60 dark:border-slate-800/60 pt-3 space-y-2 text-sm">
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Departamento</span>
-                            {userItem.departments ? (<span className="font-medium text-slate-700 dark:text-slate-200">{userItem.departments.name}</span>) : (<span className="text-slate-400 italic">N/A</span>)}
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Registrado</span>
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(userItem.created_at).toLocaleDateString("es-ES")}</span>
-                        </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              </>
+                </>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredUsers.map((userItem) => (
-                        <div key={userItem.id} className="group relative bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                            {/* Decorative Header */}
-                            <div className="h-24 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 relative overflow-hidden">
-                                <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-                                <div className="absolute top-0 right-0 p-3">
-                                    {getRoleBadge(userItem.role)}
-                                </div>
-                            </div>
-                            
-                            {/* Avatar */}
-                            <div className="absolute top-12 left-1/2 -translate-x-1/2">
-                                <div className="relative">
-                                    <Avatar className="h-24 w-24 ring-4 ring-white dark:ring-slate-950 shadow-xl">
-                                        <AvatarImage src={userItem.avatar_url || ""} />
-                                        <AvatarFallback className="text-3xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-200 font-bold">
-                                            {userItem.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white dark:border-slate-900" title="Activo"></div>
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="pt-16 pb-6 px-6 flex flex-col items-center text-center space-y-3">
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-tight">
-                                        {userItem.full_name || "Sin nombre"}
-                                    </h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-                                        {userItem.email}
-                                    </p>
-                                </div>
-
-                                <div className="w-full space-y-2 pt-2">
-                                    <div className="flex items-center justify-between text-sm py-1 border-b border-slate-100/50 dark:border-slate-800/50">
-                                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Dept.</span>
-                                        <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">{userItem.departments?.name || "N/A"}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm py-1">
-                                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Reg.</span>
-                                        <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(userItem.created_at).toLocaleDateString("es-ES")}</span>
-                                    </div>
-                                </div>
-
-                                <div className="pt-2">
-                                    {getCompanyBadge(userItem.companies)}
-                                </div>
-                            </div>
-
-                            {/* Actions Footer */}
-                            <div className="bg-slate-50/80 dark:bg-slate-800/50 p-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-                                <span className="text-[10px] text-slate-400 font-mono">ID: {userItem.id.slice(0, 8)}</span>
-                                <div className="flex gap-2">
-                                    <Button 
-                                        size="sm" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 p-0 rounded-full hover:bg-white hover:text-blue-600 hover:shadow-sm dark:hover:bg-slate-700 dark:hover:text-blue-400"
-                                        onClick={() => router.push(`/users/edit/${userItem.id}`)}
-                                        title="Editar"
-                                    >
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    {userItem.id !== user?.id && (
-                                        <Button 
-                                            size="sm" 
-                                            variant="ghost" 
-                                            className="h-8 w-8 p-0 rounded-full hover:bg-white hover:text-red-600 hover:shadow-sm dark:hover:bg-slate-700 dark:hover:text-red-400"
-                                            onClick={() => handleDeleteClick(userItem)}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
+                  {filteredUsers.map((userItem) => (
+                    <div key={userItem.id} className="group relative bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-800/60 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                      {/* Decorative Header */}
+                      <div className="h-24 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+                        <div className="absolute top-0 right-0 p-3">
+                          {getRoleBadge(userItem.role)}
                         </div>
-                    ))}
+                      </div>
+
+                      {/* Avatar */}
+                      <div className="absolute top-12 left-1/2 -translate-x-1/2">
+                        <div className="relative">
+                          <Avatar className="h-24 w-24 ring-4 ring-white dark:ring-slate-950 shadow-xl">
+                            <AvatarImage src={userItem.avatar_url || ""} />
+                            <AvatarFallback className="text-3xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-200 font-bold">
+                              {userItem.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white dark:border-slate-900" title="Activo"></div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="pt-16 pb-6 px-6 flex flex-col items-center text-center space-y-3">
+                        <div>
+                          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-tight">
+                            {userItem.full_name || "Sin nombre"}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                            {userItem.email}
+                          </p>
+                        </div>
+
+                        <div className="w-full space-y-2 pt-2">
+                          <div className="flex items-center justify-between text-sm py-1 border-b border-slate-100/50 dark:border-slate-800/50">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Dept.</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">{userItem.departments?.name || "N/A"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm py-1">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Reg.</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(userItem.created_at).toLocaleDateString("es-ES")}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          {getCompanyBadge(userItem.companies)}
+                        </div>
+                      </div>
+
+                      {/* Actions Footer */}
+                      <div className="bg-slate-50/80 dark:bg-slate-800/50 p-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-mono">ID: {userItem.id.slice(0, 8)}</span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-white hover:text-amber-600 hover:shadow-sm dark:hover:bg-slate-700 dark:hover:text-amber-400"
+                            onClick={() => handlePasswordResetClick(userItem.id, userItem.companies)}
+                            title="Restablecer Contraseña"
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-white hover:text-blue-600 hover:shadow-sm dark:hover:bg-slate-700 dark:hover:text-blue-400"
+                            onClick={() => router.push(`/users/edit/${userItem.id}`)}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {userItem.id !== user?.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 rounded-full hover:bg-white hover:text-red-600 hover:shadow-sm dark:hover:bg-slate-700 dark:hover:text-red-400"
+                              onClick={() => handleDeleteClick(userItem)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -495,7 +596,7 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
-      
+
       <DeleteConfirmationDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
@@ -505,6 +606,38 @@ export default function UsersPage() {
         itemName={deleteDialog.user?.full_name}
         isDeleting={deleteDialog.isDeleting}
       />
+
+      <AlertDialog open={confirmResetDialog.open} onOpenChange={(open) => !resettingPassword && setConfirmResetDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+              <KeyRound className="h-5 w-5" />
+              Restablecer Contraseña
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2 text-slate-600 dark:text-slate-300">
+              <p>
+                Estás a punto de restablecer la contraseña para un usuario de la empresa <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{confirmResetDialog.company?.name || confirmResetDialog.company?.code}</span>.
+              </p>
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-100 dark:border-amber-900/50 text-amber-800 dark:text-amber-200 text-sm">
+                <strong>Advertencia de Seguridad:</strong> La contraseña actual dejará de funcionar inmediatamente. La nueva contraseña se generará basada en el patrón predeterminado de la empresa.
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resettingPassword}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                executePasswordReset()
+              }}
+              disabled={resettingPassword}
+              className="bg-amber-600 hover:bg-amber-700 text-white border-none"
+            >
+              {resettingPassword ? "Restableciendo..." : "Confirmar Restablecimiento"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

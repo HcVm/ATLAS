@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { motion } from "framer-motion"
 // ... imports
 import { uploadCV } from "@/app/actions/upload-cv"
 import {
@@ -25,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     Form,
     FormControl,
@@ -51,6 +53,7 @@ type JobDetail = {
     salary_min: number | null
     salary_max: number | null
     departments: { name: string } | null
+    companies: { name: string; logo_url: string | null } | null
 }
 
 // --- Form Schema ---
@@ -113,7 +116,8 @@ export default function JobDetailPage() {
                 type, 
                 salary_min, 
                 salary_max, 
-                departments:department_id(name)
+                departments:department_id(name),
+                companies:company_id(name, logo_url)
             `)
             .eq('id', id)
             .single()
@@ -315,242 +319,348 @@ export default function JobDetailPage() {
         )
     }
 
+
+
+    // ... imports remain the same
+
+    // ... (skipping down to Header render)
+
     return (
-        <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-            {/* Header */}
-            <div className="bg-white border-b shadow-sm sticky top-0 z-10">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <Link href="/public/jobs" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 hover:bg-slate-50 rounded-full">
-                            <ArrowLeft className="h-5 w-5" />
+        <div className="min-h-screen bg-slate-50 font-sans">
+            {/* Hero Section */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-slate-900 text-white relative overflow-hidden pb-12 pt-6"
+            >
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                <motion.div
+                    animate={{
+                        scale: [1, 1.1, 1],
+                        rotate: [0, 5, -5, 0],
+                    }}
+                    transition={{
+                        duration: 20,
+                        repeat: Infinity,
+                        repeatType: "reverse"
+                    }}
+                    className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3"
+                />
+
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="mb-8">
+                        <Link href="/public/jobs" className="inline-flex items-center text-slate-300 hover:text-white transition-colors text-sm font-medium group">
+                            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                            Volver a vacantes
                         </Link>
-                        <div>
-                            <h1 className="text-xl font-semibold text-slate-900 truncate max-w-[300px] md:max-w-md">{job.title}</h1>
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <span>{job.departments?.name}</span> • <span>{job.location}</span>
-                            </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-start gap-8">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.2, duration: 0.4 }}
+                        >
+                            <Avatar className="h-24 w-24 border-4 border-white/10 shadow-xl rounded-2xl bg-white">
+                                <AvatarImage src={job.companies?.logo_url || ''} alt={job.companies?.name} className="object-contain p-2" />
+                                <AvatarFallback className="bg-indigo-50 text-indigo-700 text-2xl font-bold rounded-2xl">
+                                    {job.companies?.name ? job.companies.name.substring(0, 2).toUpperCase() : <Building2 className="h-10 w-10" />}
+                                </AvatarFallback>
+                            </Avatar>
+                        </motion.div>
+
+                        <div className="space-y-4 flex-1">
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3, duration: 0.5 }}
+                            >
+                                <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-2 text-white">
+                                    {job.title}
+                                </h1>
+                                <p className="text-xl text-indigo-200 font-medium">{job.companies?.name}</p>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.5 }}
+                                className="flex flex-wrap gap-3"
+                            >
+                                <Badge variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border-white/10 backdrop-blur-md px-3 py-1.5 text-sm h-auto">
+                                    {job.departments?.name || 'General'}
+                                </Badge>
+                                <Badge variant="outline" className="border-indigo-200/30 text-indigo-100 px-3 py-1.5 text-sm h-auto gap-2">
+                                    <Clock className="h-4 w-4" /> {job.type}
+                                </Badge>
+                                <Badge variant="outline" className="border-indigo-200/30 text-indigo-100 px-3 py-1.5 text-sm h-auto gap-2">
+                                    <MapPin className="h-4 w-4" /> {job.location}
+                                </Badge>
+                                {job.salary_min && (
+                                    <Badge variant="outline" className="border-green-400/30 text-green-300 px-3 py-1.5 text-sm h-auto gap-2 bg-green-900/10">
+                                        <DollarSign className="h-4 w-4" /> S/. {job.salary_min} - {job.salary_max}
+                                    </Badge>
+                                )}
+                            </motion.div>
                         </div>
                     </div>
-                    <Button asChild size="sm" variant="outline" className="hidden md:flex">
-                        <Link href="/public/jobs">
-                            Ver otros empleos
-                        </Link>
-                    </Button>
                 </div>
-            </div>
+            </motion.div>
 
-            <div className="max-w-6xl mx-auto px-6 py-10">
+            <div className="max-w-7xl mx-auto px-6 py-12 -mt-8 relative z-20">
                 <div className="grid lg:grid-cols-12 gap-10">
 
                     {/* Left: Job Description */}
                     <div className="lg:col-span-7 xl:col-span-8 space-y-8">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200/60">
-                            <div className="flex flex-wrap gap-3 mb-6">
-                                <Badge variant="secondary" className="px-3 py-1 bg-indigo-50 text-indigo-700 border-indigo-100">
-                                    {job.departments?.name || 'General'}
-                                </Badge>
-                                <Badge variant="outline" className="px-3 py-1 gap-1">
-                                    <Clock className="h-3 w-3" /> {job.type}
-                                </Badge>
-                                <Badge variant="outline" className="px-3 py-1 gap-1">
-                                    <MapPin className="h-3 w-3" /> {job.location}
-                                </Badge>
-                                {job.salary_min && (
-                                    <Badge variant="outline" className="px-3 py-1 gap-1 text-green-700 border-green-200 bg-green-50">
-                                        <DollarSign className="h-3 w-3" /> S/. {job.salary_min} - {job.salary_max}
-                                    </Badge>
-                                )}
-                            </div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5, duration: 0.5 }}
+                            className="bg-white p-10 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
+                        >
+                            <h2 className="flex items-center gap-3 text-2xl font-bold text-slate-900 mb-8 pb-4 border-b border-slate-100">
+                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                    <Briefcase className="h-6 w-6" />
+                                </div>
+                                Descripción del Puesto
+                            </h2>
 
-                            <h2 className="text-3xl font-bold text-slate-900 mb-6">{job.title}</h2>
-
-                            <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed break-words whitespace-pre-wrap">
-                                <h3 className="flex items-center gap-2 text-slate-900 font-semibold text-lg mb-4">
-                                    <Briefcase className="h-5 w-5 text-indigo-500" />
-                                    Descripción del Puesto
-                                </h3>
+                            <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed whitespace-pre-wrap break-words w-full overflow-hidden">
                                 {job.description}
                             </div>
-                        </div>
+                        </motion.div>
+
+                        {/* Additional Info / Footer for Job */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.7, duration: 0.5 }}
+                            className="border-t border-slate-200 pt-8 mt-8 pl-2"
+                        >
+                            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center text-slate-500 text-sm">
+                                <span>¿Conoces a alguien ideal para este puesto?</span>
+                                <Button variant="outline" size="sm" className="rounded-full bg-white text-slate-600 border-slate-200 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href)
+                                    toast({ title: "Enlace copiado", description: "El enlace ha sido copiado al portapapeles." })
+                                }}>
+                                    Copiar Enlace para Compartir
+                                </Button>
+                            </div>
+                        </motion.div>
                     </div>
 
                     {/* Right: Application Form */}
                     <div className="lg:col-span-5 xl:col-span-4">
                         <div className="sticky top-24">
-                            <Card className="shadow-xl border-0 ring-1 ring-slate-200 overflow-hidden rounded-2xl">
-                                <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 text-white">
-                                    <h3 className="font-bold text-xl mb-1">Aplica Ahora</h3>
-                                    <p className="text-slate-300 text-sm opacity-90">Únete a nuestro equipo de talentos</p>
-                                </div>
-                                <CardContent className="p-6 bg-white">
-                                    <Form {...form}>
-                                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                                            <div className="grid grid-cols-2 gap-4">
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.6, duration: 0.5 }}
+                            >
+                                <Card className="shadow-2xl border-0 ring-1 ring-slate-200 overflow-hidden rounded-3xl">
+                                    <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-900 p-8 text-white relative overflow-hidden group">
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                                            className="absolute -top-20 -right-20 w-60 h-60 bg-white/5 rounded-full blur-3xl opacity-50 pointer-events-none"
+                                        />
+                                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                                        <h3 className="font-bold text-2xl mb-2 relative z-10 font-display flex items-center gap-2">
+                                            Aplica Ahora
+                                            <motion.span
+                                                animate={{ x: [0, 5, 0] }}
+                                                transition={{ duration: 1.5, repeat: Infinity }}
+                                                className="inline-block"
+                                            >
+                                                →
+                                            </motion.span>
+                                        </h3>
+                                        <p className="text-indigo-100/90 text-sm relative z-10 leading-relaxed">
+                                            Completa el formulario para iniciar tu proceso de selección.
+                                        </p>
+                                    </div>
+                                    <CardContent className="p-8 bg-white">
+                                        <Form {...form}>
+                                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="first_name"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Nombre</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="Tu nombre" {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="last_name"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Apellido</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="Tu apellido" {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+
                                                 <FormField
                                                     control={form.control}
-                                                    name="first_name"
+                                                    name="email"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-xs font-semibold uppercase text-slate-500">Nombre</FormLabel>
+                                                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Email</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Tu nombre" {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
+                                                                <Input placeholder="ejemplo@correo.com" {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
+
                                                 <FormField
                                                     control={form.control}
-                                                    name="last_name"
+                                                    name="phone"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-xs font-semibold uppercase text-slate-500">Apellido</FormLabel>
+                                                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Teléfono</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Tu apellido" {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
+                                                                <Input placeholder="+51 999 999 999" {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
-                                            </div>
 
-                                            <FormField
-                                                control={form.control}
-                                                name="email"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">Email</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="ejemplo@correo.com" {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="salary_expectation"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Pretensión Salarial (S/.)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Ej. 3500" {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
 
-                                            <FormField
-                                                control={form.control}
-                                                name="phone"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">Teléfono</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="+51 999 999 999" {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <FormField
-                                                control={form.control}
-                                                name="salary_expectation"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">Pretensión Salarial (S/.)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Ej. 3500" {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cv-upload" className="text-xs font-semibold uppercase text-slate-500">CV (Obligatorio)</Label>
-                                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors cursor-pointer relative group bg-slate-50/50 h-[150px]">
-                                                        <Input
-                                                            id="cv-upload"
-                                                            type="file"
-                                                            accept=".pdf,.doc,.docx"
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                            onChange={handleFileChange}
-                                                        />
-                                                        <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                                            <UploadCloud className="h-5 w-5" />
-                                                        </div>
-                                                        {resumeFile ? (
-                                                            <div className="text-sm font-medium text-emerald-600 flex flex-col items-center gap-1">
-                                                                <FileText className="h-4 w-4" />
-                                                                <span className="truncate max-w-[120px] text-xs">{resumeFile.name}</span>
+                                                <div className="space-y-4 pt-2">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="cv-upload" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">CV (Obligatorio)</Label>
+                                                        <div className={`
+                                                        border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group h-[140px]
+                                                        ${resumeFile ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300'}
+                                                    `}>
+                                                            <Input
+                                                                id="cv-upload"
+                                                                type="file"
+                                                                accept=".pdf,.doc,.docx"
+                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                onChange={handleFileChange}
+                                                            />
+                                                            <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 transition-transform group-hover:scale-110 ${resumeFile ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                                {resumeFile ? <CheckCircle2 className="h-6 w-6" /> : <UploadCloud className="h-6 w-6" />}
                                                             </div>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-sm font-medium text-slate-700">Subir CV</span>
-                                                                <span className="text-xs text-slate-400 mt-1">PDF/Word (Máx 5MB)</span>
-                                                            </>
-                                                        )}
+                                                            {resumeFile ? (
+                                                                <div className="text-sm font-medium text-emerald-700 flex flex-col items-center gap-1">
+                                                                    <span className="truncate max-w-[180px] text-xs font-semibold">{resumeFile.name}</span>
+                                                                    <span className="text-[10px] text-emerald-600">Click para cambiar</span>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="text-sm font-semibold text-slate-700">Sube tu CV aquí</span>
+                                                                    <span className="text-xs text-slate-400 mt-1">PDF o Word (Máx 5MB)</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CertiJoven moved to collapsible or refined styling to save space? Kept standard for now but refined look */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="certi-upload" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Certificado (Opcional)</Label>
+                                                        <div className={`
+                                                        border-2 border-dashed rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer relative group bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300
+                                                        ${certiFile ? 'border-orange-300 bg-orange-50/50' : 'border-slate-200'}
+                                                    `}>
+                                                            <Input
+                                                                id="certi-upload"
+                                                                type="file"
+                                                                accept=".pdf,.doc,.docx,.jpg,.png"
+                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                onChange={handleCertiFileChange}
+                                                            />
+                                                            <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${certiFile ? 'bg-orange-100 text-orange-600' : 'bg-slate-200 text-slate-500'}`}>
+                                                                <FileText className="h-5 w-5" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0 text-left">
+                                                                {certiFile ? (
+                                                                    <div className="text-sm font-medium text-orange-800 truncate">{certiFile.name}</div>
+                                                                ) : (
+                                                                    <>
+                                                                        <div className="text-sm font-medium text-slate-700">CertiJoven/Adulto</div>
+                                                                        <div className="text-xs text-slate-400">Opcional</div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            {!certiFile && <UploadCloud className="h-4 w-4 text-slate-400 mr-2" />}
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="certi-upload" className="text-xs font-semibold uppercase text-slate-500">CertiJoven/Adulto</Label>
-                                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors cursor-pointer relative group bg-slate-50/50 h-[150px]">
-                                                        <Input
-                                                            id="certi-upload"
-                                                            type="file"
-                                                            accept=".pdf,.doc,.docx,.jpg,.png"
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                            onChange={handleCertiFileChange}
-                                                        />
-                                                        <div className="h-10 w-10 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                                            <FileText className="h-5 w-5" />
-                                                        </div>
-                                                        {certiFile ? (
-                                                            <div className="text-sm font-medium text-emerald-600 flex flex-col items-center gap-1">
-                                                                <FileText className="h-4 w-4" />
-                                                                <span className="truncate max-w-[120px] text-xs">{certiFile.name}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-sm font-medium text-slate-700">Subir Certificado</span>
-                                                                <span className="text-xs text-slate-400 mt-1">Opcional (Máx 5MB)</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="linkedin_url"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">LinkedIn (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="https://linkedin.com/in/..." {...field} className="bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50/50 transition-all rounded-xl h-11" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
 
-                                            <FormField
-                                                control={form.control}
-                                                name="linkedin_url"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">LinkedIn (Opcional)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="https://linkedin.com/in/..." {...field} className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                                <Button
+                                                    type="submit"
+                                                    className="w-full bg-slate-900 hover:bg-indigo-600 transition-all duration-300 h-12 text-base font-semibold shadow-lg hover:shadow-indigo-500/25 rounded-xl"
+                                                    disabled={submitting}
+                                                >
+                                                    {submitting ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                                            Procesando...
+                                                        </>
+                                                    ) : (
+                                                        "Enviar Postulación"
+                                                    )}
+                                                </Button>
 
-                                            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 h-11 text-base shadow-lg shadow-indigo-200" disabled={submitting}>
-                                                {submitting ? (
-                                                    <>
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                        Enviando...
-                                                    </>
-                                                ) : (
-                                                    "Enviar Postulación"
-                                                )}
-                                            </Button>
-
-                                            <p className="text-xs text-center text-slate-400 px-4">
-                                                Al enviar este formulario aceptas nuestra política de privacidad y tratamiento de datos.
-                                            </p>
-                                        </form>
-                                    </Form>
-                                </CardContent>
-                            </Card>
+                                                <p className="text-[10px] text-center text-slate-400 leading-tight px-4">
+                                                    Al enviar este formulario aceptas nuestra política de privacidad y el tratamiento de tus datos personales para procesos de selección.
+                                                </p>
+                                            </form>
+                                        </Form>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 
 // Simple Placeholder for Motion Div to avoid importing framer-motion if not needed or reuse simple div
-const motion_div_placeholder = ({ children, className }: any) => <div className={className}>{children}</div>
+

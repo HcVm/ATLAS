@@ -22,7 +22,8 @@ import {
     ChevronDown,
     Building2,
     Loader2,
-    ExternalLink
+    ExternalLink,
+    Archive
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -253,6 +254,56 @@ export default function RecruitmentPage() {
         }
     }
 
+    const updateJobStatus = async (jobId: string, newStatus: string) => {
+        try {
+            const { error } = await supabase
+                .from('job_postings')
+                .update({ status: newStatus })
+                .eq('id', jobId)
+
+            if (error) throw error
+
+            toast({
+                title: "Estado actualizado",
+                description: `El estado de la vacante ha cambiado.`,
+            })
+            fetchData()
+        } catch (error) {
+            console.error(error)
+            toast({
+                title: "Error",
+                description: "No se pudo actualizar el estado.",
+                variant: "destructive"
+            })
+        }
+    }
+
+    const deleteJob = async (jobId: string) => {
+        if (!confirm("¿Estás seguro de que deseas eliminar esta vacante? Esta acción no se puede deshacer.")) return
+
+        try {
+            const { error } = await supabase
+                .from('job_postings')
+                .delete()
+                .eq('id', jobId)
+
+            if (error) throw error
+
+            toast({
+                title: "Vacante eliminada",
+                description: "La vacante ha sido eliminada correctamente.",
+            })
+            fetchData()
+        } catch (error) {
+            console.error(error)
+            toast({
+                title: "Error",
+                description: "No se pudo eliminar la vacante. Asegúrate de que no tenga candidatos activos o intenta archivarla.",
+                variant: "destructive"
+            })
+        }
+    }
+
     return (
         <div className="space-y-6 p-6 min-h-screen pb-20 max-w-[1600px] mx-auto">
 
@@ -283,7 +334,7 @@ export default function RecruitmentPage() {
                 <Card className="shadow-sm border-l-4 border-l-slate-800">
                     <CardHeader className="pb-2">
                         <CardDescription>Vacantes Activas</CardDescription>
-                        <CardTitle className="text-3xl font-bold text-slate-900">{jobs.filter(j => j.status !== 'closed').length}</CardTitle>
+                        <CardTitle className="text-3xl font-bold text-slate-900">{jobs.filter(j => j.status !== 'closed' && j.status !== 'archived').length}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -512,86 +563,184 @@ export default function RecruitmentPage() {
                 </TabsContent>
 
                 <TabsContent value="jobs">
-                    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                        {jobs.map(job => (
-                            <Card key={job.id} className="hover:shadow-md transition-shadow group cursor-pointer border-slate-200">
-                                <CardHeader className="relative">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-1">
-                                            <Badge variant="secondary" className="mb-2 w-fit">{job.departments?.name || 'General'}</Badge>
-                                            <CardTitle className="text-xl group-hover:text-primary transition-colors">{job.title}</CardTitle>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <CardDescription className="flex items-center gap-2 mt-2">
-                                        <MapPin className="h-3.5 w-3.5" /> {job.location || 'Remoto'} | {job.type}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center text-muted-foreground">
-                                                <DollarSign className="h-4 w-4 mr-1" />
-                                                {job.salary_min && job.salary_max ? `${job.salary_min} - ${job.salary_max}` : 'A convenir'}
-                                            </div>
-                                            <div className="flex items-center text-muted-foreground">
-                                                <Calendar className="h-4 w-4 mr-1" />
-                                                {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Reciente'}
-                                            </div>
-                                        </div>
+                    <div className="space-y-12">
+                        {/* Active & Closed Jobs */}
+                        <div>
+                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                                {jobs.filter(j => j.status !== 'archived').map(job => (
+                                    <Card key={job.id} className={`hover:shadow-md transition-shadow group cursor-pointer border-slate-200 ${job.status === 'closed' ? 'opacity-75 bg-slate-50' : ''}`}>
+                                        <CardHeader className="relative">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <div className="flex gap-2 mb-2">
+                                                        <Badge variant="secondary" className="w-fit">{job.departments?.name || 'General'}</Badge>
+                                                        {job.status === 'closed' && <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">Pausada</Badge>}
+                                                    </div>
+                                                    <CardTitle className="text-xl group-hover:text-primary transition-colors">{job.title}</CardTitle>
+                                                </div>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedJobToEdit(job)
+                                                            setIsNewJobOpen(true)
+                                                        }}>
+                                                            Editar Vacante
+                                                        </DropdownMenuItem>
 
-                                        <div className="pt-4 border-t flex items-center justify-between">
-                                            <div className="flex -space-x-2">
-                                                {/* Prototyping simple avatars or counts */}
-                                                <div className="text-xs text-muted-foreground">
-                                                    Ver postulantes
+                                                        {job.status !== 'closed' && (
+                                                            <DropdownMenuItem onClick={() => updateJobStatus(job.id, 'closed')}>
+                                                                Pausar (Cerrar)
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {job.status === 'closed' && (
+                                                            <DropdownMenuItem onClick={() => updateJobStatus(job.id, 'published')}>
+                                                                Reactivar (Publicar)
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        <DropdownMenuItem onClick={() => updateJobStatus(job.id, 'archived')}>
+                                                            Archivar
+                                                        </DropdownMenuItem>
+
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                            onClick={() => deleteJob(job.id)}
+                                                        >
+                                                            Eliminar
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                            <CardDescription className="flex items-center gap-2 mt-2">
+                                                <MapPin className="h-3.5 w-3.5" /> {job.location || 'Remoto'} | {job.type}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center text-muted-foreground">
+                                                        <DollarSign className="h-4 w-4 mr-1" />
+                                                        {job.salary_min && job.salary_max ? `${job.salary_min} - ${job.salary_max}` : 'A convenir'}
+                                                    </div>
+                                                    <div className="flex items-center text-muted-foreground">
+                                                        <Calendar className="h-4 w-4 mr-1" />
+                                                        {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Reciente'}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-4 border-t flex items-center justify-between">
+                                                    <div className="flex -space-x-2">
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Ver postulantes
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            asChild
+                                                            className="px-2"
+                                                            title="Ver vista previa en portal público"
+                                                        >
+                                                            <a href={`/public/jobs/${job.id}`} target="_blank" rel="noopener noreferrer">
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </a>
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setSelectedJobToEdit(job)
+                                                                setIsNewJobOpen(true)
+                                                            }}
+                                                        >
+                                                            Ver Detalles
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    asChild
-                                                    className="px-2"
-                                                    title="Ver vista previa en portal público"
-                                                >
-                                                    <a href={`/public/jobs/${job.id}`} target="_blank" rel="noopener noreferrer">
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </a>
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setSelectedJobToEdit(job)
-                                                        setIsNewJobOpen(true)
-                                                    }}
-                                                >
-                                                    Ver Detalles
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                        </CardContent>
+                                    </Card>
+                                ))}
 
-                        <Button
-                            variant="outline"
-                            className="h-auto min-h-[250px] border-dashed border-2 flex flex-col gap-2 hover:bg-slate-50 hover:border-slate-300"
-                            onClick={() => {
-                                setSelectedJobToEdit(null)
-                                setIsNewJobOpen(true)
-                            }}
-                        >
-                            <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
-                                <Plus className="h-6 w-6 text-slate-600" />
+                                <Button
+                                    variant="outline"
+                                    className="h-auto min-h-[250px] border-dashed border-2 flex flex-col gap-2 hover:bg-slate-50 hover:border-slate-300"
+                                    onClick={() => {
+                                        setSelectedJobToEdit(null)
+                                        setIsNewJobOpen(true)
+                                    }}
+                                >
+                                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+                                        <Plus className="h-6 w-6 text-slate-600" />
+                                    </div>
+                                    <span className="font-medium text-lg">Publicar Nueva Vacante</span>
+                                    <span className="text-sm text-muted-foreground">Definir perfil, requisitos y oferta</span>
+                                </Button>
                             </div>
-                            <span className="font-medium text-lg">Publicar Nueva Vacante</span>
-                            <span className="text-sm text-muted-foreground">Definir perfil, requisitos y oferta</span>
-                        </Button>
+                        </div>
+
+                        {/* Archived Jobs Section */}
+                        {jobs.some(j => j.status === 'archived') && (
+                            <div className="pt-6 border-t border-slate-200">
+                                <h3 className="text-lg font-semibold text-slate-500 mb-6 flex items-center gap-2">
+                                    <Archive className="h-5 w-5" />
+                                    Vacantes Archivadas
+                                </h3>
+                                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 opacity-75 grayscale-[0.8]">
+                                    {jobs.filter(j => j.status === 'archived').map(job => (
+                                        <Card key={job.id} className="hover:shadow-md transition-shadow group cursor-pointer border-slate-200 bg-slate-50">
+                                            <CardHeader className="relative">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="space-y-1">
+                                                        <div className="flex gap-2 mb-2">
+                                                            <Badge variant="secondary" className="w-fit">{job.departments?.name || 'General'}</Badge>
+                                                            <Badge variant="outline" className="text-slate-600 border-slate-200 bg-slate-100">Archivada</Badge>
+                                                        </div>
+                                                        <CardTitle className="text-xl text-slate-700">{job.title}</CardTitle>
+                                                    </div>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => updateJobStatus(job.id, 'published')}>
+                                                                Restaurar (Desarchivar)
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                onClick={() => deleteJob(job.id)}
+                                                            >
+                                                                Eliminar Definitivamente
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                                <CardDescription className="flex items-center gap-2 mt-2">
+                                                    <MapPin className="h-3.5 w-3.5" /> {job.location || 'Remoto'} | {job.type}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-sm text-muted-foreground flex items-center">
+                                                    <Calendar className="h-4 w-4 mr-1" />
+                                                    Archivada el {new Date().toLocaleDateString()} {/* Idealmente tener archived_at */}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
 

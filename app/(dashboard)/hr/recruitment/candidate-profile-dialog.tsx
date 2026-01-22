@@ -44,6 +44,7 @@ type CandidateDetails = {
     stage: string | null
     applied_at: string | null
     job_title: string | null
+    certiUrl?: string | null
 }
 
 export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCandidateUpdate }: CandidateProfileDialogProps) {
@@ -91,6 +92,19 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
         if (error) {
             console.error("Error fetching details:", error)
         } else if (data) {
+            // Extract Certi URL logic
+            let cleanNotes = data.notes || ''
+            let extractedCertiUrl = null
+
+            if (cleanNotes.includes('[CERTIFICADO ANTECEDENTES]:')) {
+                const match = cleanNotes.match(/\[CERTIFICADO ANTECEDENTES\]: (https:\/\/[^\s]+)/);
+                if (match) {
+                    extractedCertiUrl = match[1]
+                    // Remove the line from notes for display
+                    cleanNotes = cleanNotes.replace(match[0], '').trim()
+                }
+            }
+
             setCandidate({
                 id: data.candidates.id,
                 first_name: data.candidates.first_name,
@@ -101,11 +115,12 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
                 linkedin_url: data.candidates.linkedin_url,
                 resume_url: data.candidates.resume_url,
                 source: data.candidates.source,
-                notes: data.notes,
+                notes: cleanNotes,
                 stage: data.stage,
                 applied_at: data.applied_at,
                 // @ts-ignore
-                job_title: data.job_postings?.title
+                job_title: data.job_postings?.title,
+                certiUrl: extractedCertiUrl
             })
         }
         setLoading(false)
@@ -115,9 +130,15 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
         if (!candidateId || !candidate) return
         setUpdating(true)
         try {
+            // Re-append certiUrl if exists when saving to DB
+            let notesToSave = candidate.notes || ''
+            if (candidate.certiUrl) {
+                notesToSave += `\n\n[CERTIFICADO ANTECEDENTES]: ${candidate.certiUrl}`
+            }
+
             const { error } = await supabase
                 .from('job_applications')
-                .update({ notes: candidate.notes })
+                .update({ notes: notesToSave })
                 .eq('id', candidateId)
 
             if (error) throw error
@@ -192,7 +213,7 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px] h-[85vh] p-0 overflow-hidden flex flex-col">
+            <DialogContent className="sm:max-w-[800px] h-[85vh] p-0 overflow-hidden flex flex-col">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         Cargando perfil...
@@ -240,8 +261,8 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
                             </DialogHeader>
                         </div>
 
-                        <ScrollArea className="flex-1 p-6">
-                            <div className="grid grid-cols-2 gap-8">
+                        <ScrollArea className="flex-1 px-8 py-6">
+                            <div className="grid grid-cols-2 gap-10">
                                 <div className="space-y-6">
                                     <section>
                                         <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
@@ -299,35 +320,26 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
                                             <div className="text-sm text-slate-400 italic">No hay CV adjunto</div>
                                         )}
 
-                                        {/* Extract Certi URL from Notes if present */}
-                                        {candidate.notes && candidate.notes.includes('[CERTIFICADO ANTECEDENTES]:') && (
-                                            (() => {
-                                                const match = candidate.notes?.match(/\[CERTIFICADO ANTECEDENTES\]: (https:\/\/[^\s]+)/);
-                                                const certiUrl = match ? match[1] : null;
-
-                                                if (!certiUrl) return null;
-
-                                                return (
-                                                    <div className="mt-3 p-4 border border-slate-200 rounded-xl bg-orange-50/50 hover:bg-orange-50 transition-colors">
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="h-10 w-10 bg-white rounded-lg border flex items-center justify-center text-orange-500">
-                                                                    <FileText className="h-6 w-6" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-medium text-sm text-slate-900">Certificado</p>
-                                                                    <p className="text-xs text-slate-500">Antecedentes</p>
-                                                                </div>
-                                                            </div>
-                                                            <Button size="sm" variant="outline" asChild>
-                                                                <a href={certiUrl} target="_blank" rel="noopener noreferrer">
-                                                                    Ver
-                                                                </a>
-                                                            </Button>
+                                        {/* Display Certi URL based on state */}
+                                        {candidate.certiUrl && (
+                                            <div className="mt-3 p-4 border border-slate-200 rounded-xl bg-orange-50/50 hover:bg-orange-50 transition-colors">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 bg-white rounded-lg border flex items-center justify-center text-orange-500">
+                                                            <FileText className="h-6 w-6" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-sm text-slate-900">Certificado</p>
+                                                            <p className="text-xs text-slate-500">Antecedentes</p>
                                                         </div>
                                                     </div>
-                                                )
-                                            })()
+                                                    <Button size="sm" variant="outline" asChild>
+                                                        <a href={candidate.certiUrl} target="_blank" rel="noopener noreferrer">
+                                                            Ver
+                                                        </a>
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </section>
                                 </div>
@@ -340,7 +352,7 @@ export function CandidateProfileDialog({ isOpen, onOpenChange, candidateId, onCa
                                         </h4>
                                         <div className="flex-1 flex flex-col gap-2">
                                             <Textarea
-                                                className="bg-yellow-50/50 border-yellow-100 min-h-[200px] resize-none focus-visible:ring-yellow-200"
+                                                className="bg-yellow-50/50 border-yellow-100 min-h-[200px] resize-none focus-visible:ring-yellow-200 p-4"
                                                 placeholder="Escribe notas sobre el candidato, razones de rechazo o puntos clave..."
                                                 value={candidate.notes || ''}
                                                 onChange={(e) => setCandidate({ ...candidate, notes: e.target.value })}
