@@ -786,14 +786,14 @@ const slides = [
                 <p className="text-2xl text-slate-400">
                     El futuro de la gestión empresarial empieza hoy.
                 </p>
-                <div className="flex justify-center gap-4 pt-8">
+                <div className="flex flex-col md:flex-row justify-center gap-4 pt-8">
                     <Link href="/dashboard">
-                        <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-xl rounded-full shadow-lg shadow-blue-600/20">
+                        <Button size="lg" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-xl rounded-full shadow-lg shadow-blue-600/20">
                             Ir al Dashboard
                         </Button>
                     </Link>
                     <Link href="/documentation">
-                        <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800 px-8 py-6 text-xl rounded-full">
+                        <Button size="lg" className="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 px-8 py-6 text-xl rounded-full transition-colors">
                             Ver Manuales
                         </Button>
                     </Link>
@@ -823,19 +823,21 @@ export default function PresentationPage() {
             </div>
 
             {/* Slide Content */}
-            <div className="flex-1 flex items-center justify-center p-4 md:p-8 z-10 overflow-y-auto">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={currentSlide}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="w-full max-w-7xl"
-                    >
-                        {slides[currentSlide].content}
-                    </motion.div>
-                </AnimatePresence>
+            <div className="flex-1 overflow-y-auto z-10 scroll-smooth relative w-full">
+                <div className="min-h-full w-full flex items-center justify-center px-4 py-12 md:p-8">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentSlide}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.5 }}
+                            className="w-full max-w-7xl"
+                        >
+                            {slides[currentSlide].content}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* Navigation Controls */}
