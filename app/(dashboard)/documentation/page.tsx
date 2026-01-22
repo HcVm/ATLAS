@@ -21,6 +21,9 @@ import {
   Monitor,
   Clock,
   ArrowRight,
+  Database,
+  CheckCircle,
+  Settings,
 } from "lucide-react"
 
 const documentationSections = [
@@ -190,6 +193,53 @@ const documentationSections = [
     bg: "bg-pink-50 dark:bg-pink-900/20",
     pages: [
       { title: "Registro de asistencia", href: "/documentation/attendance/track-attendance" },
+      { title: "Monitoreo Remoto y Alertas", href: "/documentation/supervision/remote-monitoring" },
+    ],
+  },
+  {
+    title: "Recursos Humanos",
+    description: "Gestión de contratos, postulantes, pagos y legajos del personal.",
+    icon: Users,
+    color: "text-red-500",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    pages: [
+      { title: "Gestión de postulantes (ATS)", href: "/documentation/hr/applicant-tracking" },
+      { title: "Administración de contratos", href: "/documentation/hr/contracts-management" },
+      { title: "Generación de pagos", href: "/documentation/hr/payments-processing" },
+      { title: "Control de vacaciones", href: "/documentation/hr/vacation-control" },
+    ],
+  },
+  {
+    title: "Datos Abiertos (Open Data)",
+    description: "Análisis de mercado, alertas de marca y reportes PDF de Perú Compras.",
+    icon: Database,
+    color: "text-blue-600",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    pages: [
+      { title: "Introducción y Fuentes", href: "/documentation/open-data/getting-started" },
+      { title: "Gestión de Alertas de Marca", href: "/documentation/open-data/brand-alerts" },
+      { title: "Análisis de Mercado y Rankings", href: "/documentation/open-data/market-analysis" },
+    ],
+  },
+  {
+    title: "Tareas y Productividad",
+    description: "Gestión personal de tareas y sistema de migración automática.",
+    icon: CheckCircle,
+    color: "text-purple-600",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    pages: [
+      { title: "Guía de Gestión de Tareas", href: "/documentation/tasks" },
+    ],
+  },
+  {
+    title: "Perfil y Configuración",
+    description: "Gestión de cuenta, preferencias de notificaciones y seguridad.",
+    icon: Settings,
+    color: "text-slate-600",
+    bg: "bg-slate-50 dark:bg-slate-900/20",
+    pages: [
+      { title: "Mi Perfil", href: "/documentation/profile" },
+      { title: "Preferencias del Sistema", href: "/documentation/settings" },
     ],
   },
 ]
