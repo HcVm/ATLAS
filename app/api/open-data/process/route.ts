@@ -402,40 +402,80 @@ async function insertDataChunk(
   }
 
   if (brandAlerts.length > 0) {
+    console.log(`Verificando ${brandAlerts.length} alertas de marca potenciales...`)
 
-    for (const alert of brandAlerts) {
+    // Process in batches to avoid query size limits
+    const ALERT_BATCH_SIZE = 100
+    for (let i = 0; i < brandAlerts.length; i += ALERT_BATCH_SIZE) {
+      const batch = brandAlerts.slice(i, i + ALERT_BATCH_SIZE)
+      const ordenes = batch.map((a) => a.orden_electronica)
+
       try {
-        const { data: existingAlert, error: checkError } = await supabase
+        // Bulk fetch existing alerts for these orders
+        const { data: existingAlerts, error: fetchError } = await supabase
           .from("brand_alerts")
-          .select("id")
-          .eq("orden_electronica", alert.orden_electronica)
-          .eq("brand_name", alert.brand_name)
-          .single()
+          .select("orden_electronica, brand_name")
+          .in("orden_electronica", ordenes)
 
-        if (checkError && checkError.code !== "PGRST116") {
-          console.error("Error verificando alerta existente:", checkError.message)
-          errors.push(`Error verificando alerta: ${checkError.message}`)
-          continue
-        }
-
-        if (existingAlert) {
-          continue
-        }
-
-        const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
-
-        if (insertError) {
-          if (insertError.code === "23505") {
-          } else {
-            console.error("Error insertando nueva alerta:", insertError.message)
-            errors.push(`Error en nueva alerta: ${insertError.message}`)
+        if (fetchError) {
+          console.error("Error fetching existing alerts:", fetchError.message)
+          errors.push(`Error verificando alertas existentes: ${fetchError.message}`)
+          // Fallback to individual processing for this batch in case of error
+          for (const alert of batch) {
+            try {
+              const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
+              if (!insertError) {
+                brandAlertsCount++
+              } else if (insertError.code === "23505") {
+                // Duplicate, ignore
+              } else {
+                errors.push(`Error en alerta fallback: ${insertError.message}`)
+              }
+            } catch (e: any) {
+              errors.push(`Error inesperado fallback: ${e.message}`)
+            }
           }
-        } else {
-          brandAlertsCount++
+          continue
         }
-      } catch (insertError) {
-        console.error("Error inesperado procesando alerta:", insertError)
-        errors.push(`Error inesperado en alerta: ${insertError}`)
+
+        const existingSet = new Set(existingAlerts?.map((a: any) => `${a.orden_electronica}-${a.brand_name}`))
+        const toInsert: typeof brandAlerts = []
+
+        for (const alert of batch) {
+          const key = `${alert.orden_electronica}-${alert.brand_name}`
+          if (!existingSet.has(key)) {
+            toInsert.push(alert)
+          }
+        }
+
+        if (toInsert.length > 0) {
+          const { data: inserted, error: insertError } = await supabase
+            .from("brand_alerts")
+            .insert(toInsert)
+            .select()
+
+          if (insertError) {
+            // If bulk insert fails (e.g. race condition), fallback to individual
+            if (insertError.code === "23505") {
+              for (const alert of toInsert) {
+                const { error: singleInsertError } = await supabase.from("brand_alerts").insert([alert])
+                if (!singleInsertError) {
+                  brandAlertsCount++
+                } else if (singleInsertError.code !== "23505") {
+                  errors.push(`Error en nueva alerta: ${singleInsertError.message}`)
+                }
+              }
+            } else {
+              console.error("Error insertando lote de alertas:", insertError.message)
+              errors.push(`Error en lote de alertas: ${insertError.message}`)
+            }
+          } else {
+            brandAlertsCount += (inserted || []).length
+          }
+        }
+      } catch (err: any) {
+        console.error("Error inesperado procesando lote de alertas:", err)
+        errors.push(`Error inesperado en lote de alertas: ${err.message}`)
       }
     }
   }
