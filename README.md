@@ -19,3 +19,10 @@ Un sistema completo de gestión y seguimiento de documentos construido con Next.
 
 ## Autodocumentado con
 - [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/HcVm/NEWDOCS-REVISION-FINAL)
+
+## Documentación Técnica
+Para detalles sobre arquitectura, base de datos y desarrollo, consulta la carpeta `/docs`:
+- [Índice de Documentación Técnica](./docs/INDEX.md)
+- [Arquitectura del Sistema](./docs/ARCHITECTURE.md)
+- [Guía de Configuración](./docs/SETUP_AND_DEPLOY.md)
+
