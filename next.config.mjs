@@ -7,13 +7,9 @@ const nextConfig = {
       test: /\.map$/,
       use: 'ignore-loader',
     });
-
-    if (isServer) {
-      config.externals.push('@sparticuz/chromium', 'puppeteer-core');
-    }
-
     return config;
   },
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   images: { unoptimized: true },
   experimental: {
     serverActions: {

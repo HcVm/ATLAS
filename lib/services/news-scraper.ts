@@ -1,5 +1,5 @@
 
-import puppeteer from "puppeteer"
+import type { Browser } from "puppeteer-core"
 
 export interface ScrapedNewsItem {
     title: string
@@ -10,18 +10,32 @@ export interface ScrapedNewsItem {
 }
 
 export async function scrapePeruComprasNews(): Promise<ScrapedNewsItem[]> {
-    let browser = null
+    let browser: Browser | null = null
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        })
+        if (process.env.NODE_ENV === "production") {
+            const chromium = await import("@sparticuz/chromium").then(mod => mod.default)
+            const puppeteerCore = await import("puppeteer-core").then(mod => mod.default)
+
+            browser = await puppeteerCore.launch({
+                args: [...(chromium as any).args, "--hide-scrollbars", "--disable-web-security"],
+                defaultViewport: (chromium as any).defaultViewport,
+                executablePath: await (chromium as any).executablePath(),
+                headless: (chromium as any).headless,
+                ignoreHTTPSErrors: true,
+            }) as unknown as Browser
+        } else {
+            const puppeteer = await import("puppeteer").then(mod => mod.default)
+            browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            }) as unknown as Browser
+        }
 
         const page = await browser.newPage()
         // Optimizations to load faster - block heavy assets
         await page.setRequestInterception(true);
         page.on('request', (req) => {
-            if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
+            if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
                 req.abort();
             } else {
                 req.continue();
@@ -29,7 +43,8 @@ export async function scrapePeruComprasNews(): Promise<ScrapedNewsItem[]> {
         });
 
         // 1. Get List of News
-        await page.goto("https://www.gob.pe/institucion/perucompras/noticias", { waitUntil: "domcontentloaded", timeout: 30000 })
+        // Increased timeout for safety in serverless
+        await page.goto("https://www.gob.pe/institucion/perucompras/noticias", { waitUntil: "domcontentloaded", timeout: 45000 })
 
         const links = await page.evaluate(() => {
             const items: { title: string, url: string, imageUrl?: string }[] = []
@@ -67,7 +82,7 @@ export async function scrapePeruComprasNews(): Promise<ScrapedNewsItem[]> {
             const item = links[i]
             try {
                 // Navigate to detail page
-                await page.goto(item.url, { waitUntil: "domcontentloaded", timeout: 15000 })
+                await page.goto(item.url, { waitUntil: "domcontentloaded", timeout: 20000 })
 
                 const details = await page.evaluate(() => {
                     let content = ""

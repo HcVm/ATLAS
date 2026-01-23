@@ -4,6 +4,8 @@ import { scrapePeruComprasNews } from "@/lib/services/news-scraper"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
+export const maxDuration = 60 // 5 minutes typically allowed on Vercel Pro, but safe 60s for Hobby
+
 export async function POST(request: NextRequest) {
     try {
         const cookieStore = await cookies()
