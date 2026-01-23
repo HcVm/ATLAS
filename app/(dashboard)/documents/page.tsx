@@ -186,7 +186,10 @@ export default function DocumentsPage() {
         .from("documents")
         .select(`
           *,
-          profiles!documents_created_by_fkey (id, full_name, email, company_id),
+          profiles!documents_created_by_fkey (
+            id, full_name, email, company_id,
+            departments:departments!profiles_department_id_fkey (id, name)
+          ),
           departments!documents_current_department_id_fkey (id, name),
           document_movements!document_movements_document_id_fkey (
             id, created_at, to_department_id, from_department_id
@@ -198,11 +201,7 @@ export default function DocumentsPage() {
       if (user?.role === "admin" && selectedCompany) {
         query = query.eq("company_id", selectedCompany.id)
       } else if (user && user.role !== "admin") {
-        if (user.department_id) {
-          query = query.or(`current_department_id.eq.${user.department_id},created_by.eq.${user.id}`)
-        } else {
-          query = query.eq("created_by", user.id)
-        }
+        // Fetch all documents for the company, then filter client-side for history visibility
         if (user.company_id) {
           query = query.eq("company_id", user.company_id)
         }
@@ -216,8 +215,8 @@ export default function DocumentsPage() {
       } else {
         let filteredData = data || []
 
-        // Client-side historical filter for regular users
-        if (user && user.role !== "admin" && user.role !== "supervisor" && user.department_id) {
+        // Client-side historical filter for all non-admin users (including supervisors)
+        if (user && user.role !== "admin" && user.department_id) {
           filteredData = filteredData.filter((doc) => {
             if (doc.created_by === user.id) return true
             if (doc.current_department_id === user.department_id) return true
@@ -586,8 +585,13 @@ export default function DocumentsPage() {
                               <Link href={`/documents/${document.id}`} className="font-medium text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition-colors">
                                 {document.title || "Sin título"}
                               </Link>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
                                 {document.created_by === user?.id && <Badge variant="outline" className="text-[10px]">Mío</Badge>}
+                                {document.profiles?.departments?.name && (
+                                  <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
+                                    Iniciado en: {document.profiles.departments.name}
+                                  </Badge>
+                                )}
                                 {(() => {
                                   const tl = getTrafficLightStatus(document.created_at, document.status, getLastMovementToCurrentDepartment(document))
                                   return tl && user?.department_id === document.current_department_id ? (
@@ -658,8 +662,13 @@ export default function DocumentsPage() {
                         <CardHeader className="p-4 pb-2">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <Badge variant="outline" className="text-[10px] font-mono">{document.document_number || "S/N"}</Badge>
+                                {document.profiles?.departments?.name && (
+                                  <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
+                                    Iniciado en: {document.profiles.departments.name}
+                                  </Badge>
+                                )}
                                 {(() => {
                                   const tl = getTrafficLightStatus(document.created_at, document.status, getLastMovementToCurrentDepartment(document))
                                   return tl && user?.department_id === document.current_department_id ? <span title={tl.message}>{tl.icon}</span> : null
