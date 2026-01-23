@@ -144,6 +144,7 @@ export default function DocumentsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
 
   // View & Sort States
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
@@ -169,7 +170,7 @@ export default function DocumentsPage() {
       fetchDocuments()
       fetchDepartments()
     }
-  }, [user, selectedCompany])
+  }, [user, selectedCompany, selectedYear])
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -196,6 +197,8 @@ export default function DocumentsPage() {
           )
         `)
         .order("created_at", { ascending: false })
+        .gte("created_at", `${selectedYear}-01-01T00:00:00.000Z`)
+        .lte("created_at", `${selectedYear}-12-31T23:59:59.999Z`)
 
       // Basic RLS/Company filtering
       if (user?.role === "admin" && selectedCompany) {
@@ -377,6 +380,15 @@ export default function DocumentsPage() {
             <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
             Actualizar
           </Button>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[100px] rounded-xl bg-white dark:bg-slate-800 shadow-sm">
+              <SelectValue placeholder="Año" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+            </SelectContent>
+          </Select>
           <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 rounded-xl">
             <Link href="/documents/new">
               <Plus className="h-4 w-4 mr-2" />
