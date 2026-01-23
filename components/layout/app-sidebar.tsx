@@ -41,6 +41,13 @@ import {
   DollarSign,
   Landmark,
   MessageCircle,
+  Home,
+  FolderOpen,
+  Store,
+  LifeBuoy,
+  PieChart,
+  ShieldCheck,
+  HelpCircle,
 } from "lucide-react"
 
 import {
@@ -66,6 +73,8 @@ import { useAuth } from "@/lib/auth-context"
 const menuSections = {
   main: {
     title: "PRINCIPAL",
+    sectionIcon: Home,
+    color: "text-blue-500",
     items: [
       {
         title: "Dashboard",
@@ -101,6 +110,8 @@ const menuSections = {
   },
   requests: {
     title: "SOLICITUDES",
+    sectionIcon: FileCheck,
+    color: "text-orange-500",
     items: [
       {
         title: "Mis Solicitudes",
@@ -130,6 +141,8 @@ const menuSections = {
   },
   documents: {
     title: "DOCUMENTOS",
+    sectionIcon: FolderOpen,
+    color: "text-indigo-500",
     items: [
       {
         title: "Documentos",
@@ -153,6 +166,8 @@ const menuSections = {
   },
   sales: {
     title: "VENTAS",
+    sectionIcon: Store,
+    color: "text-emerald-500",
     items: [
       {
         title: "Ventas",
@@ -211,6 +226,8 @@ const menuSections = {
   },
   warehouse: {
     title: "ALMACÉN",
+    sectionIcon: Package,
+    color: "text-amber-500",
     items: [
       {
         title: "Almacén",
@@ -307,6 +324,8 @@ const menuSections = {
   },
   internal_warehouse: {
     title: "ALMACÉN INTERNO",
+    sectionIcon: Building2,
+    color: "text-amber-600",
     items: [
       {
         title: "Almacén Interno",
@@ -340,6 +359,8 @@ const menuSections = {
   },
   hr: {
     title: "RECURSOS HUMANOS",
+    sectionIcon: Users,
+    color: "text-rose-500",
     items: [
       {
         title: "Panel RRHH",
@@ -366,6 +387,8 @@ const menuSections = {
   },
   support: {
     title: "SOPORTE",
+    sectionIcon: LifeBuoy,
+    color: "text-cyan-500",
     items: [
       {
         title: "Soporte",
@@ -377,6 +400,8 @@ const menuSections = {
   },
   analytics: {
     title: "ANÁLISIS",
+    sectionIcon: PieChart,
+    color: "text-purple-500",
     items: [
       {
         title: "Estadísticas",
@@ -400,6 +425,8 @@ const menuSections = {
   },
   admin: {
     title: "ADMINISTRACIÓN",
+    sectionIcon: ShieldCheck,
+    color: "text-slate-500",
     items: [
       {
         title: "Usuarios",
@@ -429,6 +456,8 @@ const menuSections = {
   },
   help: {
     title: "AYUDA",
+    sectionIcon: HelpCircle,
+    color: "text-sky-500",
     items: [
       {
         title: "Documentación",
@@ -544,7 +573,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="flex-1 overflow-y-auto !overflow-x-hidden px-3 py-4 pb-32 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent min-h-0 space-y-2">
+      <SidebarContent className="flex-1 overflow-y-auto !overflow-x-hidden px-2 py-4 pb-32 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent min-h-0 space-y-2">
         {user.role ? (
           <AnimatePresence>
             {Object.entries(menuSections).map(([sectionKey, section]) => {
@@ -559,19 +588,26 @@ export function AppSidebar() {
                 <Collapsible key={sectionKey} open={isExpanded} onOpenChange={() => toggleSection(sectionKey)}>
                   <SidebarGroup className="py-0">
                     <CollapsibleTrigger asChild>
-                      <SidebarGroupLabel className="text-xs font-bold text-slate-400 dark:text-slate-500 px-2 py-3 uppercase tracking-wider cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center justify-between group select-none">
-                        <span className="truncate leading-tight">{section.title}</span>
+                      <SidebarGroupLabel className="text-sm font-bold text-slate-500 dark:text-slate-400 px-1 py-4 uppercase tracking-wider cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 flex items-center justify-between group select-none">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {
+                            // @ts-ignore
+                            section.sectionIcon && <section.sectionIcon className={`h-5 w-5 flex-shrink-0 ${section.color || 'text-slate-500'}`} />
+                          }
+                          <span className="truncate leading-tight">{section.title}</span>
+                        </div>
                         <motion.div
                           animate={{ rotate: isExpanded ? 0 : -90 }}
                           transition={{ duration: 0.2 }}
+                          className="flex-shrink-0 ml-1"
                         >
-                          <ChevronDown className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+                          <ChevronDown className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                         </motion.div>
                       </SidebarGroupLabel>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarGroupContent>
-                        <SidebarMenu className="space-y-1">
+                        <SidebarMenu className="space-y-1 relative ml-3 pl-3 border-l-2 border-slate-200 dark:border-slate-800">
                           {filteredItems.map((item) => {
                             const isActive = pathname === item.url
                             return (
@@ -596,7 +632,7 @@ export function AppSidebar() {
                                     <div className={`relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                                       <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`} />
                                     </div>
-                                    <span className="relative z-10 font-medium text-sm truncate">
+                                    <span className="relative z-10 font-medium text-[15px] truncate">
                                       {item.title}
                                     </span>
                                     {item.title === "Notificaciones" && (
