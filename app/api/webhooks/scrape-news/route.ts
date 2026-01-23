@@ -90,9 +90,37 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // 4. Cleanup: Keep only latest 5 news per company
+        let deletedCount = 0
+        for (const company of companies) {
+            const { data: allNews } = await supabase
+                .from("news")
+                .select("id")
+                .eq("company_id", company.id)
+                .order("created_at", { ascending: false })
+
+            if (allNews && allNews.length > 5) {
+                const newsToDelete = allNews.slice(5)
+                const idsToDelete = newsToDelete.map(n => n.id)
+
+                if (idsToDelete.length > 0) {
+                    const { error: deleteError } = await supabase
+                        .from("news")
+                        .delete()
+                        .in("id", idsToDelete)
+
+                    if (!deleteError) {
+                        deletedCount += idsToDelete.length
+                    } else {
+                        console.error(`Error cleaning up news for company ${company.id}:`, deleteError)
+                    }
+                }
+            }
+        }
+
         return NextResponse.json({
             success: true,
-            message: `Sync complete. Found ${newsItems.length} items. Created ${insertedCount} new records across ${companies.length} companies.`
+            message: `Sync complete. Found ${newsItems.length} items. Created ${insertedCount} new records. Cleaned up ${deletedCount} old records across ${companies.length} companies.`
         })
 
     } catch (error: any) {

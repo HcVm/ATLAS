@@ -183,9 +183,9 @@ export default function ApprovalsPage() {
 
       let result
       if (user.role === "admin") {
-        result = await requestsDB.getAllRequests(user.company_id)
+        result = await requestsDB.getAllRequests(user.company_id || "")
       } else if (user.role === "supervisor") {
-        result = await requestsDB.getRequestsForApproval(user.id, user.company_id)
+        result = await requestsDB.getRequestsForApproval(user.id, user.company_id || "")
       } else {
         setError("No tienes permisos para ver aprobaciones")
         return
@@ -196,7 +196,12 @@ export default function ApprovalsPage() {
       }
 
       const filteredRequests = (result.data || []).filter(
-        (request: Request) => request.status === "INGRESADA" || request.status === "EN_GESTION",
+        (request: Request) =>
+          request.status === "INGRESADA" ||
+          request.status === "EN_GESTION" ||
+          request.status === "APROBADA" ||
+          request.status === "EJECUTADA" ||
+          request.status === "CANCELADA",
       )
       setRequests(filteredRequests)
     } catch (err: any) {
@@ -213,7 +218,7 @@ export default function ApprovalsPage() {
     try {
       setLoadingHistory(true)
 
-      const result = await requestsDB.getApprovalHistory(user.id, user.company_id)
+      const result = await requestsDB.getApprovalHistory(user.id, user.company_id || "")
 
       if (result.error) {
         throw result.error
@@ -453,7 +458,7 @@ export default function ApprovalsPage() {
                 <Eye className="h-3 w-3 mr-1" />
                 Detalles
               </Button>
-              {(request.status === "INGRESADA" || request.status === "EN_GESTION") && (
+              {(request.status === "INGRESADA" || request.status === "EN_GESTION" || request.status === "APROBADA") && (
                 <Button
                   size="sm"
                   onClick={() => handleApprovalAction(request, "approve")}
@@ -530,7 +535,8 @@ export default function ApprovalsPage() {
         {[
           { label: "Ingresadas", status: "INGRESADA", icon: AlertCircle, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-900/20" },
           { label: "En Gestión", status: "EN_GESTION", icon: Loader2, color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-900/20" },
-          { label: "Total Pendientes", status: "TOTAL", icon: Eye, color: "text-slate-500", bg: "bg-slate-50 dark:bg-slate-900/20" },
+          { label: "Aprobadas", status: "APROBADA", icon: CheckCircle, color: "text-green-500", bg: "bg-green-50 dark:bg-green-900/20" },
+          { label: "Ejecutadas", status: "EJECUTADA", icon: CheckCircle, color: "text-teal-500", bg: "bg-teal-50 dark:bg-teal-900/20" },
         ].map((stat, index) => (
           <motion.div
             key={stat.label}
@@ -596,6 +602,15 @@ export default function ApprovalsPage() {
           <TabsTrigger value="EN_GESTION" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all">
             En Gestión <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-700">{getRequestsByStatus("EN_GESTION").length}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="APROBADA" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+            Aprobadas <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">{getRequestsByStatus("APROBADA").length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="EJECUTADA" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+            Ejecutadas <Badge variant="secondary" className="ml-2 bg-teal-100 text-teal-700">{getRequestsByStatus("EJECUTADA").length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="CANCELADA" className="flex-1 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+            Canceladas <Badge variant="secondary" className="ml-2 bg-slate-100 text-slate-700">{getRequestsByStatus("CANCELADA").length}</Badge>
+          </TabsTrigger>
           {user.role === "supervisor" && (
             <TabsTrigger
               value="history"
@@ -613,7 +628,7 @@ export default function ApprovalsPage() {
         </TabsList>
 
         <AnimatePresence mode="popLayout">
-          {["INGRESADA", "EN_GESTION"].map((status) => (
+          {["INGRESADA", "EN_GESTION", "APROBADA", "EJECUTADA", "CANCELADA"].map((status) => (
             <TabsContent key={status} value={status} className="mt-0">
               {getRequestsByStatus(status).length === 0 ? (
                 <motion.div

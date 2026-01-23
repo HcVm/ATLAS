@@ -1878,7 +1878,7 @@ export default function TechnicalDocsPage() {
 
     return (
         <RoleGuard requiredRoles={["admin"]}>
-            <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+            <div className="p-4 md:p-6 w-full space-y-6 md:space-y-8">
 
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -1898,19 +1898,19 @@ export default function TechnicalDocsPage() {
                 </div>
 
                 {/* Main Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                     {/* Sidebar Navigation */}
-                    <Card className="lg:col-span-1 overflow-hidden h-fit sticky top-6">
+                    <Card className="lg:col-span-3 xl:col-span-2 overflow-hidden h-fit lg:sticky lg:top-6">
                         <CardHeader className="bg-slate-50 dark:bg-slate-900/50 pb-4">
                             <CardTitle className="text-sm font-medium uppercase tracking-wider text-slate-500">Módulos del Sistema</CardTitle>
                         </CardHeader>
-                        <div className="p-2 space-y-1">
+                        <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible p-2 gap-2 lg:gap-0 lg:space-y-1">
                             {modules.map((m) => (
                                 <button
                                     key={m.id}
                                     onClick={() => setSelectedModule(m)}
-                                    className={`w-full flex items-center justify-start text-left gap-3 px-3 py-3 rounded-md text-sm font-medium transition-all duration-200 ${selectedModule.id === m.id
+                                    className={`flex-shrink-0 lg:w-full flex items-center justify-start text-left gap-3 px-3 py-2 lg:py-3 rounded-md text-sm font-medium transition-all duration-200 whitespace-nowrap ${selectedModule.id === m.id
                                         ? "bg-slate-900 text-white shadow-md dark:bg-blue-600"
                                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                                         }`}
@@ -1923,7 +1923,7 @@ export default function TechnicalDocsPage() {
                     </Card>
 
                     {/* Content Area */}
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-9 xl:col-span-10">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={selectedModule.id}

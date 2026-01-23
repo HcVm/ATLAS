@@ -2,12 +2,12 @@ import { createBrowserClient } from "@supabase/ssr"
 
 export interface RequestFormData {
   request_type:
-    | "late_justification"
-    | "absence_justification"
-    | "overtime_request"
-    | "permission_request"
-    | "equipment_request"
-    | "general_request"
+  | "late_justification"
+  | "absence_justification"
+  | "overtime_request"
+  | "permission_request"
+  | "equipment_request"
+  | "general_request"
   incident_date?: string
   end_date?: string
   incident_time?: string
@@ -61,7 +61,7 @@ export interface RequestWithDetails {
 }
 
 export interface ApprovalData {
-  status: "APROBADA" | "DESAPROBADA"
+  status: "APROBADA" | "DESAPROBADA" | "EJECUTADA" | "CANCELADA" | "EN_GESTION"
   review_comments?: string
 }
 
@@ -132,7 +132,7 @@ export class RequestsDB {
         .from("requests_with_details")
         .select("*")
         .eq("company_id", companyId)
-        .in("status", ["INGRESADA", "EN_GESTION"])
+        .in("status", ["INGRESADA", "EN_GESTION", "APROBADA", "EJECUTADA", "CANCELADA"])
 
       const departmentIds = approverData.map((a) => a.department_id).filter(Boolean)
       const requestTypes = [...new Set(approverData.flatMap((a) => a.request_types))]
