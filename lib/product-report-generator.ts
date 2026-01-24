@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable"
 
 interface ReportProduct {
     name: string
+    description: string | null
     code: string
     barcode: string | null
     brand: string
@@ -156,7 +157,7 @@ export const generateProductReportPDF = (data: ReportData) => {
 
         const tableData = brandProducts.map(product => [
             product.code,
-            product.name,
+            product.description || product.name,
             product.category || "-",
             product.location || "-",
             product.current_stock.toLocaleString(),

@@ -29,6 +29,7 @@ interface OrderGroup {
     id: string
     status: "pending" | "attended" | "observed"
     brand_name: string
+    notes?: string
   }
 }
 
@@ -118,9 +119,12 @@ export function generateBrandAlertsPDF(data: ReportPDFData) {
       const tableData: any[] = []
 
       statusOrders.forEach(order => {
+
         const isObserved = order.alert?.status === "observed"
-        const motive = isObserved && order.alert?.id
-          ? observationMotives[order.alert.id] || "Sin motivo"
+        const isAttended = order.alert?.status === "attended"
+
+        const note = (isObserved || isAttended) && order.alert?.id
+          ? observationMotives[order.alert.id] || order.alert.notes || ""
           : ""
 
         order.items.forEach((item, idx) => {
@@ -135,7 +139,7 @@ export function generateBrandAlertsPDF(data: ReportPDFData) {
             `S/ ${item.igv.toFixed(2)}`,
             `S/ ${item.monto_total.toFixed(2)}`,
             idx === 0 ? order.acuerdo_marco : "",
-            idx === 0 && isObserved ? motive : "",
+            idx === 0 && (isObserved || isAttended) ? note : "",
           ])
         })
         tableData.push([
@@ -149,7 +153,7 @@ export function generateBrandAlertsPDF(data: ReportPDFData) {
       })
 
       autoTable(doc, {
-        head: [["Orden", "Proveedor", "N° Parte", "Producto", "Cant.", "P. Unit.", "Subtotal", "IGV", "Total", "Acuerdo Marco", "Motivo Observación"]],
+        head: [["Orden", "Proveedor", "N° Parte", "Producto", "Cant.", "P. Unit.", "Subtotal", "IGV", "Total", "Acuerdo Marco", "Notas / Motivo"]],
         body: tableData,
         startY: y,
         margin: { left: 14, right: 14 },

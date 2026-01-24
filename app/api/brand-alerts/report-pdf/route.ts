@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     const { data: alerts, error: alertsError } = await supabase
       .from("brand_alerts")
-      .select("id, status, brand_name, orden_electronica, created_at")
+      .select("id, status, brand_name, orden_electronica, created_at, notes")
       .in("brand_name", uniqueBrands)
       .gte("created_at", dateRange?.start || "1900-01-01")
       .lte("created_at", dateRange?.end || "2100-01-01")
@@ -91,7 +91,12 @@ export async function POST(request: NextRequest) {
     alerts.forEach(alert => {
       const order = ordersMap.get(alert.orden_electronica)
       if (order) {
-        order.alert = { id: alert.id, status: alert.status, brand_name: alert.brand_name }
+        order.alert = {
+          id: alert.id,
+          status: alert.status,
+          brand_name: alert.brand_name,
+          notes: alert.notes
+        }
       }
     })
 

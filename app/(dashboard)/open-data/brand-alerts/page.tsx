@@ -100,14 +100,14 @@ export default function BrandAlertsPage() {
     }
   }, [activeTab, selectedBrands, dateRange, fetchReportData])
 
-  // === ABRIR MODAL DE MOTIVOS ===
+  // === ABRIR MODAL DE NOTAS (MOTIVOS / ATENCIONES) ===
   const openObservationModal = () => {
     if (!reportData) return
     const motives: Record<string, string> = {}
     Object.values(reportData.frameworks).forEach(fw => {
       fw.orders.forEach(order => {
-        if (order.alert?.status === "observed" && order.alert.id) {
-          motives[order.alert.id] = ""
+        if ((order.alert?.status === "observed" || order.alert?.status === "attended") && order.alert.id) {
+          motives[order.alert.id] = order.alert.notes || ""
         }
       })
     })
@@ -378,14 +378,7 @@ export default function BrandAlertsPage() {
                       <Button
                         onClick={() => {
                           if (!reportData) return
-                          const hasObserved = Object.values(reportData.frameworks).some(fw =>
-                            fw.orders.some(o => o.alert?.status === "observed")
-                          )
-                          if (hasObserved) {
-                            openObservationModal()
-                          } else {
-                            generatePDFWithMotives()
-                          }
+                          generatePDFWithMotives()
                         }}
                         disabled={!reportData || isGeneratingPDF || loadingReport}
                         className="min-w-[200px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
@@ -417,22 +410,32 @@ export default function BrandAlertsPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto border-0 shadow-2xl">
             <CardHeader className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-              <CardTitle className="text-xl">Motivos de Observación</CardTitle>
+              <CardTitle className="text-xl">Notas y Observaciones</CardTitle>
               <CardDescription>
-                Se han detectado alertas observadas. Por favor, detalla el motivo para incluirlo en el reporte.
+                Se han detectado alertas observadas o atendidas. Por favor, detalla los motivos o notas para incluirlo en el reporte.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-6">
               {Object.entries(observationMotives).map(([alertId, motive]) => {
-                const order = findOrderByAlertId(alertId, reportData)
+                const order = findOrderByAlertId(alertId, reportData || undefined)
+                const isObserved = order?.alert?.status === "observed"
+                const label = isObserved ? "Alerta Observada" : "Alerta Atendida"
+                const placeholder = isObserved
+                  ? "Escribe el motivo de la observación..."
+                  : "Escribe una nota de atención (opcional)..."
+
                 return (
                   <div key={alertId} className="space-y-2 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Orden: {order?.orden_electronica}</Badge>
-                      <span className="text-xs text-slate-500">Alerta Observada</span>
+                      <Badge variant="outline" className={`
+                        ${isObserved ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-green-50 text-green-700 border-green-200"}
+                      `}>
+                        Orden: {order?.orden_electronica}
+                      </Badge>
+                      <span className="text-xs text-slate-500">{label}</span>
                     </div>
                     <Textarea
-                      placeholder="Escribe el motivo de la observación..."
+                      placeholder={placeholder}
                       value={motive}
                       onChange={(e) => setObservationMotives(prev => ({
                         ...prev,
