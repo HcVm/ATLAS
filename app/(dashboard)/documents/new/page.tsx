@@ -222,14 +222,19 @@ export default function NewDocumentPage() {
 
       if (error) throw error
 
+      let movementId = null
       try {
-        await supabase.from("document_movements").insert({
+        const { data: movement } = await supabase.from("document_movements").insert({
           document_id: document.id,
           from_department_id: user.department_id,
           to_department_id: values.department_id,
           moved_by: user.id,
           notes: "Documento creado",
-        })
+        }).select().single()
+        
+        if (movement) {
+          movementId = movement.id
+        }
       } catch (e) { console.error(e) }
 
       if (attachments.length > 0) {
@@ -240,6 +245,7 @@ export default function NewDocumentPage() {
             if (attachmentUrl) {
               await supabase.from("document_attachments").insert({
                 document_id: document.id,
+                movement_id: movementId,
                 file_name: attachment.name,
                 file_url: attachmentUrl,
                 file_size: attachment.size,

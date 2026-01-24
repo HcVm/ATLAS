@@ -590,6 +590,58 @@ export default function DocumentDetailsPage() {
             </Card>
           )}
 
+          {/* Attachments List Card */}
+          {attachments.length > 0 && (
+            <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl overflow-hidden">
+              <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600">
+                    <Paperclip className="h-5 w-5" />
+                  </div>
+                  Archivos Adjuntos ({attachments.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group">
+                      <div className="h-10 w-10 rounded-lg bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-slate-500">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate" title={att.file_name}>
+                          {att.file_name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {(att.file_size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                          onClick={() => viewFile(att.file_url)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={downloadLoading}
+                          className="h-8 w-8 text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          onClick={() => downloadFile(att.file_url, att.file_name)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Details Card */}
           <Card className="border-none shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl">
             <CardHeader>
