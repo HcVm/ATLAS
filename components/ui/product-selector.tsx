@@ -129,7 +129,8 @@ export function ProductSelector({
         .select(`
           id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
           companies!inner(id, name, ruc),
-          brands(name)
+          brands!products_brand_id_fkey(name),
+          product_categories!products_category_id_fkey(name)
         `) // AHORA INCLUYE description
         .eq("is_active", true)
         .order("current_stock", { ascending: false })
@@ -139,7 +140,7 @@ export function ProductSelector({
         const formattedProducts = popularData.map((p) => ({
           ...p,
           description: p.description, // CORREGIDO: Asignar la descripción real
-          categories: null,
+          categories: p.product_categories,
           company: p.companies,
           brands: p.brands,
         }))
@@ -184,7 +185,8 @@ export function ProductSelector({
           id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
           company_id, brand_id, category_id,
           companies!inner(id, name, ruc),
-          brands(name)
+          brands!products_brand_id_fkey(name),
+          product_categories!products_category_id_fkey(name)
         `)
           .eq("is_active", true)
           .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
@@ -199,28 +201,11 @@ export function ProductSelector({
           return
         }
 
-        // Get brand and category info in parallel for found products
-        const brandIds = [...new Set(searchData.filter((p) => p.brand_id).map((p) => p.brand_id))]
-        const categoryIds = [...new Set(searchData.filter((p) => p.category_id).map((p) => p.category_id))]
-
-        const [brandsData, categoriesData] = await Promise.all([
-          brandIds.length > 0
-            ? supabase.from("brands").select("id, name").in("id", brandIds)
-            : Promise.resolve({ data: [] }),
-          categoryIds.length > 0
-            ? supabase.from("product_categories").select("id, name").in("id", categoryIds)
-            : Promise.resolve({ data: [] }),
-        ])
-
-        // Create lookup maps
-        const brandsMap = new Map((brandsData.data || []).map((b) => [b.id, b.name]))
-        const categoriesMap = new Map((categoriesData.data || []).map((c) => [c.id, c.name]))
-
         // Format products with relations
         const formattedProducts = searchData.map((product) => ({
           ...product,
-          brands: product.brand_id ? { name: brandsMap.get(product.brand_id) || "" } : null,
-          categories: product.category_id ? { name: categoriesMap.get(product.category_id) || "" } : null,
+          brands: product.brands,
+          categories: product.product_categories,
           company: product.companies,
         }))
 
@@ -273,26 +258,17 @@ export function ProductSelector({
           id, code, name, description, sale_price, current_stock, unit_of_measure, image_url,
           company_id, brand_id, category_id,
           companies!inner(id, name, ruc),
-          brands(name)
+          brands!products_brand_id_fkey(name),
+          product_categories!products_category_id_fkey(name)
         `)
         .eq("id", productId)
         .single()
 
       if (!error && data) {
-        // Get brand and category if they exist
-        const [brandData, categoryData] = await Promise.all([
-          data.brand_id
-            ? supabase.from("brands").select("name").eq("id", data.brand_id).single()
-            : Promise.resolve({ data: null }),
-          data.category_id
-            ? supabase.from("product_categories").select("name").eq("id", data.category_id).single()
-            : Promise.resolve({ data: null }),
-        ])
-
         const formattedProduct = {
           ...data,
-          brands: brandData.data ? { name: brandData.data.name } : null,
-          categories: categoryData.data ? { name: categoryData.data.name } : null,
+          brands: data.brands,
+          categories: data.product_categories,
           company: data.companies,
         }
 
