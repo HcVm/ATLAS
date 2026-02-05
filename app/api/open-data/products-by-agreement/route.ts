@@ -51,11 +51,13 @@ export async function GET(request: NextRequest) {
       {
         agreement: string
         totalUnits: number
-        avgPrice: number
         totalAmount: number
         orders: number
         suppliers: Set<string>
-        priceHistory: number[]
+        minPrice: number
+        maxPrice: number
+        priceSum: number
+        priceCount: number
       }
     >()
 
@@ -73,11 +75,13 @@ export async function GET(request: NextRequest) {
         productMap.set(key, {
           agreement,
           totalUnits: 0,
-          avgPrice: 0,
           totalAmount: 0,
           orders: 0,
           suppliers: new Set(),
-          priceHistory: [],
+          minPrice: Number.MAX_VALUE,
+          maxPrice: 0,
+          priceSum: 0,
+          priceCount: 0,
         })
       }
 
@@ -87,7 +91,10 @@ export async function GET(request: NextRequest) {
       productData.orders += 1
       if (supplier) productData.suppliers.add(supplier)
       if (unitPrice > 0) {
-        productData.priceHistory.push(unitPrice)
+        productData.priceSum += unitPrice
+        productData.priceCount += 1
+        productData.minPrice = Math.min(productData.minPrice, unitPrice)
+        productData.maxPrice = Math.max(productData.maxPrice, unitPrice)
       }
     })
 
@@ -95,8 +102,8 @@ export async function GET(request: NextRequest) {
       .map(([key, data]) => {
         const [agreement, product] = key.split("|")
         const avgPrice =
-          data.priceHistory.length > 0
-            ? data.priceHistory.reduce((sum, price) => sum + price, 0) / data.priceHistory.length
+          data.priceCount > 0
+            ? data.priceSum / data.priceCount
             : data.totalAmount / data.totalUnits
 
         return {
@@ -108,10 +115,10 @@ export async function GET(request: NextRequest) {
           orders: data.orders,
           suppliers: data.suppliers.size,
           priceRange:
-            data.priceHistory.length > 1
+            data.priceCount > 1
               ? {
-                  min: Math.min(...data.priceHistory),
-                  max: Math.max(...data.priceHistory),
+                  min: data.minPrice,
+                  max: data.maxPrice,
                 }
               : null,
         }
