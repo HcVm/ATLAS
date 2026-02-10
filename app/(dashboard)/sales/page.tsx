@@ -69,8 +69,8 @@ import SaleEditForm from "@/components/sales/sale-edit-form"
 import MultiProductSaleEditForm from "@/components/sales/multi-product-sale-edit-form"
 import MultiProductSaleForm from "@/components/sales/multi-product-sale-form"
 import PaymentVoucherDialog from "@/components/sales/payment-voucher-dialog"
-import { generateWarrantyLetter } from "@/lib/warranty-letter-generator"
-import { generateCCILetter } from "@/lib/cci-letter-generator"
+import { generateWarrantyLetter, WarrantyLetterData } from "@/lib/warranty-letter-generator"
+import { generateCCILetter, CCILetterData } from "@/lib/cci-letter-generator"
 import { SalesEntityManagementDialog } from "@/components/sales/sales-entity-management-dialog"
 import { DateSelectorDialog } from "@/components/sales/date-selector-dialog"
 import { ConditionalLetterButtons } from "@/components/sales/conditional-letter-buttons"
@@ -435,9 +435,101 @@ export default function SalesPage() {
     (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  // --- Letter Generation Placeholders (Implementation details omitted for brevity, assumed same logic) ---
-  const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date) => { /* Logic from original file */ }
-  const handleGenerateCCILetter = async (sale: Sale, selectedDate?: Date) => { /* Logic from original file */ }
+  // --- Letter Generation ---
+  const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date) => {
+    try {
+      setWarrantyDateDialog(prev => ({ ...prev, isGenerating: true }))
+      toast.info("Generando carta de garantía...")
+
+      // Get company details
+      const companyCode = companyToUse?.name?.toUpperCase().includes("AGLE") ? "AGLE" : "ARM"
+
+      // Fetch items for the sale
+      let products = []
+
+      const { data: items, error: itemsError } = await supabase
+        .from("sale_items")
+        .select("quantity, product_name, product_description, product_brand, product_code, product_id")
+        .eq("sale_id", sale.id)
+
+      if (itemsError) {
+        console.error("Error al obtener items:", itemsError)
+      }
+
+      if (items && items.length > 0) {
+        products = items.map(item => ({
+          quantity: item.quantity,
+          description: item.product_description || item.product_name,
+          brand: item.product_brand || "GENERICO",
+          code: item.product_code || "S/N",
+          modelo: ""
+        }))
+      } else {
+        products = [{
+          quantity: sale.total_quantity || 1,
+          description: sale.display_product_name,
+          brand: "GENERICO",
+          code: sale.display_product_code || "S/N",
+          modelo: ""
+        }]
+      }
+
+      const letterData: WarrantyLetterData = {
+        companyName: companyToUse?.name || "AGLE PERUVIAN COMPANY E.I.R.L.",
+        companyRuc: "20603052243",
+        companyCode: companyCode,
+        letterNumber: sale.sale_number || "S/N",
+        clientName: sale.entity_name,
+        clientRuc: sale.entity_ruc,
+        clientAddress: sale.final_destination || sale.observations || "Dirección no registrada",
+        clientFiscalAddress: sale.final_destination || undefined,
+        products: products,
+        warrantyMonths: 12,
+        createdBy: user?.full_name || "Usuario",
+        customDate: selectedDate || new Date()
+      }
+
+      await generateWarrantyLetter(letterData)
+      toast.success("Carta de garantía generada correctamente")
+      setWarrantyDateDialog({ open: false, sale: null, isGenerating: false })
+    } catch (error: any) {
+      console.error("Error generating warranty letter:", error)
+      toast.error("Error al generar la carta: " + error.message)
+      setWarrantyDateDialog(prev => ({ ...prev, isGenerating: false }))
+    }
+  }
+
+  const handleGenerateCCILetter = async (sale: Sale, selectedDate?: Date) => {
+    try {
+      setCciDateDialog(prev => ({ ...prev, isGenerating: true }))
+      toast.info("Generando carta CCI...")
+
+      const companyCode = companyToUse?.name?.toUpperCase().includes("AGLE") ? "AGLE" : "ARM"
+
+      const letterData: CCILetterData = {
+        companyCode: companyCode,
+        companyName: companyToUse?.name,
+        letterNumber: sale.sale_number || "S/N",
+        clientName: sale.entity_name,
+        clientRuc: sale.entity_ruc,
+        clientAddress: sale.final_destination || "Dirección no registrada",
+        clientFiscalAddress: sale.final_destination || undefined,
+        ocam: sale.ocam,
+        siaf: sale.exp_siaf,
+        physical_order: sale.physical_order,
+        createdBy: user?.full_name || "Usuario",
+        customDate: selectedDate || new Date()
+      }
+
+      await generateCCILetter(letterData)
+      toast.success("Carta CCI generada correctamente")
+      setCciDateDialog({ open: false, sale: null, isGenerating: false })
+    } catch (error: any) {
+      console.error("Error generating CCI letter:", error)
+      toast.error("Error al generar la carta CCI: " + error.message)
+      setCciDateDialog(prev => ({ ...prev, isGenerating: false }))
+    }
+  }
 
   if (!hasSalesAccess || !companyToUse) {
     return (
@@ -647,8 +739,11 @@ export default function SalesPage() {
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleGenerateWarrantyLetter(sale)}>
+                                  <DropdownMenuItem onClick={() => setWarrantyDateDialog({ open: true, sale, isGenerating: false })}>
                                     <FileText className="mr-2 h-4 w-4 text-green-600" /> Carta Garantía
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setCciDateDialog({ open: true, sale, isGenerating: false })}>
+                                    <FileText className="mr-2 h-4 w-4 text-blue-600" /> Carta CCI
                                   </DropdownMenuItem>
                                 </>
                               )}
