@@ -50,12 +50,12 @@ const BRAND_TO_COMPANY: Record<string, string> = {
 // URLs de membretes por marca (CORREGIDO)
 const LETTERHEAD_URLS: Record<string, string> = {
   "HOPE LIFE":
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFEFIX.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFE.png",
   WORLDLIFE:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFEFIX.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFE.png",
   ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ZEUSFIX.png",
   VALHALLA:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLAFIX.png",
+    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLA.png",
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
@@ -203,30 +203,29 @@ const getProductDisplayText = (product: WarrantyLetterData["products"][0]): stri
 const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : new Date().toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
   const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
 
   return `
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
       <!-- Membrete de fondo -->
-      ${
-        letterheedUrl
-          ? `
+      ${letterheedUrl
+      ? `
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
           <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
         </div>
       `
-          : ""
-      }
+      : ""
+    }
 
       <!-- Contenido principal - Posicionado para no interferir con el membrete -->
       <div style="position: relative; z-index: 2; padding: 30mm 30mm 20mm 30mm; height: calc(297mm - 80mm); box-sizing: border-box;">
@@ -260,14 +259,14 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
           <div style="margin: 5mm 0;">
             <p style="margin: 0 0 3mm 0; font-size: 10px; font-weight: 700; color: #000;">➤ Producto:</p>
             ${data.products
-              .map(
-                (product) => `
+      .map(
+        (product) => `
               <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000; font-weight: 700;">
                 ${brand} ${getProductDisplayText(product).toUpperCase()} CÓDIGO ${(product.code || "N/A").toUpperCase()}, ${product.quantity.toString().padStart(2, "0")} UNIDADES.
               </p>
             `,
-              )
-              .join("")}
+      )
+      .join("")}
           </div>
 
           <p style="margin: 3mm 0 0 0; font-size: 10px; color: #000;">
@@ -330,15 +329,15 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
 const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : new Date().toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
   const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
 
   return `
@@ -346,15 +345,14 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
 
 
       <!-- Membrete de fondo -->
-      ${
-        letterheedUrl
-          ? `
+      ${letterheedUrl
+      ? `
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
           <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
         </div>
       `
-          : ""
-      }
+      : ""
+    }
 
       <!-- Contenido principal - Posicionado para no interferir con el membrete -->
       <div style="position: relative; z-index: 2; padding: 45mm 25mm 20mm 25mm; height: calc(297mm - 80mm); box-sizing: border-box;">
@@ -388,14 +386,14 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
           <!-- Lista de productos usando MODELO con fallback a descripción -->
           <div style="margin: 5mm 0;">
             ${data.products
-              .map(
-                (product) => `
+      .map(
+        (product) => `
               <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000; line-height: 1.3;">
                 ${product.quantity} UNIDADES DE ${getProductDisplayText(product).toUpperCase()} DE MARCA ${product.brand.toUpperCase()}${product.code ? ` CON CÓDIGO ${product.code.toUpperCase()}` : ""}.
               </p>
             `,
-              )
-              .join("")}
+      )
+      .join("")}
           </div>
 
           <p style="margin: 5mm 0; font-size: 11px; color: #000;">
