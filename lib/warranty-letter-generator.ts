@@ -36,10 +36,11 @@ export interface WarrantyLetterData {
   // Creado por
   createdBy: string
 
+  linkedWarrantyNumber?: string // Número de garantía original (si es revendedor)
   customDate?: Date
 }
 
-// Mapeo de marcas a códigos de empresa (CORREGIDO)
+// Mapeo de marcas a códigos de empresa propietaria (BRAND OWNER)
 const BRAND_TO_COMPANY: Record<string, string> = {
   "HOPE LIFE": "ARM",
   WORLDLIFE: "ARM",
@@ -58,14 +59,18 @@ const LETTERHEAD_URLS: Record<string, string> = {
     "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLA.png",
 }
 
+// URLs de membretes corporativos (para Garantía de Proveedor)
+const CORPORATE_LETTERHEADS: Record<string, string> = {
+  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLE.png", // Asumiendo URL
+  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARM.png", // Asumiendo URL
+}
+
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
   console.log("🚀 Iniciando generación de Cartas de Garantía...")
   console.log("DEBUG: Data recibida en generateWarrantyLetters:", data)
-  console.log("DEBUG: data.products en generateWarrantyLetters:", data.products)
 
   // Agrupar productos por marca
   const productsByBrand = (data.products || []).reduce(
-    // Modificado para manejar 'undefined'
     (acc, product) => {
       const brand = product.brand.toUpperCase()
       if (!acc[brand]) {
@@ -76,8 +81,6 @@ export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise
     },
     {} as Record<string, typeof data.products>,
   )
-
-  console.log("📦 Productos agrupados por marca:", productsByBrand)
 
   // Generar una carta por cada marca
   for (const [brand, products] of Object.entries(productsByBrand)) {
@@ -103,17 +106,59 @@ const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: str
     }
   }
 
-  // Determinar el tipo de empresa (AGLE o ARM)
-  const companyType = BRAND_TO_COMPANY[brand] || "AGLE"
-  const letterheedUrl = LETTERHEAD_URLS[brand]
+  // Identificar Propietario de la Marca vs Vendedor
+  // Identificar Propietario de la Marca vs Vendedor
+  const cleanBrand = brand.trim().toUpperCase()
+  // Manual check for common variations just in case
+  let mappedOwner = BRAND_TO_COMPANY[cleanBrand]
 
-  console.log(`🎨 Creando contenido HTML para ${brand} (${companyType})...`)
+  if (!mappedOwner) {
+    // Fuzzy check or fallback
+    if (cleanBrand.includes("WORLD") || cleanBrand.includes("LIFE")) mappedOwner = "ARM";
+    else if (cleanBrand.includes("HOPE")) mappedOwner = "ARM";
+    else if (cleanBrand.includes("ZEUS")) mappedOwner = "AGLE";
+    else if (cleanBrand.includes("VALH")) mappedOwner = "AGLE";
+    else mappedOwner = "AGLE"; // Default fallback
+  }
 
-  // Crear el HTML según el tipo de empresa
-  const htmlContent =
-    companyType === "AGLE"
-      ? createAGLEWarrantyLetterHTML(data, brand, letterheedUrl)
-      : createARMWarrantyLetterHTML(data, brand, letterheedUrl)
+  const brandOwnerCode = mappedOwner
+  const sellerCode = data.companyCode
+  const isReseller = brandOwnerCode !== sellerCode
+
+  console.log(`🔍 Debug Reseller Logic: Brand='${brand}' Clean='${cleanBrand}' Owner='${brandOwnerCode}' Seller='${sellerCode}' isReseller=${isReseller}`)
+
+  // Determinar Membrete y Plantilla
+  let letterheadUrl = LETTERHEAD_URLS[brand] // Por defecto usa el de la marca
+
+  if (isReseller) {
+    // Si es revendedor, usa su propio membrete corporativo (si existe) o el de la marca como fallback?
+    // El requerimiento dice: "saldrá ya no con la hoja membretada de la marca, sino con la hoja membretada de la empresa que está vendiendo el producto"
+    // Necesitamos URLs de membretes corporativos de AGLE y ARM genéricos, no de marca.
+    // Intentaremos usar uno genérico si tenemos, o fallback.
+    // Para este caso, asumiremos que si vende ARM y la marca es ZEUS (AGLE), usamos membrete ARM.
+    // Mapeo simple de membrete corporativo:
+    if (sellerCode === "ARM") letterheadUrl = LETTERHEAD_URLS["WORLDLIFE"] // Usamos Worldlife como fallback de ARM por ahora si no hay uno genérico, o definimos uno nuevo.
+    else if (sellerCode === "AGLE") letterheadUrl = LETTERHEAD_URLS["ZEUS"] // Fallback
+
+    // Mejor: Si tenemos CORPORATE_LETTERHEADS definido arriba (lo agregaré)
+  }
+
+
+  console.log(`🎨 Creando contenido HTML para ${brand} (Vendedor: ${sellerCode}, Dueño Marca: ${brandOwnerCode})...`)
+
+  // Crear el HTML según si es Grantía de Marca o Garantía de Proveedor
+  let htmlContent = ""
+
+  if (isReseller) {
+    // Usar plantilla de Garantía de Proveedor (Linked Warranty)
+    htmlContent = createSupplierWarrantyLetterHTML(data, brand, letterheadUrl, brandOwnerCode)
+  } else {
+    // Usar plantilla estándar de Marca (AGLE o ARM según la marca)
+    htmlContent =
+      brandOwnerCode === "AGLE"
+        ? createAGLEWarrantyLetterHTML(data, brand, letterheadUrl)
+        : createARMWarrantyLetterHTML(data, brand, letterheadUrl)
+  }
 
   // Crear un elemento temporal en el DOM
   const tempDiv = document.createElement("div")
@@ -200,7 +245,7 @@ const getProductDisplayText = (product: WarrantyLetterData["products"][0]): stri
   return product.modelo?.trim() || product.description?.trim() || "PRODUCTO"
 }
 
-const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
+const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheadUrl?: string): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
       year: "numeric",
@@ -218,10 +263,10 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
     <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
 
       <!-- Membrete de fondo -->
-      ${letterheedUrl
+      ${letterheadUrl
       ? `
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
-          <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
+          <img src="${letterheadUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
         </div>
       `
       : ""
@@ -235,6 +280,7 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
           <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #000; letter-spacing: 1px;">
             CERTIFICADO DE GARANTÍA
           </h1>
+          <p style="margin: 0; font-size: 11px; font-weight: 600; color: #000;">N° ${data.letterNumber}</p>
         </div>
         <!-- Información del destinatario -->
         <div style="margin-bottom: 4mm;">
@@ -326,7 +372,7 @@ const createAGLEWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, l
   `
 }
 
-const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheedUrl?: string): string => {
+const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheadUrl?: string): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
       year: "numeric",
@@ -345,10 +391,10 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
 
 
       <!-- Membrete de fondo -->
-      ${letterheedUrl
+      ${letterheadUrl
       ? `
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
-          <img src="${letterheedUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
+          <img src="${letterheadUrl}" alt="Membrete ${brand}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
         </div>
       `
       : ""
@@ -362,6 +408,10 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
           <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #000; letter-spacing: 1px;">
             CARTA DE GARANTÍA
           </h1>
+        </div>
+
+        <div style="text-align: right; margin-bottom: 5mm;">
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: #000;">N° ${data.letterNumber}</p>
         </div>
 
         <!-- Fecha -->
@@ -440,3 +490,110 @@ const createARMWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, le
 
 // Función de compatibilidad hacia atrás
 export const generateWarrantyLetter = generateWarrantyLetters
+
+const createSupplierWarrantyLetterHTML = (data: WarrantyLetterData, brand: string, letterheadUrl?: string, brandOwnerCode?: string): string => {
+  const currentDate = data.customDate
+    ? data.customDate.toLocaleDateString("es-PE", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+    : new Date().toLocaleDateString("es-PE", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+  const ownerName = brandOwnerCode === "AGLE" ? "AGLE PERUVIAN COMPANY E.I.R.L." : "ARM CORPORATIONS DEL PERÚ E.I.R.L."
+
+  return `
+    <div style="width: 210mm; height: 297mm; background: white; font-family: 'Arial', sans-serif; color: #000; position: relative; overflow: hidden; margin: 0; padding: 0;">
+
+      <!-- Membrete de fondo -->
+      ${letterheadUrl
+      ? `
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+          <img src="\${letterheadUrl}" alt="Membrete" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" crossorigin="anonymous" />
+        </div>
+      `
+      : ""
+    }
+
+      <!-- Contenido principal -->
+      <div style="position: relative; z-index: 2; padding: 40mm 25mm 20mm 25mm; height: calc(297mm - 60mm); box-sizing: border-box;">
+
+        <!-- Título principal -->
+        <div style="text-align: center; margin-bottom: 10mm;">
+          <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #000; letter-spacing: 1px;">
+            CARTA DE GARANTÍA DE PROVEEDOR
+          </h1>
+          <p style="margin: 2mm 0 0 0; font-size: 12px; font-weight: 600;">N° \${data.letterNumber}</p>
+        </div>
+
+        <!-- Fecha -->
+        <div style="text-align: right; margin-bottom: 10mm;">
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: #000;">Lima, \${currentDate}.</p>
+        </div>
+
+        <!-- Información del destinatario -->
+        <div style="margin-bottom: 8mm;">
+          <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 600; color: #000;">Señor(a)(es):</p>
+          <h3 style="margin: 0 0 3mm 0; font-size: 13px; font-weight: 800; color: #000;">\${data.clientName}</h3>
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">RUC: \${data.clientRuc}</p>
+          <p style="margin: 0 0 3mm 0; font-size: 10px; color: #000;">DIRECCIÓN: \${addressToDisplay}</p>
+        </div>
+
+        <!-- Cuerpo -->
+        <div style="margin-bottom: 8mm; line-height: 1.5; text-align: justify;">
+          <p style="margin: 0 0 5mm 0; font-size: 11px; color: #000;">
+            Por medio de la presente, <strong>\${data.companyName}</strong> extiende la presente garantía en calidad de proveedor autorizado, respaldando la operatividad y calidad de los siguientes bienes:
+          </p>
+
+          <!-- Lista de productos -->
+          <div style="margin: 5mm 0; padding: 2mm; border-left: 2px solid #000;">
+            \${data.products
+              .map(
+                (product) => \`
+              <p style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000; line-height: 1.3;">
+                • \${product.quantity} UND. \${getProductDisplayText(product).toUpperCase()} (MARCA: \${product.brand.toUpperCase()})
+              </p>
+            \`,
+              )
+              .join("")}
+          </div>
+
+          <p style="margin: 5mm 0; font-size: 11px; color: #000;">
+            Esta garantía tiene una validez de <strong>\${data.warrantyMonths} MESES</strong> y se emite en respaldo a la 
+            <strong>Garantía Original N° \${data.linkedWarrantyNumber || "____________"}</strong> otorgada por el propietario de la marca, 
+            <strong>\${ownerName}</strong>. 
+          </p>
+
+          <p style="margin: 5mm 0; font-size: 11px; color: #000;">
+            Nuestra empresa asume la responsabilidad de gestionar cualquier reclamo de garantía directamente con la marca titular, asegurando que el cliente final reciba el soporte técnico, reparación o reemplazo que corresponda según los términos de la garantía original.
+          </p>
+        </div>
+
+        <!-- Condiciones -->
+        <div style="margin-bottom: 5mm;">
+          <h4 style="margin: 0 0 3mm 0; font-size: 11px; font-weight: 700; color: #000;">Condiciones Generales:</h4>
+          <ul style="margin: 0; padding-left: 5mm; font-size: 10px; line-height: 1.4; color: #000;">
+            <li>La garantía cubre defectos de fabricación y funcionamiento bajo condiciones normales de uso.</li>
+            <li>No cubre daños por mal uso, manipulación indebida, accidentes o factores externos.</li>
+            <li>Para hacer efectiva la garantía, es indispensable presentar este documento junto con el comprobante de pago.</li>
+          </ul>
+        </div>
+
+        <!-- Firma -->
+        <div style="margin-top: 15mm;">
+          <p style="margin: 0 0 2mm 0; font-size: 10px; color: #000;">Atentamente,</p>
+          <div style="margin-top: 20mm; border-top: 1px solid #000; width: 60mm; text-align: center; padding-top: 2mm;">
+             <p style="margin: 0; font-size: 10px; font-weight: 700;">\${data.companyName}</p>
+             <p style="margin: 0; font-size: 9px;">Área de Ventas / Garantías</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `
+}
+

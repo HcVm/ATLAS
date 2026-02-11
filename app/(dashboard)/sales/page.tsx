@@ -109,6 +109,8 @@ interface Sale {
   observations?: string | null
   created_at?: string | null
   is_multi_product: boolean
+  warranty_number?: string | null
+  linked_warranty_number?: string | null
   payment_vouchers?: {
     id: string
     status: "pending" | "confirmed" | "rejected"
@@ -238,7 +240,7 @@ export default function SalesPage() {
   const isAcuerdosMarco = ["Acuerdos Marco", "acuerdos marco"].includes(user?.departments?.name || "")
   const canViewAllSales = user?.role === "admin" || user?.role === "supervisor" || ["Administración", "Operaciones", "Jefatura de Ventas", "Contabilidad", "Acuerdos Marco", "acuerdos marco"].includes(user?.departments?.name || "")
 
-  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id, name: user.company_name } : null
+  const companyToUse = user?.role === "admin" ? selectedCompany : user?.company_id ? { id: user.company_id, name: (user as any).company_name } : null
 
   useEffect(() => {
     const companyId = companyToUse?.id
@@ -289,10 +291,33 @@ export default function SalesPage() {
         query = query.eq("created_by", user.id)
       }
 
-      const { data, error } = await query.order("sale_date", { ascending: false })
+      const { data: viewData, error } = await query.order("sale_date", { ascending: false })
 
       if (error) throw error
-      setSales(data || [])
+
+      let finalSales: Sale[] = (viewData as any[]) || []
+
+      // Fetch warranty info separately since it's not in the view yet
+      if (finalSales.length > 0) {
+        const saleIds = finalSales.map(s => s.id)
+        const { data: warrantyData } = await supabase
+          .from("sales")
+          .select("id, warranty_number, linked_warranty_number")
+          .in("id", saleIds)
+
+        if (warrantyData) {
+          finalSales = finalSales.map(sale => {
+            const warranty = (warrantyData as any[]).find(w => w.id === sale.id)
+            return {
+              ...sale,
+              warranty_number: warranty?.warranty_number || null,
+              linked_warranty_number: warranty?.linked_warranty_number || null
+            }
+          })
+        }
+      }
+
+      setSales(finalSales)
     } catch (error: any) {
       toast.error("Error al cargar las ventas: " + error.message)
     } finally {
@@ -436,20 +461,36 @@ export default function SalesPage() {
   )
 
   // --- Letter Generation ---
-  const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date) => {
+  const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date, extraData?: { linkedWarrantyNumber?: string }) => {
     try {
       setWarrantyDateDialog(prev => ({ ...prev, isGenerating: true }))
-      toast.info("Generando carta de garantía...")
+      toast.info("Verificando datos de garantía...")
 
-      // Get company details
-      const companyCode = companyToUse?.name?.toUpperCase().includes("AGLE") ? "AGLE" : "ARM"
+      const BRAND_TO_COMPANY: Record<string, string> = {
+        "HOPE LIFE": "ARM",
+        WORLDLIFE: "ARM",
+        ZEUS: "AGLE",
+        VALHALLA: "AGLE",
+      }
+
+      // Get company details of the SELLER from the SALE NUMBER itself (Source of Truth)
+      // Fallback to companyToUse only if sale_number is missing
+      let sellerCompanyCode = "ARM"
+      if (sale.sale_number?.toUpperCase().includes("AGLE")) {
+        sellerCompanyCode = "AGLE"
+      } else if (sale.sale_number?.toUpperCase().includes("ARM")) {
+        sellerCompanyCode = "ARM"
+      } else {
+        // Fallback to user context
+        sellerCompanyCode = companyToUse?.name?.toUpperCase().includes("AGLE") ? "AGLE" : "ARM"
+      }
 
       // Fetch items for the sale
-      let products = []
+      let products: WarrantyLetterData['products'] = []
 
       const { data: items, error: itemsError } = await supabase
         .from("sale_items")
-        .select("quantity, product_name, product_description, product_brand, product_code, product_id")
+        .select("quantity, product_name, product_description, product_brand, product_code, product_id, products(modelo)")
         .eq("sale_id", sale.id)
 
       if (itemsError) {
@@ -462,7 +503,8 @@ export default function SalesPage() {
           description: item.product_description || item.product_name,
           brand: item.product_brand || "GENERICO",
           code: item.product_code || "S/N",
-          modelo: ""
+          // @ts-ignore - Supabase types might not fully infer the join structure without explicit typing here
+          modelo: item.products?.modelo || ""
         }))
       } else {
         products = [{
@@ -474,19 +516,148 @@ export default function SalesPage() {
         }]
       }
 
+      // Determine main brand (use the first product's brand)
+      const mainBrand = products.length > 0 ? products[0].brand.toUpperCase() : "GENERICO"
+
+      // Robust Brand Owner Check
+      const cleanBrand = mainBrand.trim().toUpperCase()
+      let mappedOwner = BRAND_TO_COMPANY[cleanBrand]
+      if (!mappedOwner) {
+        if (cleanBrand.includes("WORLD") || cleanBrand.includes("LIFE")) mappedOwner = "ARM";
+        else if (cleanBrand.includes("HOPE")) mappedOwner = "ARM";
+        else if (cleanBrand.includes("ZEUS")) mappedOwner = "AGLE";
+        else if (cleanBrand.includes("VALH")) mappedOwner = "AGLE";
+        else mappedOwner = "AGLE";
+      }
+
+      const brandOwnerCode = mappedOwner
+      const isReseller = sellerCompanyCode !== brandOwnerCode
+
+      let finalWarrantyNumber = sale.warranty_number
+      // Use provided input if available, otherwise existing
+      let finalLinkedWarrantyNumber = extraData?.linkedWarrantyNumber?.trim() || sale.linked_warranty_number
+
+      // Generate Numbers if they don't exist
+      if (!finalWarrantyNumber) {
+        toast.info("Generando nuevos números de garantía...")
+        const currentYear = new Date().getFullYear()
+
+        // Loop for retry on duplicate key
+        let attempts = 0
+        const maxAttempts = 5
+        let saved = false
+
+        while (attempts < maxAttempts && !saved) {
+          attempts++
+
+          // 1. Generate Seller Warranty Number
+          // Format: GAR-SELLER-YEAR-SEQ
+          const sellerPrefix = `GAR-${sellerCompanyCode}-${currentYear}`
+
+          const { data: lastSellerWarranty } = await supabase
+            .from("sales")
+            .select("warranty_number")
+            .ilike("warranty_number", `${sellerPrefix}%`)
+            .order("warranty_number", { ascending: false })
+            .limit(1)
+            .single()
+
+          let nextSellerSeq = 1
+          if (lastSellerWarranty && (lastSellerWarranty as any).warranty_number) {
+            const parts = (lastSellerWarranty as any).warranty_number.split('-')
+            const lastSeq = parseInt(parts[parts.length - 1])
+            if (!isNaN(lastSeq)) {
+              // If retry, add attempt to sequence to jump ahead
+              nextSellerSeq = lastSeq + (attempts > 1 ? attempts : 1)
+            }
+          } else if (attempts > 1) {
+            nextSellerSeq = attempts
+          }
+
+          finalWarrantyNumber = `${sellerPrefix}-${nextSellerSeq.toString().padStart(4, "0")}`
+
+          // 2. If Reseller, assume/generate a Linked Warranty Number
+          if (isReseller) {
+            const ownerPrefix = `GAR-${brandOwnerCode}-${currentYear}`
+
+            const { data: lastOwnerWarranty } = await supabase
+              .from("sales")
+              .select("warranty_number")
+              .ilike("warranty_number", `${ownerPrefix}%`)
+              .order("warranty_number", { ascending: false })
+              .limit(1)
+              .single()
+
+            let nextOwnerSeq = 1
+            if (lastOwnerWarranty && (lastOwnerWarranty as any).warranty_number) {
+              const parts = (lastOwnerWarranty as any).warranty_number.split('-')
+              const lastSeq = parseInt(parts[parts.length - 1])
+              if (!isNaN(lastSeq)) {
+                nextOwnerSeq = lastSeq + 1
+              }
+            }
+
+            finalLinkedWarrantyNumber = `${ownerPrefix}-${nextOwnerSeq.toString().padStart(4, "0")}`
+          }
+
+          // 3. Save to DB
+          const { error: updateError } = await supabase
+            .from("sales")
+            .update({
+              warranty_number: finalWarrantyNumber,
+              linked_warranty_number: finalLinkedWarrantyNumber,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", sale.id)
+
+          if (updateError) {
+            console.error("Error saving warranty attempt " + attempts, updateError)
+            if (updateError.code === '23505') { // unique_violation
+              continue
+            }
+            throw new Error("Error al guardar número de garantía: " + updateError.message)
+          } else {
+            saved = true
+          }
+        }
+
+        if (!saved) {
+          throw new Error(`No se pudo generar un número único tras ${maxAttempts} intentos.`)
+        }
+
+        // Update local list to reflect change without full reload
+        setSales(prev => prev.map(s => s.id === sale.id ? { ...s, warranty_number: finalWarrantyNumber, linked_warranty_number: finalLinkedWarrantyNumber } : s))
+      } else if (finalLinkedWarrantyNumber && finalLinkedWarrantyNumber !== sale.linked_warranty_number) {
+        // If warranty exists but linked number was updated manually
+        const { error: updateError } = await supabase
+          .from("sales")
+          .update({
+            linked_warranty_number: finalLinkedWarrantyNumber,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", sale.id)
+
+        if (!updateError) {
+          setSales(prev => prev.map(s => s.id === sale.id ? { ...s, linked_warranty_number: finalLinkedWarrantyNumber } : s))
+        }
+      }
+
+      toast.info(`Generando PDF Garantía N° ${finalWarrantyNumber}...`)
+
       const letterData: WarrantyLetterData = {
         companyName: companyToUse?.name || "AGLE PERUVIAN COMPANY E.I.R.L.",
         companyRuc: "20603052243",
-        companyCode: companyCode,
-        letterNumber: sale.sale_number || "S/N",
+        companyCode: sellerCompanyCode,
+        letterNumber: finalWarrantyNumber || "S/N", // Use the unique warranty number
         clientName: sale.entity_name,
         clientRuc: sale.entity_ruc,
         clientAddress: sale.final_destination || sale.observations || "Dirección no registrada",
         clientFiscalAddress: sale.final_destination || undefined,
         products: products,
-        warrantyMonths: 12,
+        warrantyMonths: 12, // Could be dynamic
         createdBy: user?.full_name || "Usuario",
-        customDate: selectedDate || new Date()
+        customDate: selectedDate || new Date(),
+        linkedWarrantyNumber: finalLinkedWarrantyNumber || undefined
       }
 
       await generateWarrantyLetter(letterData)
@@ -797,7 +968,7 @@ export default function SalesPage() {
             <DialogDescription>Modifica los datos de la venta seleccionada</DialogDescription>
           </DialogHeader>
           {editingSale && (
-            <SaleEditForm sale={editingSale} onSuccess={() => { setShowEditDialog(false); setEditingSale(null); if (companyToUse?.id) fetchSales(companyToUse.id, false, selectedYear); }} onCancel={() => setShowEditDialog(false)} />
+            <SaleEditForm sale={editingSale as any} onSuccess={() => { setShowEditDialog(false); setEditingSale(null); if (companyToUse?.id) fetchSales(companyToUse.id, false, selectedYear); }} onCancel={() => setShowEditDialog(false)} />
           )}
         </DialogContent>
       </Dialog>
@@ -1020,7 +1191,19 @@ export default function SalesPage() {
         <SalesEntityManagementDialog open={showSalesEntityManagementDialog} onOpenChange={setShowSalesEntityManagementDialog} companyId={companyToUse.id} canEdit={hasSalesAccess} />
       )}
 
-      <DateSelectorDialog open={warrantyDateDialog.open} onOpenChange={(open) => setWarrantyDateDialog({ open, sale: null, isGenerating: false })} onConfirm={(date) => warrantyDateDialog.sale && handleGenerateWarrantyLetter(warrantyDateDialog.sale, date)} title="Generar Garantía" description="Fecha de emisión" isGenerating={warrantyDateDialog.isGenerating} />
+      <DateSelectorDialog
+        open={warrantyDateDialog.open}
+        onOpenChange={(open) => setWarrantyDateDialog({ open, sale: null, isGenerating: false })}
+        onConfirm={(date, extraData) => warrantyDateDialog.sale && handleGenerateWarrantyLetter(warrantyDateDialog.sale, date, extraData)}
+        title="Generar Garantía"
+        description="Fecha de emisión"
+        isGenerating={warrantyDateDialog.isGenerating}
+        showLinkedWarrantyInput={
+          warrantyDateDialog.sale?.sale_number?.toUpperCase().includes("AGLE") ??
+          companyToUse?.name?.toUpperCase().includes("AGLE") ??
+          false
+        }
+      />
 
       <DateSelectorDialog open={cciDateDialog.open} onOpenChange={(open) => setCciDateDialog({ open, sale: null, isGenerating: false })} onConfirm={(date) => cciDateDialog.sale && handleGenerateCCILetter(cciDateDialog.sale, date)} title="Generar CCI" description="Fecha de emisión" isGenerating={cciDateDialog.isGenerating} />
 
