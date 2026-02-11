@@ -1,7 +1,5 @@
 "use client"
-
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +12,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar, FileText } from "lucide-react"
+import { checkWarrantyExistence } from "@/app/actions/warranty-check"
+import { Calendar, FileText, Check, X, Search, Loader2 } from "lucide-react"
 
 interface DateSelectorDialogProps {
   open: boolean
@@ -40,6 +39,10 @@ export function DateSelectorDialog({
   const [selectedDate, setSelectedDate] = useState<string>(localDateString)
   const [linkedNumber, setLinkedNumber] = useState("")
 
+  // Validation State
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle')
+  const [validationMessage, setValidationMessage] = useState("")
+
   const handleConfirm = () => {
     const [year, month, day] = selectedDate.split("-").map(Number)
     const date = new Date(year, month - 1, day)
@@ -50,9 +53,31 @@ export function DateSelectorDialog({
     setSelectedDate(e.target.value)
   }
 
+  const validateLinkedWarranty = async () => {
+    if (!linkedNumber.trim()) return
+    setValidationStatus('loading')
+    setValidationMessage("")
+
+    try {
+      const result = await checkWarrantyExistence(linkedNumber.trim())
+
+      if (result.success && result.data) {
+        setValidationStatus('valid')
+        setValidationMessage(`Garantía válida otorgada a: ${result.data.entity_name || "Cliente desconocido"}`)
+      } else {
+        setValidationStatus('invalid')
+        setValidationMessage(result.message || "No se encontró ninguna garantía con este número en el sistema.")
+      }
+    } catch (err) {
+      console.error("Error validating warranty:", err)
+      setValidationStatus('invalid')
+      setValidationMessage("Error al validar. Verifique su conexión.")
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-600" />
@@ -73,21 +98,49 @@ export function DateSelectorDialog({
           </div>
 
           {showLinkedWarrantyInput && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="linked-warranty" className="text-right font-semibold text-red-600">
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="linked-warranty" className="text-right font-semibold text-red-600 pt-2">
                 N° Garantía Original *
               </Label>
-              <div className="col-span-3">
-                <Input
-                  id="linked-warranty"
-                  value={linkedNumber}
-                  onChange={(e) => setLinkedNumber(e.target.value)}
-                  placeholder="Ej: GAR-ARM-2025-001 (REQUERIDO)"
-                  className="border-red-200 focus-visible:ring-red-500"
-                />
-                <p className="text-[10px] text-red-500 mt-1 font-medium">
-                  Este campo es obligatorio para garantías de proveedor.
-                </p>
+              <div className="col-span-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="linked-warranty"
+                    value={linkedNumber}
+                    onChange={(e) => {
+                      setLinkedNumber(e.target.value)
+                      setValidationStatus('idle')
+                      setValidationMessage("")
+                    }}
+                    placeholder="Ej: GAR-ARM-2025-001"
+                    className={`flex-1 ${validationStatus === 'valid' ? 'border-green-500 bg-green-50' : validationStatus === 'invalid' ? 'border-red-500 bg-red-50' : ''}`}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={validateLinkedWarranty}
+                    disabled={!linkedNumber.trim() || validationStatus === 'loading'}
+                    title="Validar Garantía"
+                  >
+                    {validationStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                {/* Feedback Message */}
+                {validationStatus !== 'idle' && (
+                  <div className={`text-xs p-2 rounded flex items-start gap-2 ${validationStatus === 'valid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                    {validationStatus === 'valid' ? <Check className="h-4 w-4 mt-0.5 shrink-0" /> : <X className="h-4 w-4 mt-0.5 shrink-0" />}
+                    <span>{validationMessage}</span>
+                  </div>
+                )}
+
+                {validationStatus === 'idle' && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Debe validar la garantía original antes de continuar.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -107,7 +160,8 @@ export function DateSelectorDialog({
           <Button
             type="button"
             onClick={handleConfirm}
-            disabled={isGenerating || (showLinkedWarrantyInput && !linkedNumber.trim())}
+            // Disable if validating linked warranty and it's NOT explicitly checking valid
+            disabled={isGenerating || (showLinkedWarrantyInput && validationStatus !== 'valid')}
             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
