@@ -74,18 +74,19 @@ export function DateSelectorDialog({
 
           {showLinkedWarrantyInput && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="linked-warranty" className="text-right">
-                N° Garantía Original
+              <Label htmlFor="linked-warranty" className="text-right font-semibold text-red-600">
+                N° Garantía Original *
               </Label>
               <div className="col-span-3">
                 <Input
                   id="linked-warranty"
                   value={linkedNumber}
                   onChange={(e) => setLinkedNumber(e.target.value)}
-                  placeholder="Ej: GAR-ARM-2025-001 (Opcional)"
+                  placeholder="Ej: GAR-ARM-2025-001 (REQUERIDO)"
+                  className="border-red-200 focus-visible:ring-red-500"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Si se deja vacío, se generará uno automáticamente.
+                <p className="text-[10px] text-red-500 mt-1 font-medium">
+                  Este campo es obligatorio para garantías de proveedor.
                 </p>
               </div>
             </div>
@@ -106,8 +107,8 @@ export function DateSelectorDialog({
           <Button
             type="button"
             onClick={handleConfirm}
-            disabled={isGenerating}
-            className="bg-blue-600 hover:bg-blue-700"
+            disabled={isGenerating || (showLinkedWarrantyInput && !linkedNumber.trim())}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>

@@ -551,8 +551,20 @@ export default function SalesPage() {
           attempts++
 
           // 1. Generate Seller Warranty Number
-          // Format: GAR-SELLER-YEAR-SEQ
-          const sellerPrefix = `GAR-${sellerCompanyCode}-${currentYear}`
+          let sellerPrefix = ""
+          if (isReseller) {
+            // Custom prefixes requested by user
+            const prefixMap: Record<string, string> = {
+              "AGLE": "PROVAGPGAR",
+              "ARM": "PROVARMGAR",
+              "GALUR": "PROVGALGAR"
+            }
+            const customPrefix = prefixMap[sellerCompanyCode] || `PROV${sellerCompanyCode}GAR`
+            sellerPrefix = `${customPrefix}-${currentYear}`
+          } else {
+            // Standard Manufacturer Warranty: GAR-SELLER-YEAR
+            sellerPrefix = `GAR-${sellerCompanyCode}-${currentYear}`
+          }
 
           const { data: lastSellerWarranty } = await supabase
             .from("sales")
