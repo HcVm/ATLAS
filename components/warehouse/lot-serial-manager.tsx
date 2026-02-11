@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Package, Barcode, CheckCircle, Clock, Truck, Eye, AlertCircle } from "lucide-react"
-import { getLotsForSale, getSerialsForLot, updateLotStatus } from "@/lib/lot-serial-generator"
+import { Package, Barcode, CheckCircle, Clock, Truck, Eye, AlertCircle, Play, RefreshCw } from "lucide-react"
+import { getLotsForSale, getSerialsForLot, updateLotStatus, generateLotsForSale } from "@/lib/lot-serial-generator"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/lib/auth-context"
+import { useCompany } from "@/lib/company-context"
 
 interface LotSerialManagerProps {
   saleId: string
@@ -17,12 +19,15 @@ interface LotSerialManagerProps {
 }
 
 export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerProps) {
+  const { user } = useAuth()
+  const { selectedCompany } = useCompany()
   const [lots, setLots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLot, setSelectedLot] = useState<any | null>(null)
   const [showSerialsDialog, setShowSerialsDialog] = useState(false)
   const [serials, setSerials] = useState<any[]>([])
   const [loadingSerials, setLoadingSerials] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
     if (saleId) {
@@ -39,6 +44,33 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
       toast.error("Error al cargar los lotes: " + error.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGenerateLots = async () => {
+    const companyId = user?.role === "admin" ? selectedCompany?.id : user?.company_id
+
+    if (!user || !companyId) {
+      toast.error("No se pudo identificar la empresa o el usuario")
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      toast.info("Generando lotes y asignando series...")
+      await generateLotsForSale(saleId, companyId, user.id)
+
+      toast.success("Lotes generados y asignados correctamente")
+      await fetchLots()
+
+      if (onStatusChange) {
+        onStatusChange()
+      }
+    } catch (error: any) {
+      console.error("Error generating lots:", error)
+      toast.error("Error al generar lotes: " + error.message)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -131,6 +163,28 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
           </CardTitle>
           <CardDescription>No se han generado lotes para esta venta aún</CardDescription>
         </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-8 space-y-4">
+          <div className="p-3 bg-slate-100 rounded-full">
+            <Barcode className="h-8 w-8 text-slate-400" />
+          </div>
+          <p className="text-slate-500 text-center max-w-md">
+            Puedes generar automáticamente los lotes y series para los productos de esta venta.
+            Si hay stock disponible, se asignarán las series existentes. De lo contrario, se generarán nuevos lotes.
+          </p>
+          <Button onClick={handleGenerateLots} disabled={isGenerating}>
+            {isGenerating ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Generando...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Generar Lotes y Series
+              </>
+            )}
+          </Button>
+        </CardContent>
       </Card>
     )
   }
@@ -138,12 +192,27 @@ export function LotSerialManager({ saleId, onStatusChange }: LotSerialManagerPro
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Lotes y Números de Serie
-          </CardTitle>
-          <CardDescription>Gestión de trazabilidad de productos</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Lotes y Números de Serie
+            </CardTitle>
+            <CardDescription>Gestión de trazabilidad de productos</CardDescription>
+          </div>
+          <Button onClick={handleGenerateLots} disabled={isGenerating} size="sm" variant="outline">
+            {isGenerating ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Generando...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Regenerar / Completar
+              </>
+            )}
+          </Button>
         </CardHeader>
         <CardContent>
           {hasAllocatedSerials && (
