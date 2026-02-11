@@ -586,10 +586,6 @@ const createSupplierWarrantyLetterHTML = (data: WarrantyLetterData, brand: strin
         <!-- Firma -->
         <div style="margin-top: 15mm;">
           <p style="margin: 0 0 2mm 0; font-size: 10px; color: #000;">Atentamente,</p>
-          <div style="margin-top: 25mm; border-top: 1px solid #000; width: 60mm; text-align: center; padding-top: 2mm;">
-             <p style="margin: 0; font-size: 10px; font-weight: 700;">${data.companyName}</p>
-             <p style="margin: 0; font-size: 9px;">Área de Ventas / Garantías</p>
-          </div>
         </div>
 
       </div>
