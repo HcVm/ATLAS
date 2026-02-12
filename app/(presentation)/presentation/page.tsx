@@ -54,25 +54,50 @@ const slides = [
     {
         id: "intro",
         content: (
-            <div className="text-center space-y-4 md:space-y-6">
+            <div className="relative z-10 flex flex-col items-center justify-center h-full text-center space-y-8">
+                {/* Background Glow Effect */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse" />
+
                 <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.8 }}
-                    className="w-24 h-24 md:w-32 md:h-32 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_50px_-12px_rgba(37,99,235,0.5)]"
+                    initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    transition={{ duration: 1, ease: [0.2, 0.8, 0.2, 1] }}
+                    className="relative z-20"
                 >
-                    <Database className="w-12 h-12 md:w-16 md:h-16 text-white" />
+                    {/* Official Logo */}
+                    <div className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-8 filter drop-shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                        <img
+                            src="/logos/atlas-logo-white.png"
+                            alt="ATLAS Logo"
+                            className="w-full h-full object-contain"
+                        />
+                    </div>
                 </motion.div>
-                <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-400">
-                    ATLAS
-                </h1>
-                <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto">
-                    Plataforma Integral de Gestión Empresarial
-                </p>
-                <div className="pt-4 md:pt-8">
-                    <p className="text-sm md:text-lg text-slate-500 uppercase tracking-widest font-semibold">
-                        Capacitación y Transformación Digital
-                    </p>
+
+                <div className="space-y-4 relative z-20">
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.8 }}
+                        className="text-6xl md:text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-200 to-slate-500"
+                    >
+                        ATLAS
+                    </motion.h1>
+
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.6, duration: 0.8 }}
+                        className="flex flex-col gap-2"
+                    >
+                        <p className="text-2xl md:text-3xl font-light text-slate-300">
+                            Enterprise Operating System
+                        </p>
+                        <div className="h-1 w-24 bg-blue-500 mx-auto rounded-full mt-4 mb-4" />
+                        <p className="text-sm md:text-base text-slate-500 uppercase tracking-[0.3em] font-bold">
+                            Centralización &bull; Automatización &bull; Control
+                        </p>
+                    </motion.div>
                 </div>
             </div>
         )
@@ -748,7 +773,7 @@ const slides = [
                             <div className="text-center space-y-1">
                                 <h4 className="text-green-500 font-bold text-sm uppercase tracking-wide">Autenticidad Verificada</h4>
                                 <p className="text-white font-bold">Silla Erg. Executive X1</p>
-                                <p className="text-slate-500 text-xs">Agile Solutions S.A.C.</p>
+                                <p className="text-slate-500 text-xs">AGLE PERUVIAN E.I.R.L.</p>
                             </div>
 
                             <div className="w-full bg-slate-900 rounded-lg p-3 space-y-2 mt-4">
@@ -762,7 +787,7 @@ const slides = [
                                 </div>
                                 <div className="flex justify-between text-[10px]">
                                     <span className="text-slate-500">Garantía</span>
-                                    <span className="text-green-400">Vigente (2 Años)</span>
+                                    <span className="text-green-400">Vigente (1 Año)</span>
                                 </div>
                             </div>
 
@@ -790,7 +815,7 @@ const slides = [
                     </div>
                     <h2 className="text-4xl font-bold">Adiós a la Hoja de Ruta</h2>
                     <p className="text-xl text-slate-400">
-                        ¿Dónde está el expediente? Ya no necesita preguntar. Reemplace el papel por flujos digitales transparentes.
+                        ¿Dónde está el expediente? Ya no necesita preguntar. Reemplazamos el papel por flujos digitales transparentes.
                     </p>
                     <ul className="space-y-4 text-lg text-slate-300">
                         <li className="flex items-start gap-3">
@@ -1063,7 +1088,7 @@ const slides = [
                                         <ImageIcon className="text-white w-8 h-8" />
                                     </div>
                                 </div>
-                                <div className="mt-2 text-center text-[10px] text-slate-500 font-bold">AGLE CORPORATIVO</div>
+                                <div className="mt-2 text-center text-[10px] text-slate-500 font-bold">AGLE PERUVIAN</div>
                             </div>
                             <div className="bg-white p-2 rounded-lg rotate-[2deg] shadow-lg transform translate-x-[-10px]">
                                 <div className="aspect-[210/297] bg-slate-50 border border-slate-100 flex flex-col relative overflow-hidden">
@@ -1074,7 +1099,7 @@ const slides = [
                                         <div className="h-2 w-5/6 bg-slate-200 rounded" />
                                     </div>
                                 </div>
-                                <div className="mt-2 text-center text-[10px] text-slate-500 font-bold">ARM INDUSTRIAL</div>
+                                <div className="mt-2 text-center text-[10px] text-slate-500 font-bold">ARM CORPORATIONS</div>
                             </div>
                         </div>
 
@@ -1498,7 +1523,7 @@ const slides = [
                     ¿Listos para comenzar?
                 </h1>
                 <p className="text-2xl text-slate-400">
-                    El futuro de la gestión empresarial empieza hoy.
+                    ATLAS ENTERPRISE SYSTEM.
                 </p>
                 <div className="flex flex-col md:flex-row justify-center gap-4 pt-8">
                     <Link href="/dashboard">
