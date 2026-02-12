@@ -6,20 +6,21 @@ import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp, ArrowUpRi
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
-import { motion } from "framer-motion"
+import { SettingsDialog } from "./_components/settings-dialog"
+import { OpenDataCatalog } from "@/types/open-data"
 
 export const dynamic = "force-dynamic"
 
-// Definir los 3 acuerdos marco específicos
-const ACUERDOS_MARCO = [
+// Fallback data in case DB is empty
+const DEFAULT_ACUERDOS_MARCO: OpenDataCatalog[] = [
   {
     id: "EXT-CE-2024-11",
     name: "Mobiliario en General",
     description: "Datos de compras de mobiliario y equipamiento para oficinas y espacios públicos",
     color: "from-blue-500 to-cyan-500",
     icon: "🪑",
-    fullName: "EXT-CE-2024-11 MOBILIARIO EN GENERAL",
-    status: "inactive", // Marcado como inactivo
+    full_name: "EXT-CE-2024-11 MOBILIARIO EN GENERAL",
+    status: "inactive",
   },
   {
     id: "EXT-CE-2025-11",
@@ -27,7 +28,7 @@ const ACUERDOS_MARCO = [
     description: "Acuerdo marco reemplazante para mobiliario en general (vigente 2025)",
     color: "from-blue-600 to-indigo-600",
     icon: "🪑",
-    fullName: "EXT-CE-2025-11 MOBILIARIO EN GENERAL",
+    full_name: "EXT-CE-2025-11 MOBILIARIO EN GENERAL",
     status: "active",
   },
   {
@@ -36,7 +37,7 @@ const ACUERDOS_MARCO = [
     description: "Acuerdo marco para materiales de construcción y acabados",
     color: "from-amber-500 to-orange-500",
     icon: "🔧",
-    fullName: "EXT-CE-2024-12 TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL",
+    full_name: "EXT-CE-2024-12 TUBERIAS, PINTURAS, CERAMICOS, SANITARIOS, ACCESORIOS Y COMPLEMENTOS EN GENERAL",
     status: "active",
   },
   {
@@ -45,7 +46,7 @@ const ACUERDOS_MARCO = [
     description: "Acuerdo marco para materiales e insumos de limpieza, papeles para aseo y limpieza",
     color: "from-emerald-500 to-green-600",
     icon: "🧹",
-    fullName: "EXT-CE-2024-3 MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA",
+    full_name: "EXT-CE-2024-3 MATERIALES E INSUMOS DE LIMPIEZA, PAPELES PARA ASEO Y LIMPIEZA",
     status: "active",
   },
   {
@@ -54,7 +55,7 @@ const ACUERDOS_MARCO = [
     description: "Accesorios domésticos y bienes para usos diversos en instituciones públicas",
     color: "from-teal-500 to-emerald-500",
     icon: "🏠",
-    fullName: "EXT-CE-2024-16 ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS",
+    full_name: "EXT-CE-2024-16 ACCESORIOS DOMÉSTICOS Y BIENES PARA USOS DIVERSOS",
     status: "active",
   },
   {
@@ -63,7 +64,7 @@ const ACUERDOS_MARCO = [
     description: "Máquinas, equipos y herramientas para jardinería, silvicultura y agricultura",
     color: "from-orange-500 to-red-500",
     icon: "🌱",
-    fullName: "EXT-CE-2024-26 MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA",
+    full_name: "EXT-CE-2024-26 MAQUINAS, EQUIPOS Y HERRAMIENTAS PARA JARDINERIA, SILVICULTURA Y AGRICULTURA",
     status: "active",
   },
 ]
@@ -72,50 +73,66 @@ async function getOpenDataStats() {
   const supabase = createServerClient()
 
   try {
-    const { count: totalCount, error: countError } = await supabase
+    // 1. Fetch Global Stats
+    const { count: totalCount } = await supabase
       .from("open_data_entries")
       .select("*", { count: "exact", head: true })
 
-    if (countError) {
-      console.error("Error fetching total count:", countError)
-    }
+    // 2. Fetch Configuration (Year)
+    const { data: yearData } = await supabase
+      .from("system_config")
+      .select("value")
+      .eq("key", "current_fiscal_year")
+      .single()
 
-    // Execute all agreement counts in parallel
-    const agreementsPromises = ACUERDOS_MARCO.map(async (acuerdo) => {
-      const { count, error } = await supabase
+    // 3. Fetch Catalogs
+    const { data: dbCatalogs } = await supabase
+      .from("open_data_catalogs")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    // Use DB data or Fallback
+    const currentYear = yearData?.value || "2026"
+    const catalogs = (dbCatalogs && dbCatalogs.length > 0)
+      ? dbCatalogs as OpenDataCatalog[]
+      : DEFAULT_ACUERDOS_MARCO
+
+    // 4. Calculate stats for each catalog
+    const agreementsPromises = catalogs.map(async (acuerdo) => {
+      const { count } = await supabase
         .from("open_data_entries")
         .select("*", { count: "exact", head: true })
         .eq("codigo_acuerdo_marco", acuerdo.id)
 
       return {
         id: acuerdo.id,
-        count: count || 0,
-        error
+        count: count || 0
       }
     })
 
     const results = await Promise.all(agreementsPromises)
-
     const acuerdosCount: Record<string, number> = {}
-    results.forEach(result => {
-      if (result.error) {
-        console.error(`Error fetching count for ${result.id}:`, result.error)
-      }
-      acuerdosCount[result.id] = result.count
-    })
+    results.forEach(r => acuerdosCount[r.id] = r.count)
 
     return {
       totalRecords: totalCount || 0,
-      acuerdosDisponibles: Object.keys(acuerdosCount).filter((key) => acuerdosCount[key] > 0),
       acuerdosCount,
+      catalogs,
+      currentYear
     }
+
   } catch (error) {
-    console.error("Error in getOpenDataStats:", error)
-    return { totalRecords: 0, acuerdosDisponibles: [], acuerdosCount: {} }
+    console.warn("Error fetching open data stats, using fallback", error)
+    return {
+      totalRecords: 0,
+      acuerdosCount: {},
+      catalogs: DEFAULT_ACUERDOS_MARCO,
+      currentYear: "2026"
+    }
   }
 }
 
-function OpenDataStatsCard({ stats }: { stats: any }) {
+function OpenDataStatsCard({ stats, totalRecords, year, totalCatalogs }: { stats: any, totalRecords: number, year: string, totalCatalogs: number }) {
   return (
     <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm mb-8 overflow-hidden">
       <div className="absolute top-0 right-0 p-3 opacity-10">
@@ -132,18 +149,18 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
             <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-              {stats.totalRecords.toLocaleString()}
+              {totalRecords.toLocaleString()}
             </div>
             <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total de Registros</div>
           </div>
           <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
-            <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">{ACUERDOS_MARCO.length}</div>
+            <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">{totalCatalogs}</div>
             <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Acuerdos Marco</div>
           </div>
           <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm group hover:scale-105 transition-transform duration-300">
             <div className="flex items-center gap-2 text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
               <Calendar className="h-8 w-8" />
-              2026
+              {year}
             </div>
             <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Año Vigente</div>
           </div>
@@ -153,13 +170,12 @@ function OpenDataStatsCard({ stats }: { stats: any }) {
   )
 }
 
-function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
-  const count = stats.acuerdosCount?.[acuerdo.id] || 0
-  const isAvailable = count > 0
+function AcuerdoMarcoCard({ acuerdo, count }: { acuerdo: OpenDataCatalog; count: number }) {
+  const isAvailable = count > 0 // This logic could change if we want to show everything
   const isActive = acuerdo.status === "active"
 
   return (
-    <Link href={`/open-data/${encodeURIComponent(acuerdo.fullName)}`} className={isActive ? "block h-full" : "block h-full cursor-pointer"}>
+    <Link href={`/open-data/${encodeURIComponent(acuerdo.full_name)}`} className={isActive ? "block h-full" : "block h-full cursor-pointer"}>
       <Card
         className={`group relative h-full transition-all duration-300 overflow-hidden border-slate-200/60 dark:border-slate-800/60 ${isActive
           ? "hover:shadow-xl hover:-translate-y-1 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md"
@@ -228,7 +244,7 @@ function AcuerdoMarcoCard({ acuerdo, stats }: { acuerdo: any; stats: any }) {
 }
 
 export default async function OpenDataPage() {
-  const stats = await getOpenDataStats()
+  const { catalogs, currentYear, totalRecords, acuerdosCount } = await getOpenDataStats()
 
   return (
     <div className="w-full p-6 space-y-8 pb-20">
@@ -239,15 +255,18 @@ export default async function OpenDataPage() {
             Datos Abiertos
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
-            Transparencia en contrataciones públicas. Accede y analiza la información detallada de los Acuerdos Marco 2026.
+            Transparencia en contrataciones públicas. Accede y analiza la información detallada de los Acuerdos Marco {currentYear}.
           </p>
         </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
-          <Link href="/open-data/upload">
-            <Database className="h-4 w-4 mr-2" />
-            Subir Nuevo Dataset
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <SettingsDialog initialConfig={{ year: currentYear, catalogs }} />
+          <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+            <Link href="/open-data/upload">
+              <Database className="h-4 w-4 mr-2" />
+              Subir Nuevo Dataset
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Suspense
@@ -266,7 +285,12 @@ export default async function OpenDataPage() {
           </Card>
         }
       >
-        <OpenDataStatsCard stats={stats} />
+        <OpenDataStatsCard
+          stats={acuerdosCount}
+          totalRecords={totalRecords}
+          year={currentYear}
+          totalCatalogs={catalogs.length}
+        />
       </Suspense>
 
       <div className="space-y-4">
@@ -275,8 +299,8 @@ export default async function OpenDataPage() {
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Catálogo de Acuerdos</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ACUERDOS_MARCO.map((acuerdo) => (
-            <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} stats={stats} />
+          {catalogs.map((acuerdo) => (
+            <AcuerdoMarcoCard key={acuerdo.id} acuerdo={acuerdo} count={acuerdosCount[acuerdo.id] || 0} />
           ))}
         </div>
       </div>

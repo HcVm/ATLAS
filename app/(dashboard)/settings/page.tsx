@@ -44,6 +44,7 @@ import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { LetterheadManager } from "./_components/letterhead-manager"
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -232,7 +233,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -270,11 +271,10 @@ export default function SettingsPage() {
                     <Button
                       variant={theme === "light" ? "default" : "outline"}
                       onClick={() => setTheme("light")}
-                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
-                        theme === "light" 
-                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950" 
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${theme === "light"
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950"
                           : "hover:bg-slate-50 dark:hover:bg-slate-800"
-                      }`}
+                        }`}
                     >
                       <Sun className="h-6 w-6" />
                       <div className="text-center">
@@ -284,11 +284,10 @@ export default function SettingsPage() {
                     <Button
                       variant={theme === "dark" ? "default" : "outline"}
                       onClick={() => setTheme("dark")}
-                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
-                        theme === "dark" 
-                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white" 
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${theme === "dark"
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white"
                           : "hover:bg-slate-50 dark:hover:bg-slate-800"
-                      }`}
+                        }`}
                     >
                       <Moon className="h-6 w-6" />
                       <div className="text-center">
@@ -298,11 +297,10 @@ export default function SettingsPage() {
                     <Button
                       variant={theme === "system" ? "default" : "outline"}
                       onClick={() => setTheme("system")}
-                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${
-                        theme === "system" 
-                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white" 
+                      className={`h-auto p-4 flex flex-col items-center gap-3 transition-all duration-300 ${theme === "system"
+                          ? "bg-slate-900 text-white ring-2 ring-slate-900 ring-offset-2 dark:ring-offset-slate-950 dark:bg-white dark:text-slate-900 dark:ring-white"
                           : "hover:bg-slate-50 dark:hover:bg-slate-800"
-                      }`}
+                        }`}
                     >
                       <Monitor className="h-6 w-6" />
                       <div className="text-center">
@@ -397,6 +395,13 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* System Admin Settings */}
+          {user?.role === "admin" && (
+            <div className="space-y-8">
+              <LetterheadManager />
+            </div>
+          )}
 
           {/* Data & Privacy */}
           <Card className="border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
@@ -496,7 +501,7 @@ export default function SettingsPage() {
                 <Label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Registrado</Label>
                 <p className="text-slate-900 dark:text-slate-100 font-medium mt-1">{user?.email}</p>
               </div>
-              
+
               <div>
                 <Label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rol & Permisos</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -523,9 +528,9 @@ export default function SettingsPage() {
                   <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 mb-3">
                     Descarga una copia de tu información personal en formato JSON.
                   </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleExportData} 
+                  <Button
+                    variant="outline"
+                    onClick={handleExportData}
                     disabled={isExporting}
                     className="w-full justify-start border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
@@ -553,7 +558,7 @@ export default function SettingsPage() {
               <p className="text-sm text-red-600 dark:text-red-300">
                 La eliminación de cuenta es irreversible. Se perderán todos tus datos y configuraciones.
               </p>
-              
+
               {user?.role === "admin" && (
                 <div className="p-3 rounded bg-red-100/50 dark:bg-red-900/20 text-xs text-red-800 dark:text-red-200">
                   Las cuentas de administrador no pueden auto-eliminarse.
