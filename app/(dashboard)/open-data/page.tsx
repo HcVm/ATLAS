@@ -326,26 +326,26 @@ export default async function OpenDataPage() {
             </Button>
           </div>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 border-purple-100 dark:border-slate-800 h-full">
+          <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 border-purple-100 dark:border-slate-800">
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-4 h-full">
-                <Link href="/open-data/rankings?tab=products" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
-                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏆</div>
+              <div className="grid grid-cols-2 gap-4">
+                <Link href="/open-data/rankings?tab=products" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-105 transition-transform">🏆</div>
                   <div className="font-bold text-slate-800 dark:text-slate-200">Productos Top</div>
                   <div className="text-xs text-slate-500">Más vendidos por monto</div>
                 </Link>
-                <Link href="/open-data/rankings?tab=suppliers" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
-                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏢</div>
+                <Link href="/open-data/rankings?tab=suppliers" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-105 transition-transform">🏢</div>
                   <div className="font-bold text-slate-800 dark:text-slate-200">Proveedores</div>
                   <div className="text-xs text-slate-500">Líderes del mercado</div>
                 </Link>
-                <Link href="/open-data/rankings?tab=entities" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
-                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏛️</div>
+                <Link href="/open-data/rankings?tab=entities" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-105 transition-transform">🏛️</div>
                   <div className="font-bold text-slate-800 dark:text-slate-200">Entidades</div>
                   <div className="text-xs text-slate-500">Mayores compradores</div>
                 </Link>
-                <Link href="/open-data/rankings?tab=trends" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 border border-purple-100 dark:border-slate-700">
-                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📈</div>
+                <Link href="/open-data/rankings?tab=trends" className="group p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] border border-purple-100 dark:border-slate-700">
+                  <div className="text-2xl mb-2 group-hover:scale-105 transition-transform">📈</div>
                   <div className="font-bold text-slate-800 dark:text-slate-200">Tendencias</div>
                   <div className="text-xs text-slate-500">Análisis mensual</div>
                 </Link>
