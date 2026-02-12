@@ -64,8 +64,7 @@ export default function WeeklyAnalysisPage() {
             const workbook = XLSX.read(arrayBuffer)
             const worksheetName = workbook.SheetNames[0]
             const worksheet = workbook.Sheets[worksheetName]
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { range: 5 }) // Headers are on line 6 (skip 0-4)
-
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) // Get raw array of arrays
             analyzeData(jsonData)
         } catch (error) {
             console.error("Error processing file:", error)
@@ -89,12 +88,9 @@ export default function WeeklyAnalysisPage() {
         const COL_FECHA = "Fecha Aceptación"
 
         // Check if critical columns exist in the first row
-        const firstRow = data[0]
-        if (!firstRow.hasOwnProperty(COL_ORDEN) || !firstRow.hasOwnProperty(COL_PROVEEDOR)) {
-            console.error("Missing columns", Object.keys(firstRow))
-            toast.error("El archivo no tiene el formato esperado. Faltan columnas clave como 'Orden Electrónica' o 'Razón Social Proveedor'.")
-            return
-        }
+        // Skipped: Header search moved into loop below
+        // const firstRow = data[0]
+        // if (!firstRow.hasOwnProperty(COL_ORDEN) || !firstRow.hasOwnProperty(COL_PROVEEDOR)) { ... }
 
         const myCompanyKeyword = selectedCompany?.name || ""
         const normalize = (s: string) => s?.toString().toUpperCase().trim() || ""
@@ -115,42 +111,95 @@ export default function WeeklyAnalysisPage() {
         let acuerdoValid = ""
         let catalogoValid = ""
 
-        data.forEach(row => {
-            // 1. FILTERING LOGIC: Only processed orders ending in -1
-            const orden = row[COL_ORDEN]?.toString() || ""
-            if (!orden.endsWith("-1")) {
-                return // Skip drafts or duplicates ending in -0
+
+
+        let headerRowIndex = -1
+        let headerAcuerdo = ""
+        let headerCatalogo = ""
+        let headerFechas = ""
+
+        // Scan first 20 rows for Metadata + Header Row
+        for (let i = 0; i < Math.min(data.length, 20); i++) {
+            const rowArr = (data[i] as any[]) || []
+            // Clean values for string matching
+            const rowValues = rowArr.map(v => (v?.toString() || "").trim()).filter(v => v.length > 0)
+            const rowStr = rowValues.join(" ").toUpperCase()
+
+            // Metadata
+            if ((rowStr.includes("ACUERDO MARCO")) && !headerAcuerdo) {
+                headerAcuerdo = rowValues.join(" ").replace(/ACUERDO MARCO:?/i, "").trim()
             }
+            if ((rowStr.includes("CATÁLOGO") || rowStr.includes("CATALOGO")) && !headerCatalogo) {
+                headerCatalogo = rowValues.join(" ").replace(/CAT[AÁ]LOGO:?/i, "").trim()
+            }
+            if ((rowStr.includes("FECHA INICIAL") || rowStr.includes("FECHA FINAL")) && !headerFechas) {
+                headerFechas = rowValues.join(" ")
+            }
+            // Date fallback
+            if (i === 3 && !headerFechas && rowStr.match(/\d{2}\/\d{2}\/\d{4}/)) {
+                headerFechas = rowValues.join(" ")
+            }
+
+            // Header Detection
+            if (rowArr.includes(COL_ORDEN) && rowArr.includes(COL_PROVEEDOR)) {
+                headerRowIndex = i
+            }
+        }
+
+        if (headerRowIndex === -1) {
+            toast.error(`No se encontró la fila de cabecera con '${COL_ORDEN}' y '${COL_PROVEEDOR}'.`)
+            return
+        }
+
+        // Prepare for Data Processing
+        const headers = (data[headerRowIndex] as any[]).map(h => (h?.toString() || "").trim())
+        const dataRows = data.slice(headerRowIndex + 1)
+
+        // Column Indices
+        const idxOrden = headers.indexOf(COL_ORDEN)
+        const idxProveedor = headers.indexOf(COL_PROVEEDOR)
+        const idxMonto = headers.indexOf(COL_MONTO)
+        const idxProducto = headers.indexOf(COL_PRODUCTO)
+        const idxEntidad = headers.indexOf(COL_ENTIDAD)
+        const idxPrecio = headers.indexOf(COL_PRECIO_UNITARIO)
+        const idxAcuerdo = headers.indexOf(COL_ACUERDO)
+        const idxCatalogo = headers.indexOf(COL_CATALOGO)
+        // const idxFecha = headers.indexOf(COL_FECHA)
+
+        if (idxOrden === -1 || idxProveedor === -1) {
+            toast.error("Columnas críticas no encontradas en la fila de cabecera detectada.")
+            return
+        }
+
+        dataRows.forEach((rowArray: any) => {
+            const getValue = (idx: number) => (idx !== -1 && rowArray[idx]) ? rowArray[idx] : undefined
+
+            // 1. FILTERING
+            const orden = getValue(idxOrden)?.toString() || ""
+            if (!orden.endsWith("-1")) return
 
             processedRows++
 
-            const provider = normalize(row[COL_PROVEEDOR])
-            const entity = normalize(row[COL_ENTIDAD])
+            const provider = normalize(getValue(idxProveedor))
+            const entity = normalize(getValue(idxEntidad))
 
-            // Parse amounts safely
             const parseAmount = (val: any) => {
                 if (typeof val === 'number') return val
                 if (typeof val === 'string') return parseFloat(val.replace(/[^0-9.-]+/g, ""))
                 return 0
             }
 
-            let amount = parseAmount(row[COL_MONTO])
-            let unitPrice = parseAmount(row[COL_PRECIO_UNITARIO]) // Use explicit Unit Price
+            let amount = parseAmount(getValue(idxMonto))
+            let unitPrice = parseAmount(getValue(idxPrecio))
 
             if (isNaN(amount)) amount = 0
-            if (isNaN(unitPrice) || unitPrice === 0) {
-                // Fallback if unit price is missing but we have total and count (usually 1 per row structure dependent)
-                // Assuming row is a specific delivery item, quantity might be needed to calc unit price if missing
-                // For now, if 0, treat as amount (if quantity 1) or skip price stats
-                unitPrice = amount
-            }
+            if (isNaN(unitPrice) || unitPrice === 0) unitPrice = amount
 
-            const product = row[COL_PRODUCTO] ? normalize(row[COL_PRODUCTO]) : "DESCONOCIDO"
+            const product = getValue(idxProducto) ? normalize(getValue(idxProducto)) : "DESCONOCIDO"
 
             totalMarketSales += amount
 
             // Identify My Company
-            // Checks matches against Name, Code, or RUC
             const companyName = normalize(selectedCompany?.name || "")
             const companyCode = normalize(selectedCompany?.code || "")
             const companyRuc = normalize(selectedCompany?.ruc || "")
@@ -173,9 +222,9 @@ export default function WeeklyAnalysisPage() {
                 entities[entity] = (entities[entity] || 0) + amount
             }
 
-            // Metadata extraction (take from first valid occurrence)
-            if (!acuerdoValid && row[COL_ACUERDO]) acuerdoValid = row[COL_ACUERDO]
-            if (!catalogoValid && row[COL_CATALOGO]) catalogoValid = row[COL_CATALOGO]
+            // Fallback metadata if not in header
+            if (!headerAcuerdo && getValue(idxAcuerdo)) headerAcuerdo = getValue(idxAcuerdo)
+            if (!headerCatalogo && getValue(idxCatalogo)) headerCatalogo = getValue(idxCatalogo)
 
             // Product Analysis
             if (!products[product]) {
@@ -226,8 +275,11 @@ export default function WeeklyAnalysisPage() {
             topCompetitors,
             topEntities,
             topProducts,
+
             acuerdo: acuerdoValid,
             catalogo: catalogoValid,
+            acuerdoLabel: headerAcuerdo || (data[1] ? (data[1][2] || "") : ""),
+            dateRangeLabel: headerFechas || (data[3] ? (data[3][2] || "") : ""),
             mappedColumns: { providerCol: COL_PROVEEDOR, amountCol: COL_MONTO, productCol: COL_PRODUCTO, dateCol: COL_FECHA }
         })
 
@@ -312,29 +364,31 @@ export default function WeeklyAnalysisPage() {
         // Background box
         doc.setDrawColor(226, 232, 240) // Slate 200
         doc.setFillColor(248, 250, 252) // Slate 50
-        doc.roundedRect(14, metaY, pageWidth - 28, 32, 2, 2, 'FD')
+        doc.roundedRect(14, metaY, pageWidth - 28, 35, 2, 2, 'FD') // Slightly taller
 
         const drawMetaItem = (label: string, value: string, x: number, y: number) => {
-            doc.setFontSize(8)
-            doc.setTextColor(100, 116, 139) // Slate 500
+            doc.setFontSize(7) // Smaller label
+            doc.setTextColor(100, 116, 139)
             doc.setFont("helvetica", "bold")
             doc.text(label.toUpperCase(), x, y)
 
-            doc.setFontSize(10)
-            doc.setTextColor(15, 23, 42) // Slate 900
+            doc.setFontSize(9) // Smaller value
+            doc.setTextColor(15, 23, 42)
             doc.setFont("helvetica", "normal")
-            // Handle long text wrapping if necessary (simple slice for now)
-            const safeValue = value.length > 50 ? value.substring(0, 48) + "..." : value
-            doc.text(safeValue, x, y + 5)
+
+            // Basic text wrap for long values
+            const splitText = doc.splitTextToSize(value, 80)
+            doc.text(splitText, x, y + 4)
         }
 
-        drawMetaItem("Empresa Consultante", selectedCompany?.name || "Mi Empresa", 20, metaY + 10)
-        drawMetaItem("Fecha de Reporte", today, 120, metaY + 10)
+        const acuerdoLabel = reportData.acuerdoLabel || reportData.acuerdo || "No especificado"
+        const periodoLabel = reportData.dateRangeLabel || "No especificado"
+        const catalogo = reportData.catalogo?.toString() || "General"
 
-        const acuerdo = reportData.acuerdo?.toString() || "No especificado"
-        const catalogo = reportData.catalogo?.toString() || "No especificado"
-        drawMetaItem("Acuerdo Marco", acuerdo, 20, metaY + 24)
-        drawMetaItem("Catálogo Electrónico", catalogo, 120, metaY + 24)
+        drawMetaItem("Acuerdo Marco", acuerdoLabel, 20, metaY + 8)
+        drawMetaItem("Periodo Analizado", periodoLabel, 110, metaY + 8)
+
+        drawMetaItem("Fecha de Generación", today, 110, metaY + 22)
 
         // --- Executive Summary ---
         let currentY = 95
@@ -460,7 +514,10 @@ export default function WeeklyAnalysisPage() {
         }
 
         const safeDate = today.replace(/[\/:\s,]/g, '-').replace(/--/g, '-')
-        doc.save(`ATLAS_Reporte_${safeDate}.pdf`)
+        const safeCatalogo = (reportData.catalogo || "General").replace(/[^a-zA-Z0-9]/g, '_')
+        const safePeriodo = (reportData.dateRangeLabel || safeDate).replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 20)
+
+        doc.save(`ATLAS_Reporte_${safeCatalogo}_${safePeriodo}.pdf`)
     }
 
     return (
