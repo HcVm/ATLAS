@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useDropzone } from "react-dropzone"
 import * as XLSX from "xlsx"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +37,30 @@ export default function WeeklyAnalysisPage() {
     const [file, setFile] = useState<File | null>(null)
     const [isProcessing, setIsProcessing] = useState(false)
     const [reportData, setReportData] = useState<any | null>(null)
+
+    const detailedProducts = useMemo(() => {
+        if (!reportData?.orders) return []
+        const stats: Record<string, { name: string, prices: number[], count: number, pn: string }> = {}
+
+        reportData.orders.forEach((o: any) => {
+            const key = o.partNumber && o.partNumber !== "N/A" ? o.partNumber : o.product
+            if (!stats[key]) {
+                stats[key] = { name: o.product, prices: [], count: 0, pn: (o.partNumber === "N/A" || !o.partNumber) ? key : o.partNumber }
+            }
+            stats[key].prices.push(o.unitPrice)
+            stats[key].count++
+            if (o.product.length > stats[key].name.length) stats[key].name = o.product
+        })
+
+        return Object.values(stats).map((s) => ({
+            pn: s.pn,
+            name: s.name,
+            count: s.count,
+            min: Math.min(...s.prices),
+            max: Math.max(...s.prices),
+            avg: s.prices.reduce((a, b: number) => a + b, 0) / s.prices.length
+        })).sort((a, b) => b.count - a.count)
+    }, [reportData])
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles?.length > 0) {
@@ -103,6 +127,17 @@ export default function WeeklyAnalysisPage() {
         const COL_PRECIO_UNITARIO = "Precio Unitario"
         const COL_ACUERDO = "Acuerdo Marco"
         const COL_CATALOGO = "Catálogo"
+        // New Columns for Delivery Info
+        const COL_DEP_ENTREGA = "Dep. Entrega"
+        const COL_PROV_ENTREGA = "Prov. Entrega"
+        const COL_DIST_ENTREGA = "Dist. Entrega"
+
+        const COL_DIR_ENTREGA = "Dirección Entrega"
+        const COL_CANTIDAD = "Cantidad Entrega"
+
+        const COL_TOTAL_ORDEN = "Total Orden Electrónica"
+        const COL_NRO_PARTE = "Nro. Parte"
+
         const competitors: Record<string, number> = {}
         const entities: Record<string, number> = {}
         const products: Record<string, { count: number, totalAmount: number, minPrice: number, maxPrice: number, sumUnitPrices: number }> = {}
@@ -110,6 +145,7 @@ export default function WeeklyAnalysisPage() {
         let processedRows = 0
         let acuerdoValid = ""
         let catalogoValid = ""
+        const detailedOrders: any[] = []
 
 
 
@@ -166,17 +202,30 @@ export default function WeeklyAnalysisPage() {
         const idxCatalogo = headers.indexOf(COL_CATALOGO)
         // const idxFecha = headers.indexOf(COL_FECHA)
 
+        // New Delivery Columns
+        const idxDep = headers.indexOf(COL_DEP_ENTREGA)
+        const idxProv = headers.indexOf(COL_PROV_ENTREGA)
+        const idxDist = headers.indexOf(COL_DIST_ENTREGA)
+
+        const idxDir = headers.indexOf(COL_DIR_ENTREGA)
+        const idxCant = headers.indexOf(COL_CANTIDAD)
+
+        const idxTotalOrden = headers.indexOf(COL_TOTAL_ORDEN)
+        const idxNroParte = headers.indexOf(COL_NRO_PARTE)
+
         if (idxOrden === -1 || idxProveedor === -1) {
             toast.error("Columnas críticas no encontradas en la fila de cabecera detectada.")
             return
         }
+
+        const uniqueOrders = new Set<string>()
 
         dataRows.forEach((rowArray: any) => {
             const getValue = (idx: number) => (idx !== -1 && rowArray[idx]) ? rowArray[idx] : undefined
 
             // 1. FILTERING
             const orden = getValue(idxOrden)?.toString() || ""
-            if (!orden.endsWith("-1")) return
+            if (!orden.endsWith("-1")) return // Only specific status? Or ensure correct filter.
 
             processedRows++
 
@@ -189,52 +238,81 @@ export default function WeeklyAnalysisPage() {
                 return 0
             }
 
-            let amount = parseAmount(getValue(idxMonto))
+            // Price & Quantity
             let unitPrice = parseAmount(getValue(idxPrecio))
+            let quantity = parseFloat(getValue(idxCant)?.toString() || "1")
 
-            if (isNaN(amount)) amount = 0
-            if (isNaN(unitPrice) || unitPrice === 0) unitPrice = amount
+            // Fallbacks
+            if (isNaN(unitPrice)) unitPrice = 0
+            if (isNaN(quantity)) quantity = 1
+
+            const lineTotal = unitPrice * quantity
+            const orderTotalValue = parseAmount(getValue(idxTotalOrden)) || lineTotal // Fallback to line if missing
 
             const product = getValue(idxProducto) ? normalize(getValue(idxProducto)) : "DESCONOCIDO"
 
-            totalMarketSales += amount
+            // --- Order Level Aggregations (Once per Order) ---
+            if (!uniqueOrders.has(orden)) {
+                uniqueOrders.add(orden)
+                totalMarketSales += orderTotalValue
 
-            // Identify My Company
-            const companyName = normalize(selectedCompany?.name || "")
-            const companyCode = normalize(selectedCompany?.code || "")
-            const companyRuc = normalize(selectedCompany?.ruc || "")
+                // Identify My Company
+                const companyName = normalize(selectedCompany?.name || "")
+                const companyCode = normalize(selectedCompany?.code || "")
+                const companyRuc = normalize(selectedCompany?.ruc || "")
 
-            const isMe = selectedCompany && (
-                (companyName && provider.includes(companyName)) ||
-                (companyCode && provider.includes(companyCode)) ||
-                (companyRuc && provider.includes(companyRuc))
-            )
+                const isMe = selectedCompany && (
+                    (companyName && provider.includes(companyName)) ||
+                    (companyCode && provider.includes(companyCode)) ||
+                    (companyRuc && provider.includes(companyRuc))
+                )
 
-            if (isMe) {
-                mySalesTotal += amount
-                mySalesCount++
-            } else {
-                competitors[provider] = (competitors[provider] || 0) + amount
-            }
+                if (isMe) {
+                    mySalesTotal += orderTotalValue
+                    mySalesCount++
+                } else {
+                    competitors[provider] = (competitors[provider] || 0) + orderTotalValue
+                }
 
-            // Entity Analysis
-            if (entity) {
-                entities[entity] = (entities[entity] || 0) + amount
+                // Entity Analysis
+                if (entity) {
+                    entities[entity] = (entities[entity] || 0) + orderTotalValue
+                }
             }
 
             // Fallback metadata if not in header
             if (!headerAcuerdo && getValue(idxAcuerdo)) headerAcuerdo = getValue(idxAcuerdo)
             if (!headerCatalogo && getValue(idxCatalogo)) headerCatalogo = getValue(idxCatalogo)
 
-            // Product Analysis
+            // --- LINE LEVEL (Product Analysis) ---
             if (!products[product]) {
                 products[product] = { count: 0, totalAmount: 0, minPrice: unitPrice, maxPrice: unitPrice, sumUnitPrices: 0 }
             }
             products[product].count++
-            products[product].totalAmount += amount
+            products[product].totalAmount += lineTotal
             products[product].sumUnitPrices += unitPrice
             products[product].minPrice = Math.min(products[product].minPrice, unitPrice)
             products[product].maxPrice = Math.max(products[product].maxPrice, unitPrice)
+
+            // Collect Detailed Order Info
+            // Only keep relevant ones (e.g., significant amount or just all? Limit to avoid memory issues if massive)
+            // For checking purposes, we take all, but Sort/Slice later.
+            detailedOrders.push({
+                orderId: orden,
+                product: product,
+                entity: entity,
+                provider: provider,
+                amount: lineTotal,
+                unitPrice: unitPrice,
+                department: normalize(getValue(idxDep)),
+                province: normalize(getValue(idxProv)),
+                district: normalize(getValue(idxDist)),
+                address: getValue(idxDir)?.toString() || "",
+                quantity: getValue(idxCant)?.toString() || "1",
+
+                totalOrder: parseAmount(getValue(idxTotalOrden)),
+                partNumber: getValue(idxNroParte)?.toString() || ""
+            })
         })
 
         if (processedRows === 0) {
@@ -267,6 +345,10 @@ export default function WeeklyAnalysisPage() {
             .sort((a, b) => b.total - a.total)
             .slice(0, 10)
 
+        // All Orders (Full Detail)
+        const orders = detailedOrders
+            .sort((a, b) => b.amount - a.amount)
+
         setReportData({
             mySalesTotal,
             mySalesCount,
@@ -275,6 +357,7 @@ export default function WeeklyAnalysisPage() {
             topCompetitors,
             topEntities,
             topProducts,
+            orders,
 
             acuerdo: acuerdoValid,
             catalogo: catalogoValid,
@@ -292,7 +375,8 @@ export default function WeeklyAnalysisPage() {
     const generatePDF = async () => {
         if (!reportData) return
 
-        const doc = new jsPDF()
+        // Landscape Orientation for better table width
+        const doc = new jsPDF('l', 'mm', 'a4')
         const today = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         const pageWidth = doc.internal.pageSize.width
         const pageHeight = doc.internal.pageSize.height
@@ -391,7 +475,7 @@ export default function WeeklyAnalysisPage() {
         drawMetaItem("Fecha de Generación", today, 110, metaY + 22)
 
         // --- Executive Summary ---
-        let currentY = 95
+        let currentY = 105
         doc.setFontSize(14)
         doc.setTextColor(15, 23, 42)
         doc.setFont("helvetica", "bold")
@@ -427,81 +511,163 @@ export default function WeeklyAnalysisPage() {
             styles: { lineColor: [226, 232, 240], lineWidth: 0.1 }
         })
 
-        // --- Competitor Analysis ---
-        currentY = (doc as any).lastAutoTable.finalY + 15
-        doc.setFontSize(14)
+        // --- Listado de Órdenes (Main Content) ---
+        doc.addPage() // Force new page for maximum space
+        currentY = 20
+
+        doc.setFontSize(16)
         doc.setTextColor(15, 23, 42)
-        doc.text("Top 10 Competidores", 14, currentY)
+        doc.text("Listado Detallado de Órdenes", 14, currentY)
 
-        autoTable(doc, {
-            startY: currentY + 5,
-            head: [['Razón Social', 'Ventas Totales']],
-            body: reportData.topCompetitors.map((c: any) => [c.name, formatCurrency(c.total)]),
-            headStyles: { fillColor: [30, 41, 59] }, // Slate 800
-            columnStyles: {
-                0: { cellWidth: 'auto' },
-                1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
-            },
-            alternateRowStyles: { fillColor: [241, 245, 249] },
-            styles: { fontSize: 9 }
+        // Pre-process rows for visual grouping
+        const groupedOrders = [...reportData.orders].sort((a: any, b: any) =>
+            (b.totalOrder || 0) - (a.totalOrder || 0) || a.orderId.localeCompare(b.orderId)
+        )
+
+        const tableData: any[] = []
+        const rowGroupIndices: number[] = []
+        let lastOrderId = ""
+        let groupIndex = 0
+
+        groupedOrders.forEach((o: any) => {
+            const isNewGroup = o.orderId !== lastOrderId
+            if (isNewGroup) {
+                lastOrderId = o.orderId
+                groupIndex++
+            }
+            rowGroupIndices.push(groupIndex)
+
+            // Combine Location Data
+            const locationString = `${o.department} - ${o.province} - ${o.district}\n${o.address}`
+            const productString = `${o.product}\nPN: ${o.partNumber || "N/A"}`
+
+            tableData.push([
+                isNewGroup ? o.orderId : "",
+                productString,
+                isNewGroup ? locationString : "",
+                isNewGroup ? o.provider.substring(0, 50) : "",
+                isNewGroup ? o.entity.substring(0, 50) : "",
+                o.quantity,
+                formatCurrency(o.unitPrice),
+                isNewGroup ? formatCurrency(o.totalOrder) : ""
+            ])
         })
 
-        // --- Entity Analysis ---
-        currentY = (doc as any).lastAutoTable.finalY + 15
-
-        // Check page split
-        if (currentY > pageHeight - 60) {
-            doc.addPage()
-            currentY = 20
-        }
-
-        doc.setFontSize(14)
-        doc.text("Top 10 Entidades Compradoras", 14, currentY)
-
         autoTable(doc, {
-            startY: currentY + 5,
-            head: [['Entidad Pública', 'Monto Compra']],
-            body: reportData.topEntities.map((e: any) => [e.name, formatCurrency(e.total)]),
-            headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
-            columnStyles: {
-                0: { cellWidth: 'auto' },
-                1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
+            startY: currentY + 10,
+            head: [['Orden', 'Producto', 'Lugar de Entrega', 'Proveedor', 'Entidad', 'Cant', 'P. Unit', 'Total Orden']],
+            body: tableData,
+            margin: { top: 20, right: 5, bottom: 35, left: 5 }, // Increased bottom margin to avoid footer overlap
+            headStyles: {
+                fillColor: [30, 41, 59], // Slate 800
+                fontSize: 9, // Larger Header
+                halign: 'center',
+                valign: 'middle'
             },
-            alternateRowStyles: { fillColor: [241, 245, 249] },
-            styles: { fontSize: 9 }
+            columnStyles: {
+                0: { cellWidth: 25 }, // Orden
+                1: { cellWidth: 90 }, // Producto (Max Width)
+                2: { cellWidth: 55 }, // Lugar 
+                3: { cellWidth: 25 }, // Prov Name
+                4: { cellWidth: 25 }, // Ent Name
+                5: { cellWidth: 12, halign: 'center' }, // Cant
+                6: { cellWidth: 20, halign: 'right' }, // P Unit
+                7: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } // Total
+            },
+            didParseCell: (data) => {
+                // Apply alternating background color based on ORDER GROUP, not individual row
+                if (data.section === 'body') {
+                    const gIdx = rowGroupIndices[data.row.index]
+                    if (gIdx % 2 === 1) {
+                        data.cell.styles.fillColor = [241, 245, 249] // Slate 100
+                    }
+                }
+            },
+            styles: {
+                fontSize: 8, // Requested larger font
+                cellPadding: 3,
+                overflow: 'linebreak',
+                valign: 'top',
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            rowPageBreak: 'avoid', // Prevent row splitting
+            showHead: 'everyPage'
         })
 
-        // --- Product Analysis ---
-        currentY = (doc as any).lastAutoTable.finalY + 15
-        if (currentY > pageHeight - 60) {
-            doc.addPage()
-            currentY = 20
-        }
+        // --- Product Price Analysis Table ---
+        doc.addPage()
+        doc.setFontSize(16)
+        doc.setTextColor(15, 23, 42)
+        doc.text("Análisis de Precios por Producto", 14, 20)
 
-        doc.setFontSize(14)
-        doc.text("Análisis de Productos y Precios", 14, currentY)
+        const productStats: Record<string, { name: string, prices: number[], count: number }> = {}
+
+        reportData.orders.forEach((o: any) => {
+            // Group primarily by Part Number, fallback to Product Name if PN is missing
+            const key = o.partNumber && o.partNumber !== "N/A" ? o.partNumber : o.product
+
+            if (!productStats[key]) {
+                productStats[key] = { name: o.product, prices: [], count: 0 }
+            }
+            productStats[key].prices.push(o.unitPrice)
+            productStats[key].count++
+            // Keep the longest name found for this key to avoid truncated versions
+            if (o.product.length > productStats[key].name.length) {
+                productStats[key].name = o.product
+            }
+        })
+
+        const productTableData = Object.entries(productStats).map(([key, stats]) => {
+            const min = Math.min(...stats.prices)
+            const max = Math.max(...stats.prices)
+            const avg = stats.prices.reduce((a, b) => a + b, 0) / stats.prices.length
+
+            // If key is part number (doesn't match name), display it. Otherwise N/A.
+            const partNumberDisp = key !== stats.name ? key : "N/A"
+
+            return [
+                partNumberDisp,
+                stats.name,
+                formatCurrency(min),
+                formatCurrency(max),
+                formatCurrency(avg),
+                stats.count
+            ]
+        }).sort((a: any, b: any) => b[5] - a[5]) // Sort by quantity (desc)
 
         autoTable(doc, {
-            startY: currentY + 5,
-            head: [['Producto', 'P. Prom.', 'Min', 'Max', 'Total Venta']],
-            body: reportData.topProducts.slice(0, 50).map((p: any) => [
-                p.name,
-                formatCurrency(p.avgPrice),
-                formatCurrency(p.minPrice),
-                formatCurrency(p.maxPrice),
-                formatCurrency(p.total)
-            ]),
-            headStyles: { fillColor: [16, 185, 129] }, // Emerald 500
-            columnStyles: {
-                0: { cellWidth: 80, fontSize: 8 }, // Smaller font for long names
-                1: { halign: 'right', cellWidth: 25 },
-                2: { halign: 'right', cellWidth: 25 },
-                3: { halign: 'right', cellWidth: 25 },
-                4: { halign: 'right', fontStyle: 'bold', cellWidth: 30 }
+            startY: 25,
+            head: [['Nro. Parte', 'Producto', 'Precio Min', 'Precio Max', 'Precio Prom', 'Cant.']],
+            body: productTableData,
+            margin: { top: 20, right: 10, bottom: 20, left: 10 },
+            headStyles: {
+                fillColor: [16, 185, 129], // Emerald 500 (Green for Analysis)
+                fontSize: 9,
+                halign: 'center',
+                valign: 'middle'
             },
-            alternateRowStyles: { fillColor: [241, 245, 249] },
-            styles: { fontSize: 9, cellPadding: 3 }
+            columnStyles: {
+                0: { cellWidth: 40 }, // PN
+                1: { cellWidth: 120 }, // Producto
+                2: { cellWidth: 25, halign: 'right' },
+                3: { cellWidth: 25, halign: 'right' },
+                4: { cellWidth: 25, halign: 'right' },
+                5: { cellWidth: 20, halign: 'center' }
+            },
+            styles: {
+                fontSize: 8,
+                cellPadding: 3,
+                overflow: 'linebreak',
+                valign: 'middle',
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            rowPageBreak: 'avoid',
+            alternateRowStyles: { fillColor: [240, 253, 244] }, // Light Green tint
+            showHead: 'everyPage'
         })
+
 
         // --- Footer (Page Numbers) ---
         const pageCount = (doc as any).internal.getNumberOfPages()
@@ -735,6 +901,57 @@ export default function WeeklyAnalysisPage() {
                                         <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} name="Compras" />
                                     </BarChart>
                                 </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="mt-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Análisis Detallado de Precios por Producto</CardTitle>
+                                <CardDescription>Listado completo de productos agrupados por Número de Parte (Top 200)</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="rounded-md border max-h-[600px] overflow-auto relative">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-white dark:bg-slate-950 z-10 shadow-sm">
+                                            <TableRow>
+                                                <TableHead className="w-[120px]">Nro. Parte (PN)</TableHead>
+                                                <TableHead>Producto</TableHead>
+                                                <TableHead className="text-center w-[80px]">Cant. Ordenes</TableHead>
+                                                <TableHead className="text-right">Precio Min</TableHead>
+                                                <TableHead className="text-right">Precio Max</TableHead>
+                                                <TableHead className="text-right">Precio Promedio</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {detailedProducts.slice(0, 200).map((p: any, i: number) => (
+                                                <TableRow key={i} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                                    <TableCell className="font-mono text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                        {p.pn !== "N/A" ? p.pn : "-"}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs">
+                                                        <div className="font-medium text-slate-700 dark:text-slate-200 max-w-[400px] truncate" title={p.name}>
+                                                            {p.name}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center text-xs font-semibold bg-slate-50/50 dark:bg-slate-900/20">
+                                                        {p.count}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-emerald-600 dark:text-emerald-400">
+                                                        {formatCurrency(p.min)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-rose-600 dark:text-rose-400">
+                                                        {formatCurrency(p.max)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs font-bold text-slate-900 dark:text-slate-100 bg-slate-50/30 dark:bg-slate-900/10">
+                                                        {formatCurrency(p.avg)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
