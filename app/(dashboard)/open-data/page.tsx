@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp, ArrowUpRight } from "lucide-react"
+import { Database, FileText, Eye, Calendar, AlertTriangle, TrendingUp, ArrowUpRight, FileSpreadsheet, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { createServerClient } from "@/lib/supabase-server"
 import { BrandAlertsPreview } from "@/components/open-data/brand-alerts-preview"
@@ -353,6 +353,54 @@ export default async function OpenDataPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900 border-blue-100 dark:border-slate-800">
+          <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                  <FileSpreadsheet className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    Análisis Semanal de Ventas
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Módulo de inteligencia de negocios
+                  </p>
+                </div>
+              </div>
+              <p className="text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+                Genera informes automáticos subiendo tus archivos Excel/CSV de ventas.
+                Analiza tu participación de mercado, competidores y evolución de precios
+                semana a semana.
+              </p>
+              <div className="flex gap-4 pt-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Comparativa Competencia
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Análisis de Precios
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Share de Mercado
+                </div>
+              </div>
+            </div>
+
+            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 whitespace-nowrap min-w-[200px]" asChild>
+              <Link href="/open-data/weekly-analysis">
+                Comenzar Análisis
+                <ArrowUpRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 mt-12">
