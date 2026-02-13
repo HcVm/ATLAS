@@ -421,6 +421,12 @@ const menuSections = {
         icon: Clock,
         roles: ["admin", "supervisor"],
       },
+      {
+        title: "Brechas de Mercado",
+        url: "/open-data/gap-analysis",
+        icon: BarChart3,
+        roles: ["admin", "supervisor", "user"],
+      },
     ],
   },
   admin: {
