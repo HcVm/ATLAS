@@ -1,6 +1,6 @@
 "use client"
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -47,9 +47,15 @@ export function DateSelectorDialog({
   const [validationStatus, setValidationStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>(
     initialLinkedWarranty ? 'valid' : 'idle'
   )
-  const [validationMessage, setValidationMessage] = useState(
-    initialLinkedWarranty ? "Garantía vinculada previamente" : ""
-  )
+  const [validationMessage, setValidationMessage] = useState("")
+
+  useEffect(() => {
+    if (open) {
+      setLinkedNumber(initialLinkedWarranty || "")
+      setValidationStatus(initialLinkedWarranty ? 'valid' : 'idle')
+      setValidationMessage(initialLinkedWarranty ? "Garantía original vinculada previamente a esta venta." : "")
+    }
+  }, [open, initialLinkedWarranty])
 
   const handleConfirm = () => {
     const [year, month, day] = selectedDate.split("-").map(Number)
@@ -121,7 +127,7 @@ export function DateSelectorDialog({
                       setValidationMessage("")
                     }}
                     placeholder="Ej: GAR-ARM-2025-001"
-                    className={`flex-1 ${validationStatus === 'valid' ? 'border-green-500 bg-green-50' : validationStatus === 'invalid' ? 'border-red-500 bg-red-50' : ''} ${initialLinkedWarranty ? 'cursor-not-allowed opacity-80' : ''}`}
+                    className={`flex-1 ${validationStatus === 'valid' ? 'border-green-500 bg-green-50 text-green-900 font-medium' : validationStatus === 'invalid' ? 'border-red-500 bg-red-50' : ''} ${initialLinkedWarranty ? 'cursor-not-allowed focus-visible:ring-0' : ''}`}
                     readOnly={!!initialLinkedWarranty}
                   />
                   <Button
@@ -131,8 +137,9 @@ export function DateSelectorDialog({
                     onClick={validateLinkedWarranty}
                     disabled={!linkedNumber.trim() || validationStatus === 'loading' || !!initialLinkedWarranty}
                     title={initialLinkedWarranty ? "Garantía ya vinculada" : "Validar Garantía"}
+                    className={initialLinkedWarranty ? "border-green-500 bg-green-50 disabled:opacity-100" : ""}
                   >
-                    {validationStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : initialLinkedWarranty ? <Check className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                    {validationStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : initialLinkedWarranty ? <Check className="h-4 w-4 text-green-600" /> : <Search className="h-4 w-4" />}
                   </Button>
                 </div>
 
@@ -169,8 +176,8 @@ export function DateSelectorDialog({
           <Button
             type="button"
             onClick={handleConfirm}
-            // Disable if validating linked warranty and it's NOT explicitly checking valid
-            disabled={isGenerating || (showLinkedWarrantyInput && validationStatus !== 'valid')}
+            // Disable if validating linked warranty AND it's not valid, UNLESS it's already permanently linked (initialLinkedWarranty)
+            disabled={isGenerating || (showLinkedWarrantyInput && !initialLinkedWarranty && validationStatus !== 'valid')}
             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
