@@ -185,23 +185,23 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                         </TabsList>
                     </div>
 
-                    <TabsContent value="catalogs" className="flex-1 flex flex-col p-0 m-0 overflow-hidden">
+                    <TabsContent value="catalogs" className="flex-1 flex flex-col p-0 m-0 overflow-hidden data-[state=active]:flex">
                         <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden">
                             {/* List Section */}
                             <div className="flex-1 flex flex-col border-r border-slate-100 dark:border-slate-800 overflow-hidden">
-                                <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-500">Catálogos Existentes ({catalogs.length})</span>
-                                    <Button variant="ghost" size="sm" onClick={refreshData} disabled={isLoading}>
-                                        <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                                <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center shrink-0">
+                                    <span className="text-xs font-medium text-slate-500 font-mono tracking-tight uppercase">Catálogos Existentes ({catalogs.length})</span>
+                                    <Button variant="ghost" size="sm" onClick={refreshData} disabled={isLoading} className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full">
+                                        <RefreshCw className={`h-3 w-3 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </div>
                                 <ScrollArea className="flex-1">
                                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {catalogs.map((catalog) => (
-                                            <div k={catalog.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
+                                            <div key={catalog.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex gap-3">
-                                                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${catalog.color} flex items-center justify-center text-lg select-none shrink-0 shadow-sm`}>
+                                                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${catalog.color} flex items-center justify-center text-lg select-none shrink-0 shadow-sm ring-1 ring-inset ring-black/5 dark:ring-white/10`}>
                                                             {catalog.icon}
                                                         </div>
                                                         <div>
@@ -210,7 +210,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                                                                     {catalog.name}
                                                                 </h4>
                                                                 {catalog.status === 'inactive' && (
-                                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1">Histórico</Badge>
+                                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-slate-100 dark:bg-slate-800 text-slate-500">Histórico</Badge>
                                                                 )}
                                                             </div>
                                                             <p className="text-xs text-slate-500 font-mono mt-0.5">{catalog.id}</p>
@@ -221,7 +221,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                                                         <Button
                                                             variant={catalog.status === 'active' ? "ghost" : "outline"}
                                                             size="sm"
-                                                            className={`h-7 px-2 text-xs ${catalog.status === 'active' ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
+                                                            className={`h-7 px-2 text-xs ${catalog.status === 'active' ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-500 dark:hover:bg-amber-950/30' : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-500 dark:border-emerald-800 dark:hover:bg-emerald-950/30'}`}
                                                             onClick={() => handleToggleStatus(catalog.id, catalog.status)}
                                                         >
                                                             {catalog.status === 'active' ? (
@@ -239,7 +239,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                             </div>
 
                             {/* Create Section */}
-                            <div className="w-full lg:w-[320px] shrink-0 bg-slate-50 dark:bg-slate-900 overflow-y-auto border-l border-slate-200 dark:border-slate-800 shadow-inner">
+                            <div className="w-full lg:w-[320px] shrink-0 bg-slate-50 dark:bg-slate-950/50 overflow-y-auto border-l border-slate-200 dark:border-slate-800 shadow-inner">
                                 <div className="p-6 space-y-6">
                                     <div>
                                         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-1">
@@ -250,50 +250,50 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
 
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs">ID Acuerdo (Ej: EXT-CE-2026-1)</Label>
+                                            <Label className="text-xs text-slate-600 dark:text-slate-400">ID Acuerdo (Ej: EXT-CE-2026-1)</Label>
                                             <Input
                                                 value={newCatalog.id}
                                                 onChange={(e) => setNewCatalog(prev => ({ ...prev, id: e.target.value }))}
-                                                className="h-8 bg-white"
+                                                className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800"
                                                 placeholder="EXT-CE-YYYY-X"
                                             />
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs">Nombre Corto</Label>
+                                            <Label className="text-xs text-slate-600 dark:text-slate-400">Nombre Corto</Label>
                                             <Input
                                                 value={newCatalog.name}
                                                 onChange={(e) => setNewCatalog(prev => ({ ...prev, name: e.target.value }))}
-                                                className="h-8 bg-white"
+                                                className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800"
                                                 placeholder="Ej: Materiales de Aseo"
                                             />
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs">Nombre Completo (Oficial)</Label>
+                                            <Label className="text-xs text-slate-600 dark:text-slate-400">Nombre Completo (Oficial)</Label>
                                             <Input
                                                 value={newCatalog.full_name}
                                                 onChange={(e) => setNewCatalog(prev => ({ ...prev, full_name: e.target.value }))}
-                                                className="h-8 bg-white"
+                                                className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800"
                                                 placeholder="Nombre completo del acuerdo..."
                                             />
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs">Descripción</Label>
+                                            <Label className="text-xs text-slate-600 dark:text-slate-400">Descripción</Label>
                                             <Input
                                                 value={newCatalog.description}
                                                 onChange={(e) => setNewCatalog(prev => ({ ...prev, description: e.target.value }))}
-                                                className="h-8 bg-white"
+                                                className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800"
                                                 placeholder="Breve descripción..."
                                             />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-xs">Icono</Label>
+                                                <Label className="text-xs text-slate-600 dark:text-slate-400">Icono</Label>
                                                 <Select value={newCatalog.icon} onValueChange={(val) => setNewCatalog(prev => ({ ...prev, icon: val }))}>
-                                                    <SelectTrigger className="h-8 bg-white">
+                                                    <SelectTrigger className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -306,9 +306,9 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs">Color</Label>
+                                                <Label className="text-xs text-slate-600 dark:text-slate-400">Color</Label>
                                                 <Select value={newCatalog.color} onValueChange={(val) => setNewCatalog(prev => ({ ...prev, color: val }))}>
-                                                    <SelectTrigger className="h-8 bg-white">
+                                                    <SelectTrigger className="h-8 bg-white dark:bg-slate-900 dark:border-slate-800">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -325,7 +325,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                                             </div>
                                         </div>
 
-                                        <Button className="w-full mt-4" disabled={isLoading} onClick={handleCreateCatalog}>
+                                        <Button className="w-full mt-4 bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700" disabled={isLoading} onClick={handleCreateCatalog}>
                                             {isLoading ? "Creando..." : "Crear Catálogo"}
                                         </Button>
                                     </div>
@@ -334,7 +334,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="general" className="flex-1 p-6 space-y-6">
+                    <TabsContent value="general" className="p-6 space-y-6 h-full overflow-y-auto data-[state=active]:block">
                         <div className="max-w-md space-y-6">
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Año Fiscal Vigente</h3>
@@ -345,7 +345,7 @@ export function SettingsDialog({ initialConfig }: SettingsDialogProps) {
                                     <Input
                                         value={currentYear}
                                         onChange={(e) => setCurrentYear(e.target.value)}
-                                        className="w-32 text-lg font-mono"
+                                        className="w-32 text-lg font-mono bg-white dark:bg-slate-900 dark:border-slate-800"
                                         type="number"
                                     />
                                     <Button onClick={handleUpdateYear} disabled={isLoading}>

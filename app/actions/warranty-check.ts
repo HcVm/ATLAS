@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
-export async function checkWarrantyExistence(warrantyNumber: string) {
+export async function checkWarrantyExistence(warrantyNumber: string, excludeSaleId?: string) {
     if (!warrantyNumber) return { success: false, message: "Número de garantía vacío" }
 
     try {
@@ -21,6 +21,21 @@ export async function checkWarrantyExistence(warrantyNumber: string) {
             }
             console.error("Warranty check DB error:", error)
             return { success: false, message: `Error de base de datos: ${error.message}` }
+        }
+
+        // Check if already linked to another sale
+        const { data: linkedData } = await supabaseAdmin
+            .from('sales')
+            .select('sale_number, id')
+            .eq('linked_warranty_number', warrantyNumber.trim())
+            .maybeSingle()
+
+        if (linkedData) {
+            if (excludeSaleId && linkedData.id === excludeSaleId) {
+                // Allowed: Linked to the same sale we are editing
+            } else {
+                return { success: false, message: `Garantía ya vinculada a la venta ${linkedData.sale_number}.` }
+            }
         }
 
         if (data) {

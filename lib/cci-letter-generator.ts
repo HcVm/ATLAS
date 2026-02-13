@@ -34,27 +34,8 @@ export interface CCILetterData {
   customDate?: Date
 }
 
-// URLs de las hojas membretadas
-const LETTERHEAD_URLS = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLEFIX.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARMFIX.png",
-  GALUR: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20GALUR%20BC.png",
-}
-
-// Función para determinar qué hoja membretada usar
-const getLetterheadUrl = (companyCode: string): string | null => {
-  const upperCode = companyCode.toUpperCase()
-
-  if (upperCode.includes("AGLE")) {
-    return LETTERHEAD_URLS.AGLE
-  } else if (upperCode.includes("ARM")) {
-    return LETTERHEAD_URLS.ARM
-  } else if (upperCode.includes("GALUR")) {
-    return LETTERHEAD_URLS.GALUR
-  }
-
-  return null
-}
+// URLs de las hojas membretadas eliminadas - ahora se obtienen de la BD
+// Función para determinar qué hoja membretada usar eliminada - ahora se obtiene de la BD
 
 // Función para determinar el tipo de plantilla
 const getLetterheadType = (companyCode: string): "AGLE" | "ARM" | "GALUR" | null => {
@@ -220,7 +201,11 @@ export const generateCCILetter = async (data: CCILetterData): Promise<void> => {
     }
 
     // Determinar qué hoja membretada usar
-    const letterheadUrl = getLetterheadUrl(data.companyCode)
+    // Fetch from DB
+    let letterheadUrl: string | null = null
+    const { data: companyLet } = await supabase.from('companies').select('letterhead_url').eq('code', data.companyCode).maybeSingle()
+    letterheadUrl = (companyLet as any)?.letterhead_url || null
+
     const letterheadType = getLetterheadType(data.companyCode)
     console.log("📄 Hoja membretada seleccionada:", letterheadType, letterheadUrl)
 
@@ -333,15 +318,15 @@ const createCCILetterHTML = (
 ): string => {
   const currentDate = data.customDate
     ? data.customDate.toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : new Date().toLocaleDateString("es-PE", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
 
   // Si tenemos hoja membretada, usar la plantilla específica
   if (letterheadBase64 && letterheadType) {
@@ -828,41 +813,37 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
         </p>
       </div>
       
-      ${
-        data.ocam
-          ? `<div style="margin-bottom: 4mm;">
+      ${data.ocam
+      ? `<div style="margin-bottom: 4mm;">
         <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">OCAM:</p>
         <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.ocam}</p>
       </div>`
-          : ""
-      }
+      : ""
+    }
       
-      ${
-        data.oc
-          ? `<div style="margin-bottom: 4mm;">
+      ${data.oc
+      ? `<div style="margin-bottom: 4mm;">
         <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">OC:</p>
         <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.oc}</p>
       </div>`
-          : ""
-      }
+      : ""
+    }
       
-      ${
-        data.physical_order
-          ? `<div style="margin-bottom: 4mm;">
+      ${data.physical_order
+      ? `<div style="margin-bottom: 4mm;">
         <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">ORDEN FÍSICA:</p>
         <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.physical_order}</p>
       </div>`
-          : ""
-      }
+      : ""
+    }
       
-      ${
-        data.siaf
-          ? `<div>
+      ${data.siaf
+      ? `<div>
         <p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">SIAF:</p>
         <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 700;">${data.siaf}</p>
       </div>`
-          : ""
-      }
+      : ""
+    }
     </div>
   `
 
@@ -879,37 +860,33 @@ const createStandardHTML = (data: CCILetterData, currentDate: string): string =>
       <!-- Header con logo y datos de empresa -->
       <div style="margin-bottom: 15mm;">
         <div style="background: #fafafa; padding: 8mm; border-radius: 4mm; border-left: 3mm solid #3b82f6;">
-          ${
-            data.companyLogoUrl
-              ? `
+          ${data.companyLogoUrl
+      ? `
           <div style="text-align: center; margin-bottom: 8mm;">
             <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 120px; max-height: 80px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" crossorigin="anonymous" />
           </div>
           `
-              : ""
-          }
+      : ""
+    }
           
-          ${
-            data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
-              ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; text-align: center;">
+          ${data.bankingInfo?.contactInfo?.phone || data.bankingInfo?.contactInfo?.mobile
+      ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; text-align: center;">
                   ${data.bankingInfo.contactInfo.phone ? `CENTRAL TELEFÓNICA: ${data.bankingInfo.contactInfo.phone}` : ""}
                   ${data.bankingInfo.contactInfo.phone && data.bankingInfo.contactInfo.mobile ? " / " : ""}
                   ${data.bankingInfo.contactInfo.mobile ? `MÓVIL: ${data.bankingInfo.contactInfo.mobile}` : ""}
                 </p>`
-              : ""
-          }
+      : ""
+    }
           
-          ${
-            data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-              ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; text-align: center;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
-              : ""
-          }
+          ${data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
+      ? `<p style="margin: 0 0 2mm 0; font-size: 9px; color: #666; text-align: center;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>`
+      : ""
+    }
           
-          ${
-            data.bankingInfo?.fiscalAddress
-              ? `<p style="margin: 0; font-size: 9px; color: #666; text-align: center; line-height: 1.3;">${data.bankingInfo.fiscalAddress}</p>`
-              : ""
-          }
+          ${data.bankingInfo?.fiscalAddress
+      ? `<p style="margin: 0; font-size: 9px; color: #666; text-align: center; line-height: 1.3;">${data.bankingInfo.fiscalAddress}</p>`
+      : ""
+    }
         </div>
       </div>
 

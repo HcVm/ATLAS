@@ -23,6 +23,8 @@ interface DateSelectorDialogProps {
   description: string
   isGenerating?: boolean
   showLinkedWarrantyInput?: boolean
+  initialLinkedWarranty?: string
+  currentSaleId?: string
 }
 
 export function DateSelectorDialog({
@@ -33,15 +35,21 @@ export function DateSelectorDialog({
   description,
   isGenerating = false,
   showLinkedWarrantyInput = false,
+  initialLinkedWarranty = "",
+  currentSaleId,
 }: DateSelectorDialogProps) {
   const today = new Date()
   const localDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const [selectedDate, setSelectedDate] = useState<string>(localDateString)
-  const [linkedNumber, setLinkedNumber] = useState("")
+  const [linkedNumber, setLinkedNumber] = useState(initialLinkedWarranty || "")
 
   // Validation State
-  const [validationStatus, setValidationStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle')
-  const [validationMessage, setValidationMessage] = useState("")
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>(
+    initialLinkedWarranty ? 'valid' : 'idle'
+  )
+  const [validationMessage, setValidationMessage] = useState(
+    initialLinkedWarranty ? "Garantía vinculada previamente" : ""
+  )
 
   const handleConfirm = () => {
     const [year, month, day] = selectedDate.split("-").map(Number)
@@ -59,7 +67,7 @@ export function DateSelectorDialog({
     setValidationMessage("")
 
     try {
-      const result = await checkWarrantyExistence(linkedNumber.trim())
+      const result = await checkWarrantyExistence(linkedNumber.trim(), currentSaleId)
 
       if (result.success && result.data) {
         setValidationStatus('valid')
@@ -113,17 +121,18 @@ export function DateSelectorDialog({
                       setValidationMessage("")
                     }}
                     placeholder="Ej: GAR-ARM-2025-001"
-                    className={`flex-1 ${validationStatus === 'valid' ? 'border-green-500 bg-green-50' : validationStatus === 'invalid' ? 'border-red-500 bg-red-50' : ''}`}
+                    className={`flex-1 ${validationStatus === 'valid' ? 'border-green-500 bg-green-50' : validationStatus === 'invalid' ? 'border-red-500 bg-red-50' : ''} ${initialLinkedWarranty ? 'cursor-not-allowed opacity-80' : ''}`}
+                    readOnly={!!initialLinkedWarranty}
                   />
                   <Button
                     type="button"
                     size="icon"
                     variant="outline"
                     onClick={validateLinkedWarranty}
-                    disabled={!linkedNumber.trim() || validationStatus === 'loading'}
-                    title="Validar Garantía"
+                    disabled={!linkedNumber.trim() || validationStatus === 'loading' || !!initialLinkedWarranty}
+                    title={initialLinkedWarranty ? "Garantía ya vinculada" : "Validar Garantía"}
                   >
-                    {validationStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    {validationStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : initialLinkedWarranty ? <Check className="h-4 w-4" /> : <Search className="h-4 w-4" />}
                   </Button>
                 </div>
 

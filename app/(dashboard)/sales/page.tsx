@@ -225,7 +225,8 @@ export default function SalesPage() {
     open: boolean
     sale: Sale | null
     isGenerating: boolean
-  }>({ open: false, sale: null, isGenerating: false })
+    showLinkedWarrantyInput?: boolean
+  }>({ open: false, sale: null, isGenerating: false, showLinkedWarrantyInput: false })
 
   const [cciDateDialog, setCciDateDialog] = useState<{
     open: boolean
@@ -461,6 +462,95 @@ export default function SalesPage() {
   )
 
   // --- Letter Generation ---
+  const handleOpenWarrantyDialog = async (sale: Sale) => {
+    const toastId = toast.loading("Verificando productos...")
+    try {
+      // 0. Fetch fresh warranty info to ensure we have the latest link status
+      const { data: freshSaleData } = await supabase
+        .from("sales")
+        .select("warranty_number, linked_warranty_number")
+        .eq("id", sale.id)
+        .single()
+
+      const updatedSale = {
+        ...sale,
+        warranty_number: freshSaleData?.warranty_number || sale.warranty_number,
+        linked_warranty_number: freshSaleData?.linked_warranty_number || sale.linked_warranty_number
+      }
+
+      // Fetch items to check brands
+      const { data: items } = await supabase
+        .from("sale_items")
+        .select(`
+          product_name, 
+          product_brand, 
+          products(brand:brands(name))
+        `)
+        .eq("sale_id", sale.id)
+
+      const BRAND_TO_COMPANY: Record<string, string> = {
+        "HOPE LIFE": "ARM",
+        "WORLDLIFE": "ARM",
+        "ZEUS": "AGLE",
+        "VALHALLA": "AGLE",
+      }
+
+      // Determine Seller Code
+      let sellerCompanyCode = "ARM"
+      if (updatedSale.sale_number?.toUpperCase().includes("AGLE")) {
+        sellerCompanyCode = "AGLE"
+      } else if (updatedSale.sale_number?.toUpperCase().includes("ARM")) {
+        sellerCompanyCode = "ARM"
+      } else {
+        sellerCompanyCode = companyToUse?.name?.toUpperCase().includes("AGLE") ? "AGLE" : "ARM"
+      }
+
+      let needsLinked = false
+
+      if (items && items.length > 0) {
+        for (const item of items) {
+          // Get brand from joined product or fallback to flat field
+          const brandName = (item.products as any)?.brand?.name || item.product_brand || ""
+          const cleanBrand = brandName.trim().toUpperCase()
+
+          let owner = BRAND_TO_COMPANY[cleanBrand]
+
+          // Fuzzy fallback
+          if (!owner) {
+            if (cleanBrand.includes("WORLD") || cleanBrand.includes("LIFE")) owner = "ARM";
+            else if (cleanBrand.includes("HOPE")) owner = "ARM";
+            else if (cleanBrand.includes("ZEUS")) owner = "AGLE";
+            else if (cleanBrand.includes("VALH")) owner = "AGLE";
+            else owner = "AGLE"; // Default fallback
+          }
+
+          if (owner !== sellerCompanyCode) {
+            needsLinked = true
+            break
+          }
+        }
+      }
+
+      setWarrantyDateDialog({
+        open: true,
+        sale: updatedSale,
+        isGenerating: false,
+        showLinkedWarrantyInput: needsLinked || !!updatedSale.linked_warranty_number
+      })
+      toast.dismiss(toastId)
+
+    } catch (error) {
+      console.error("Error opening warranty dialog:", error)
+      toast.dismiss(toastId)
+      // Fallback: Open without linked input or use basic guess
+      setWarrantyDateDialog({
+        open: true,
+        sale,
+        isGenerating: false,
+        showLinkedWarrantyInput: false // Default to safe state
+      })
+    }
+  }
   const handleGenerateWarrantyLetter = async (sale: Sale, selectedDate?: Date, extraData?: { linkedWarrantyNumber?: string }) => {
     try {
       setWarrantyDateDialog(prev => ({ ...prev, isGenerating: true }))
@@ -922,7 +1012,7 @@ export default function SalesPage() {
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => setWarrantyDateDialog({ open: true, sale, isGenerating: false })}>
+                                  <DropdownMenuItem onClick={() => handleOpenWarrantyDialog(sale)}>
                                     <FileText className="mr-2 h-4 w-4 text-green-600" /> Carta Garantía
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setCciDateDialog({ open: true, sale, isGenerating: false })}>
@@ -1210,11 +1300,9 @@ export default function SalesPage() {
         title="Generar Garantía"
         description="Fecha de emisión"
         isGenerating={warrantyDateDialog.isGenerating}
-        showLinkedWarrantyInput={
-          warrantyDateDialog.sale?.sale_number?.toUpperCase().includes("AGLE") ??
-          companyToUse?.name?.toUpperCase().includes("AGLE") ??
-          false
-        }
+        showLinkedWarrantyInput={warrantyDateDialog.showLinkedWarrantyInput}
+        initialLinkedWarranty={warrantyDateDialog.sale?.linked_warranty_number || undefined}
+        currentSaleId={warrantyDateDialog.sale?.id}
       />
 
       <DateSelectorDialog open={cciDateDialog.open} onOpenChange={(open) => setCciDateDialog({ open, sale: null, isGenerating: false })} onConfirm={(date) => cciDateDialog.sale && handleGenerateCCILetter(cciDateDialog.sale, date)} title="Generar CCI" description="Fecha de emisión" isGenerating={cciDateDialog.isGenerating} />

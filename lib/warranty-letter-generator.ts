@@ -1,6 +1,7 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { getBankingInfoByCompanyCode, type BankingInfo } from "./company-banking-info"
+import { supabase } from "./supabase"
 
 export interface WarrantyLetterData {
   // Información de la empresa
@@ -25,7 +26,7 @@ export interface WarrantyLetterData {
   products: Array<{
     quantity: number
     description: string
-    modelo?: string // ✅ Corregido: campo opcional modelo (como en la BD)
+    modelo?: string
     brand: string
     code: string
   }>
@@ -41,6 +42,7 @@ export interface WarrantyLetterData {
 }
 
 // Mapeo de marcas a códigos de empresa propietaria (BRAND OWNER)
+// TODO: Idealmente esto también debería venir de la BD
 const BRAND_TO_COMPANY: Record<string, string> = {
   "HOPE LIFE": "ARM",
   WORLDLIFE: "ARM",
@@ -48,22 +50,28 @@ const BRAND_TO_COMPANY: Record<string, string> = {
   VALHALLA: "AGLE",
 }
 
-// URLs de membretes por marca (CORREGIDO)
-const LETTERHEAD_URLS: Record<string, string> = {
-  "HOPE LIFE":
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20HOPE%20LIFE.png",
-  WORLDLIFE:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20WORLDLIFE.png",
-  ZEUS: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ZEUSFIX.png",
-  VALHALLA:
-    "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20VALHALLA.png",
-}
+// Helper to fetch letterhead from DB
+async function fetchLetterheadUrl(entityName: string, type: 'brand' | 'company'): Promise<string | null> {
+  const table = type === 'company' ? 'companies' : 'brands'
 
-// URLs de membretes corporativos (para Garantía de Proveedor)
-const CORPORATE_LETTERHEADS: Record<string, string> = {
-  AGLE: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20AGLEFIX.png",
-  ARM: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20ARMFIX.png",
-  GALUR: "https://zcqvxaxyzgrzegonbsao.supabase.co/storage/v1/object/public/images/membretes/HOJA%20MEMBRETADA%20GALUR%20BC.png",
+  if (type === 'company') {
+    const { data } = await supabase
+      .from('companies')
+      .select('letterhead_url')
+      .or(`code.eq.${entityName},name.eq.${entityName}`) // Try matching code or name
+      .maybeSingle()
+
+    return (data as any)?.letterhead_url || null
+  } else {
+    // For brands, search by name
+    const { data } = await supabase
+      .from('brands')
+      .select('letterhead_url')
+      .ilike('name', entityName)
+      .maybeSingle()
+
+    return (data as any)?.letterhead_url || null
+  }
 }
 
 export const generateWarrantyLetters = async (data: WarrantyLetterData): Promise<void> => {
@@ -108,7 +116,6 @@ const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: str
   }
 
   // Identificar Propietario de la Marca vs Vendedor
-  // Identificar Propietario de la Marca vs Vendedor
   const cleanBrand = brand.trim().toUpperCase()
   // Manual check for common variations just in case
   let mappedOwner = BRAND_TO_COMPANY[cleanBrand]
@@ -129,17 +136,20 @@ const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: str
   console.log(`🔍 Debug Reseller Logic: Brand='${brand}' Clean='${cleanBrand}' Owner='${brandOwnerCode}' Seller='${sellerCode}' isReseller=${isReseller}`)
 
   // Determinar Membrete y Plantilla
-  let letterheadUrl = LETTERHEAD_URLS[brand] // Por defecto usa el de la marca
+  let letterheadUrl = await fetchLetterheadUrl(brand, 'brand') // Por defecto usa el de la marca
 
   if (isReseller) {
     // Si es revendedor, usar membrete corporativo de la empresa vendedora
-    if (CORPORATE_LETTERHEADS[sellerCode]) {
-      letterheadUrl = CORPORATE_LETTERHEADS[sellerCode]
+    const corporateLetterhead = await fetchLetterheadUrl(sellerCode, 'company')
+
+    if (corporateLetterhead) {
+      letterheadUrl = corporateLetterhead
     } else {
       // Fallbacks si no hay membrete corporativo definido
-      if (sellerCode === "AGLE") letterheadUrl = LETTERHEAD_URLS["ZEUS"]
-      else if (sellerCode === "ARM") letterheadUrl = LETTERHEAD_URLS["WORLDLIFE"]
-      else if (sellerCode === "GALUR") letterheadUrl = LETTERHEAD_URLS["ZEUS"] // Fallback for Galur
+      // Intenta buscar el membrete de la marca "principal" de esa empresa
+      if (sellerCode === "AGLE") letterheadUrl = await fetchLetterheadUrl("ZEUS", 'brand')
+      else if (sellerCode === "ARM") letterheadUrl = await fetchLetterheadUrl("WORLDLIFE", 'brand')
+      else if (sellerCode === "GALUR") letterheadUrl = await fetchLetterheadUrl("ZEUS", 'brand') // Fallback for Galur, or search for GALUR brand if it exists
     }
   }
 
@@ -151,13 +161,13 @@ const generateSingleWarrantyLetter = async (data: WarrantyLetterData, brand: str
 
   if (isReseller) {
     // Usar plantilla de Garantía de Proveedor (Linked Warranty)
-    htmlContent = createSupplierWarrantyLetterHTML(data, brand, letterheadUrl, brandOwnerCode)
+    htmlContent = createSupplierWarrantyLetterHTML(data, brand, letterheadUrl || undefined, brandOwnerCode)
   } else {
     // Usar plantilla estándar de Marca (AGLE o ARM según la marca)
     htmlContent =
       brandOwnerCode === "AGLE"
-        ? createAGLEWarrantyLetterHTML(data, brand, letterheadUrl)
-        : createARMWarrantyLetterHTML(data, brand, letterheadUrl)
+        ? createAGLEWarrantyLetterHTML(data, brand, letterheadUrl || undefined)
+        : createARMWarrantyLetterHTML(data, brand, letterheadUrl || undefined)
   }
 
   // Crear un elemento temporal en el DOM
