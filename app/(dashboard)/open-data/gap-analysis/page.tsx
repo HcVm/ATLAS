@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -365,12 +365,54 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
 
         const baseQuery = useCustomQuery ? customQuery : selectedQuery;
 
+        // Prepare Payload locally to avoid server action delay
+        const brandName = verifyingProduct.brandName || '';
+        const description = verifyingProduct.description || '';
+        // Same cleaning logic as before
+        const coreName = description.split(/[:;,-]|\s\d/)[0].trim().split(/\s+/).slice(0, 4).join(" ");
+        const cleanCore = coreName.replace(new RegExp(brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
+
         try {
-            // Pass the base query and extra keywords
-            const results = await verifyProductOnWeb(verifyingProduct, extraKeywords, baseQuery);
-            setScanResults(results);
+            const response = await fetch('/api/market-stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product_name: cleanCore,
+                    search_query: baseQuery,
+                    extra_keywords: extraKeywords,
+                    brand_name: brandName,
+                    description: description
+                })
+            });
+
+            if (!response.body) throw new Error("No response body");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.trim()) {
+                        try {
+                            const newResult = JSON.parse(line);
+                            setScanResults(prev => [...prev, newResult]);
+                        } catch (e) {
+                            console.error("Stream Parse Error", e);
+                        }
+                    }
+                }
+            }
         } catch (error) {
             toast.error('Error al conectar con el servicio de scraping');
+            console.error(error);
         } finally {
             setIsScanning(false);
         }
@@ -459,35 +501,39 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                             {isInGroup && (
                                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-300 dark:bg-indigo-700" />
                                             )}
-                                            <div className="font-medium text-sm pl-2">{product.brandName}</div>
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">{product.brandName}</span>
+                                            </div>
                                             {product.isSystemBrand && (
                                                 <Badge variant="outline" className="text-[10px] mt-1 ml-2 border-blue-200 text-blue-600 bg-blue-50 dark:bg-blue-900/20">Tu Marca</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="align-top font-mono text-xs text-muted-foreground">
+                                        <TableCell className="align-top font-mono text-xs text-slate-500">
                                             {product.code}
                                         </TableCell>
                                         <TableCell className="align-top">
-                                            <div className="text-sm line-clamp-3" title={product.description}>
-                                                {product.description}
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-medium leading-snug">{product.description}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="align-top">
-                                            <Badge variant="secondary" className="text-[10px] whitespace-nowrap">
+                                            <Badge variant="secondary" className="text-[10px] h-5 whitespace-nowrap">
                                                 {product.status || 'N/A'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="align-top">
-                                            {product.statusInSystem === 'found' ? (
-                                                <div className="flex items-center text-green-600 font-medium text-xs bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full w-fit">
-                                                    <CheckCircle className="h-3 w-3 mr-1" /> Existe
-                                                </div>
-                                            ) : product.statusInSystem === 'missing' ? (
-                                                <div className="flex items-center text-red-600 font-medium text-xs bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full w-fit">
-                                                    <XCircle className="h-3 w-3 mr-1" /> Faltante
-                                                </div>
+                                            {product.statusInSystem === 'missing' ? (
+                                                <Badge variant="destructive" className="text-[10px] h-5 bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200">
+                                                    Faltante
+                                                </Badge>
+                                            ) : product.statusInSystem === 'found' ? (
+                                                <Badge className="text-[10px] h-5 bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
+                                                    En Sistema
+                                                </Badge>
                                             ) : (
-                                                <span className="text-muted-foreground text-xs italic px-2">Competencia</span>
+                                                <Badge variant="outline" className="text-[10px] h-5 text-slate-500 border-slate-200 bg-slate-50">
+                                                    Competencia
+                                                </Badge>
                                             )}
                                         </TableCell>
                                         {!hideSimilarity && (
@@ -581,12 +627,50 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
             </ScrollArea>
 
             <Dialog open={!!verifyingProduct} onOpenChange={(open) => !open && setVerifyingProduct(null)}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader className="px-6 py-4 border-b bg-slate-50/50 dark:bg-slate-900/50">
                         <DialogTitle>Verificación de Mercado</DialogTitle>
                         <DialogDescription>
-                            Buscando coincidencias para: <span className="font-semibold text-foreground">{verifyingProduct?.description}</span>
+                            Buscando coincidencias y precios en la web para este producto.
                         </DialogDescription>
+                        {verifyingProduct && (
+                            <div className="mt-4 flex gap-4 p-3 bg-white dark:bg-slate-950 rounded-lg border shadow-sm">
+                                {verifyingProduct.image && (
+                                    <div className="h-32 w-32 flex-shrink-0 bg-white rounded border border-slate-100 overflow-hidden flex items-center justify-center p-1">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={verifyingProduct.image}
+                                            alt={verifyingProduct.brandName}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                    <h3 className="font-semibold text-sm text-foreground mb-1" title={verifyingProduct.description}>
+                                        {verifyingProduct.description}
+                                    </h3>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span className="font-medium text-slate-700 dark:text-slate-300">{verifyingProduct.brandName}</span>
+                                        <span>•</span>
+                                        <span className="font-mono">{verifyingProduct.code}</span>
+                                    </div>
+                                </div>
+                                {verifyingProduct.technicalSheet && (
+                                    <div className="flex flex-col justify-center pl-2 ml-2 border-l border-slate-100 dark:border-slate-800">
+                                        <a
+                                            href={verifyingProduct.technicalSheet}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex flex-col items-center justify-center p-2 h-full min-w-[3rem] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition-colors border border-transparent hover:border-rose-100"
+                                            title="Ver Ficha Técnica"
+                                        >
+                                            <FileText className="h-6 w-6" />
+                                            <span className="text-[10px] font-bold mt-1">PDF FICHA TÉCNICA</span>
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto min-h-[300px] p-1">
@@ -595,42 +679,74 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                             <div className="flex flex-col gap-6 py-6 px-4">
                                 {/* Base Search Query Selection */}
                                 <div className="space-y-3">
-                                    <Label className="text-sm font-semibold text-foreground">
-                                        Término Base de Búsqueda
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Selecciona qué tan específica quieres que sea la búsqueda inicial en Google.
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {queryOptions.map((opt, i) => (
-                                            <Button
-                                                key={i}
-                                                variant={!useCustomQuery && selectedQuery === opt ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => { setSelectedQuery(opt); setUseCustomQuery(false); }}
-                                                className="text-xs h-8"
-                                            >
-                                                {opt}
-                                            </Button>
-                                        ))}
-                                        <Button
-                                            variant={useCustomQuery ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setUseCustomQuery(true)}
-                                            className="text-xs h-8"
-                                        >
-                                            Personalizado
-                                        </Button>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-semibold text-foreground">
+                                            Término Base de Búsqueda
+                                        </Label>
+                                        <span className="text-[10px] text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800">
+                                            Recomendado
+                                        </span>
                                     </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {queryOptions.map((opt, i) => {
+                                            const isSelected = !useCustomQuery && selectedQuery === opt;
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    onClick={() => { setSelectedQuery(opt); setUseCustomQuery(false); }}
+                                                    className={`
+                                                        relative flex items-center p-3 rounded-lg border cursor-pointer transition-all duration-200
+                                                        ${isSelected
+                                                            ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
+                                                            : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
+                                                    `}
+                                                >
+                                                    <div className={`
+                                                        w-4 h-4 rounded-full border mr-3 flex items-center justify-center transition-colors
+                                                        ${isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}
+                                                    `}>
+                                                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                    </div>
+                                                    <span className={`text-sm font-medium ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
+                                                        {opt}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
 
-                                    {useCustomQuery && (
-                                        <Input
-                                            value={customQuery}
-                                            onChange={(e) => setCustomQuery(e.target.value)}
-                                            placeholder="Escribe tu término base..."
-                                            className="h-9 text-sm"
-                                        />
-                                    )}
+                                        <div
+                                            onClick={() => setUseCustomQuery(true)}
+                                            className={`
+                                                relative p-3 rounded-lg border cursor-pointer transition-all duration-200
+                                                ${useCustomQuery
+                                                    ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
+                                                    : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
+                                            `}
+                                        >
+                                            <div className="flex items-center mb-2">
+                                                <div className={`
+                                                    w-4 h-4 rounded-full border mr-3 flex items-center justify-center transition-colors
+                                                    ${useCustomQuery ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}
+                                                `}>
+                                                    {useCustomQuery && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                </div>
+                                                <span className={`text-sm font-medium ${useCustomQuery ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
+                                                    Personalizado
+                                                </span>
+                                            </div>
+                                            {useCustomQuery && (
+                                                <div className="pl-7">
+                                                    <Input
+                                                        value={customQuery}
+                                                        onChange={(e) => setCustomQuery(e.target.value)}
+                                                        placeholder="Escribe tu término base..."
+                                                        className="h-9 text-sm bg-white dark:bg-slate-950"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Extra Keywords */}
@@ -659,27 +775,33 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                     </Button>
                                 </div>
                             </div>
-                        ) : isScanning ? (
+                        ) : (isScanning && scanResults.length === 0) ? (
                             <div className="flex flex-col items-center justify-center h-full space-y-4 py-12">
                                 <Loader2 className="h-12 w-12 text-indigo-500 animate-spin" />
                                 <p className="text-sm text-muted-foreground animate-pulse">
-                                    Buscando "{extraKeywords}" en Sodimac, Promart y MercadoLibre...
+                                    Buscando "{extraKeywords}" en Truper, Kamasa, Sodimac y MercadoLibre...
                                 </p>
                             </div>
                         ) : scanResults.length > 0 ? (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultados Encontrados ({scanResults.length})</div>
-                                    <Button variant="ghost" size="sm" onClick={handleRetry} className="h-6 text-xs text-indigo-600 hover:bg-indigo-50">
-                                        Modificar Búsqueda
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultados ({scanResults.length})</div>
+                                        {isScanning && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
+                                    </div>
+
+                                    {!isScanning && (
+                                        <Button variant="ghost" size="sm" onClick={handleRetry} className="h-6 text-xs text-indigo-600 hover:bg-indigo-50">
+                                            Modificar Búsqueda
+                                        </Button>
+                                    )}
                                 </div>
                                 {scanResults.map((result, i) => {
                                     const isTruper = result.source === 'Truper-Catalogo';
                                     const isKamasa = result.source.toLowerCase().includes('kamasa');
 
                                     return (
-                                        <div key={i} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border transition-all gap-3
+                                        <div key={i} className={`animate-in slide-in-from-bottom-2 duration-300 flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border transition-all gap-3
                                             ${isTruper
                                                 ? 'border-orange-200 bg-orange-50/80 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/20 shadow-sm'
                                                 : isKamasa
@@ -699,8 +821,8 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                                     </Badge>
                                                     {result.similarity_score > 0.5 && (
                                                         <Badge className={`text-[10px] border-none ${isTruper || isKamasa
-                                                                ? 'bg-white/80 text-black hover:bg-white'
-                                                                : 'bg-green-100 text-green-700 hover:bg-green-100'
+                                                            ? 'bg-white/80 text-black hover:bg-white'
+                                                            : 'bg-green-100 text-green-700 hover:bg-green-100'
                                                             }`}>
                                                             Relevante
                                                         </Badge>
@@ -729,6 +851,13 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                         </div>
                                     );
                                 })}
+
+                                {isScanning && (
+                                    <div className="flex items-center justify-center py-4 gap-2 text-xs text-muted-foreground animate-pulse">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Buscando más resultados en la web...
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full py-12 text-center">

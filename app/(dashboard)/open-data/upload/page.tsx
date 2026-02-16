@@ -168,17 +168,9 @@ export default function OpenDataUploadPage() {
         throw new Error(`Faltan columnas críticas: ${missingRequired.join(", ")}`)
       }
 
-      // 3. Resetear acuerdo marco en BD
-      setCurrentAction("Limpiando datos anteriores...")
+      // 3. OMITIDO: No resetear para permitir datos incrementales
       const codigoAcuerdoMarco = selectedAcuerdo.split(" ")[0].trim()
-
-      const resetRes = await fetch("/api/open-data/reset-acuerdo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigoAcuerdoMarco })
-      })
-
-      if (!resetRes.ok) throw new Error("Error al limpiar datos anteriores")
+      // ... código eliminado para evitar borrar datos ...
       setProgress(20)
 
       // 4. Procesar y subir en chunks
