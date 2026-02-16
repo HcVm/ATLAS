@@ -74,6 +74,8 @@ export async function verifyProductOnWeb(product: MarketProductDetail, extraKeyw
         // Ideally this comes from process.env.SCRAPER_URL
         const scraperUrl = process.env.SCRAPER_URL || 'http://127.0.0.1:8000';
 
+        console.log("Using Scraper URL:", scraperUrl);
+
         const response = await fetch(`${scraperUrl}/check-market`, {
             method: 'POST',
             headers: {
