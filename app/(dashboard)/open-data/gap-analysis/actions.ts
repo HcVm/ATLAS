@@ -51,6 +51,11 @@ export interface MarketProductDetail {
     googleSearchUrl?: string;
     verificationStatus?: 'pending' | 'verified_real' | 'suspicious' | 'not_found';
     scrapedData?: ScrapedProduct[];
+    group?: {
+        id: string;
+        size: number;
+        similarity: number;
+    };
 }
 
 export async function verifyProductOnWeb(product: MarketProductDetail, extraKeywords: string = ''): Promise<ScrapedProduct[]> {
@@ -383,6 +388,121 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
         }
 
         // Secondary Sort: Status (Missing < Competitor < Found)
+        const statusScore = (status: string) => {
+            if (status === 'missing') return 0;
+            if (status === 'competitor_only') return 1;
+            return 2;
+        };
+        return statusScore(a.statusInSystem) - statusScore(b.statusInSystem);
+    });
+
+
+
+    // 5. Market-to-Market Clustering
+    // We group products that are extremely similar to each other (ignoring Brand), to help user discard them in bulk.
+    // MODIFIED: Also group by Similarity Level (High vs Low vs Null)
+    const clusters: { id: string; products: MarketProductDetail[]; representativeDesc: string; similarityLevel: string }[] = [];
+    let clusterCounter = 0;
+
+    for (const product of marketProducts) {
+        // We strip the brand name from the description for comparison
+        const cleanDesc = product.description.replace(new RegExp(product.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
+
+        // Find a matching cluster
+        let bestClusterIdx = -1;
+        let bestClusterScore = 0;
+
+        for (let i = 0; i < clusters.length; i++) {
+            // Compare with the first product in the cluster (or a representative string)
+            // We use a high threshold (0.85) because they should be effectively the SAME product type
+            // AND check if they belong to the same "Similarity Level" (High/Low/Null)
+            const score = calculateAdvancedSimilarity(cleanDesc, clusters[i].representativeDesc);
+
+            const currentLevel = (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
+                (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null';
+
+            if (score > 0.85 && score > bestClusterScore && currentLevel === clusters[i].similarityLevel) {
+                bestClusterScore = score;
+                bestClusterIdx = i;
+            }
+        }
+
+        if (bestClusterIdx !== -1) {
+            clusters[bestClusterIdx].products.push(product);
+        } else {
+            // Create new cluster
+            clusterCounter++;
+            clusters.push({
+                id: `G-${clusterCounter}`,
+                products: [product],
+                representativeDesc: cleanDesc,
+                // Assign a "Category Level" to the cluster based on the first product
+                // This ensures we only group High with High, Low with Low.
+                similarityLevel: (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
+                    (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null'
+            });
+        }
+    }
+
+    // Assign Group Info to Products
+    // Only assign if the group has more than 1 item
+    for (const cluster of clusters) {
+        if (cluster.products.length > 1) {
+            cluster.products.forEach(p => {
+                p.group = {
+                    id: cluster.id,
+                    size: cluster.products.length,
+                    similarity: 0 // Placeholder, maybe can put avg similarity
+                };
+            });
+        }
+    }
+
+    // Re-Sort to keep groups together
+    // We sort by Group ID (if exists), then by original sort order
+    // Actually, we want to keep the highest similarity groups at the top.
+    // So we sort the CLUSTERS by their best internal product score?
+    // Or simpler: Sort by HasGroup (Desc), GroupSize (Desc), OriginalScore (Desc)
+
+    // Better strategy for UI:
+    // Just ensure products with the same Group ID are adjacent.
+    // We can leave the global sort as is, but in the UI we might want to "Group By"
+    // For now, let's just make sure they have the data.
+
+    // Let's grouping sort logic:
+    // 1. Sort products roughly by the previous logic (SimScore Desc)
+    // 2. But if a product is part of a group, we might want to pull the whole group to the position of its highest scoring member.
+
+    // Map GroupID -> Max Score of any member
+    const groupMaxScore = new Map<string, number>();
+    marketProducts.forEach(p => {
+        if (p.group) {
+            const currentMax = groupMaxScore.get(p.group.id) || 0;
+            const pScore = p.similarSystemProduct?.similarityScore || 0;
+            if (pScore > currentMax) {
+                groupMaxScore.set(p.group.id, pScore);
+            }
+        }
+    });
+
+    marketProducts.sort((a, b) => {
+        const scoreA = a.group ? groupMaxScore.get(a.group.id)! : (a.similarSystemProduct?.similarityScore || 0);
+        const scoreB = b.group ? groupMaxScore.get(b.group.id)! : (b.similarSystemProduct?.similarityScore || 0);
+
+        if (Math.abs(scoreA - scoreB) > 0.001) return scoreB - scoreA;
+
+        // 2. Tie-Breaker: Group ID (Cluster togetherness)
+        if (a.group && b.group) {
+            if (a.group.id !== b.group.id) {
+                return a.group.id.localeCompare(b.group.id);
+            }
+        } else if (a.group && !b.group) {
+            return -1; // Grouped items first
+        } else if (!a.group && b.group) {
+            return 1;
+        }
+
+        // 3. Final tie breaker: Status
         const statusScore = (status: string) => {
             if (status === 'missing') return 0;
             if (status === 'competitor_only') return 1;
