@@ -58,7 +58,7 @@ export interface MarketProductDetail {
     };
 }
 
-export async function verifyProductOnWeb(product: MarketProductDetail, extraKeywords: string = ''): Promise<ScrapedProduct[]> {
+export async function verifyProductOnWeb(product: MarketProductDetail, extraKeywords: string = '', searchQuery: string = ''): Promise<ScrapedProduct[]> {
     try {
         // 1. Clean Core Name (Re-applying logical brand removal)
         // We do this here to ensure the scraper gets the clean query
@@ -70,13 +70,18 @@ export async function verifyProductOnWeb(product: MarketProductDetail, extraKeyw
 
         // 2. Call Python Microservice
         // Note: In production this URL should be an env variable
-        const response = await fetch('http://127.0.0.1:8000/check-market', {
+        // Use the deployed URL if available, or localhost for dev.
+        // Ideally this comes from process.env.SCRAPER_URL
+        const scraperUrl = process.env.SCRAPER_URL || 'http://127.0.0.1:8000';
+
+        const response = await fetch(`${scraperUrl}/check-market`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 product_name: cleanCore,
+                search_query: searchQuery || undefined, // send override if provided
                 extra_keywords: extraKeywords
             }),
             cache: 'no-store'

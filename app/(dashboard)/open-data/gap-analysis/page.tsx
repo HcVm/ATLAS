@@ -267,6 +267,38 @@ export default function ProductGapAnalysisPage() {
     );
 }
 
+
+function generateSearchOptions(description: string, brandName: string): string[] {
+    // Basic cleaning to remove brand and garbage chars
+    let clean = description || "";
+    if (brandName) {
+        clean = clean.replace(new RegExp(brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
+    }
+    // Remove technical part (usually after punctuation or numbers)
+    // e.g. "RASTRILLO METAL 14 D" -> "RASTRILLO METAL"
+    clean = clean.split(/[,:;.-]|\s\d/)[0].trim();
+
+    const words = clean.split(/\s+/);
+    const options = new Set<string>();
+
+    // Option 1: First Word only (Broadest)
+    if (words.length > 0 && words[0].length > 1) {
+        options.add(words[0]);
+    }
+
+    // Option 2: First 2 Words (Moderate)
+    if (words.length > 1) {
+        options.add(words.slice(0, 2).join(" "));
+    }
+
+    // Option 3: Full Core Concept (Specific - up to 4 words)
+    if (words.length > 0) {
+        options.add(words.slice(0, 4).join(" "));
+    }
+
+    return Array.from(options);
+}
+
 function ProductTable({ products, hideSimilarity = false }: { products: MarketProductDetail[], hideSimilarity?: boolean }) {
     const [verifyingProduct, setVerifyingProduct] = useState<MarketProductDetail | null>(null);
     const [scanResults, setScanResults] = useState<ScrapedProduct[]>([]);
@@ -276,11 +308,30 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
     const [extraKeywords, setExtraKeywords] = useState("");
     const [hasStartedScan, setHasStartedScan] = useState(false);
 
+    // New: User Selection for Base Query
+    const [queryOptions, setQueryOptions] = useState<string[]>([]);
+    const [selectedQuery, setSelectedQuery] = useState("");
+    const [customQuery, setCustomQuery] = useState(""); // If user types manually
+    const [useCustomQuery, setUseCustomQuery] = useState(false);
+
     const handleScanClick = (product: MarketProductDetail) => {
         setVerifyingProduct(product);
-        setExtraKeywords(""); // Reset
-        setHasStartedScan(false); // Reset to show Input form first
+        setExtraKeywords("");
+        setHasStartedScan(false);
         setScanResults([]);
+
+        // Generate Options
+        const opts = generateSearchOptions(product.description, product.brandName);
+        setQueryOptions(opts);
+        // Default to the most specific (longest) one usually, or the middle?
+        // Let's default to the longest one (last added usually)
+        if (opts.length > 0) {
+            setSelectedQuery(opts[opts.length - 1]);
+        } else {
+            setSelectedQuery("");
+        }
+        setUseCustomQuery(false);
+        setCustomQuery("");
     };
 
     // State for viewing group details
@@ -312,9 +363,11 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
         setHasStartedScan(true);
         setScanResults([]);
 
+        const baseQuery = useCustomQuery ? customQuery : selectedQuery;
+
         try {
-            // Pass the extra keywords to the server action
-            const results = await verifyProductOnWeb(verifyingProduct, extraKeywords);
+            // Pass the base query and extra keywords
+            const results = await verifyProductOnWeb(verifyingProduct, extraKeywords, baseQuery);
             setScanResults(results);
         } catch (error) {
             toast.error('Error al conectar con el servicio de scraping');
@@ -540,12 +593,53 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                         {!hasStartedScan ? (
                             // INPUT FORM VIEW
                             <div className="flex flex-col gap-6 py-6 px-4">
+                                {/* Base Search Query Selection */}
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-semibold text-foreground">
+                                        Término Base de Búsqueda
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Selecciona qué tan específica quieres que sea la búsqueda inicial en Google.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {queryOptions.map((opt, i) => (
+                                            <Button
+                                                key={i}
+                                                variant={!useCustomQuery && selectedQuery === opt ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => { setSelectedQuery(opt); setUseCustomQuery(false); }}
+                                                className="text-xs h-8"
+                                            >
+                                                {opt}
+                                            </Button>
+                                        ))}
+                                        <Button
+                                            variant={useCustomQuery ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setUseCustomQuery(true)}
+                                            className="text-xs h-8"
+                                        >
+                                            Personalizado
+                                        </Button>
+                                    </div>
+
+                                    {useCustomQuery && (
+                                        <Input
+                                            value={customQuery}
+                                            onChange={(e) => setCustomQuery(e.target.value)}
+                                            placeholder="Escribe tu término base..."
+                                            className="h-9 text-sm"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Extra Keywords */}
                                 <div className="space-y-2">
                                     <Label htmlFor="extra-keywords" className="text-sm font-semibold text-foreground">
                                         Palabras Clave Adicionales (Opcional)
                                     </Label>
                                     <p className="text-xs text-muted-foreground">
-                                        Ingrese características únicas (ej: "14 dientes", "3kg", "Inalámbrico") para filtrar mejor los resultados.
+                                        Agrega características específicas (ej: "14 dientes", "3kg") para filtrar los resultados encontrados.
                                     </p>
                                     <Input
                                         id="extra-keywords"
@@ -554,10 +648,11 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                         onChange={(e) => setExtraKeywords(e.target.value)}
                                         className="h-10 text-base"
                                         onKeyDown={(e) => e.key === 'Enter' && executeScan()}
-                                        autoFocus
+                                        autoFocus={!useCustomQuery}
                                     />
                                 </div>
-                                <div className="flex justify-end gap-2">
+
+                                <div className="flex justify-end gap-2 pt-2">
                                     <Button variant="outline" onClick={() => setVerifyingProduct(null)}>Cancelar</Button>
                                     <Button onClick={executeScan} className="bg-indigo-600 hover:bg-indigo-700 text-white scan-btn">
                                         <Search className="mr-2 h-4 w-4" /> Buscar en Mercado
