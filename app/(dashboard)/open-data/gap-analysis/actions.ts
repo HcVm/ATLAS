@@ -56,6 +56,18 @@ export interface MarketProductDetail {
         size: number;
         similarity: number;
     };
+    salesHistory?: SalesHistoryItem[];
+}
+
+export interface SalesHistoryItem {
+    id: number;
+    title: string;
+    fecha: string;
+    precio_unitario: number;
+    cantidad: number;
+    orden_compra: string;
+    entidad: string;
+    monto_total: number;
 }
 
 export async function verifyProductOnWeb(product: MarketProductDetail, extraKeywords: string = '', searchQuery: string = ''): Promise<ScrapedProduct[]> {
@@ -527,4 +539,45 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
         marketProducts,
         categoryProcessed: targetCategory
     };
+}
+
+export async function getSalesHistory(partNumber: string): Promise<SalesHistoryItem[]> {
+    const supabase = await createAuthenticatedServerClient();
+
+    // Normalize part number for search (remove special chars if needed, but strict match is safer first)
+    // The user specifically pointed out "Rmsmcñ023" vs "nro_parte".
+    // We should try exact match first.
+
+    const { data, error } = await supabase
+        .from('open_data_entries')
+        .select(`
+            id,
+            descripcion_ficha_producto,
+            fecha_publicacion,
+            precio_unitario,
+            cantidad_entrega,
+            orden_electronica,
+            razon_social_entidad,
+            monto_total_entrega,
+            nro_parte
+        `)
+        .ilike('nro_parte', partNumber) // Case-insensitive match
+        .order('fecha_publicacion', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        console.error("Error fetching sales history:", error);
+        return [];
+    }
+
+    return (data || []).map(item => ({
+        id: item.id,
+        title: item.descripcion_ficha_producto || 'Sin Descripción',
+        fecha: item.fecha_publicacion || '',
+        precio_unitario: Number(item.precio_unitario) || 0,
+        cantidad: Number(item.cantidad_entrega) || 0,
+        orden_compra: item.orden_electronica || '',
+        entidad: item.razon_social_entidad || '',
+        monto_total: Number(item.monto_total_entrega) || 0
+    }));
 }
