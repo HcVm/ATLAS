@@ -71,8 +71,11 @@ export async function verifyProductOnWeb(product: MarketProductDetail, extraKeyw
         // 2. Call Python Microservice
         // Note: In production this URL should be an env variable
         // Use the deployed URL if available, or localhost for dev.
+        // Use the deployed URL if available, or localhost for dev.
         // Ideally this comes from process.env.SCRAPER_URL
-        const scraperUrl = process.env.SCRAPER_URL || 'http://127.0.0.1:8000';
+        // Remove trailing slash if present to avoid double slash
+        const rawUrl = process.env.SCRAPER_URL || 'http://127.0.0.1:8000';
+        const scraperUrl = rawUrl.replace(/\/$/, '');
 
         console.log("Using Scraper URL:", scraperUrl);
 

@@ -674,28 +674,61 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                         Modificar Búsqueda
                                     </Button>
                                 </div>
-                                {scanResults.map((result, i) => (
-                                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-900/30 transition-colors gap-3">
-                                        <div className="space-y-1 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">{result.source}</Badge>
-                                                {result.similarity_score > 0.5 && (
-                                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 text-[10px]">Relevante</Badge>
+                                {scanResults.map((result, i) => {
+                                    const isTruper = result.source === 'Truper-Catalogo';
+                                    const isKamasa = result.source.toLowerCase().includes('kamasa');
+
+                                    return (
+                                        <div key={i} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border transition-all gap-3
+                                            ${isTruper
+                                                ? 'border-orange-200 bg-orange-50/80 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/20 shadow-sm'
+                                                : isKamasa
+                                                    ? 'border-yellow-200 bg-yellow-50/80 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-950/20 shadow-sm'
+                                                    : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/30'
+                                            }
+                                        `}>
+                                            <div className="space-y-1 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={isTruper || isKamasa ? "default" : "outline"}
+                                                        className={`text-[10px] uppercase font-bold tracking-wider 
+                                                            ${isTruper ? 'bg-orange-600 hover:bg-orange-700 text-white border-none' :
+                                                                isKamasa ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-none' : ''}
+                                                        `}
+                                                    >
+                                                        {result.source.replace('-Catalogo', '')}
+                                                    </Badge>
+                                                    {result.similarity_score > 0.5 && (
+                                                        <Badge className={`text-[10px] border-none ${isTruper || isKamasa
+                                                                ? 'bg-white/80 text-black hover:bg-white'
+                                                                : 'bg-green-100 text-green-700 hover:bg-green-100'
+                                                            }`}>
+                                                            Relevante
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <h4 className="text-sm font-medium line-clamp-2" title={result.title}>{result.title}</h4>
+                                                {(isTruper || isKamasa) && (
+                                                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3" /> Resultado directo de catálogo
+                                                    </p>
                                                 )}
                                             </div>
-                                            <h4 className="text-sm font-medium line-clamp-2" title={result.title}>{result.title}</h4>
-                                        </div>
-                                        <div className="flex items-center gap-4 min-w-fit">
-                                            <div className="text-right">
-                                                <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{result.price}</div>
-                                                <div className="text-[10px] text-muted-foreground">Precio Público</div>
+                                            <div className="flex items-center gap-4 min-w-fit">
+                                                <div className="text-right">
+                                                    {isTruper && result.price === 'Ver Catálogo' ? (
+                                                        <div className="text-sm font-bold text-orange-700 dark:text-orange-400">Ver Catálogo</div>
+                                                    ) : (
+                                                        <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{result.price}</div>
+                                                    )}
+                                                    <div className="text-[10px] text-muted-foreground">Precio Público</div>
+                                                </div>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => window.open(result.link, '_blank')}>
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </Button>
                                             </div>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => window.open(result.link, '_blank')}>
-                                                <ExternalLink className="h-4 w-4" />
-                                            </Button>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full py-12 text-center">
