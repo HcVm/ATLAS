@@ -22,19 +22,32 @@ export async function POST(request: NextRequest) {
     const BATCH_SIZE = 100
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE)
-      const { error } = await supabase.from("open_data_entries").insert(batch)
 
-      if (error) {
-        console.error("Error insertando batch:", error)
-        errors.push(`Error en batch ${i}: ${error.message}`)
-        
-        // Fallback: intentar insertar uno por uno para salvar los válidos
-        for (const entry of batch) {
-            const { error: singleError } = await supabase.from("open_data_entries").insert(entry)
-            if (!singleError) insertedCount++
+      // 1. Verificar duplicados por orden_electronica antes de insertar
+      // Esto evita insertar registros que ya existen (duplicados)
+      const ordenes = batch.map((e: any) => e.orden_electronica).filter(Boolean)
+
+      if (ordenes.length > 0) {
+        const { data: existingRows } = await supabase
+          .from("open_data_entries")
+          .select("orden_electronica")
+          .in("orden_electronica", ordenes)
+
+        const existingSet = new Set(existingRows?.map((r: any) => r.orden_electronica))
+
+        const newEntries = batch.filter((e: any) => !existingSet.has(e.orden_electronica))
+
+        if (newEntries.length > 0) {
+          const { error } = await supabase.from("open_data_entries").insert(newEntries)
+
+          if (error) {
+            console.error("Error insertando batch filtered:", error)
+            errors.push(`Error en batch ${i}: ${error.message}`)
+          } else {
+            insertedCount += newEntries.length
+          }
         }
-      } else {
-        insertedCount += batch.length
+        // Si newEntries es 0, significa que todos ya existían. No hacemos nada y seguimos.
       }
     }
 
