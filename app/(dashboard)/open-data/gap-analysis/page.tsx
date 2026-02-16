@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { analyzeProductGap, AnalysisResult, MarketProductDetail, verifyProductOnWeb, ScrapedProduct } from './actions';
+import { analyzeProductGap, AnalysisResult, MarketProductDetail, verifyProductOnWeb, ScrapedProduct, getSalesHistory, SalesHistoryItem } from './actions';
 
 export default function ProductGapAnalysisPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -313,6 +313,22 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
     const [selectedQuery, setSelectedQuery] = useState("");
     const [customQuery, setCustomQuery] = useState(""); // If user types manually
     const [useCustomQuery, setUseCustomQuery] = useState(false);
+
+    // Sales History State
+    const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    React.useEffect(() => {
+        if (verifyingProduct?.code) {
+            setLoadingHistory(true);
+            getSalesHistory(verifyingProduct.code)
+                .then(setSalesHistory)
+                .catch(err => console.error(err))
+                .finally(() => setLoadingHistory(false));
+        } else {
+            setSalesHistory([]);
+        }
+    }, [verifyingProduct]);
 
     const handleScanClick = (product: MarketProductDetail) => {
         setVerifyingProduct(product);
@@ -673,205 +689,283 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                         )}
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto min-h-[300px] p-1">
-                        {!hasStartedScan ? (
-                            // INPUT FORM VIEW
-                            <div className="flex flex-col gap-6 py-6 px-4">
-                                {/* Base Search Query Selection */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-semibold text-foreground">
-                                            Término Base de Búsqueda
-                                        </Label>
-                                        <span className="text-[10px] text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800">
-                                            Recomendado
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {queryOptions.map((opt, i) => {
-                                            const isSelected = !useCustomQuery && selectedQuery === opt;
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    onClick={() => { setSelectedQuery(opt); setUseCustomQuery(false); }}
-                                                    className={`
+                    <Tabs defaultValue="web" className="flex-1 overflow-hidden flex flex-col w-full h-full">
+                        <div className="px-6 border-b bg-slate-50/30 dark:bg-slate-900/30">
+                            <TabsList className="w-full justify-start h-10 p-0 bg-transparent">
+                                <TabsTrigger
+                                    value="web"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 px-4 h-10 data-[state=active]:bg-transparent font-medium"
+                                >
+                                    Búsqueda Web {scanResults.length > 0 && <Badge variant="secondary" className="ml-2 h-5 px-1.5">{scanResults.length}</Badge>}
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="history"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 px-4 h-10 data-[state=active]:bg-transparent font-medium"
+                                >
+                                    Historial Compras {salesHistory.length > 0 && <Badge variant="secondary" className="ml-2 h-5 px-1.5">{salesHistory.length}</Badge>}
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
+
+                        <TabsContent value="web" className="flex-1 overflow-y-auto p-0 mt-0">
+                            <div className="flex-1 overflow-y-auto min-h-[300px] p-1">
+                                {!hasStartedScan ? (
+                                    // INPUT FORM VIEW
+                                    <div className="flex flex-col gap-6 py-6 px-4">
+                                        {/* Base Search Query Selection */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-sm font-semibold text-foreground">
+                                                    Término Base de Búsqueda
+                                                </Label>
+                                                <span className="text-[10px] text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full dark:bg-slate-800">
+                                                    Recomendado
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {queryOptions.map((opt, i) => {
+                                                    const isSelected = !useCustomQuery && selectedQuery === opt;
+                                                    return (
+                                                        <div
+                                                            key={i}
+                                                            onClick={() => { setSelectedQuery(opt); setUseCustomQuery(false); }}
+                                                            className={`
                                                         relative flex items-center p-3 rounded-lg border cursor-pointer transition-all duration-200
                                                         ${isSelected
-                                                            ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
-                                                            : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
+                                                                    ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
+                                                                    : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
                                                     `}
-                                                >
-                                                    <div className={`
+                                                        >
+                                                            <div className={`
                                                         w-4 h-4 rounded-full border mr-3 flex items-center justify-center transition-colors
                                                         ${isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}
                                                     `}>
-                                                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                            </div>
+                                                            <span className={`text-sm font-medium ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
+                                                                {opt}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                <div
+                                                    onClick={() => setUseCustomQuery(true)}
+                                                    className={`
+                                                relative p-3 rounded-lg border cursor-pointer transition-all duration-200
+                                                ${useCustomQuery
+                                                            ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
+                                                            : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
+                                            `}
+                                                >
+                                                    <div className="flex items-center mb-2">
+                                                        <div className={`
+                                                    w-4 h-4 rounded-full border mr-3 flex items-center justify-center transition-colors
+                                                    ${useCustomQuery ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}
+                                                `}>
+                                                            {useCustomQuery && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                        </div>
+                                                        <span className={`text-sm font-medium ${useCustomQuery ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
+                                                            Personalizado
+                                                        </span>
                                                     </div>
-                                                    <span className={`text-sm font-medium ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
-                                                        {opt}
-                                                    </span>
+                                                    {useCustomQuery && (
+                                                        <div className="pl-7">
+                                                            <Input
+                                                                value={customQuery}
+                                                                onChange={(e) => setCustomQuery(e.target.value)}
+                                                                placeholder="Escribe tu término base..."
+                                                                className="h-9 text-sm bg-white dark:bg-slate-950"
+                                                                autoFocus
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Extra Keywords */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="extra-keywords" className="text-sm font-semibold text-foreground">
+                                                Palabras Clave Adicionales (Opcional)
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Agrega características específicas (ej: "14 dientes", "3kg") para filtrar los resultados encontrados.
+                                            </p>
+                                            <Input
+                                                id="extra-keywords"
+                                                placeholder="Ej: 14 Dientes"
+                                                value={extraKeywords}
+                                                onChange={(e) => setExtraKeywords(e.target.value)}
+                                                className="h-10 text-base"
+                                                onKeyDown={(e) => e.key === 'Enter' && executeScan()}
+                                                autoFocus={!useCustomQuery}
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 pt-2">
+                                            <Button variant="outline" onClick={() => setVerifyingProduct(null)}>Cancelar</Button>
+                                            <Button onClick={executeScan} className="bg-indigo-600 hover:bg-indigo-700 text-white scan-btn">
+                                                <Search className="mr-2 h-4 w-4" /> Buscar en Mercado
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (isScanning && scanResults.length === 0) ? (
+                                    <div className="flex flex-col items-center justify-center h-full space-y-4 py-12">
+                                        <Loader2 className="h-12 w-12 text-indigo-500 animate-spin" />
+                                        <p className="text-sm text-muted-foreground animate-pulse">
+                                            Buscando "{extraKeywords}" en Truper, Kamasa, Sodimac y MercadoLibre...
+                                        </p>
+                                    </div>
+                                ) : scanResults.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultados ({scanResults.length})</div>
+                                                {isScanning && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
+                                            </div>
+
+                                            {!isScanning && (
+                                                <Button variant="ghost" size="sm" onClick={handleRetry} className="h-6 text-xs text-indigo-600 hover:bg-indigo-50">
+                                                    Modificar Búsqueda
+                                                </Button>
+                                            )}
+                                        </div>
+                                        {scanResults.map((result, i) => {
+                                            const isTruper = result.source === 'Truper-Catalogo';
+                                            const isKamasa = result.source.toLowerCase().includes('kamasa');
+
+                                            return (
+                                                <div key={i} className={`animate-in slide-in-from-bottom-2 duration-300 flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border transition-all gap-3
+                                            ${isTruper
+                                                        ? 'border-orange-200 bg-orange-50/80 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/20 shadow-sm'
+                                                        : isKamasa
+                                                            ? 'border-yellow-200 bg-yellow-50/80 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-950/20 shadow-sm'
+                                                            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/30'
+                                                    }
+                                        `}>
+                                                    <div className="space-y-1 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant={isTruper || isKamasa ? "default" : "outline"}
+                                                                className={`text-[10px] uppercase font-bold tracking-wider 
+                                                            ${isTruper ? 'bg-orange-600 hover:bg-orange-700 text-white border-none' :
+                                                                        isKamasa ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-none' : ''}
+                                                        `}
+                                                            >
+                                                                {result.source.replace('-Catalogo', '')}
+                                                            </Badge>
+                                                            {result.similarity_score > 0.5 && (
+                                                                <Badge className={`text-[10px] border-none ${isTruper || isKamasa
+                                                                    ? 'bg-white/80 text-black hover:bg-white'
+                                                                    : 'bg-green-100 text-green-700 hover:bg-green-100'
+                                                                    }`}>
+                                                                    Relevante
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <h4 className="text-sm font-medium line-clamp-2" title={result.title}>{result.title}</h4>
+                                                        {(isTruper || isKamasa) && (
+                                                            <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                                                <CheckCircle className="h-3 w-3" /> Resultado directo de catálogo
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-4 min-w-fit">
+                                                        <div className="text-right">
+                                                            {isTruper && result.price === 'Ver Catálogo' ? (
+                                                                <div className="text-sm font-bold text-orange-700 dark:text-orange-400">Ver Catálogo</div>
+                                                            ) : (
+                                                                <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{result.price}</div>
+                                                            )}
+                                                            <div className="text-[10px] text-muted-foreground">Precio Público</div>
+                                                        </div>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => window.open(result.link, '_blank')}>
+                                                            <ExternalLink className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
 
-                                        <div
-                                            onClick={() => setUseCustomQuery(true)}
-                                            className={`
-                                                relative p-3 rounded-lg border cursor-pointer transition-all duration-200
-                                                ${useCustomQuery
-                                                    ? 'border-indigo-500 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-none'
-                                                    : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}
-                                            `}
-                                        >
-                                            <div className="flex items-center mb-2">
-                                                <div className={`
-                                                    w-4 h-4 rounded-full border mr-3 flex items-center justify-center transition-colors
-                                                    ${useCustomQuery ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}
-                                                `}>
-                                                    {useCustomQuery && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                                </div>
-                                                <span className={`text-sm font-medium ${useCustomQuery ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-600'}`}>
-                                                    Personalizado
-                                                </span>
+                                        {isScanning && (
+                                            <div className="flex items-center justify-center py-4 gap-2 text-xs text-muted-foreground animate-pulse">
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                Buscando más resultados en la web...
                                             </div>
-                                            {useCustomQuery && (
-                                                <div className="pl-7">
-                                                    <Input
-                                                        value={customQuery}
-                                                        onChange={(e) => setCustomQuery(e.target.value)}
-                                                        placeholder="Escribe tu término base..."
-                                                        className="h-9 text-sm bg-white dark:bg-slate-950"
-                                                        autoFocus
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
-                                </div>
-
-                                {/* Extra Keywords */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="extra-keywords" className="text-sm font-semibold text-foreground">
-                                        Palabras Clave Adicionales (Opcional)
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Agrega características específicas (ej: "14 dientes", "3kg") para filtrar los resultados encontrados.
-                                    </p>
-                                    <Input
-                                        id="extra-keywords"
-                                        placeholder="Ej: 14 Dientes"
-                                        value={extraKeywords}
-                                        onChange={(e) => setExtraKeywords(e.target.value)}
-                                        className="h-10 text-base"
-                                        onKeyDown={(e) => e.key === 'Enter' && executeScan()}
-                                        autoFocus={!useCustomQuery}
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button variant="outline" onClick={() => setVerifyingProduct(null)}>Cancelar</Button>
-                                    <Button onClick={executeScan} className="bg-indigo-600 hover:bg-indigo-700 text-white scan-btn">
-                                        <Search className="mr-2 h-4 w-4" /> Buscar en Mercado
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : (isScanning && scanResults.length === 0) ? (
-                            <div className="flex flex-col items-center justify-center h-full space-y-4 py-12">
-                                <Loader2 className="h-12 w-12 text-indigo-500 animate-spin" />
-                                <p className="text-sm text-muted-foreground animate-pulse">
-                                    Buscando "{extraKeywords}" en Truper, Kamasa, Sodimac y MercadoLibre...
-                                </p>
-                            </div>
-                        ) : scanResults.length > 0 ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultados ({scanResults.length})</div>
-                                        {isScanning && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
-                                    </div>
-
-                                    {!isScanning && (
-                                        <Button variant="ghost" size="sm" onClick={handleRetry} className="h-6 text-xs text-indigo-600 hover:bg-indigo-50">
-                                            Modificar Búsqueda
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                                        <Search className="h-12 w-12 text-slate-200 mb-3" />
+                                        <h3 className="text-lg font-medium text-slate-900">No se encontraron productos</h3>
+                                        <p className="text-sm text-muted-foreground max-w-xs mb-4">
+                                            No encontramos coincidencias para "{verifyingProduct?.description}" con los filtros actuales.
+                                        </p>
+                                        <Button variant="outline" onClick={handleRetry}>
+                                            Intentar con otras palabras clave
                                         </Button>
-                                    )}
-                                </div>
-                                {scanResults.map((result, i) => {
-                                    const isTruper = result.source === 'Truper-Catalogo';
-                                    const isKamasa = result.source.toLowerCase().includes('kamasa');
-
-                                    return (
-                                        <div key={i} className={`animate-in slide-in-from-bottom-2 duration-300 flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border transition-all gap-3
-                                            ${isTruper
-                                                ? 'border-orange-200 bg-orange-50/80 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/20 shadow-sm'
-                                                : isKamasa
-                                                    ? 'border-yellow-200 bg-yellow-50/80 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-950/20 shadow-sm'
-                                                    : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/30'
-                                            }
-                                        `}>
-                                            <div className="space-y-1 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant={isTruper || isKamasa ? "default" : "outline"}
-                                                        className={`text-[10px] uppercase font-bold tracking-wider 
-                                                            ${isTruper ? 'bg-orange-600 hover:bg-orange-700 text-white border-none' :
-                                                                isKamasa ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-none' : ''}
-                                                        `}
-                                                    >
-                                                        {result.source.replace('-Catalogo', '')}
-                                                    </Badge>
-                                                    {result.similarity_score > 0.5 && (
-                                                        <Badge className={`text-[10px] border-none ${isTruper || isKamasa
-                                                            ? 'bg-white/80 text-black hover:bg-white'
-                                                            : 'bg-green-100 text-green-700 hover:bg-green-100'
-                                                            }`}>
-                                                            Relevante
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                <h4 className="text-sm font-medium line-clamp-2" title={result.title}>{result.title}</h4>
-                                                {(isTruper || isKamasa) && (
-                                                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3" /> Resultado directo de catálogo
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-4 min-w-fit">
-                                                <div className="text-right">
-                                                    {isTruper && result.price === 'Ver Catálogo' ? (
-                                                        <div className="text-sm font-bold text-orange-700 dark:text-orange-400">Ver Catálogo</div>
-                                                    ) : (
-                                                        <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{result.price}</div>
-                                                    )}
-                                                    <div className="text-[10px] text-muted-foreground">Precio Público</div>
-                                                </div>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => window.open(result.link, '_blank')}>
-                                                    <ExternalLink className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {isScanning && (
-                                    <div className="flex items-center justify-center py-4 gap-2 text-xs text-muted-foreground animate-pulse">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        Buscando más resultados en la web...
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                                <Search className="h-12 w-12 text-slate-200 mb-3" />
-                                <h3 className="text-lg font-medium text-slate-900">No se encontraron productos</h3>
-                                <p className="text-sm text-muted-foreground max-w-xs mb-4">
-                                    No encontramos coincidencias para "{verifyingProduct?.description}" con los filtros actuales.
-                                </p>
-                                <Button variant="outline" onClick={handleRetry}>
-                                    Intentar con otras palabras clave
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                        </TabsContent>
+
+                        <TabsContent value="history" className="flex-1 overflow-y-auto p-4 mt-0 bg-slate-50/30 dark:bg-slate-900/30">
+                            {loadingHistory ? (
+                                <div className="flex items-center justify-center p-12 h-full">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                                        <p className="text-sm text-muted-foreground">Buscando historial...</p>
+                                    </div>
+                                </div>
+                            ) : salesHistory.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground h-full">
+                                    <Search className="h-10 w-10 mb-3 opacity-20" />
+                                    <p>No se encontró historial de compras para el código</p>
+                                    <span className="font-mono font-medium text-foreground mt-1 bg-slate-100 px-2 py-0.5 rounded text-xs dark:bg-slate-800">{verifyingProduct?.code}</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <h4 className="font-medium text-sm">Historial de Ventas Públicas</h4>
+                                            <p className="text-xs text-muted-foreground">Adjudicaciones registradas en Open Data</p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-white dark:bg-slate-950">{salesHistory.length} registros</Badge>
+                                    </div>
+                                    <div className="border rounded-lg overflow-hidden bg-white dark:bg-slate-950">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-slate-50 dark:bg-slate-900 hover:bg-slate-50">
+                                                    <TableHead className="w-[100px]">Fecha</TableHead>
+                                                    <TableHead>Entidad</TableHead>
+                                                    <TableHead className="text-right">Precio Unit.</TableHead>
+                                                    <TableHead className="text-right">Cant.</TableHead>
+                                                    <TableHead className="text-right">OC</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {salesHistory.map((item, idx) => (
+                                                    <TableRow key={idx}>
+                                                        <TableCell className="text-xs py-2 text-muted-foreground">{item.fecha}</TableCell>
+                                                        <TableCell className="text-xs py-2 font-medium max-w-[200px]" title={item.entidad}>
+                                                            <div className="truncate">{item.entidad}</div>
+                                                        </TableCell>
+                                                        <TableCell className="text-xs py-2 text-right font-mono font-medium text-slate-700 dark:text-slate-300">
+                                                            S/ {item.precio_unitario.toFixed(2)}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs py-2 text-right text-muted-foreground">{item.cantidad}</TableCell>
+                                                        <TableCell className="text-xs py-2 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                                                            {item.orden_compra}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
                 </DialogContent>
             </Dialog>
 
