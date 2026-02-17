@@ -71,6 +71,35 @@ export interface SalesHistoryItem {
     monto_total: number;
 }
 
+export interface SalesHistoryItem {
+    id: number;
+    title: string;
+    fecha: string;
+    precio_unitario: number;
+    cantidad: number;
+    orden_compra: string;
+    entidad: string;
+    monto_total: number;
+}
+
+async function getImageEmbedding(imageUrl: string): Promise<number[] | null> {
+    const rawUrl = process.env.SCRAPER_URL || 'http://127.0.0.1:8000';
+    const scraperUrl = rawUrl.replace(/\/$/, '');
+    try {
+        const res = await fetch(`${scraperUrl}/vectorize-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: imageUrl })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.embedding;
+    } catch (e) {
+        console.error("Vectorization failed", e);
+        return null;
+    }
+}
+
 export async function verifyProductOnWeb(product: MarketProductDetail, extraKeywords: string = '', searchQuery: string = ''): Promise<ScrapedProduct[]> {
     try {
         // 1. Clean Core Name (Re-applying logical brand removal)
@@ -393,6 +422,57 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                     description: bestMatch.description,
                     similarityScore: maxScore
                 };
+            }
+
+            // --- VISUAL SEARCH FALLBACK ---
+            // If text match is weak (< 0.8) and we have an image, try visual search
+            const imageUrl = row['Imagen'];
+            // Only try if we have a valid image URL and text match isn't perfect
+            if ((!similarSystemProduct || similarSystemProduct.similarityScore < 0.8) && imageUrl && imageUrl.startsWith('http')) {
+                try {
+                    // console.log("Trying visual search for:", description);
+                    const embedding = await getImageEmbedding(imageUrl);
+
+                    if (embedding) {
+                        const { data: visualMatches, error: rpcError } = await supabase.rpc('match_products_by_image', {
+                            query_embedding: embedding,
+                            match_threshold: 0.82, // High confidence threshold
+                            match_count: 1
+                        });
+
+                        if (!rpcError && visualMatches && visualMatches.length > 0) {
+                            const vMatch = visualMatches[0];
+                            // If visual match is confidently better than text match
+                            if (vMatch.similarity > (similarSystemProduct?.similarityScore || 0)) {
+
+                                // Try to find the full system product object to get all fields
+                                const fullMatch = systemProductsList.find(p => p.id === vMatch.id);
+
+                                if (fullMatch) {
+                                    similarSystemProduct = {
+                                        id: fullMatch.id,
+                                        code: fullMatch.code,
+                                        brandName: fullMatch.brandName,
+                                        description: fullMatch.description, // Use exact system description
+                                        similarityScore: vMatch.similarity
+                                    };
+                                } else {
+                                    // Fallback if not in current list (unlikely)
+                                    similarSystemProduct = {
+                                        id: vMatch.id,
+                                        code: "VISUAL-MATCH",
+                                        brandName: "Sistema",
+                                        description: vMatch.description,
+                                        similarityScore: vMatch.similarity
+                                    };
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    // Silent fail for visual search to not break the flow
+                    // console.warn("Visual search error", err);
+                }
             }
         }
 
