@@ -470,9 +470,9 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
 
     return (
         <>
-            <ScrollArea className="h-[600px] w-full border rounded-md">
+            <ScrollArea className="h-[600px] w-full border rounded-md relative bg-white dark:bg-background">
                 <Table>
-                    <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-50 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800">
                         <TableRow>
                             <TableHead className="w-[180px]">Marca</TableHead>
                             <TableHead className="w-[150px]">Código / Parte</TableHead>
@@ -1055,10 +1055,22 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                             </h3>
                             <div className="space-y-3">
                                 {viewingGroup?.products.map((prod, idx) => (
-                                    <div key={idx} className="flex flex-col md:flex-row gap-4 p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors bg-white dark:bg-background">
-                                        <div className="flex-1">
+                                    <div key={idx} className={`flex flex-col md:flex-row gap-4 p-3 border rounded-lg transition-colors relative overflow-hidden
+                                        ${(prod.salesCount || 0) > 0
+                                            ? "bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 dark:from-emerald-950/30 dark:via-green-900/20 dark:to-emerald-950/30 border-emerald-500 shadow-sm"
+                                            : "bg-white dark:bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                                        }
+                                    `}>
+                                        {(prod.salesCount || 0) > 0 && <WinnerStars />}
+                                        <div className="flex-1 relative z-10">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="font-semibold text-sm">{prod.brandName}</span>
+                                                {(prod.salesCount || 0) > 0 && (
+                                                    <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 gap-1" title={`${prod.salesCount} Ventas`}>
+                                                        <TrendingUp className="h-3 w-3" />
+                                                        {prod.salesCount}
+                                                    </Badge>
+                                                )}
                                                 <Badge variant="secondary" className="text-[10px]">{prod.status}</Badge>
                                                 {prod.statusInSystem === 'found' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none text-[10px]">Existe</Badge>}
                                             </div>
@@ -1073,10 +1085,6 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                                 size="sm"
                                                 className="h-8 text-xs gap-2"
                                                 onClick={() => {
-                                                    // Close group modal to open scan modal? 
-                                                    // OR keep group modal open? 
-                                                    // Simplest: Close group modal, open scan modal.
-                                                    setViewingGroup(null);
                                                     handleScanClick(prod);
                                                 }}
                                             >
