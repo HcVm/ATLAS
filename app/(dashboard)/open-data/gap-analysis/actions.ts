@@ -57,6 +57,7 @@ export interface MarketProductDetail {
         similarity: number;
     };
     salesHistory?: SalesHistoryItem[];
+    salesCount?: number;
 }
 
 export interface SalesHistoryItem {
@@ -294,7 +295,48 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
         }
     });
 
-    // 4. Process Every Row in Excel
+    // 4. Fetch Sales Metrics
+    // We want to know if these products have even been sold in the public sector.
+    const fileCodes = jsonData
+        .map(row => row['Nro. Parte o Código Único de Identificación']?.trim())
+        .filter(c => c && c.length > 0) as string[];
+
+    // Generate variations to catch case mismatches efficiently with .in()
+    const queryCodes = new Set<string>();
+    fileCodes.forEach(c => {
+        queryCodes.add(c);
+        queryCodes.add(c.toUpperCase());
+        queryCodes.add(c.toLowerCase());
+    });
+
+    const uniqueQueryCodes = Array.from(queryCodes);
+    const salesCounts = new Map<string, number>();
+
+    // Process in chunks to avoid query limits
+    const CHUNK_SIZE = 200; // Smaller chunk size due to expanded variations
+    for (let i = 0; i < uniqueQueryCodes.length; i += CHUNK_SIZE) {
+        const chunk = uniqueQueryCodes.slice(i, i + CHUNK_SIZE);
+
+        // Fetch matching sales
+        // Note: .in() finds exact matches against the provided variations
+        const { data: salesMatches } = await supabase
+            .from('open_data_entries')
+            .select('nro_parte')
+            .in('nro_parte', chunk);
+
+        if (salesMatches) {
+            salesMatches.forEach(match => {
+                if (match.nro_parte) {
+                    // Count Occurrences using Normalized Key (UpperCase)
+                    // This creates a "Case-Insensitive Map" effectively
+                    const key = match.nro_parte.toUpperCase().trim();
+                    salesCounts.set(key, (salesCounts.get(key) || 0) + 1);
+                }
+            });
+        }
+    }
+
+    // 5. Process Every Row in Excel
     const marketProducts: MarketProductDetail[] = [];
     let totalMissingInSystem = 0;
 
@@ -395,7 +437,8 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
             statusInSystem,
             similarSystemProduct,
             googleSearchUrl,
-            verificationStatus: 'pending' as const
+            verificationStatus: 'pending' as const,
+            salesCount: salesCounts.get(code.toUpperCase().trim()) || 0
         });
     }
 
@@ -409,7 +452,14 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
             return scoreB - scoreA;
         }
 
-        // Secondary Sort: Status (Missing < Competitor < Found)
+        // Secondary Sort: Sales Count (Prioritize Rotated Products) - User Request
+        const salesA = a.salesCount || 0;
+        const salesB = b.salesCount || 0;
+        if (salesA !== salesB) {
+            return salesB - salesA; // Higher sales first
+        }
+
+        // Tertiary Sort: Status (Missing < Competitor < Found)
         const statusScore = (status: string) => {
             if (status === 'missing') return 0;
             if (status === 'competitor_only') return 1;
@@ -522,6 +572,13 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
             return -1; // Grouped items first
         } else if (!a.group && b.group) {
             return 1;
+        }
+
+        // 2.5. Secondary Sort: Sales Count (Prioritize Rotated Products)
+        const salesA = a.salesCount || 0;
+        const salesB = b.salesCount || 0;
+        if (salesA !== salesB) {
+            return salesB - salesA;
         }
 
         // 3. Final tie breaker: Status

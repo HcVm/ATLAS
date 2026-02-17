@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign, FileText } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign, FileText, TrendingUp, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -299,6 +299,26 @@ function generateSearchOptions(description: string, brandName: string): string[]
     return Array.from(options);
 }
 
+const WinnerStars = () => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
+        {/* Stronger Radial Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.15),transparent_70%)]" />
+
+        {/* Main Sparkles - Much more visible */}
+        <Sparkles className="absolute top-2 right-4 w-5 h-5 text-yellow-500 fill-yellow-500/20 animate-pulse" style={{ animationDuration: '3s' }} />
+        <div className="absolute top-3 right-3 w-6 h-6 bg-yellow-400/20 blur-xl rounded-full" /> {/* Glow for top right sparkle */}
+
+        <Sparkles className="absolute bottom-3 left-12 w-4 h-4 text-amber-500 fill-amber-500/20 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+
+        {/* Smaller Twinkles */}
+        <Sparkles className="absolute top-1/2 left-1/4 w-3 h-3 text-yellow-600 animate-pulse" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+        <Sparkles className="absolute bottom-1/3 right-1/3 w-2 h-2 text-emerald-500 animate-ping" style={{ animationDuration: '3s', animationDelay: '1.5s' }} />
+
+        {/* Subtle Shine/Beam */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-yellow-100/10 to-transparent opacity-50" />
+    </div>
+);
+
 function ProductTable({ products, hideSimilarity = false }: { products: MarketProductDetail[], hideSimilarity?: boolean }) {
     const [verifyingProduct, setVerifyingProduct] = useState<MarketProductDetail | null>(null);
     const [scanResults, setScanResults] = useState<ScrapedProduct[]>([]);
@@ -512,7 +532,15 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                             {!hideSimilarity && <TableCell className="p-0" />}
                                         </TableRow>
                                     )}
-                                    <TableRow className={`${isInGroup ? "bg-indigo-50/30 hover:bg-indigo-50/50 dark:bg-indigo-950/10 dark:hover:bg-indigo-950/20" : "hover:bg-slate-50/50 dark:hover:bg-slate-900/50"} transition-colors`}>
+                                    <TableRow className={`
+                                        transition-colors
+                                        ${(product.salesCount || 0) > 0
+                                            ? "bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 dark:from-emerald-950/30 dark:via-green-900/20 dark:to-emerald-950/30 border-l-4 border-l-emerald-500 shadow-sm"
+                                            : isInGroup
+                                                ? "bg-indigo-50/30 hover:bg-indigo-50/50 dark:bg-indigo-950/10 dark:hover:bg-indigo-950/20"
+                                                : "hover:bg-slate-50/50 dark:hover:bg-slate-900/50"
+                                        }
+                                    `}>
                                         <TableCell className="align-top relative">
                                             {isInGroup && (
                                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-300 dark:bg-indigo-700" />
@@ -524,11 +552,21 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                                 <Badge variant="outline" className="text-[10px] mt-1 ml-2 border-blue-200 text-blue-600 bg-blue-50 dark:bg-blue-900/20">Tu Marca</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="align-top font-mono text-xs text-slate-500">
-                                            {product.code}
-                                        </TableCell>
                                         <TableCell className="align-top">
                                             <div className="flex flex-col gap-1">
+                                                <span className="font-mono text-xs text-slate-500">{product.code}</span>
+                                                {(product.salesCount || 0) > 0 && (
+                                                    <Badge variant="secondary" className="text-[10px] w-fit bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200 px-1.5 h-5 flex items-center gap-1 cursor-help" title={`Este producto ha sido vendido ${(product.salesCount || 0)} veces en compras públicas registradas.`}>
+                                                        <TrendingUp className="h-3 w-3" />
+                                                        {(product.salesCount || 0) > 1 ? `${product.salesCount} Ventas` : '1 Venta'}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell className="align-top relative">
+                                            {(product.salesCount || 0) > 0 && <WinnerStars />}
+                                            <div className="flex flex-col gap-1 relative z-10">
                                                 <span className="text-xs font-medium leading-snug">{product.description}</span>
                                             </div>
                                         </TableCell>
@@ -552,88 +590,90 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                                                 </Badge>
                                             )}
                                         </TableCell>
-                                        {!hideSimilarity && (
-                                            <TableCell className="align-top">
-                                                {/* If in group, we showed the main match in the header. Only show INDIVIDUAL match if it differs significanty? 
+                                        {
+                                            !hideSimilarity && (
+                                                <TableCell className="align-top">
+                                                    {/* If in group, we showed the main match in the header. Only show INDIVIDUAL match if it differs significanty? 
                                                     Per user request: "show directly only 1 our sheet... to save space". 
                                                     So for grouped items, we render NOTHING here (or a "See Header" indicator). 
                                                     For non-grouped, we render the card as usual.
                                                 */}
 
-                                                {/* 
+                                                    {/* 
                                                     If in group AND has a match, we showed the main match in the header. Show "See Header" indicator.
                                                     If in group BUT NO MATCH (Sin Coincidencias), showcase the individual actions (Scan Market).
                                                 */}
 
-                                                {!isInGroup || !product.similarSystemProduct ? (
-                                                    <div className="flex flex-col gap-2">
-                                                        {product.similarSystemProduct ? (
-                                                            <div className="space-y-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-md border border-slate-100 dark:border-slate-800">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="font-semibold text-xs text-foreground/90">{product.similarSystemProduct.brandName}</span>
-                                                                    <Badge className={`text-[10px] h-5 ${product.similarSystemProduct.similarityScore > 0.7 ? 'bg-green-500 hover:bg-green-600' :
-                                                                        product.similarSystemProduct.similarityScore > 0.4 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-slate-400'
-                                                                        }`}>
-                                                                        {(product.similarSystemProduct.similarityScore * 100).toFixed(0)}% Similar
-                                                                    </Badge>
+                                                    {!isInGroup || !product.similarSystemProduct ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            {product.similarSystemProduct ? (
+                                                                <div className="space-y-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="font-semibold text-xs text-foreground/90">{product.similarSystemProduct.brandName}</span>
+                                                                        <Badge className={`text-[10px] h-5 ${product.similarSystemProduct.similarityScore > 0.7 ? 'bg-green-500 hover:bg-green-600' :
+                                                                            product.similarSystemProduct.similarityScore > 0.4 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-slate-400'
+                                                                            }`}>
+                                                                            {(product.similarSystemProduct.similarityScore * 100).toFixed(0)}% Similar
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground line-clamp-2" title={product.similarSystemProduct.description}>
+                                                                        {product.similarSystemProduct.description}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                                                                        <span>Code:</span>
+                                                                        <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-700 dark:text-slate-300">
+                                                                            {product.similarSystemProduct.code}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="text-xs text-muted-foreground line-clamp-2" title={product.similarSystemProduct.description}>
-                                                                    {product.similarSystemProduct.description}
+                                                            ) : (
+                                                                <div className="flex items-center text-xs text-slate-300 dark:text-slate-700 italic py-1">
+                                                                    Sin similitudes
                                                                 </div>
-                                                                <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                                                                    <span>Code:</span>
-                                                                    <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-700 dark:text-slate-300">
-                                                                        {product.similarSystemProduct.code}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center text-xs text-slate-300 dark:text-slate-700 italic py-1">
-                                                                Sin similitudes
-                                                            </div>
-                                                        )}
+                                                            )}
 
-                                                        {/* Web Verification for Low Similarity items */}
-                                                        {(!product.similarSystemProduct || product.similarSystemProduct.similarityScore < 0.6) && (
+                                                            {/* Web Verification for Low Similarity items */}
+                                                            {(!product.similarSystemProduct || product.similarSystemProduct.similarityScore < 0.6) && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-[10px] w-full border-dashed text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                                                    onClick={() => handleScanClick(product)}
+                                                                >
+                                                                    <Search className="h-3 w-3 mr-1" />
+                                                                    Escanear Mercado
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-2 items-center justify-center">
                                                             <Button
-                                                                variant="outline"
+                                                                variant="ghost"
                                                                 size="sm"
-                                                                className="h-7 text-[10px] w-full border-dashed text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                                                                onClick={() => handleScanClick(product)}
+                                                                className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8"
+                                                                onClick={() => product.group && handleGroupClick(product.group.id)}
                                                             >
-                                                                <Search className="h-3 w-3 mr-1" />
-                                                                Escanear Mercado
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                Ver Grupo
                                                             </Button>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col gap-2 items-center justify-center">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8"
-                                                            onClick={() => product.group && handleGroupClick(product.group.id)}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-2" />
-                                                            Ver Grupo
-                                                        </Button>
 
-                                                        {/* Restore Scan Button for Low Similarity items even in groups */}
-                                                        {product.similarSystemProduct && product.similarSystemProduct.similarityScore < 0.6 && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-7 text-[10px] w-full border-dashed text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                                                                onClick={() => handleScanClick(product)}
-                                                            >
-                                                                <Search className="h-3 w-3 mr-1" />
-                                                                Escanear
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                        )}
+                                                            {/* Restore Scan Button for Low Similarity items even in groups */}
+                                                            {product.similarSystemProduct && product.similarSystemProduct.similarityScore < 0.6 && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-[10px] w-full border-dashed text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                                                    onClick={() => handleScanClick(product)}
+                                                                >
+                                                                    <Search className="h-3 w-3 mr-1" />
+                                                                    Escanear
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            )
+                                        }
                                     </TableRow>
                                 </React.Fragment>
                             );
