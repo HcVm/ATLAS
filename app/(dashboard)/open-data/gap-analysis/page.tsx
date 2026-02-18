@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign, FileText, TrendingUp, Sparkles } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, CheckCircle, AlertTriangle, XCircle, Info, ExternalLink, Loader2, Eye, DollarSign, FileText, TrendingUp, Sparkles, Armchair, Hammer, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { analyzeProductGap, AnalysisResult, MarketProductDetail, verifyProductOnWeb, ScrapedProduct, getSalesHistory, SalesHistoryItem } from './actions';
@@ -22,6 +23,7 @@ export default function ProductGapAnalysisPage() {
     const [file, setFile] = useState<File | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const [analysisMode, setAnalysisMode] = useState<'standard' | 'visual'>('standard');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -41,7 +43,7 @@ export default function ProductGapAnalysisPage() {
         formData.append('file', file);
 
         try {
-            const data = await analyzeProductGap(formData);
+            const data = await analyzeProductGap(formData, analysisMode);
             setResult(data);
             if (data.totalMissingInSystem > 0) {
                 toast.success(`Análisis completado: ${data.totalMissingInSystem} brechas detectadas en tus marcas.`);
@@ -78,6 +80,29 @@ export default function ProductGapAnalysisPage() {
             <Card className="border-indigo-100 dark:border-indigo-900/30 shadow-sm">
                 <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row items-end gap-6">
+                        <div className="grid w-full max-w-sm items-center gap-2">
+                            <Label htmlFor="analysis-mode" className="font-semibold text-foreground">Modo de Análisis</Label>
+                            <Select value={analysisMode} onValueChange={(v: 'standard' | 'visual') => setAnalysisMode(v)}>
+                                <SelectTrigger id="analysis-mode" className="w-full">
+                                    <SelectValue placeholder="Selecciona modo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="standard">
+                                        <div className="flex items-center gap-2">
+                                            <Hammer className="h-4 w-4 text-slate-500" />
+                                            <span>Estándar (Herramientas)</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="visual">
+                                        <div className="flex items-center gap-2">
+                                            <Armchair className="h-4 w-4 text-indigo-500" />
+                                            <span>Visual (Mobiliario)</span>
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="grid w-full max-w-md items-center gap-2">
                             <Label htmlFor="file-upload" className="font-semibold text-foreground">Archivo Excel (.xlsx)</Label>
                             <Input
@@ -338,6 +363,17 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
     const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 50;
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [products]);
+
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+    const displayedProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     React.useEffect(() => {
         if (verifyingProduct?.code) {
             setLoadingHistory(true);
@@ -483,8 +519,9 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {products.map((product, idx) => {
-                            const isNewGroup = product.group && (idx === 0 || products[idx - 1].group?.id !== product.group.id);
+                        {displayedProducts.map((product, idx) => {
+                            const globalIdx = (currentPage - 1) * itemsPerPage + idx;
+                            const isNewGroup = product.group && (globalIdx === 0 || products[globalIdx - 1].group?.id !== product.group.id);
                             const isInGroup = !!product.group;
                             return (
                                 <React.Fragment key={idx}>
@@ -681,6 +718,19 @@ function ProductTable({ products, hideSimilarity = false }: { products: MarketPr
                     </TableBody>
                 </Table>
             </ScrollArea>
+
+            <div className="flex items-center justify-between py-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-xs text-muted-foreground ml-2">
+                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, products.length)} de {products.length} productos
+                </div>
+                <div className="flex items-center space-x-2 mr-2">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} title="Primera Página"><ChevronsLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} title="Página Anterior"><ChevronLeft className="h-4 w-4" /></Button>
+                    <div className="text-xs font-medium bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded">Página {currentPage} de {totalPages}</div>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} title="Siguiente Página"><ChevronRight className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} title="Última Página"><ChevronsRight className="h-4 w-4" /></Button>
+                </div>
+            </div>
 
             <Dialog open={!!verifyingProduct} onOpenChange={(open) => !open && setVerifyingProduct(null)}>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">

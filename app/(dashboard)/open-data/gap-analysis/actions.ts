@@ -251,7 +251,7 @@ function calculateAdvancedSimilarity(str1: string, str2: string): number {
     }
 }
 
-export async function analyzeProductGap(formData: FormData): Promise<AnalysisResult> {
+export async function analyzeProductGap(formData: FormData, analysisMode: 'standard' | 'visual' = 'standard'): Promise<AnalysisResult> {
     const file = formData.get('file') as File;
     if (!file) {
         throw new Error('No file uploaded');
@@ -295,9 +295,10 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
     });
 
     // 3. Fetch ALL Existing Products for this Category
+    // OPTIMIZATION: Also fetch image_url to help with context if needed locally, though RPC handles search.
     const { data: existingProducts, error: productsError } = await supabase
         .from('products')
-        .select('id, code, name, description, brand_id, brands(name)')
+        .select('id, code, name, description, image_url, brand_id, brands(name)')
         .eq('name', targetCategory);
 
     if (productsError) throw new Error('Failed to fetch existing products.');
@@ -305,7 +306,7 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
     // Create lookup for EXACT match: BrandID:Code (Normalized)
     const exactMatchMap = new Set<string>();
 
-    const systemProductsList: { id: string, code: string, description: string, brandName: string }[] = [];
+    const systemProductsList: { id: string, code: string, description: string, brandName: string, image_url?: string }[] = [];
 
     existingProducts?.forEach(p => {
         // Store exact match key - NORMALIZED (LowerCase)
@@ -319,7 +320,8 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                 id: p.id,
                 code: p.code,
                 description: p.description,
-                brandName: (p.brands as any)?.name || 'Unknown'
+                brandName: (p.brands as any)?.name || 'Unknown',
+                image_url: p.image_url
             });
         }
     });
@@ -369,13 +371,14 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
     const marketProducts: MarketProductDetail[] = [];
     let totalMissingInSystem = 0;
 
-    for (const row of jsonData) {
+    // Batch processing helper
+    const processRow = async (row: any): Promise<MarketProductDetail | null> => {
         const brandName = row['Marca']?.trim() || '';
         const lowerBrandName = brandName.toLowerCase();
         const code = row['Nro. Parte o Código Único de Identificación']?.trim() || '';
         const description = row['Descripción Ficha-Producto'] || '';
 
-        if (!brandName || !code) continue;
+        if (!brandName || !code) return null;
 
         const isSystemBrand = systemBrandNames.has(lowerBrandName);
         const brandId = isSystemBrand ? brandMap.get(lowerBrandName) : null;
@@ -389,12 +392,10 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                 statusInSystem = 'found';
             } else {
                 statusInSystem = 'missing';
-                totalMissingInSystem++;
             }
         }
 
-        // Check Similarity
-        let similarSystemProduct = undefined;
+        let similarSystemProduct: { id: string; code: string; brandName: string; description: string; similarityScore: number } | undefined = undefined;
 
         if (statusInSystem !== 'found') {
             let maxScore = 0;
@@ -402,7 +403,6 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
 
             // Simple linear scan for similarity.
             for (const sp of systemProductsList) {
-                // Skip comparing against itself if it's the same brand/code but somehow missed exact match
                 if (sp.brandName.toLowerCase() === lowerBrandName && sp.code.toLowerCase() === code.toLowerCase()) {
                     continue;
                 }
@@ -414,7 +414,7 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                 }
             }
 
-            if (maxScore > 0.45 && bestMatch) { // Threshold for relevance
+            if (maxScore > 0.45 && bestMatch) {
                 similarSystemProduct = {
                     id: bestMatch.id,
                     code: bestMatch.code,
@@ -425,27 +425,45 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
             }
 
             // --- VISUAL SEARCH FALLBACK ---
-            // If text match is weak (< 0.8) and we have an image, try visual search
             const imageUrl = row['Imagen'];
-            // Only try if we have a valid image URL and text match isn't perfect
-            if ((!similarSystemProduct || similarSystemProduct.similarityScore < 0.8) && imageUrl && imageUrl.startsWith('http')) {
+            const hasImage = imageUrl && imageUrl.startsWith('http');
+
+            let tryVisual = false;
+
+            if (analysisMode === 'visual') {
+                tryVisual = hasImage;
+            } else {
+                tryVisual = hasImage && (!similarSystemProduct || similarSystemProduct.similarityScore < 0.8);
+            }
+
+            if (tryVisual) {
                 try {
-                    // console.log("Trying visual search for:", description);
                     const embedding = await getImageEmbedding(imageUrl);
 
                     if (embedding) {
                         const { data: visualMatches, error: rpcError } = await supabase.rpc('match_products_by_image', {
                             query_embedding: embedding,
-                            match_threshold: 0.82, // High confidence threshold
+                            match_threshold: analysisMode === 'visual' ? 0.72 : 0.82,
                             match_count: 1
                         });
 
                         if (!rpcError && visualMatches && visualMatches.length > 0) {
                             const vMatch = visualMatches[0];
-                            // If visual match is confidently better than text match
-                            if (vMatch.similarity > (similarSystemProduct?.similarityScore || 0)) {
+                            const currentScore = similarSystemProduct?.similarityScore || 0;
 
-                                // Try to find the full system product object to get all fields
+                            let acceptVisual = false;
+
+                            if (analysisMode === 'visual') {
+                                if (vMatch.similarity > 0.72 && vMatch.similarity >= (currentScore - 0.15)) {
+                                    acceptVisual = true;
+                                }
+                            } else {
+                                if (vMatch.similarity > currentScore) {
+                                    acceptVisual = true;
+                                }
+                            }
+
+                            if (acceptVisual) {
                                 const fullMatch = systemProductsList.find(p => p.id === vMatch.id);
 
                                 if (fullMatch) {
@@ -453,11 +471,10 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                                         id: fullMatch.id,
                                         code: fullMatch.code,
                                         brandName: fullMatch.brandName,
-                                        description: fullMatch.description, // Use exact system description
+                                        description: fullMatch.description,
                                         similarityScore: vMatch.similarity
                                     };
                                 } else {
-                                    // Fallback if not in current list (unlikely)
                                     similarSystemProduct = {
                                         id: vMatch.id,
                                         code: "VISUAL-MATCH",
@@ -470,14 +487,12 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
                         }
                     }
                 } catch (err) {
-                    // Silent fail for visual search to not break the flow
-                    // console.warn("Visual search error", err);
+                    // Silent fail
                 }
             }
         }
 
         // Generate Trusted Source Search URL
-        // We filter by the specific reliable domains requested by the user.
         const TRUSTED_SITES = [
             "truper-peru.com", "sodimac.com.pe", "promart.pe",
             "maquicasaperu.com", "gyasolution.pe", "tramontina.com.pe",
@@ -485,27 +500,12 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
         ];
 
         const siteFilter = TRUSTED_SITES.map(s => `site:${s}`).join(" OR ");
-
-        // Strategy: Search for Product Type + Technical Specs ONLY (No Brand/Code/Model)
-        // 1. Extract Core Name (e.g., "MACHETE CON MANGO")
-        // Split by punctuation first, then take the first part.
         const coreName = description.split(/[:;,-]|\s\d/)[0].trim().split(/\s+/).slice(0, 4).join(" ");
-
-        // 2. Extract Specs string for query (e.g. "680 MM" "560 MM")
-        // We use a simplified regex to grab the number+unit combos directly from the text
-        const specMatches = description.match(/(\d+(?:[.,]\d+)?)\s*(MM|CM|M|GR|KG|KW|HP|V|W|LT|GAL|PULG|")/gi) || [];
-        // Take unique specs (using Set) and join them
-        const uniqueSpecs = Array.from(new Set(specMatches)).join(" ");
-
-        // 3. Construct Query
-        // Remove Brand Name from Core Name to be completely agnostic (Find generic equivalents)
         const cleanCore = coreName.replace(new RegExp(brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
-        // Use ONLY the Clean Core Name to avoid over-filtering
         const query = `(${siteFilter}) ${cleanCore}`;
-
         const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.trim())}`;
 
-        marketProducts.push({
+        return {
             brandName,
             code,
             description,
@@ -517,9 +517,25 @@ export async function analyzeProductGap(formData: FormData): Promise<AnalysisRes
             statusInSystem,
             similarSystemProduct,
             googleSearchUrl,
-            verificationStatus: 'pending' as const,
+            verificationStatus: 'pending',
             salesCount: salesCounts.get(code.toUpperCase().trim()) || 0
-        });
+        };
+    };
+
+    // Execute in Batches
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < jsonData.length; i += BATCH_SIZE) {
+        const batch = jsonData.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map(processRow));
+
+        for (const res of results) {
+            if (res) {
+                marketProducts.push(res);
+                if (res.statusInSystem === 'missing') {
+                    totalMissingInSystem++;
+                }
+            }
+        }
     }
 
     // Sort: Similarity Descending, then Missing, then Competitor, then Found
