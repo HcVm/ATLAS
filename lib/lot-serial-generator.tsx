@@ -179,7 +179,7 @@ export async function createLotWithSerials(params: LotGenerationParams): Promise
     for (let i = 1; i <= quantity; i++) {
       // Usamos generación local para velocidad y estabilidad
       const serialStr = generateLocalSerialNumber(lotNumber, i)
-      
+
       serialPayloads.push({
         serial_number: serialStr,
         lot_id: lotData.id,
@@ -198,22 +198,22 @@ export async function createLotWithSerials(params: LotGenerationParams): Promise
     // Enviamos paquetes de 1000 en 1000 para no saturar el body del request
     const CHUNK_SIZE = 1000
     const insertedSerials: GeneratedSerial[] = []
-    
+
     console.log(`[v0] Starting Bulk Insert. Total chunks: ${Math.ceil(quantity / CHUNK_SIZE)}`)
 
     for (let i = 0; i < serialPayloads.length; i += CHUNK_SIZE) {
       const chunk = serialPayloads.slice(i, i + CHUNK_SIZE)
-      
+
       const { data: chunkData, error: chunkError } = await supabase
         .from("product_serials")
         .insert(chunk)
         .select() // Importante para obtener los IDs generados
-      
+
       if (chunkError) {
         console.error(`[v0] Error inserting chunk ${i}-${i + CHUNK_SIZE}:`, chunkError)
         throw chunkError
       }
-      
+
       if (chunkData) {
         insertedSerials.push(...(chunkData as any[]))
       }
@@ -532,8 +532,8 @@ export async function allocateSerialsToSale(
           .eq("id", allocation.lotId)
 
         if (archiveError) {
-           // Si no existe is_archived, logueamos pero no rompemos el flujo
-           console.warn("[v0] Warning: Could not archive lot (column might differ):", archiveError)
+          // Si no existe is_archived, logueamos pero no rompemos el flujo
+          console.warn("[v0] Warning: Could not archive lot (column might differ):", archiveError)
         }
       } else if (remainingSerials === 0 && soldSerials > 0) {
         // All serials sold - link entire lot to sale
@@ -861,7 +861,7 @@ export async function createLotsForInventoryEntry(
     // 3. Insert in Chunks
     const CHUNK_SIZE = 1000
     const insertedSerials: GeneratedSerial[] = []
-    
+
     for (let i = 0; i < serialPayloads.length; i += CHUNK_SIZE) {
       const chunk = serialPayloads.slice(i, i + CHUNK_SIZE)
       const { data: chunkData, error: chunkError } = await supabase
@@ -871,7 +871,7 @@ export async function createLotsForInventoryEntry(
 
       if (chunkError) throw chunkError
       if (chunkData) insertedSerials.push(...(chunkData as any[]))
-      
+
       console.log(`[v0] Inventory Chunk inserted. Progress: ${insertedSerials.length}/${quantity}`)
     }
 

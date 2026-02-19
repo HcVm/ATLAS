@@ -250,6 +250,27 @@ function calculateAdvancedSimilarity(str1: string, str2: string): number {
         return textScore;
     }
 }
+const verifyVisualMatchWithOpenCV = async (url1: string, url2: string): Promise<number> => {
+    try {
+        if (!url1 || !url2) return 0;
+        // Basic check: if urls are same, return 1
+        if (url1 === url2) return 1.0;
+
+        // Call Python Microservice
+        const res = await fetch('http://127.0.0.1:8000/compare-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url1, url2 })
+        });
+
+        if (!res.ok) return 0;
+        const data = await res.json();
+        return typeof data.similarity === 'number' ? data.similarity : 0;
+    } catch (e) {
+        console.warn("OpenCV Check failed (skipping):", e);
+        return 0;
+    }
+}
 
 export async function analyzeProductGap(formData: FormData, analysisMode: 'standard' | 'visual' = 'standard'): Promise<AnalysisResult> {
     const file = formData.get('file') as File;
@@ -306,7 +327,7 @@ export async function analyzeProductGap(formData: FormData, analysisMode: 'stand
     // Create lookup for EXACT match: BrandID:Code (Normalized)
     const exactMatchMap = new Set<string>();
 
-    const systemProductsList: { id: string, code: string, description: string, brandName: string, image_url?: string }[] = [];
+    const systemProductsList: { id: string, code: string, description: string, name: string, brandName: string, image_url?: string }[] = [];
 
     existingProducts?.forEach(p => {
         // Store exact match key - NORMALIZED (LowerCase)
@@ -319,6 +340,7 @@ export async function analyzeProductGap(formData: FormData, analysisMode: 'stand
             systemProductsList.push({
                 id: p.id,
                 code: p.code,
+                name: p.name, // Added Name
                 description: p.description,
                 brandName: (p.brands as any)?.name || 'Unknown',
                 image_url: p.image_url
@@ -378,6 +400,50 @@ export async function analyzeProductGap(formData: FormData, analysisMode: 'stand
         const code = row['Nro. Parte o Código Único de Identificación']?.trim() || '';
         const description = row['Descripción Ficha-Producto'] || '';
 
+        // Helper to check functional incompatibility
+        const checkAttributeCompatibility = (text1: string, text2: string): { compatible: boolean; penalty: number } => {
+            const d1 = text1.toUpperCase();
+            const d2 = text2.toUpperCase();
+
+            // 1. CRITICAL MISMATCH (Hard Rejection)
+            // Structure Type
+            if (d1.includes('GIRATORI') && d2.includes('FIJA')) return { compatible: false, penalty: 1.0 };
+            if (d1.includes('FIJA') && d2.includes('GIRATORI')) return { compatible: false, penalty: 1.0 };
+
+            // 2. SOFT MISMATCH (Penalty)
+            let penalty = 0;
+
+            // Headrest: Presidential vs Generic/Managerial
+            // If one implies Headrest (Cabecera/Presidential) and other does not -> Mismatch
+            const hasHeadrest1 = d1.includes('CABECERA') || d1.includes('CABEZA') || d1.includes('PRESIDENCIAL');
+            const hasHeadrest2 = d2.includes('CABECERA') || d2.includes('CABEZA') || d2.includes('PRESIDENCIAL');
+
+            if (hasHeadrest1 && !hasHeadrest2) penalty += 0.5;
+            if (!hasHeadrest1 && hasHeadrest2) penalty += 0.5;
+
+            // Material: Mesh vs Leather
+            // "Marco de Polipropileno/Nylon" usually implies Mesh back
+            const isMesh1 = d1.includes('MALLA') || d1.includes('MESH') || d1.includes('MARCO DE POLIPROPILENO') || d1.includes('MARCO DE NYLON');
+            const isLeather1 = d1.includes('CUERO') || d1.includes('PIEL') || d1.includes('PU ') || d1.includes('TAPIZADO EN VINIL');
+
+            const isMesh2 = d2.includes('MALLA') || d2.includes('MESH') || d2.includes('MARCO DE POLIPROPILENO') || d2.includes('MARCO DE NYLON');
+            const isLeather2 = d2.includes('CUERO') || d2.includes('PIEL') || d2.includes('PU ') || d2.includes('TAPIZADO EN VINIL');
+
+            if (isMesh1 && isLeather2) return { compatible: false, penalty: 1.0 }; // Hard reject Mesh vs Leather
+            if (isLeather1 && isMesh2) return { compatible: false, penalty: 1.0 };
+
+            // Base: Chrome vs Nylon
+            const hasChrome1 = d1.includes('CROM') || d1.includes('METAL') || d1.includes('ALUMINI');
+            const hasNylon1 = d1.includes('NYLON') || d1.includes('PLASTI') || d1.includes('POLIPROPILENO');
+            const hasChrome2 = d2.includes('CROM') || d2.includes('METAL') || d2.includes('ALUMINI');
+            const hasNylon2 = d2.includes('NYLON') || d2.includes('PLASTI') || d2.includes('POLIPROPILENO');
+
+            if (hasChrome1 && hasNylon2 && !hasChrome2) penalty += 0.3;
+            if (hasNylon1 && hasChrome2 && !hasNylon2) penalty += 0.3;
+
+            return { compatible: true, penalty };
+        };
+
         if (!brandName || !code) return null;
 
         const isSystemBrand = systemBrandNames.has(lowerBrandName);
@@ -398,96 +464,219 @@ export async function analyzeProductGap(formData: FormData, analysisMode: 'stand
         let similarSystemProduct: { id: string; code: string; brandName: string; description: string; similarityScore: number } | undefined = undefined;
 
         if (statusInSystem !== 'found') {
-            let maxScore = 0;
-            let bestMatch = null;
-
-            // Simple linear scan for similarity.
-            for (const sp of systemProductsList) {
-                if (sp.brandName.toLowerCase() === lowerBrandName && sp.code.toLowerCase() === code.toLowerCase()) {
-                    continue;
-                }
-
-                const score = calculateAdvancedSimilarity(description, sp.description);
-                if (score > maxScore) {
-                    maxScore = score;
-                    bestMatch = sp;
-                }
-            }
-
-            if (maxScore > 0.45 && bestMatch) {
-                similarSystemProduct = {
-                    id: bestMatch.id,
-                    code: bestMatch.code,
-                    brandName: bestMatch.brandName,
-                    description: bestMatch.description,
-                    similarityScore: maxScore
-                };
-            }
-
-            // --- VISUAL SEARCH FALLBACK ---
-            const imageUrl = row['Imagen'];
-            const hasImage = imageUrl && imageUrl.startsWith('http');
-
-            let tryVisual = false;
+            // --- STRATEGY SELECTION based on analysisMode ---
 
             if (analysisMode === 'visual') {
-                tryVisual = hasImage;
-            } else {
-                tryVisual = hasImage && (!similarSystemProduct || similarSystemProduct.similarityScore < 0.8);
-            }
+                // --- VISUAL FIRST STRATEGY (Furniture) ---
+                // We prioritize Image Matching above all else.
+                const imageUrl = row['Imagen'];
+                if (imageUrl && imageUrl.startsWith('http')) {
+                    try {
+                        const embedding = await getImageEmbedding(imageUrl);
 
-            if (tryVisual) {
-                try {
-                    const embedding = await getImageEmbedding(imageUrl);
+                        if (embedding) {
+                            const { data: visualMatches, error: rpcError } = await supabase.rpc('match_products_by_image', {
+                                query_embedding: embedding,
+                                match_threshold: 0.70, // Lower initial threshold, we will filter manually
+                                match_count: 60 // Scan top 60 candidates to ensure we don't miss the true match
+                            });
 
-                    if (embedding) {
-                        const { data: visualMatches, error: rpcError } = await supabase.rpc('match_products_by_image', {
-                            query_embedding: embedding,
-                            match_threshold: analysisMode === 'visual' ? 0.72 : 0.82,
-                            match_count: 1
-                        });
+                            if (!rpcError && visualMatches && visualMatches.length > 0) {
+                                // Find the best COMPATIBLE match
+                                // Find the best COMPATIBLE match (Hybrid + OpenCV)
+                                const rowImage = row['Link'] || row['Imagen'] || '';
+                                let candidatesData: any[] = [];
+                                let bestCompatibleMatch = null; // Keep for now to avoid breaking downstream
+                                let bestScore = 0;              // Keep for now
 
-                        if (!rpcError && visualMatches && visualMatches.length > 0) {
-                            const vMatch = visualMatches[0];
-                            const currentScore = similarSystemProduct?.similarityScore || 0;
+                                for (const vMatch of visualMatches) {
+                                    const sysProd = systemProductsList.find(p => p.id === vMatch.id);
+                                    if (!sysProd) continue;
 
-                            let acceptVisual = false;
+                                    // Prepare Texts
+                                    const sysBrand = (sysProd.brandName || '').toUpperCase().trim();
+                                    const sysText = ((sysProd.name || '') + " " + (sysProd.description || '')).toUpperCase();
 
-                            if (analysisMode === 'visual') {
-                                if (vMatch.similarity > 0.72 && vMatch.similarity >= (currentScore - 0.15)) {
-                                    acceptVisual = true;
+                                    const rowBrand = (row['Marca'] || '').toUpperCase().trim();
+                                    const rowText = (row['Descripción Ficha-Producto'] || description || '').toUpperCase();
+
+                                    // 1. Compatibility Check (Hard/Soft Penalties)
+                                    const check = checkAttributeCompatibility(rowText, sysText);
+                                    if (!check.compatible) continue; // Hard Reject
+
+                                    // 2. Hybrid Score Calculation
+                                    // We mix Visual (70%) + Text (30%) to prioritize matches with better description overlap
+                                    // This helps differentiating visually identical products (e.g. "Malla" vs "Tela")
+                                    const textSim = calculateAdvancedSimilarity(rowText, sysText);
+                                    const hybridScore = (vMatch.similarity * 0.70) + (textSim * 0.30);
+
+                                    // 3. Apply Penalties to Hybrid Score
+                                    let rankingScore = hybridScore * (1.0 - check.penalty);
+
+                                    // Brand Penalty (Competitor Logic)
+                                    // CRITICAL: We apply the factor (0.85) for RANKING, but we do NOT cap at 0.80 yet.
+                                    // If we cap here, a 99% match and a 95% match both become 80%, hiding the winner.
+                                    const brandsMatch = rowBrand.length > 2 && sysBrand.length > 2 && (rowBrand.includes(sysBrand) || sysBrand.includes(rowBrand));
+
+                                    if (!brandsMatch) {
+                                        rankingScore *= 0.85;
+                                    }
+
+                                    // Debug Log
+                                    console.log(`[Hybrid] ${sysProd.code}: V=${vMatch.similarity.toFixed(2)} T=${textSim.toFixed(2)} RankScore=${rankingScore.toFixed(2)} [${check.penalty > 0 ? 'AttrPen' : ''}${!brandsMatch ? 'BrandPen' : ''}]`);
+
+                                    candidatesData.push({ vMatch, sysProd, rankingScore, brandsMatch });
                                 }
-                            } else {
-                                if (vMatch.similarity > currentScore) {
-                                    acceptVisual = true;
+
+                                // --- OpenCV Validation Step ---
+                                candidatesData.sort((a, b) => b.rankingScore - a.rankingScore);
+
+                                // Take Top 3 for heavy verification
+                                const top3 = candidatesData.slice(0, 3);
+
+                                if (rowImage && top3.length > 0) {
+                                    await Promise.all(top3.map(async (cand) => {
+                                        if (cand.sysProd.image_url) {
+                                            const cvScore = await verifyVisualMatchWithOpenCV(rowImage, cand.sysProd.image_url);
+                                            if (cvScore > 0.0) {
+                                                const boost = cvScore * 0.20;
+                                                cand.rankingScore += boost;
+                                                console.log(`[OpenCV] ${cand.sysProd.code}: CV=${cvScore.toFixed(2)} Boost=+${boost.toFixed(2)} New=${cand.rankingScore.toFixed(2)}`);
+                                            }
+                                        }
+                                    }));
+                                    top3.sort((a, b) => b.rankingScore - a.rankingScore);
+                                }
+
+                                if (top3.length > 0) {
+                                    const winner = top3[0];
+                                    bestCompatibleMatch = { ...winner.vMatch, similarity: winner.rankingScore, sysProd: winner.sysProd, brandsMatch: winner.brandsMatch };
+                                    bestScore = winner.rankingScore;
+                                }
+
+                                // Trust visual match if ranking score is sufficient
+                                // For display, we applying the "Competitor Cap" (0.80) if needed
+                                if (bestCompatibleMatch && bestScore > 0.74) {
+                                    let displayScore = bestScore;
+                                    if (!bestCompatibleMatch.brandsMatch && displayScore > 0.80) {
+                                        displayScore = 0.80;
+                                    }
+
+                                    similarSystemProduct = {
+                                        id: bestCompatibleMatch.id,
+                                        code: bestCompatibleMatch.sysProd.code,
+                                        brandName: bestCompatibleMatch.sysProd.brandName,
+                                        description: bestCompatibleMatch.sysProd.description,
+                                        similarityScore: displayScore
+                                    };
                                 }
                             }
+                        }
+                    } catch (e) {
+                        console.error("Visual search error:", e);
+                    }
+                }
 
-                            if (acceptVisual) {
-                                const fullMatch = systemProductsList.find(p => p.id === vMatch.id);
+                // Fallback to text ONLY if visual failed
+                if (!similarSystemProduct) {
+                    let maxScore = 0;
+                    let bestMatch = null;
 
-                                if (fullMatch) {
-                                    similarSystemProduct = {
-                                        id: fullMatch.id,
-                                        code: fullMatch.code,
-                                        brandName: fullMatch.brandName,
-                                        description: fullMatch.description,
-                                        similarityScore: vMatch.similarity
-                                    };
-                                } else {
+                    for (const sp of systemProductsList) {
+                        // Skip Self-Match
+                        if (sp.brandName.toLowerCase() === lowerBrandName && sp.code.toLowerCase() === code.toLowerCase()) continue;
+
+                        let score = calculateAdvancedSimilarity(description, sp.description);
+
+                        // APPLY SAME LOGIC: Attribute Compatibility
+                        const sysText = ((sp.name || '') + " " + sp.description).toUpperCase();
+                        const rowText = (row['Descripción Ficha-Producto'] || description || '').toUpperCase();
+                        const check = checkAttributeCompatibility(rowText, sysText);
+
+                        if (!check.compatible) continue;
+
+                        score = score * (1.0 - check.penalty);
+
+                        // APPLY SAME LOGIC: Brand Penalty on Text Matches in Visual Mode
+                        const rowBrand = (row['Marca'] || '').toUpperCase().trim();
+                        const sysBrand = (sp.brandName || '').toUpperCase().trim();
+
+                        const brandsMatch = rowBrand.length > 2 && sysBrand.length > 2 && (rowBrand.includes(sysBrand) || sysBrand.includes(rowBrand));
+
+                        if (!brandsMatch) {
+                            score = Math.min(score * 0.85, 0.80);
+                        }
+
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestMatch = sp;
+                        }
+                    }
+
+                    if (maxScore > 0.45 && bestMatch) {
+                        similarSystemProduct = {
+                            id: bestMatch.id,
+                            code: bestMatch.code,
+                            brandName: bestMatch.brandName,
+                            description: bestMatch.description,
+                            similarityScore: maxScore
+                        };
+                    }
+                }
+
+            } else {
+                // --- STANDARD STRATEGY (Text First) ---
+                // Default logic: Text match first, Visual as fallback
+                let maxScore = 0;
+                let bestMatch = null;
+
+                for (const sp of systemProductsList) {
+                    if (sp.brandName.toLowerCase() === lowerBrandName && sp.code.toLowerCase() === code.toLowerCase()) continue;
+
+                    const score = calculateAdvancedSimilarity(description, sp.description);
+                    if (score > maxScore) {
+                        maxScore = score;
+                        bestMatch = sp;
+                    }
+                }
+
+                if (maxScore > 0.45 && bestMatch) {
+                    similarSystemProduct = {
+                        id: bestMatch.id,
+                        code: bestMatch.code,
+                        brandName: bestMatch.brandName,
+                        description: bestMatch.description,
+                        similarityScore: maxScore
+                    };
+                }
+
+                // VISUAL FALLBACK
+                const imageUrl = row['Imagen'];
+                if ((!similarSystemProduct || similarSystemProduct.similarityScore < 0.8) && imageUrl && imageUrl.startsWith('http')) {
+                    try {
+                        const embedding = await getImageEmbedding(imageUrl);
+                        if (embedding) {
+                            const { data: visualMatches, error: rpcError } = await supabase.rpc('match_products_by_image', {
+                                query_embedding: embedding,
+                                match_threshold: 0.82,
+                                match_count: 1
+                            });
+
+                            if (!rpcError && visualMatches && visualMatches.length > 0) {
+                                const vMatch = visualMatches[0];
+                                if (vMatch.similarity > (similarSystemProduct?.similarityScore || 0)) {
+                                    const fullMatch = systemProductsList.find(p => p.id === vMatch.id);
                                     similarSystemProduct = {
                                         id: vMatch.id,
-                                        code: "VISUAL-MATCH",
-                                        brandName: "Sistema",
-                                        description: vMatch.description,
+                                        code: fullMatch?.code || "VISUAL-MATCH",
+                                        brandName: fullMatch?.brandName || "Sistema",
+                                        description: fullMatch?.description || vMatch.description,
                                         similarityScore: vMatch.similarity
                                     };
                                 }
                             }
                         }
-                    }
-                } catch (err) {
-                    // Silent fail
+                    } catch (err) { }
                 }
             }
         }
@@ -570,45 +759,51 @@ export async function analyzeProductGap(formData: FormData, analysisMode: 'stand
     // We group products that are extremely similar to each other (ignoring Brand), to help user discard them in bulk.
     // MODIFIED: Also group by Similarity Level (High vs Low vs Null)
     const clusters: { id: string; products: MarketProductDetail[]; representativeDesc: string; similarityLevel: string }[] = [];
-    let clusterCounter = 0;
 
-    for (const product of marketProducts) {
-        // We strip the brand name from the description for comparison
-        const cleanDesc = product.description.replace(new RegExp(product.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
+    // DISABLE CLUSTERING FOR VISUAL MODE
+    // In Visual Mode, text descriptions are unreliable (all say "Silla Giratoria").
+    // Aggregating by text causes visually distinct products to be merged.
+    if (analysisMode !== 'visual') {
+        let clusterCounter = 0;
 
-        // Find a matching cluster
-        let bestClusterIdx = -1;
-        let bestClusterScore = 0;
+        for (const product of marketProducts) {
+            // We strip the brand name from the description for comparison
+            const cleanDesc = product.description.replace(new RegExp(product.brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
 
-        for (let i = 0; i < clusters.length; i++) {
-            // Compare with the first product in the cluster (or a representative string)
-            // We use a high threshold (0.85) because they should be effectively the SAME product type
-            // AND check if they belong to the same "Similarity Level" (High/Low/Null)
-            const score = calculateAdvancedSimilarity(cleanDesc, clusters[i].representativeDesc);
+            // Find a matching cluster
+            let bestClusterIdx = -1;
+            let bestClusterScore = 0;
 
-            const currentLevel = (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
-                (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null';
+            for (let i = 0; i < clusters.length; i++) {
+                // Compare with the first product in the cluster (or a representative string)
+                // We use a high threshold (0.85) because they should be effectively the SAME product type
+                // AND check if they belong to the same "Similarity Level" (High/Low/Null)
+                const score = calculateAdvancedSimilarity(cleanDesc, clusters[i].representativeDesc);
 
-            if (score > 0.85 && score > bestClusterScore && currentLevel === clusters[i].similarityLevel) {
-                bestClusterScore = score;
-                bestClusterIdx = i;
+                const currentLevel = (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
+                    (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null';
+
+                if (score > 0.85 && score > bestClusterScore && currentLevel === clusters[i].similarityLevel) {
+                    bestClusterScore = score;
+                    bestClusterIdx = i;
+                }
             }
-        }
 
-        if (bestClusterIdx !== -1) {
-            clusters[bestClusterIdx].products.push(product);
-        } else {
-            // Create new cluster
-            clusterCounter++;
-            clusters.push({
-                id: `G-${clusterCounter}`,
-                products: [product],
-                representativeDesc: cleanDesc,
-                // Assign a "Category Level" to the cluster based on the first product
-                // This ensures we only group High with High, Low with Low.
-                similarityLevel: (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
-                    (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null'
-            });
+            if (bestClusterIdx !== -1) {
+                clusters[bestClusterIdx].products.push(product);
+            } else {
+                // Create new cluster
+                clusterCounter++;
+                clusters.push({
+                    id: `G-${clusterCounter}`,
+                    products: [product],
+                    representativeDesc: cleanDesc,
+                    // Assign a "Category Level" to the cluster based on the first product
+                    // This ensures we only group High with High, Low with Low.
+                    similarityLevel: (product.similarSystemProduct?.similarityScore || 0) >= 0.7 ? 'high' :
+                        (product.similarSystemProduct?.similarityScore || 0) >= 0.45 ? 'low' : 'null'
+                });
+            }
         }
     }
 
