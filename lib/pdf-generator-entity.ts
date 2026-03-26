@@ -53,6 +53,9 @@ export interface EntityQuotationPDFData {
   // Condiciones
   conditions?: string[]
 
+  // Observaciones
+  observations?: string
+
   // Creado por
   createdBy: string
 }
@@ -251,20 +254,20 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
     })
   }
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const fiscalAddress = data.clientFiscalAddress || "No especificada";
+  const deliveryAddress = data.clientAddress || "No especificada";
 
   return `
   <div style="padding: 12px 8px; width: 100%; margin: 0 auto; background: white; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 11px; line-height: 1.4; position: relative; color: #1f2937;">
     
     <!-- Marca de agua del logo -->
-    ${
-      data.companyLogoUrl
-        ? `
+    ${data.companyLogoUrl
+      ? `
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
       <img src="${data.companyLogoUrl}" alt="Logo" style="max-width: 500px; max-height: 95px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" crossorigin="anonymous" />
     </div>
     `
-        : ""
+      : ""
     }
     
     <!-- Contenido principal -->
@@ -282,15 +285,14 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
         
         <!-- Columna izquierda: Logo -->
         <div style="flex: 0 0 170px;">
-          ${
-            data.companyLogoUrl
-              ? `
+          ${data.companyLogoUrl
+      ? `
           <div style="margin-bottom: 12px;">
             <img src="${data.companyLogoUrl}" alt="Logo ${data.companyName}" style="max-width: 150px; max-height: 95px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" crossorigin="anonymous" />
           </div>
           `
-              : ""
-          }
+      : ""
+    }
         </div>
         
         <!-- Columna central: Información de comercialización -->
@@ -343,31 +345,33 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <p style="margin: 0; font-size: 11px; color: #1f2937; font-weight: 700;">${data.clientName}</p>
           </div>
           
-          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
             <div>
               <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dirección Fiscal</p>
-              <p style="margin: 0; font-size: 11px; color: #374151; line-height: 1.3;">${addressToDisplay}</p>
+              <p style="margin: 0; font-size: 11px; color: #374151; line-height: 1.3;">${fiscalAddress}</p>
             </div>
-            ${
-              data.clientDepartment
-                ? `
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Lugar de Entrega</p>
+              <p style="margin: 0; font-size: 11px; color: #374151; line-height: 1.3;">${deliveryAddress}</p>
+            </div>
+            ${data.clientDepartment
+      ? `
             <div>
               <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dependencia</p>
               <p style="margin: 0; font-size: 11px; color: #374151;">${data.clientDepartment}</p>
             </div>
             `
-                : "<div></div>"
-            }
-            ${
-              data.clientAttention
-                ? `
+      : "<div></div>"
+    }
+            ${data.clientAttention
+      ? `
             <div>
               <p style="margin: 0 0 4px 0; font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Atención</p>
               <p style="margin: 0; font-size: 11px; color: #374151;">${data.clientAttention}</p>
             </div>
             `
-                : "<div></div>"
-            }
+      : "<div></div>"
+    }
           </div>
         </div>
       </div>
@@ -381,9 +385,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
       </div>
 
       <!-- Tabla de productos moderna y compacta -->
-      ${
-        data.products && data.products.length > 0
-          ? `
+      ${data.products && data.products.length > 0
+      ? `
       <div style="margin-bottom: 20px; border-radius: 6px; overflow: hidden; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
         <table style="width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed;">
           <thead>
@@ -399,8 +402,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
           </thead>
           <tbody>
             ${data.products
-              .map(
-                (product, index) => `
+        .map(
+          (product, index) => `
               <tr border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 8px 6px; text-align: center; font-weight: 700; color: #1f2937;">${product.quantity.toLocaleString()}</td>
                 <td style="padding: 8px 6px; text-align: left; font-size: 8px; line-height: 1.3; color: #374151; word-wrap: break-word;">${product.description}</td>
@@ -411,13 +414,13 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                 <td style="padding: 8px 6px; text-align: right; color: #dc2626; font-weight: 800; font-size: 9px;">${formatCurrency(product.totalPrice)}</td>
               </tr>
             `,
-              )
-              .join("")}
+        )
+        .join("")}
           </tbody>
         </table>
       </div>
       `
-          : `
+      : `
       <!-- Mensaje de error si no hay productos -->
       <div style="margin-bottom: 15px; padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; border-left: 4px solid #f59e0b;">
         <p style="margin: 0; font-size: 11px; color: #92400e; text-align: center; font-weight: 600;">
@@ -425,7 +428,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
         </p>
       </div>
       `
-      }
+    }
 
       <!-- Layout horizontal para totales, condiciones y validación -->
       <div style="display: flex; gap: 15px; margin-bottom: 15px;">
@@ -438,19 +441,18 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             </div>
             
             <div style="padding: 15px;">
-              ${
-                data.conditions && data.conditions.length > 0
-                  ? data.conditions
-                      .map(
-                        (condition, index) => `
+              ${data.conditions && data.conditions.length > 0
+      ? data.conditions
+        .map(
+          (condition, index) => `
                 <div style="margin: 6px 0; display: flex; align-items: flex-start; gap: 8px;">
                   <div style="margin: 0; color: black; width: 10px; height: 10px; display: flex; font-size: 9px; font-weight: 700;">${index + 1}</div>
                   <p style="margin: 0; font-size: 9px; line-height: 1.3; color: #374151; flex: 1;">${condition}</p>
                 </div>
               `,
-                      )
-                      .join("")
-                  : `
+        )
+        .join("")
+      : `
                 <div style="margin: 6px 0; display: flex; align-items: flex-start; gap: 8px;">
                   <div style="margin: 0; color: black; width: 10px; height: 10px; display: flex; font-size: 9px; font-weight: 700;">1</div>
                   <p style="margin: 0; font-size: 9px; line-height: 1.3; color: #374151;">Plazo de entrega: 10 días hábiles.</p>
@@ -468,7 +470,7 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                   <p style="margin: 0; font-size: 9px; line-height: 1.3; color: #374151;">Garantía por defectos de fábrica 24 meses.</p>
                 </div>
               `
-              }
+    }
             </div>
           </div>
         </div>
@@ -530,9 +532,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
       </div>
 
       <!-- Información bancaria horizontal -->
-      ${
-        data.bankingInfo || data.companyAccountInfo
-          ? `
+      ${data.bankingInfo || data.companyAccountInfo
+      ? `
       <div style="margin-bottom: 20px;">
         <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
           <div style="background: linear-gradient(90deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 10px 15px;">
@@ -543,9 +544,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
             <div>
               <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #1f2937;">${data.companyName}</p>
               
-              ${
-                data.bankingInfo?.bankAccount
-                  ? `
+              ${data.bankingInfo?.bankAccount
+        ? `
               <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
                 <div style="margin-bottom: 6px;">
                   <span color: black; border-radius: 4px; padding: 2px 5px; font-size: 8px; font-weight: 700;">💳 DATOS BANCARIOS</span>
@@ -555,8 +555,8 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                 <p style="margin: 0; font-size: 9px; color: #374151; font-family: monospace;"><strong>CCI:</strong> ${data.bankingInfo.bankAccount.cci}</p>
               </div>
               `
-                  : data.companyAccountInfo
-                    ? `
+        : data.companyAccountInfo
+          ? `
               <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
                 <p style="margin: 3px 0; font-size: 10px; color: #374151; font-family: monospace;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
                 <div style="margin-top: 6px;">
@@ -564,47 +564,44 @@ const createEntityQuotationHTML = (data: EntityQuotationPDFData, qrCodeDataUrl: 
                 </div>
               </div>
               `
-                    : ""
-              }
+          : ""
+      }
             </div>
           </div>
         </div>
       </div>
       `
-          : ""
-      }
+      : ""
+    }
 
       <!-- Footer con información de contacto compacto -->
       <div style="border-top: 2px solid #e5e7eb; padding-top: 15px; margin-top: 25px;">
         <div style="text-align: center; background: #f8fafc; padding: 12px; border-radius: 6px;">
           <div style="margin-bottom: 10px;">
-            ${
-              data.companyAddress || data.bankingInfo?.fiscalAddress
-                ? `<p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 10px;">${data.companyAddress || data.bankingInfo?.fiscalAddress}</p>`
-                : `<p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 10px;">Jr. Huantar Nro. 3311 Urb. Ca Huantar 5030 N 3311 Urb Parque El Naranjal 2da Etapa Los Olivos-Lima</p>`
-            }
+            ${data.companyAddress || data.bankingInfo?.fiscalAddress
+      ? `<p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 10px;">${data.companyAddress || data.bankingInfo?.fiscalAddress}</p>`
+      : `<p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 10px;">Jr. Huantar Nro. 3311 Urb. Ca Huantar 5030 N 3311 Urb Parque El Naranjal 2da Etapa Los Olivos-Lima</p>`
+    }
           </div>
           
           <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-            ${
-              data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
-                ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;"><strong>📧 E-MAIL:</strong> ${data.bankingInfo.contactInfo.email.join(" / ")}</div>`
-                : data.companyEmail
-                  ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;"><strong>📧 E-MAIL:</strong> ${data.companyEmail}</div>`
-                  : ""
-            }
+            ${data.bankingInfo?.contactInfo?.email && data.bankingInfo.contactInfo.email.length > 0
+      ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;"><strong>📧 E-MAIL:</strong> ${data.bankingInfo.contactInfo.email.join(" / ")}</div>`
+      : data.companyEmail
+        ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;"><strong>📧 E-MAIL:</strong> ${data.companyEmail}</div>`
+        : ""
+    }
             
-            ${
-              data.bankingInfo?.contactInfo?.mobile || data.bankingInfo?.contactInfo?.phone
-                ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;">
+            ${data.bankingInfo?.contactInfo?.mobile || data.bankingInfo?.contactInfo?.phone
+      ? `<div style="color:rgb(0, 0, 0); font-weight: 600; font-size: 9px;">
                     ${data.bankingInfo.contactInfo.mobile ? `<strong>📱 Móvil:</strong> ${data.bankingInfo.contactInfo.mobile}` : ""}
                     ${data.bankingInfo.contactInfo.mobile && data.bankingInfo.contactInfo.phone ? " / " : ""}
                     ${data.bankingInfo.contactInfo.phone ? `<strong>☎️ Telf:</strong> ${data.bankingInfo.contactInfo.phone}` : ""}
                   </div>`
-                : data.companyPhone
-                  ? `<div style="color: #059669; font-weight: 600; font-size: 9px;"><strong>📱 Móvil:</strong> ${data.companyPhone} / <strong>☎️ Telf:</strong> ${data.companyPhone}</div>`
-                  : `<div style="color: #059669; font-weight: 600; font-size: 9px;"><strong>📱 Móvil:</strong> 999999999 / <strong>☎️ Telf:</strong> (01)111 1111 anexo:102</div>`
-            }
+      : data.companyPhone
+        ? `<div style="color: #059669; font-weight: 600; font-size: 9px;"><strong>📱 Móvil:</strong> ${data.companyPhone} / <strong>☎️ Telf:</strong> ${data.companyPhone}</div>`
+        : `<div style="color: #059669; font-weight: 600; font-size: 9px;"><strong>📱 Móvil:</strong> 999999999 / <strong>☎️ Telf:</strong> (01)111 1111 anexo:102</div>`
+    }
           </div>
         </div>
         

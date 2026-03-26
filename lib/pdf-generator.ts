@@ -5,6 +5,7 @@ export interface QuotationPDFData {
   // Información de la empresa
   companyName: string
   companyRuc: string
+  companyCode?: string
   companyAddress?: string
   companyPhone?: string
   companyEmail?: string
@@ -18,6 +19,7 @@ export interface QuotationPDFData {
   // Información del cliente
   clientName: string
   clientRuc: string
+  clientFiscalAddress?: string
   deliveryLocation: string
 
   // Información del producto (para cotizaciones simples - legacy)
@@ -213,6 +215,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
               <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #64748b;">
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #374151;"><strong>Razón Social:</strong> ${data.clientName}</p>
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #374151;"><strong>RUC:</strong> ${data.clientRuc}</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #374151;"><strong>Dirección Fiscal:</strong> ${data.clientFiscalAddress || "No especificada"}</p>
                 <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Lugar de Entrega:</strong> ${data.deliveryLocation}</p>
               </div>
             </td>
@@ -242,9 +245,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           🛍️ DETALLE COMPLETO DE PRODUCTOS ${isMultiProduct ? `(${data.items?.length} productos)` : ""}
         </h3>
         
-        ${
-          isMultiProduct
-            ? `
+        ${isMultiProduct
+      ? `
         <!-- Tabla Multi-Producto -->
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
           <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">
@@ -263,8 +265,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             </thead>
             <tbody>
               ${data.items
-                ?.map(
-                  (item, index) => `
+        ?.map(
+          (item, index) => `
               <tr style="${index % 2 === 0 ? "background: #f9fafb;" : "background: white;"}">
                 <td style="padding: 12px 8px; border-bottom: 1px solid #f1f5f9; font-weight: 600; word-wrap: break-word; font-size: 10px; vertical-align: top; text-align: left;">
                   ${item.productCode}
@@ -288,9 +290,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                     <div style="font-size: 11px; font-weight: 600; color: #3b82f6;">${formatCurrency(item.platformTotal)}</div>
                   </div>
                 </td>
-                ${
-                  hasProviderPrices
-                    ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+                ${hasProviderPrices
+              ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
                   <div style="background:rgba(185, 212, 194, 0.42); padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box;">
                     <div style="font-weight: 600; color: #16a34a; font-size: 9px; margin-bottom: 2px;">Unitario:</div>
                     <div style="font-size: 10px; color: #16a34a; margin-bottom: 4px;">${item.providerUnitPrice ? formatCurrency(item.providerUnitPrice) : "N/A"}</div>
@@ -298,11 +299,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                     <div style="font-size: 11px; font-weight: 600; color: #16a34a;">${item.providerTotal ? formatCurrency(item.providerTotal) : "N/A"}</div>
                   </div>
                 </td>`
-                    : ""
-                }
-                ${
-                  hasOfferPrices
-                    ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+              : ""
+            }
+                ${hasOfferPrices
+              ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
                   <div style="background:rgba(211, 205, 179, 0.42); padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box;">
                     <div style="font-weight: 600; color: #d97706; font-size: 9px; margin-bottom: 2px;">Unitario:</div>
                     <div style="font-size: 10px; color: #d97706; margin-bottom: 4px;">${item.offerUnitPrice ? formatCurrency(item.offerUnitPrice) : "N/A"}</div>
@@ -310,11 +310,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                     <div style="font-size: 11px; font-weight: 600; color: #d97706;">${item.offerTotal ? formatCurrency(item.offerTotal) : "N/A"}</div>
                   </div>
                 </td>`
-                    : ""
-                }
-                ${
-                  hasBudgetCeilingPrices
-                    ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+              : ""
+            }
+                ${hasBudgetCeilingPrices
+              ? `<td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
                   <div style="background:rgba(212, 190, 203, 0.23); padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box;">
                     <div style="font-weight: 600; color: #ec4899; font-size: 9px; margin-bottom: 2px;">Unitario:</div>
                     <div style="font-size: 10px; color: #ec4899; margin-bottom: 4px;">${item.budgetCeilingUnitPrice ? formatCurrency(item.budgetCeilingUnitPrice) : "N/A"}</div>
@@ -322,14 +321,13 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                     <div style="font-size: 11px; font-weight: 600; color: #ec4899;">${item.budgetCeilingTotal ? formatCurrency(item.budgetCeilingTotal) : "N/A"}</div>
                   </div>
                 </td>`
-                    : ""
-                }
+              : ""
+            }
                 <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
-                  ${
-                    item.referenceImageUrl
-                      ? `<img src="${item.referenceImageUrl}" alt="Imagen del producto" style="max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid #e2e8f0;" crossorigin="anonymous" />`
-                      : `<div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 9px; margin: 0 auto;">Sin imagen</div>`
-                  }
+                  ${item.referenceImageUrl
+              ? `<img src="${item.referenceImageUrl}" alt="Imagen del producto" style="max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid #e2e8f0;" crossorigin="anonymous" />`
+              : `<div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 9px; margin: 0 auto;">Sin imagen</div>`
+            }
                 </td>
                 <td style="padding: 12px 8px; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
                   <div style="background: #475569; color: white; padding: 12px 8px; border-radius: 6px; text-align: center; width: 100%; box-sizing: border-box;">
@@ -338,8 +336,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                 </td>
               </tr>
               `,
-                )
-                .join("")}
+        )
+        .join("")}
             </tbody>
           </table>
         </div>
@@ -352,9 +350,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             </h4>
             <table style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse;">
               <tbody>
-                ${
-                  data.platformGrandTotal
-                    ? `
+                ${data.platformGrandTotal
+        ? `
                 <tr>
                   <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: #3b82f6; font-size: 14px; border-bottom: 1px solid #f1f5f9;">
                     Total Precio Plataforma:
@@ -364,11 +361,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                   </td>
                 </tr>
                 `
-                    : ""
-                }
-                ${
-                  data.providerGrandTotal && data.providerGrandTotal > 0
-                    ? `
+        : ""
+      }
+                ${data.providerGrandTotal && data.providerGrandTotal > 0
+        ? `
                 <tr>
                   <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: #16a34a; font-size: 14px; border-bottom: 1px solid #f1f5f9;">
                     Total Precio Proveedor:
@@ -378,11 +374,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                   </td>
                 </tr>
                 `
-                    : ""
-                }
-                ${
-                  data.offerGrandTotal && data.offerGrandTotal > 0
-                    ? `
+        : ""
+      }
+                ${data.offerGrandTotal && data.offerGrandTotal > 0
+        ? `
                 <tr>
                   <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: #d97706; font-size: 14px; border-bottom: 1px solid #f1f5f9;">
                     Total Precio Oferta:
@@ -392,11 +387,10 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                   </td>
                 </tr>
                 `
-                    : ""
-                }
-                ${
-                  data.budgetCeilingGrandTotal && data.budgetCeilingGrandTotal > 0
-                    ? `
+        : ""
+      }
+                ${data.budgetCeilingGrandTotal && data.budgetCeilingGrandTotal > 0
+        ? `
                 <tr>
                   <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: #ec4899; font-size: 14px; border-bottom: 1px solid #f1f5f9;">
                     Total Techo Presupuestal:
@@ -406,8 +400,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
                   </td>
                 </tr>
                 `
-                    : ""
-                }
+        : ""
+      }
                 <tr style="border-top: 2px solid #475569;">
                   <td style="padding: 15px 15px; text-align: right; font-weight: 600; font-size: 16px; color: #374151;">
                     TOTAL FINAL COTIZADO (INC. IGV):
@@ -421,7 +415,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           </div>
         </div>
         `
-            : `
+      : `
         <!-- Producto Simple (Legacy) -->
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
           <table style="width: 100%; border-collapse: collapse;">
@@ -465,12 +459,11 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
           </div>
         </div>
         `
-        }
+    }
       </div>
       
-      ${
-        data.routeInfo
-          ? `
+      ${data.routeInfo
+      ? `
       <!-- Información de Ruta -->
       <div style="margin-bottom: 25px;">
         <h3 style="color: #374151; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
@@ -511,9 +504,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             </tr>
           </table>
           
-          ${
-            data.routeInfo.mapImageUrl
-              ? `
+          ${data.routeInfo.mapImageUrl
+        ? `
           <div style="text-align: center; margin-top: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
               <h4 style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #374151;">🗺️ MAPA DE RUTA CALCULADA</h4>
@@ -526,22 +518,21 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
             </div>
           </div>
           `
-              : `
+        : `
           <div style="text-align: center; margin-top: 20px; padding: 40px; background: white; border-radius: 8px; color: #64748b; border: 1px dashed #cbd5e1;">
             <p style="margin: 0; font-style: italic; font-size: 14px;">🗺️ Mapa de ruta no disponible</p>
             <p style="margin: 5px 0 0 0; font-size: 12px;">La información de ruta se calculará al momento de la entrega</p>
           </div>
           `
-          }
+      }
         </div>
       </div>
       `
-          : ""
-      }
+      : ""
+    }
 
-      ${
-        data.observations
-          ? `
+      ${data.observations
+      ? `
       <!-- Observaciones -->
       <div style="margin-bottom: 25px;">
         <h3 style="color: #374151; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
@@ -554,13 +545,12 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
         </div>
       </div>
       `
-          : ""
-      }
+      : ""
+    }
       
       
-      ${
-        data.commissionInfo
-          ? `
+      ${data.commissionInfo
+      ? `
 <!-- Información de Comisión -->
 <div style="margin-bottom: 25px;">
   <h3 style="color: #374151; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
@@ -599,8 +589,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
       </tr>
     </table>
     
-    ${
-      data.commissionInfo.commissionNotes
+    ${data.commissionInfo.commissionNotes
         ? `
     <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #64748b;">
       <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #374151;">📝 Notas de Comisión:</p>
@@ -608,7 +597,7 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
     </div>
     `
         : ""
-    }
+      }
     
     <div style="margin-top: 15px; padding: 12px; background: rgba(16, 163, 74, 0.1); border-radius: 6px; border: 1px dashed #16a34a;">
       <p style="margin: 0; font-size: 12px; color: #16a34a; text-align: center; font-style: italic;">
@@ -618,8 +607,8 @@ const createQuotationHTML = (data: QuotationPDFData): string => {
   </div>
 </div>
 `
-          : ""
-      }
+      : ""
+    }
       
       <!-- Footer -->
       <div style="border-top: 2px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">

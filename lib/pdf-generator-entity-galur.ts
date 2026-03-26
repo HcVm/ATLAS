@@ -44,6 +44,7 @@ export interface GALUREntityQuotationPDFData {
   total: number
 
   conditions?: string[]
+  observations?: string
   createdBy: string
 }
 
@@ -196,20 +197,20 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
     })
   }
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+  const fiscalAddress = data.clientFiscalAddress || "No especificada";
+  const deliveryAddress = data.clientAddress || "No especificada";
 
   return `
   <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Segoe UI', sans-serif; color: #2d3748; position: relative; overflow: hidden; padding: 0; margin: 0;">
 
     <!-- Watermark with brand color -->
-    ${
-      data.companyLogoUrl
-        ? `
+    ${data.companyLogoUrl
+      ? `
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.02; z-index: 0; pointer-events: none;">
       <img src="${data.companyLogoUrl}" alt="GALUR" style="width: 1000px; height: 300px;" crossorigin="anonymous" />
     </div>
     `
-        : ""
+      : ""
     }
 
     <div style="position: relative; z-index: 1;">
@@ -226,11 +227,10 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
             
             <!-- Left side: Logo and company name -->
             <div style="flex: 1;">
-              ${
-                data.companyLogoUrl
-                  ? `<img src="${data.companyLogoUrl}" alt="GALUR" style="height: 140px; margin-bottom: 6px;" crossorigin="anonymous" />`
-                  : `<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 2px;">${data.companyName}</h1>`
-              }
+              ${data.companyLogoUrl
+      ? `<img src="${data.companyLogoUrl}" alt="GALUR" style="height: 140px; margin-bottom: 6px;" crossorigin="anonymous" />`
+      : `<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 2px;">${data.companyName}</h1>`
+    }
               <p style="margin: 2px 0 0 0; font-size: 11px; opacity: 0.9; letter-spacing: 0.5px;">COTIZACIÓN DE SERVICIOS Y PRODUCTOS</p>
             </div>
 
@@ -254,7 +254,8 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
               <p style="margin: 0 0 3px 0; font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px;">Cliente</p>
               <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700;">${data.clientName}</h3>
               <p style="margin: 0 0 2px 0; font-size: 11px; opacity: 0.9;">RUC: <strong>${data.clientRuc}</strong></p>
-              <p style="margin: 0; font-size: 12px; opacity: 0.8; line-height: 1.3;">${addressToDisplay}</p>
+              <p style="margin: 0 0 2px 0; font-size: 10px; opacity: 0.8; line-height: 1.3;">Dir. Fiscal: ${fiscalAddress}</p>
+              <p style="margin: 0; font-size: 10px; opacity: 0.8; line-height: 1.3;">Lugar de Entrega: ${deliveryAddress}</p>
             </div>
             <div style="text-align: right;">
               <p style="margin: 0 0 3px 0; font-size: 12px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px;">Proveedor</p>
@@ -281,11 +282,10 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
             </tr>
           </thead>
           <tbody>
-            ${
-              data.products && data.products.length > 0
-                ? data.products
-                    .map(
-                      (product, index) => `
+            ${data.products && data.products.length > 0
+      ? data.products
+        .map(
+          (product, index) => `
               <tr style="border-bottom: 1px solid #e2e8f0; background: ${index % 2 === 0 ? "#ffffff" : "#f0fdf4"};">
                 <td style="padding: 10px; font-size: 11px; font-weight: 600; color: #07521dff;">${index + 1}</td>
                 <td style="padding: 10px;">
@@ -301,14 +301,14 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
                 <td style="padding: 10px; text-align: right; font-size: 11px; font-weight: 700; color: #07521dff;">${formatCurrency(product.totalPrice)}</td>
               </tr>
             `,
-                    )
-                    .join("")
-                : `
+        )
+        .join("")
+      : `
             <tr>
               <td colspan="5" style="padding: 20px; text-align: center; color: #a0aec0; font-size: 10px;">Sin productos</td>
             </tr>
           `
-            }
+    }
           </tbody>
         </table>
 
@@ -317,53 +317,49 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
           
           <!-- Left: Conditions and Banking Info -->
           <div style="font-size: 9px; color: #4a5568; line-height: 1.6;">
-            ${
-              data.conditions && data.conditions.length > 0
-                ? `
+            ${data.conditions && data.conditions.length > 0
+      ? `
               <div style="margin-bottom: 12px; padding: 10px; background: #f0fdf4; border-left: 3px solid #fbbf24; border-radius: 2px;">
                 <p style="margin: 0 0 6px 0; font-size: 10px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Condiciones Comerciales</p>
                 <ul style="margin: 0; padding-left: 16px; color: #4a5568;">
                   ${data.conditions
-                    .slice(0, 5)
-                    .map((c) => `<li style="margin-bottom: 3px; font-size: 11px;">${c}</li>`)
-                    .join("")}
+        .slice(0, 5)
+        .map((c) => `<li style="margin-bottom: 3px; font-size: 11px;">${c}</li>`)
+        .join("")}
                   ${data.conditions.length > 5 ? `<li style="margin-top: 6px; font-style: italic; color: #a0aec0;">... y ${data.conditions.length - 5} condiciones más</li>` : ""}
                 </ul>
               </div>
             `
-                : ""
-            }
+      : ""
+    }
 
-            ${
-              data.bankingInfo
-                ? `
+            ${data.bankingInfo
+      ? `
               <div style="padding: 10px; background: #f0fdf4; border-left: 3px solid #07521dff; border-radius: 2px;">
                 <p style="margin: 0 0 6px 0; font-size: 10px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Información de Pago</p>
-                ${
-                  data.bankingInfo.bankAccount
-                    ? `
+                ${data.bankingInfo.bankAccount
+        ? `
                   <div style="margin-bottom: 6px;">
                     <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 600;">CUENTA ${data.bankingInfo.bankAccount.type}</p>
                     <p style="margin: 0; font-family: 'Courier New', monospace; font-size: 10px; word-break: break-all;">${data.bankingInfo.bankAccount.bank} - ${data.bankingInfo.bankAccount.accountNumber}</p>
                     <p style="margin: 2px 0 0 0; font-family: 'Courier New', monospace; font-size: 10px; color: #718096;">CCI: ${data.bankingInfo.bankAccount.cci}</p>
                   </div>
                 `
-                    : ""
-                }
-                ${
-                  data.bankingInfo.detractionAccount
-                    ? `
+        : ""
+      }
+                ${data.bankingInfo.detractionAccount
+        ? `
                   <div>
                     <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 600;">Detracción</p>
                     <p style="margin: 0; font-family: 'Courier New', monospace; font-size: 10px;">${data.bankingInfo.detractionAccount.accountNumber}</p>
                   </div>
                 `
-                    : ""
-                }
+        : ""
+      }
               </div>
             `
-                : ""
-            }
+      : ""
+    }
           </div>
 
           <!-- Right: Totals and QR -->
@@ -417,38 +413,35 @@ const createGALUREntityQuotationHTML = (data: GALUREntityQuotationPDFData, qrCod
         <div style="border-top: 2px solid #e2e8f0; padding-top: 10mm;">
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8mm; margin-bottom: 8mm; font-size: 11px; color: #4a5568;">
             
-            ${
-              data.bankingInfo?.contactInfo?.email
-                ? `
+            ${data.bankingInfo?.contactInfo?.email
+      ? `
             <div>
               <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Email</p>
               <p style="margin: 0; word-break: break-all;">${data.bankingInfo.contactInfo.email.join(" / ")}</p>
             </div>
             `
-                : ""
-            }
+      : ""
+    }
 
-            ${
-              data.bankingInfo?.contactInfo?.mobile
-                ? `
+            ${data.bankingInfo?.contactInfo?.mobile
+      ? `
             <div>
               <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Celular</p>
               <p style="margin: 0; font-weight: 600;">${data.bankingInfo.contactInfo.mobile}</p>
             </div>
             `
-                : ""
-            }
+      : ""
+    }
 
-            ${
-              data.bankingInfo?.contactInfo?.phone
-                ? `
+            ${data.bankingInfo?.contactInfo?.phone
+      ? `
             <div>
               <p style="margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #07521dff; text-transform: uppercase;">Teléfono</p>
               <p style="margin: 0;">${data.bankingInfo.contactInfo.phone}</p>
             </div>
             `
-                : ""
-            }
+      : ""
+    }
           </div>
 
           <!-- Footer -->

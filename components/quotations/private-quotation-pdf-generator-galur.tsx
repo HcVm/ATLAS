@@ -138,7 +138,8 @@ export default function GALURPrivateQuotationPDFGenerator({
         clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
-        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado",
+        clientAddress: quotation.delivery_location || "No especificado",
+        clientFiscalAddress: quotation.fiscal_address || "No especificado",
         clientEmail: clientData?.email || "No especificado",
         contactPerson: clientData?.contact_person || "No especificado",
 

@@ -40,6 +40,7 @@ interface QuotationPDFGeneratorProps {
     status: string
     entity_name: string
     entity_ruc: string
+    fiscal_address?: string | null
     delivery_location: string
     unique_code: string
     product_description: string
@@ -120,6 +121,7 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
         // Información del cliente
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
+        clientFiscalAddress: quotation.fiscal_address || "No especificado",
         deliveryLocation: quotation.delivery_location || "No especificado",
 
         // Observaciones
@@ -127,6 +129,7 @@ export default function QuotationPDFGenerator({ quotation, companyInfo }: Quotat
 
         // Creado por
         createdBy: quotation.profiles?.full_name || "Sistema",
+        finalGrandTotal: 0,
       }
 
       // Agregar información de comisión si existe

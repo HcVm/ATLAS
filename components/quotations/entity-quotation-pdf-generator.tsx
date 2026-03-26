@@ -178,7 +178,8 @@ export default function EntityQuotationPDFGenerator({ quotation, companyInfo }: 
         clientCode: quotation.quotation_number || "N/A",
         clientName: quotation.entity_name || "Cliente",
         clientRuc: quotation.entity_ruc || "N/A",
-        clientAddress: quotation.fiscal_address || quotation.delivery_location || "No especificado", // Use fiscal_address if available
+        clientAddress: quotation.delivery_location || "No especificado",
+        clientFiscalAddress: quotation.fiscal_address || "No especificado",
         clientDepartment: undefined,
         clientAttention: "Logística - Abastecimiento",
         currency: "Soles",

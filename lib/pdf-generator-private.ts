@@ -160,7 +160,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
       [] as Array<{ name: string; logoUrl: string }>,
     )
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const fiscalAddress = data.clientFiscalAddress || "No especificada";
+  const deliveryAddress = data.clientAddress || "No especificada";
 
   return `
     <!DOCTYPE html>
@@ -764,41 +765,39 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           <div class="header-content">
             <!-- Logo y datos de empresa -->
             <div class="company-info">
-              ${
-                data.companyLogoUrl
-                  ? `
+              ${data.companyLogoUrl
+      ? `
                 <div class="company-logo">
                   <img src="${data.companyLogoUrl}" alt="${data.companyName}">
                 </div>
               `
-                  : ""
-              }
+      : ""
+    }
               <div class="company-details">
                 <h1>${data.companyName}</h1>
                 <p>RUC: ${data.companyRuc}</p>
 
                 <!-- Sección de Marcas dentro del Header - Sin Fondos -->
-                ${
-                  uniqueBrands.length > 0
-                    ? `
+                ${uniqueBrands.length > 0
+      ? `
                   <div class="brands-in-header">
                     <div class="brands-grid-header">
                       ${uniqueBrands
-                        .map(
-                          ({ name, logoUrl }) => `
+        .map(
+          ({ name, logoUrl }) => `
                         <div class="brand-card-header">
                           <div class="brand-logo-container-header">
                             <img class="img-logo" src="${logoUrl}" alt="${name}" onerror="this.style.display='none'">
                           </div>
                         </div>
                       `,
-                        )
-                        .join("")}
+        )
+        .join("")}
                     </div>
                   </div>
                 `
-                    : ""
-                }
+      : ""
+    }
               </div>
             </div>
             
@@ -820,7 +819,7 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           </div>
           
           <div class="client-info">
-            <div class="client-grid">
+            <div class="client-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 4mm;">
               <div>
                 <div class="client-field">
                   <label>Cliente:</label>
@@ -833,12 +832,18 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
               </div>
               <div>
                 <div class="client-field">
-                  <label>Atención:</label>
-                  <div class="value">${data.clientAttention}</div>
+                  <label>Dirección Fiscal:</label>
+                  <div class="value">${fiscalAddress}</div>
                 </div>
                 <div class="client-field">
-                  <label>Dirección Fiscal:</label>
-                  <div class="value">${addressToDisplay}</div>
+                  <label>Lugar de Entrega:</label>
+                  <div class="value">${deliveryAddress}</div>
+                </div>
+              </div>
+              <div>
+                <div class="client-field">
+                  <label>Atención:</label>
+                  <div class="value">${data.clientAttention || "-"}</div>
                 </div>
               </div>
             </div>
@@ -866,8 +871,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
             </thead>
             <tbody>
               ${data.products
-                .map(
-                  (product, index) => `
+      .map(
+        (product, index) => `
                 <tr>
                   <td style="text-align: center; font-weight: 600;">${index + 1}</td>
                   <td style="text-align: center; font-family: monospace; font-size: 8px;">${product.code || "-"}</td>
@@ -883,8 +888,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                   <td style="text-align: right; font-weight: 700; color: #1d4ed8;">S/ ${product.totalPrice.toFixed(4)}</td>
                 </tr>
               `,
-                )
-                .join("")}
+      )
+      .join("")}
             </tbody>
           </table>
         </div>
@@ -897,9 +902,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           
           <div class="banking-totals-content">
             <div class="banking-info-container">
-              ${
-                data.bankingInfo?.bankAccount
-                  ? `
+              ${data.bankingInfo?.bankAccount
+      ? `
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
                   <div style="margin-bottom: 6px;">
                     <span style="color: black; border-radius: 4px; padding: 2px 5px; font-size: 8px; font-weight: 700;">💳 DATOS BANCARIOS</span>
@@ -913,8 +917,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                   <p style="margin: 0 0 5px 0; color: #374151; font-weight: 600; font-size: 8px;">${data.bankingInfo.contactInfo?.phone}</p>
                 </div>
                 `
-                  : data.companyAccountInfo
-                    ? `
+      : data.companyAccountInfo
+        ? `
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; border-left: 4px solid #3b82f6;">
                   <p style="margin: 3px 0; font-size: 10px; color: #374151; font-family: monospace;"><strong>CUENTA:</strong> ${data.companyAccountInfo}</p>
                   <div style="margin-top: 6px;">
@@ -922,8 +926,8 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
                   </div>
                 </div>
                 `
-                    : ""
-              }
+        : ""
+    }
 
               
             </div>
@@ -961,23 +965,23 @@ export const generatePrivateQuotationHTML = (data: PrivateQuotationPDFData): str
           <div class="conditions-qr-content">
             <div class="conditions">
               ${[
-                "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
-                "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
-                "FORMA DE PAGO: Contado.",
-                "Validez de esta oferta: Solo por 3 días hábiles.",
-                "No hay devolución de dinero, posterior al recojo.",
-                "Sí, el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
-                "Todo producto debe ser verificado antes de retirarse de nuestro almacén.",
-              ]
-                .map(
-                  (condition, index) => `
+      "Plazo de entrega: 07 días hábiles, contados dos días después de verificado la recepción de pago al 100%.",
+      "Lugar de entrega: Recojo en almacén de 9.00am-12.00pm / 2pm-5:30pm.",
+      "FORMA DE PAGO: Contado.",
+      "Validez de esta oferta: Solo por 3 días hábiles.",
+      "No hay devolución de dinero, posterior al recojo.",
+      "Sí, el producto presentara fallas por desperfecto de fábrica, se procederá a resolver el reclamo en un plazo máximo de 7 días.",
+      "Todo producto debe ser verificado antes de retirarse de nuestro almacén.",
+    ]
+      .map(
+        (condition, index) => `
                 <div class="condition-item">
                   <div class="condition-number">${index + 1}</div>
                   <div class="condition-text">${condition}</div>
                 </div>
               `,
-                )
-                .join("")}
+      )
+      .join("")}
             </div>
 
             <div class="qr-validation-panel">

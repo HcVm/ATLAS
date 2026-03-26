@@ -53,6 +53,9 @@ export interface ARMEntityQuotationPDFData {
   // Condiciones
   conditions?: string[]
 
+  // Observaciones
+  observations?: string
+
   // Creado por
   createdBy: string
 }
@@ -223,20 +226,20 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
     })
   }
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada";
+  const fiscalAddress = data.clientFiscalAddress || "No especificada";
+  const deliveryAddress = data.clientAddress || "No especificada";
 
   return `
   <div style="width: 210mm; min-height: 297mm; background: white; font-family: 'Inter', 'Segoe UI', sans-serif; color: #1a1a1a; position: relative; overflow: hidden; padding: 0; margin: 0;">
 
     <!-- Marca de agua ARM -->
-    ${
-      data.companyLogoUrl
-        ? `
+    ${data.companyLogoUrl
+      ? `
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.03; z-index: 0; pointer-events: none;">
       <img src="${data.companyLogoUrl}" alt="ARM Watermark" style="width: 900px; height: 220px;" crossorigin="anonymous" />
     </div>
     `
-        : ""
+      : ""
     }
 
     <!-- Contenido principal -->
@@ -257,7 +260,8 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
             <h3 style="margin: 0 0 6px 0px; font-size: 11px; font-weight: 600; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Cliente:</h3>
             <div>
               <h4 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #1a1a1a; line-height: 1.2;">${data.clientName}</h4>
-              <p style="margin: 0 0 4px 0; font-size: 9px; color: #666; line-height: 1.3;">${addressToDisplay}</p>
+              <p style="margin: 0 0 4px 0; font-size: 9px; color: #666; line-height: 1.3;">Dir. Fiscal: ${fiscalAddress}</p>
+              <p style="margin: 0 0 4px 0; font-size: 9px; color: #666; line-height: 1.3;">Lugar de Entrega: ${deliveryAddress}</p>
               <p style="margin: 0 0 3px 0; font-size: 9px; color: #666;">RUC: ${data.clientRuc}</p>
               <p style="margin: 0 0 3px 0; font-size: 9px; color: #666;">Código: ${data.clientCode}</p>
               ${data.clientAttention ? `<p style="margin: 0; font-size: 9px; color: #666;">Atención: ${data.clientAttention}</p>` : ""}
@@ -267,15 +271,14 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
 
         <!-- PARTE INFERIOR: Logo + Info Empresa + Decoración -->
         <div>
-          ${
-            data.companyLogoUrl
-              ? `
+          ${data.companyLogoUrl
+      ? `
             <div style="margin-bottom: 20px; text-align: center;">
               <img src="${data.companyLogoUrl}" alt="ARM Logo" style="width: 200px; height: 100px; object-fit: contain;" crossorigin="anonymous" />
             </div>
             `
-              : ""
-          }
+      : ""
+    }
 
           <div style="margin-bottom: 10px; margin-top: 10px;">
             <h2 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #dc2626; line-height: 1.2;">${data.companyName}</h2>
@@ -317,16 +320,15 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
               <p style="margin: 0; font-size: 11px; color: #1a1a1a; font-weight: 600;">${formatDate(data.quotationDate)}</p>
             </div>
             
-            ${
-              data.validUntil
-                ? `
+            ${data.validUntil
+      ? `
             <div>
               <p style="margin: 0; font-size: 10px; color: #666; font-weight: 500;">Válida hasta:</p>
               <p style="margin: 0; font-size: 11px; color: #dc2626; font-weight: 600;">${formatDate(data.validUntil)}</p>
             </div>
             `
-                : ""
-            }
+      : ""
+    }
           </div>
         </div>
 
@@ -347,11 +349,10 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
             </tr>
           </thead>
           <tbody>
-            ${
-              data.products && data.products.length > 0
-                ? data.products
-                    .map(
-                      (product, index) => `
+            ${data.products && data.products.length > 0
+      ? data.products
+        .map(
+          (product, index) => `
             <tr style="border-bottom: 1px solid #f0f0f0;">
               <td style="padding: 15px 0; vertical-align: top;">
                 <div style="font-size: 12px; font-weight: 600; color: #1a1a1a;">${index + 1}</div>
@@ -373,14 +374,14 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
               </td>
             </tr>
           `,
-                    )
-                    .join("")
-                : `
+        )
+        .join("")
+      : `
             <tr>
               <td colspan="3" style="padding: 30px 0; text-align: center; color: #999;">No se encontraron productos</td>
             </tr>
           `
-            }
+    }
           </tbody>
         </table>
 
@@ -426,14 +427,12 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-bottom: 4px;">
         
         <!-- Información bancaria -->
-        ${
-          data.bankingInfo?.bankAccount || data.companyAccountInfo
-            ? `
+        ${data.bankingInfo?.bankAccount || data.companyAccountInfo
+      ? `
         <div>
           <h3 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 600; color: white; text-transform: uppercase; letter-spacing: 0.5px;">Detalles de Pago:</h3>
-          ${
-            data.bankingInfo?.bankAccount
-              ? `
+          ${data.bankingInfo?.bankAccount
+        ? `
           <div style="margin-bottom: 8px;">
             <p style="margin: 0; font-size: 9px; color: #ccc;">Banco:</p>
             <p style="margin: 0; font-size: 11px; color: white; font-weight: 600;">${data.bankingInfo.bankAccount.bank}</p>
@@ -447,48 +446,46 @@ const createARMEntityQuotationHTML = (data: ARMEntityQuotationPDFData, qrCodeDat
             <p style="margin: 0; font-size: 10px; color: white; font-weight: 600; font-family: monospace;">${data.bankingInfo.bankAccount.cci}</p>
           </div>
           `
-              : data.companyAccountInfo
-                ? `
+        : data.companyAccountInfo
+          ? `
           <p style="margin: 0; font-size: 11px; color: white; font-weight: 600; font-family: monospace;">${data.companyAccountInfo}</p>
           `
-                : ""
-          }
+          : ""
+      }
         </div>
         `
-            : ""
-        }
+      : ""
+    }
 
         <!-- Condiciones -->
-        ${
-          data.conditions && data.conditions.length > 0
-            ? `
+        ${data.conditions && data.conditions.length > 0
+      ? `
         <div>
           <h3 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 600; color: white; text-transform: uppercase; letter-spacing: 0.5px;">Condiciones:</h3>
           ${data.conditions
-            .slice(0, 4)
-            .map(
-              (condition) => `
+        .slice(0, 4)
+        .map(
+          (condition) => `
           <p style="margin: 0 0 5px 0; font-size: 9px; color: #ccc; line-height: 1.4;">• ${condition}</p>
           `,
-            )
-            .join("")}
+        )
+        .join("")}
           ${data.conditions.length > 4 ? `<p style="margin: 0; font-size: 8px; color: #999;">Y ${data.conditions.length - 4} condiciones más...</p>` : ""}
         </div>
         `
-            : ""
-        }
+      : ""
+    }
 
         <!-- Logo y firma -->
         <div style="text-align: right;">
-          ${
-            data.companyLogoUrl
-              ? `
+          ${data.companyLogoUrl
+      ? `
           <div style="margin-bottom: 12px;">
             <img src="${data.companyLogoUrl}" alt="ARM Logo" style="width: 150px; height: 70px; object-fit: contain; opacity: 0.8;" crossorigin="anonymous" />
           </div>
           `
-              : ""
-          }
+      : ""
+    }
           <div style="margin-bottom: 12px;">
             <p style="margin: 0; font-size: 12px; color: white; font-weight: 600;">${data.createdBy}</p>
             <p style="margin: 0; font-size: 10px; color: #ccc;">ARM Corporations</p>

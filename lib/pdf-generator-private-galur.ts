@@ -22,6 +22,7 @@ export interface GALURPrivateQuotationPDFData {
   quotationDate: string
   validUntil?: string
   status: string
+  currency?: string
 
   // Información del cliente
   clientCode: string
@@ -145,6 +146,9 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
   // 2. Extraer variables para facilitar el renderizado
   const contactInfo = data.bankingInfo?.contactInfo
   const fiscalAddress = data.bankingInfo?.fiscalAddress || data.companyAddress || ''
+
+  const clientFiscal = data.clientFiscalAddress || "No especificada"
+  const clientDelivery = data.clientAddress || "No especificada"
 
   const simbolo = data.currency === "USD" ? "US$" : "S/"
   const nombreMoneda = data.currency === "USD" ? "Dólares Americanos" : "Soles"
@@ -316,20 +320,20 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
 
     <div class="middle-strip">
       <div class="brands-container">
-        ${uniqueBrands.length > 0 
-          ? uniqueBrands.map(b => `<img src="${b.logoUrl}" class="brand-logo" alt="${b.name}">`).join('')
-          : `<span style="color:#aaa; font-style:italic;">Distribuidor Autorizado</span>`
-        }
+        ${uniqueBrands.length > 0
+      ? uniqueBrands.map(b => `<img src="${b.logoUrl}" class="brand-logo" alt="${b.name}">`).join('')
+      : `<span style="color:#aaa; font-style:italic;">Distribuidor Autorizado</span>`
+    }
       </div>
 
       <div class="qr-container">
         <div class="qr-text">
           Validación<br><strong>Digital</strong>
         </div>
-        ${data.qrCodeBase64 
-          ? `<img src="${data.qrCodeBase64}" class="qr-img">` 
-          : `<div class="qr-img" style="background:#eee;"></div>`
-        }
+        ${data.qrCodeBase64
+      ? `<img src="${data.qrCodeBase64}" class="qr-img">`
+      : `<div class="qr-img" style="background:#eee;"></div>`
+    }
       </div>
     </div>
 
@@ -338,7 +342,8 @@ export const generateGALURPrivateQuotationHTML = (data: GALURPrivateQuotationPDF
         <h3>Datos del Cliente</h3>
         <div class="data-line"><span class="label">Razón Social:</span> <span class="value">${data.clientName}</span></div>
         <div class="data-line"><span class="label">RUC:</span> <span class="value">${data.clientRuc}</span></div>
-        <div class="data-line"><span class="label">Dirección:</span> <span class="value" style="font-size:9px;">${data.clientFiscalAddress || data.clientAddress || '-'}</span></div>
+        <div class="data-line"><span class="label">Dir. Fiscal:</span> <span class="value" style="font-size:9px;">${clientFiscal}</span></div>
+        <div class="data-line"><span class="label">Entrega:</span> <span class="value" style="font-size:9px;">${clientDelivery}</span></div>
         <div class="data-line"><span class="label">Atención:</span> <span class="value">${data.contactPerson || '-'}</span></div>
       </div>
       <div class="info-block">

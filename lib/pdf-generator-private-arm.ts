@@ -160,7 +160,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
       [] as Array<{ name: string; logoUrl: string }>,
     )
 
-  const addressToDisplay = data.clientFiscalAddress || data.clientAddress || "Dirección no especificada"
+  const fiscalAddress = data.clientFiscalAddress || "No especificada"
+  const deliveryAddress = data.clientAddress || "No especificada"
 
   return `
     <!DOCTYPE html>
@@ -899,11 +900,10 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
           <tr>
             <!-- Logo Cell -->
             <td class="logo-cell">
-              ${
-                data.companyLogoUrl
-                  ? `<img src="${data.companyLogoUrl}" alt="${data.companyName}" class="company-logo-header">`
-                  : ""
-              }
+              ${data.companyLogoUrl
+      ? `<img src="${data.companyLogoUrl}" alt="${data.companyName}" class="company-logo-header">`
+      : ""
+    }
               <div class="logo-text-header">ARM CORPORATIONS</div>
             </td>
 
@@ -924,27 +924,26 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
         </table>
 
         <!-- Brands Showcase - Horizontal -->
-        ${
-          uniqueBrands.length > 0
-            ? `
+        ${uniqueBrands.length > 0
+      ? `
           <div class="brands-showcase">
             <div class="brands-title">Marcas Representadas</div>
             <div class="brands-horizontal-grid">
               ${uniqueBrands
-                .map(
-                  ({ name, logoUrl }) => `
+        .map(
+          ({ name, logoUrl }) => `
                 <div class="brand-item-horizontal">
                   <img src="${logoUrl}" alt="${name}" class="brand-logo-horizontal" onerror="this.style.display='none'">
                   <div class="brand-name-horizontal">${name}</div>
                 </div>
               `,
-                )
-                .join("")}
+        )
+        .join("")}
             </div>
           </div>
         `
-            : ""
-        }
+      : ""
+    }
 
         <!-- Cliente y Condiciones COMBINADOS -->
         <div class="client-conditions-combined">
@@ -968,7 +967,11 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                 </div>
                 <div class="client-field-compact">
                   <span class="client-label-compact">Dirección Fiscal:</span>
-                  <span class="client-value-compact">${addressToDisplay}</span>
+                  <span class="client-value-compact">${fiscalAddress}</span>
+                </div>
+                <div class="client-field-compact">
+                  <span class="client-label-compact">Lugar de Entrega:</span>
+                  <span class="client-value-compact">${deliveryAddress}</span>
                 </div>
                 <div class="client-field-compact">
                   <span class="client-label-compact">Correo:</span>
@@ -986,23 +989,23 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
               <div class="side-title">Condiciones de Venta</div>
               <div class="conditions-compact">
                 ${[
-                  "Plazo: 07 días hábiles después del pago",
-                  "Entrega: Recojo en almacén 9am-12pm / 2pm-5:30pm",
-                  "Pago: Contado al 100%",
-                  "Validez: Solo por 3 días hábiles",
-                  "Sin devolución posterior al recojo",
-                  "Garantía por defecto de fábrica: 7 días",
-                  "Verificar producto antes del retiro",
-                ]
-                  .map(
-                    (condition, index) => `
+      "Plazo: 07 días hábiles después del pago",
+      "Entrega: Recojo en almacén 9am-12pm / 2pm-5:30pm",
+      "Pago: Contado al 100%",
+      "Validez: Solo por 3 días hábiles",
+      "Sin devolución posterior al recojo",
+      "Garantía por defecto de fábrica: 7 días",
+      "Verificar producto antes del retiro",
+    ]
+      .map(
+        (condition, index) => `
                   <div class="condition-item-compact">
                     <div class="condition-number-compact">${index + 1}</div>
                     <div class="condition-text-compact">${condition}</div>
                   </div>
                 `,
-                  )
-                  .join("")}
+      )
+      .join("")}
               </div>
             </div>
           </div>
@@ -1026,8 +1029,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
               </thead>
               <tbody>
                 ${data.products
-                  .map(
-                    (product, index) => `
+      .map(
+        (product, index) => `
                   <tr>
                     <td style="text-align: center;">
                       <div class="product-index">${index + 1}</div>
@@ -1043,18 +1046,17 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                       <div class="unit-display">${product.unit}</div>
                     </td>
                     <td style="text-align: center;">
-                      ${
-                        product.brand && product.brandLogoUrl
-                          ? `
+                      ${product.brand && product.brandLogoUrl
+            ? `
                         <div class="brand-display">
                           <img src="${product.brandLogoUrl}" alt="${product.brand}" class="brand-logo-table" />
                           <div class="brand-name-table">${product.brand}</div>
                         </div>
                       `
-                          : product.brand
-                            ? `<div class="brand-name-table">${product.brand}</div>`
-                            : "—"
-                      }
+            : product.brand
+              ? `<div class="brand-name-table">${product.brand}</div>`
+              : "—"
+          }
                     </td>
                     <td class="price-display">S/ ${product.unitPrice.toFixed(4)}</td>
                     <td style="text-align: center;">
@@ -1062,8 +1064,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                     </td>
                   </tr>
                 `,
-                  )
-                  .join("")}
+      )
+      .join("")}
               </tbody>
             </table>
           </div>
@@ -1076,9 +1078,8 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
             <!-- Columna Banking -->
             <div class="banking-column">
               <div class="column-title">Información Bancaria</div>
-              ${
-                data.bankingInfo?.bankAccount
-                  ? `
+              ${data.bankingInfo?.bankAccount
+      ? `
                 <div class="banking-item-inline">
                   <span class="banking-label-inline">Empresa:</span>
                   <span class="banking-value-inline">${data.companyName}</span>
@@ -1100,15 +1101,15 @@ export const generateARMPrivateQuotationHTML = (data: ARMPrivateQuotationPDFData
                   <span class="banking-value-inline">${data.bankingInfo.bankAccount.cci}</span>
                 </div>
               `
-                  : data.companyAccountInfo
-                    ? `
+      : data.companyAccountInfo
+        ? `
                 <div class="banking-item-inline">
                   <span class="banking-label-inline">Cuenta:</span>
                   <span class="banking-value-inline">${data.companyAccountInfo}</span>
                 </div>
               `
-                    : ""
-              }
+        : ""
+    }
             </div>
 
             <!-- Columna Totales -->
