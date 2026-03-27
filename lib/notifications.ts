@@ -33,6 +33,84 @@ export async function createNotification(params: CreateNotificationParams) {
   }
 }
 
+export async function createNotifications(params: CreateNotificationParams[]) {
+  try {
+    const notificationsToInsert = params.map(p => ({
+      user_id: p.userId,
+      title: p.title,
+      message: p.message,
+      type: p.type || "system",
+      related_id: p.relatedId || null,
+      company_id: p.companyId || null,
+      read: false,
+    }))
+
+    const { error } = await supabase.from("notifications").insert(notificationsToInsert)
+
+    if (error) {
+      console.error("Error creating notifications:", error)
+      return { success: false, error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to create notifications:", error)
+    return { success: false, error }
+  }
+}
+
+export async function createNotifications(params: CreateNotificationParams[]) {
+  try {
+    const notificationsToInsert = params.map(p => ({
+      user_id: p.userId,
+      title: p.title,
+      message: p.message,
+      type: p.type || "system",
+      related_id: p.relatedId || null,
+      company_id: p.companyId || null,
+      read: false,
+    }))
+
+    const { error } = await supabase.from("notifications").insert(notificationsToInsert)
+
+    if (error) {
+      console.error("Error creating notifications:", error)
+      return { success: false, error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to create notifications:", error)
+    return { success: false, error }
+  }
+}
+
+export async function createNotifications(params: CreateNotificationParams[]) {
+  try {
+    const notificationsToInsert = params.map(p => ({
+      user_id: p.userId,
+      title: p.title,
+      message: p.message,
+      type: p.type || "system",
+      related_id: p.relatedId || null,
+      company_id: p.companyId || null,
+      read: false,
+    }))
+
+    const { error } = await supabase.from("notifications").insert(notificationsToInsert)
+
+    if (error) {
+      console.error("Error creating notifications:", error)
+      return { success: false, error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to create notifications:", error)
+    return { success: false, error }
+  }
+}
+
 export async function getUnreadNotificationsCount(userId: string, companyId?: string | null): Promise<number> {
   try {
     let query = supabase

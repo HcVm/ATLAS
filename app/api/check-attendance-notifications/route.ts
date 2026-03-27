@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { createNotification } from "@/lib/notifications"
+import { createNotification, createNotifications } from "@/lib/notifications"
 import { format, addHours } from "date-fns"
 
 export async function GET(request: NextRequest) {
@@ -70,23 +70,29 @@ async function checkLateArrivals(today: string) {
 
     console.log(`Found ${lateArrivals.length} late arrivals to notify`)
 
-    for (const attendance of lateArrivals) {
+    const notificationsToCreate = lateArrivals.map(attendance => {
       const checkInTime = new Date(attendance.check_in_time)
       const deadlineTime = addHours(checkInTime, 24)
-
-      await createNotification({
+      return {
         userId: attendance.user_id,
         title: "Justificación de Tardanza Requerida",
         message: `Has llegado ${attendance.late_minutes} minutos tarde hoy. Debes presentar una justificación de tardanza antes del ${format(deadlineTime, "dd/MM/yyyy 'a las' HH:mm")} (24 horas desde tu llegada).`,
         type: "attendance_late",
         relatedId: attendance.id,
         companyId: attendance.company_id,
-      })
+      }
+    })
 
-      // Mark notification as sent
-      await supabase.from("attendance").update({ late_notification_sent: true }).eq("id", attendance.id)
+    if (notificationsToCreate.length > 0) {
+      await createNotifications(notificationsToCreate)
 
-      console.log(`Late arrival notification sent to user ${attendance.user_id}`)
+      const attendanceIdsToUpdate = lateArrivals.map(a => a.id)
+      await supabase
+        .from("attendance")
+        .update({ late_notification_sent: true })
+        .in("id", attendanceIdsToUpdate)
+
+      console.log(`Successfully sent ${notificationsToCreate.length} late arrival notifications.`)
     }
   } catch (error) {
     console.error("Error checking late arrivals:", error)
