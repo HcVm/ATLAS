@@ -98,7 +98,7 @@ export default function ManageApprovalsPage() {
                     <CheckCircle className="h-5 w-5" /> Aprobar
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Autoriza la solicitud. Si hay múltiples niveles (ej. Jefe > Gerente > RRHH), pasará automáticamente al siguiente aprobador.
+                    Autoriza la solicitud. Si hay múltiples niveles (ej. Jefe &gt; Gerente &gt; RRHH), pasará automáticamente al siguiente aprobador.
                   </p>
                 </div>
                 
