@@ -402,40 +402,24 @@ async function insertDataChunk(
   }
 
   if (brandAlerts.length > 0) {
-
-    for (const alert of brandAlerts) {
+    const ALERT_BATCH_SIZE = 1000
+    for (let i = 0; i < brandAlerts.length; i += ALERT_BATCH_SIZE) {
+      const batch = brandAlerts.slice(i, i + ALERT_BATCH_SIZE)
       try {
-        const { data: existingAlert, error: checkError } = await supabase
+        const { data, error } = await supabase
           .from("brand_alerts")
-          .select("id")
-          .eq("orden_electronica", alert.orden_electronica)
-          .eq("brand_name", alert.brand_name)
-          .single()
+          .upsert(batch, { onConflict: "orden_electronica, brand_name", ignoreDuplicates: true })
+          .select()
 
-        if (checkError && checkError.code !== "PGRST116") {
-          console.error("Error verificando alerta existente:", checkError.message)
-          errors.push(`Error verificando alerta: ${checkError.message}`)
-          continue
+        if (error) {
+          console.error("Error batch inserting alerts:", error.message)
+          errors.push(`Error en batch de alertas: ${error.message}`)
+        } else if (data) {
+          brandAlertsCount += data.length
         }
-
-        if (existingAlert) {
-          continue
-        }
-
-        const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
-
-        if (insertError) {
-          if (insertError.code === "23505") {
-          } else {
-            console.error("Error insertando nueva alerta:", insertError.message)
-            errors.push(`Error en nueva alerta: ${insertError.message}`)
-          }
-        } else {
-          brandAlertsCount++
-        }
-      } catch (insertError) {
-        console.error("Error inesperado procesando alerta:", insertError)
-        errors.push(`Error inesperado en alerta: ${insertError}`)
+      } catch (error: any) {
+        console.error("Error inesperado en batch de alertas:", error)
+        errors.push(`Error inesperado en batch de alertas: ${error.message}`)
       }
     }
   }
