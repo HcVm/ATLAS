@@ -252,20 +252,20 @@ function divideDataIntoChunks(dataRows: any[][], maxRowsPerChunk: number): any[]
   return chunks
 }
 
+const BRAND_PATTERNS = {
+  WORLDLIFE: ["WORLDLIFE", "MARCA: WORLDLIFE", "MARCA:WORLDLIFE", "MARCA WORLDLIFE"],
+  "HOPE LIFE": ["HOPE LIFE", "MARCA: HOPE LIFE", "MARCA:HOPE LIFE", "MARCA HOPE LIFE", "HOPELIFE", "MARCA: HOPELIFE"],
+  ZEUS: ["ZEUS", "MARCA: ZEUS", "MARCA:ZEUS", "MARCA ZEUS"],
+  VALHALLA: ["VALHALLA", "MARCA: VALHALLA", "MARCA:VALHALLA", "MARCA VALHALLA"],
+}
+
 function detectTargetBrands(marcaText: string): string[] {
   if (!marcaText) return []
 
   const detectedBrands: string[] = []
   const upperText = marcaText.toUpperCase().trim()
 
-  const brandPatterns = {
-    WORLDLIFE: ["WORLDLIFE", "MARCA: WORLDLIFE", "MARCA:WORLDLIFE", "MARCA WORLDLIFE"],
-    "HOPE LIFE": ["HOPE LIFE", "MARCA: HOPE LIFE", "MARCA:HOPE LIFE", "MARCA HOPE LIFE", "HOPELIFE", "MARCA: HOPELIFE"],
-    ZEUS: ["ZEUS", "MARCA: ZEUS", "MARCA:ZEUS", "MARCA ZEUS"],
-    VALHALLA: ["VALHALLA", "MARCA: VALHALLA", "MARCA:VALHALLA", "MARCA VALHALLA"],
-  }
-
-  for (const [brand, patterns] of Object.entries(brandPatterns)) {
+  for (const [brand, patterns] of Object.entries(BRAND_PATTERNS)) {
     for (const pattern of patterns) {
       if (upperText.includes(pattern)) {
         if (!detectedBrands.includes(brand)) {
@@ -402,40 +402,78 @@ async function insertDataChunk(
   }
 
   if (brandAlerts.length > 0) {
+    const ALERT_BATCH_SIZE = 100
+    for (let i = 0; i < brandAlerts.length; i += ALERT_BATCH_SIZE) {
+      const batch = brandAlerts.slice(i, i + ALERT_BATCH_SIZE)
+      const orderIds = batch
+        .map((a) => a.orden_electronica)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
 
-    for (const alert of brandAlerts) {
+      if (orderIds.length === 0) continue
+
       try {
-        const { data: existingAlert, error: checkError } = await supabase
+        const { data: existingAlerts, error: fetchError } = await supabase
           .from("brand_alerts")
-          .select("id")
-          .eq("orden_electronica", alert.orden_electronica)
-          .eq("brand_name", alert.brand_name)
-          .single()
+          .select("orden_electronica, brand_name")
+          .in("orden_electronica", orderIds)
 
-        if (checkError && checkError.code !== "PGRST116") {
-          console.error("Error verificando alerta existente:", checkError.message)
-          errors.push(`Error verificando alerta: ${checkError.message}`)
-          continue
-        }
+        if (fetchError) {
+          console.error("Error fetching existing alerts (batch), falling back to individual:", fetchError.message)
+          // Fallback to individual processing
+          for (const alert of batch) {
+            try {
+              const { data: existing, error: checkErr } = await supabase
+                .from("brand_alerts")
+                .select("id")
+                .eq("orden_electronica", alert.orden_electronica)
+                .eq("brand_name", alert.brand_name)
+                .single()
 
-        if (existingAlert) {
-          continue
-        }
+              if (checkErr && checkErr.code !== "PGRST116") {
+                errors.push(`Error verificando alerta: ${checkErr.message}`)
+                continue
+              }
+              if (existing) continue
 
-        const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
-
-        if (insertError) {
-          if (insertError.code === "23505") {
-          } else {
-            console.error("Error insertando nueva alerta:", insertError.message)
-            errors.push(`Error en nueva alerta: ${insertError.message}`)
+              const { error: insErr } = await supabase.from("brand_alerts").insert(alert)
+              if (insErr) {
+                if (insErr.code !== "23505") errors.push(`Error insertando alerta: ${insErr.message}`)
+              } else {
+                brandAlertsCount++
+              }
+            } catch (e: any) {
+              errors.push(`Error inesperado en alerta: ${e.message}`)
+            }
           }
-        } else {
-          brandAlertsCount++
+          continue
         }
-      } catch (insertError) {
-        console.error("Error inesperado procesando alerta:", insertError)
-        errors.push(`Error inesperado en alerta: ${insertError}`)
+
+        const existingSet = new Set(existingAlerts?.map((a) => `${a.orden_electronica}|${a.brand_name}`) || [])
+
+        const newAlerts = batch.filter((a) => !existingSet.has(`${a.orden_electronica}|${a.brand_name}`))
+
+        if (newAlerts.length > 0) {
+          const { error: insertError } = await supabase.from("brand_alerts").insert(newAlerts)
+
+          if (insertError) {
+            console.error("Error batch inserting alerts:", insertError.message)
+
+            // Fallback to individual insert on batch error
+            for (const alert of newAlerts) {
+              const { error: singleError } = await supabase.from("brand_alerts").insert(alert)
+              if (!singleError) {
+                brandAlertsCount++
+              } else if (singleError.code !== "23505") {
+                errors.push(`Error insertando alerta individual: ${singleError.message}`)
+              }
+            }
+          } else {
+            brandAlertsCount += newAlerts.length
+          }
+        }
+      } catch (err: any) {
+        console.error("Error processing brand alerts batch:", err)
+        errors.push(`Error en alertas batch: ${err.message}`)
       }
     }
   }
