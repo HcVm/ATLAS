@@ -1,0 +1,3 @@
+## 2024-05-23 - Batch Processing for Brand Alerts
+**Learning:** Replacing N+1 `SELECT` + `INSERT` loops with batched `.in()` queries and in-memory filtering yielded a ~46x speedup (1885ms -> 40ms for 50 items). Supabase/PostgREST HTTP overhead is significant for sequential operations.
+**Action:** When inserting related records (like alerts) for a batch of data, always fetch existing records in bulk using `.in()`, filter in memory, and perform a bulk insert. Crucially, implement a fallback to sequential processing to gracefully handle unique constraint violations (race conditions) or batch errors.
