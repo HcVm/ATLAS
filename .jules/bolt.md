@@ -1,0 +1,3 @@
+## 2024-05-24 - Inconsistent Batch Processing Implementation
+**Learning:** Found that while `app/api/open-data/upload/route.ts` correctly implemented batch processing for `brand_alerts` to avoid N+1 queries, the parallel file `app/api/open-data/process/route.ts` (likely for a different upload method) did not, using a sequential N+1 loop instead.
+**Action:** When optimizing a feature that has multiple entry points (e.g., file upload vs. URL processing), always check all related endpoints as optimizations might not have been applied uniformly. Code duplication without abstraction led to this performance divergence.
