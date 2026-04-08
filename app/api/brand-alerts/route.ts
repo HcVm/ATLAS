@@ -68,7 +68,7 @@ console.log("Brand search patterns configured:", Array.from(ALL_BRAND_SEARCH_PAT
 /**
  * Ensures the brand_alerts table exists with correct constraints and is populated from open_data_entries.
  */
-async function ensureBrandAlertsPopulated(supabase: any) {
+export async function ensureBrandAlertsPopulated(supabase: any) {
   console.log("ensureBrandAlertsPopulated: Starting population process...")
 
   try {
@@ -82,28 +82,13 @@ async function ensureBrandAlertsPopulated(supabase: any) {
       console.log("ensureBrandAlertsPopulated: Constraint fix not available, continuing...")
     }
 
-    // 2. Fetch existing alerts for deduplication
-    console.log("ensureBrandAlertsPopulated: Fetching existing alerts for deduplication...")
-    const { data: existingAlerts, error: existingError } = await supabase
-      .from("brand_alerts")
-      .select("orden_electronica, brand_name")
-
-    if (existingError) {
-      console.error("ensureBrandAlertsPopulated: Error fetching existing alerts for deduplication:", existingError)
-      // Continue without deduplication if there's an error fetching existing alerts
-    }
-
-    const existingAlertsTyped = (existingAlerts as Pick<BrandAlert, "orden_electronica" | "brand_name">[]) || []
-    const existingAlertsSet = new Set(existingAlertsTyped.map((a) => `${a.orden_electronica}-${a.brand_name}`))
-    console.log(`ensureBrandAlertsPopulated: Found ${existingAlertsTyped.length} existing alerts in DB.`)
-
-    const alertsToInsert: BrandAlert[] = []
     const BATCH_SIZE = 1000 // Define a batch size for pagination
     let offset = 0
     let hasMore = true
     let totalOpenDataEntriesProcessed = 0
+    let totalInserted = 0
 
-    // 3. Fetch relevant open_data_entries in batches for brand detection
+    // 2. Fetch relevant open_data_entries in batches for brand detection
     while (hasMore) {
       console.log(`ensureBrandAlertsPopulated: Fetching open_data_entries batch from offset ${offset}...`)
 
@@ -134,6 +119,9 @@ async function ensureBrandAlertsPopulated(supabase: any) {
         offset += BATCH_SIZE
       }
 
+      const batchAlerts: BrandAlert[] = []
+      const batchUniqueKeys = new Set<string>()
+
       // Process the current batch
       for (const entry of openDataEntriesTyped) {
         const searchText = (entry.marca_ficha_producto || "").toUpperCase().trim()
@@ -157,11 +145,11 @@ async function ensureBrandAlertsPopulated(supabase: any) {
           const ordenElectronica = entry.orden_electronica || `OE-${entry.id}` // Fallback if orden_electronica is null
           const uniqueKey = `${ordenElectronica}-${detectedBrand}`
 
-          if (!existingAlertsSet.has(uniqueKey)) {
+          if (!batchUniqueKeys.has(uniqueKey)) {
             // Usar acuerdo_marco completo si está disponible, sino usar codigo_acuerdo_marco
             const acuerdoMarco = entry.acuerdo_marco || entry.codigo_acuerdo_marco || "Unknown"
 
-            alertsToInsert.push({
+            batchAlerts.push({
               orden_electronica: ordenElectronica,
               acuerdo_marco: acuerdoMarco,
               brand_name: detectedBrand, // Usa el nombre de marca base
@@ -173,11 +161,22 @@ async function ensureBrandAlertsPopulated(supabase: any) {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
-            existingAlertsSet.add(uniqueKey) // Add to set to prevent duplicates within the same batch
-            console.log(
-              `ensureBrandAlertsPopulated: Detected brand "${detectedBrand}" in "${entry.marca_ficha_producto}" (pattern: "${matchedPattern}") for OE: ${ordenElectronica}. Acuerdo: ${acuerdoMarco}. Proveedor: ${entry.razon_social_proveedor || "N/A"}`,
-            )
+            batchUniqueKeys.add(uniqueKey)
           }
+        }
+      }
+
+      if (batchAlerts.length > 0) {
+        // Bulk upsert the batch
+        const { error: upsertError } = await supabase
+          .from("brand_alerts")
+          .upsert(batchAlerts, { onConflict: "orden_electronica, brand_name", ignoreDuplicates: true })
+
+        if (upsertError) {
+          console.error("ensureBrandAlertsPopulated: Error upserting batch:", upsertError)
+        } else {
+          totalInserted += batchAlerts.length
+          console.log(`ensureBrandAlertsPopulated: Upserted batch of ${batchAlerts.length} alerts.`)
         }
       }
     }
@@ -185,52 +184,8 @@ async function ensureBrandAlertsPopulated(supabase: any) {
     console.log(
       `ensureBrandAlertsPopulated: Finished processing all open_data_entries. Total entries processed: ${totalOpenDataEntriesProcessed}`,
     )
-    console.log(`ensureBrandAlertsPopulated: Prepared ${alertsToInsert.length} new alerts for insertion.`)
+    console.log(`ensureBrandAlertsPopulated: Total alerts upserted: ${totalInserted}`)
 
-    // 4. Insert new alerts into brand_alerts table using individual inserts to handle conflicts
-    if (alertsToInsert.length > 0) {
-      console.log("ensureBrandAlertsPopulated: Attempting to insert alerts individually...")
-
-      let insertedCount = 0
-      let skippedCount = 0
-
-      for (const alert of alertsToInsert) {
-        try {
-          const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
-
-          if (insertError) {
-            if (insertError.code === "23505") {
-              // Duplicate key error - skip this one
-              skippedCount++
-              console.log(
-                `ensureBrandAlertsPopulated: Skipped duplicate alert for OE: ${alert.orden_electronica}, Brand: ${alert.brand_name}`,
-              )
-            } else {
-              console.error(
-                `ensureBrandAlertsPopulated: Error inserting alert for OE: ${alert.orden_electronica}:`,
-                insertError,
-              )
-            }
-          } else {
-            insertedCount++
-            if (insertedCount % 10 === 0) {
-              console.log(`ensureBrandAlertsPopulated: Inserted ${insertedCount} alerts so far...`)
-            }
-          }
-        } catch (error) {
-          console.error(
-            `ensureBrandAlertsPopulated: Unexpected error inserting alert for OE: ${alert.orden_electronica}:`,
-            error,
-          )
-        }
-      }
-
-      console.log(
-        `ensureBrandAlertsPopulated: Insertion complete. Inserted: ${insertedCount}, Skipped: ${skippedCount}`,
-      )
-    } else {
-      console.log("ensureBrandAlertsPopulated: No new brand alerts to insert.")
-    }
   } catch (error) {
     console.error("ensureBrandAlertsPopulated: Unhandled error during population:", error)
   }
