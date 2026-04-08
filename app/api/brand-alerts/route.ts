@@ -187,46 +187,34 @@ async function ensureBrandAlertsPopulated(supabase: any) {
     )
     console.log(`ensureBrandAlertsPopulated: Prepared ${alertsToInsert.length} new alerts for insertion.`)
 
-    // 4. Insert new alerts into brand_alerts table using individual inserts to handle conflicts
+    // 4. Insert new alerts into brand_alerts table using batch upsert to handle conflicts efficiently
     if (alertsToInsert.length > 0) {
-      console.log("ensureBrandAlertsPopulated: Attempting to insert alerts individually...")
+      console.log(`ensureBrandAlertsPopulated: Attempting to insert ${alertsToInsert.length} alerts using batch upsert...`)
 
       let insertedCount = 0
-      let skippedCount = 0
+      const BATCH_SIZE = 1000
 
-      for (const alert of alertsToInsert) {
-        try {
-          const { error: insertError } = await supabase.from("brand_alerts").insert([alert])
+      for (let i = 0; i < alertsToInsert.length; i += BATCH_SIZE) {
+        const batch = alertsToInsert.slice(i, i + BATCH_SIZE)
+        console.log(`ensureBrandAlertsPopulated: Processing batch ${i / BATCH_SIZE + 1} (${batch.length} alerts)...`)
 
-          if (insertError) {
-            if (insertError.code === "23505") {
-              // Duplicate key error - skip this one
-              skippedCount++
-              console.log(
-                `ensureBrandAlertsPopulated: Skipped duplicate alert for OE: ${alert.orden_electronica}, Brand: ${alert.brand_name}`,
-              )
-            } else {
-              console.error(
-                `ensureBrandAlertsPopulated: Error inserting alert for OE: ${alert.orden_electronica}:`,
-                insertError,
-              )
-            }
-          } else {
-            insertedCount++
-            if (insertedCount % 10 === 0) {
-              console.log(`ensureBrandAlertsPopulated: Inserted ${insertedCount} alerts so far...`)
-            }
-          }
-        } catch (error) {
-          console.error(
-            `ensureBrandAlertsPopulated: Unexpected error inserting alert for OE: ${alert.orden_electronica}:`,
-            error,
-          )
+        const { data, error: insertError } = await supabase
+          .from("brand_alerts")
+          .upsert(batch, {
+            onConflict: "orden_electronica, brand_name",
+            ignoreDuplicates: true,
+          })
+          .select()
+
+        if (insertError) {
+          console.error("ensureBrandAlertsPopulated: Error during batch upsert:", insertError)
+        } else {
+          insertedCount += data ? data.length : 0
         }
       }
 
       console.log(
-        `ensureBrandAlertsPopulated: Insertion complete. Inserted: ${insertedCount}, Skipped: ${skippedCount}`,
+        `ensureBrandAlertsPopulated: Batch insertion complete. Successfully processed (inserted/updated) ${insertedCount} alerts.`,
       )
     } else {
       console.log("ensureBrandAlertsPopulated: No new brand alerts to insert.")
